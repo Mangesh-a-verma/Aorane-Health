@@ -366,8 +366,8 @@ importers:
   artifacts/aorane-mobile:
     dependencies:
       expo-local-authentication:
-        specifier: ^55.0.13
-        version: 55.0.13(expo@54.0.33)
+        specifier: ^17.0.8
+        version: 17.0.8(expo@54.0.33)
     devDependencies:
       '@babel/core':
         specifier: ^7.25.2
@@ -3861,8 +3861,8 @@ packages:
       react: '*'
       react-native: '*'
 
-  expo-local-authentication@55.0.13:
-    resolution: {integrity: sha512-7m1+Roub/6xxjHtVKe0vVtsC5g0MXp1Nf0dxK0YfJ1i5314hvi/Glhl5/2loAgnplw8Nx4UVbf6L0/rDjhljsQ==}
+  expo-local-authentication@17.0.8:
+    resolution: {integrity: sha512-Q5fXHhu6w3pVPlFCibU72SYIAN+9wX7QpFn9h49IUqs0Equ44QgswtGrxeh7fdnDqJrrYGPet5iBzjnE70uolA==}
     peerDependencies:
       expo: '*'
 
@@ -9733,7 +9733,7 @@ snapshots:
       - expo
       - supports-color
 
-  expo-local-authentication@55.0.13(expo@54.0.33):
+  expo-local-authentication@17.0.8(expo@54.0.33):
     dependencies:
       expo: 54.0.33(@babel/core@7.29.0)(@expo/metro-runtime@6.1.2)(expo-router@6.0.23)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       invariant: 2.2.4
