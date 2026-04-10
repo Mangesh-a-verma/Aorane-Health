@@ -1,0 +1,53 @@
+Admin Panel & API Management
+The admin panel should expose all core features and integrations in a single interface. This includes user/profile management, content control, and audit logs
+. It must also support API key and subscription management – for example, a section where admins can enter keys for SMS services or AI providers and monitor usage
+. Using feature flags (toggles) allows enabling or disabling features per user role or subscription level
+. In practice, APIs can be secured via subscription keys (as in Azure API Management, where each request needs a valid key
+), and the admin panel should let you create or revoke those keys. Overall, admins should be able to switch SMS/AI providers or adjust plans without touching code – just update the key or toggle in the panel.
+
+Modular AI Agents & Services
+Design the system as modular components that can be independently enabled or replaced. Key modules include:
+
+Food Analysis Agent: Identifies foods from user input (photo or text) and calculates nutrients.
+Medical Analysis Agent: Parses medical reports (via OCR/NLP) and extracts health conditions and recommendations.
+Reporting/Diet Planner: Compiles weekly/monthly summaries and generates personalized diet charts.
+Notification Service (SMS/Email): Sends alerts or reports to users.
+Each service should read its provider configuration from the admin settings. For example, one could use a unified LLM gateway (like an “OpenRouter” or Bifrost-style interface) that supports multiple AI models under a single API
+. This way, switching an AI model or provider is done by updating the key/endpoint in admin, not by changing application code. Similarly, the SMS module should support multiple vendors with configurable API keys. Feature toggles should let the admin turn these agents or capabilities on/off per user group or subscription level
+.
+
+Data Flows & Caching
+Outline clear data flows for each use-case, with caching to reduce repeated AI calls:
+
+Food Logging: When a user logs a meal (by photo or text), first check if this food item is already in the database. If not, call the Food Analysis agent. The agent identifies the dish and its nutrition, then stores the result. Next time the same item appears, skip the AI call and use the cached info (this semantic cache can greatly cut API usage
+).
+Medical Scan: When a medical report is submitted, run OCR/NLP to extract text, then invoke the Medical Analysis agent. It outputs detected conditions and health advice. Store those analysis results (not the original scan) in the user’s profile. The app need only save the findings, not the image/PDF itself, saving storage.
+Aggregation: At the end of each day/week, aggregate the user’s logged meals, exercise and other data. Compute totals (calories in vs. out, macros, vitamins). Feed this into the Reporting module.
+Design the database to remember common entries so that over time the system “learns” frequent foods or repeated analyses. A semantic cache or lookup table ensures that AI calls are only made for new or unusual inputs
+. This approach minimizes cost as the user’s data grows.
+
+Weekly/Monthly Reports & Diet Charts
+Automate generation of comprehensive health reports and plans:
+
+Summaries: Each week or month, produce a report showing total calories consumed, macros (protein/fat/carbs), vitamin intake, and calories burned via exercise. Highlight any deficiencies or trends. For example, a “weekly health report” might flag low vitamin D or consistent calorie surplus. Many AI health platforms offer similar executive summaries
+.
+Diet Chart: Based on these reports and the user’s goals/preferences (e.g. vegetarian vs non-vegetarian), have an AI-driven planner create a customized meal plan. The plan should meet nutritional requirements and health goals, and be formatted as a user-friendly diet chart. This can be compiled into a PDF (with charts and recommendations) delivered weekly. For instance, ONVY’s Smart Nutrition Engine scans meals and generates personalized guidance
+; here we’d similarly use AI to build a tailored menu and grocery list.
+Delivery: The final PDF (report + diet chart) is automatically emailed or made available in-app each week. The system should trigger this after compiling the data, requiring no manual intervention.
+Integration & Calculations
+Connect external data sources and compute metrics behind the scenes. Integrate with health platforms (Apple Health, Android Health Connect, Google Fit, etc.) to pull exercise data (steps, heart rate)
+. Use these to calculate calories burned (with standard formulas) in the backend. Likewise, use a nutrition database/API for food calories if needed. By combining self-logged food data and wearable stats, the app can accurately track energy balance. Keep these integrations configurable in admin so keys (e.g. HealthKit credentials, fitness APIs) can be updated if needed.
+
+By following this modular, well-documented design, the admin panel will let you add or switch services on the fly, and the AI modules will efficiently handle food/medical analysis, caching results to save cost
+. The user will receive weekly insights and a personalized diet plan without ever manually generating them.
+
+Final Prompt (Romanized Hindi)
+Mujhe Replit ke liye ek aisa prompt chahiye jisme sari details cover ho. Admin panel me sare features, APIs aur subscription management ke options hone chahiye. SMS service ya koi bhi AI model badalna ho to bina code edit kiye naya API key daalkar provider switch kiya ja sake. Admin panel me user management, permissions aur feature toggles (free vs premium) ke sections hone chahiye, saath hi usage analytics bhi.
+
+Food Analysis ke liye AI agent: Jab user pehli baar koi khana (photo ya naam) record karega, AI agent us khane ka naam, calories aur nutrients identify karke database me save karega. Agar wahi khana dobara aayega to AI ko repeat call nahin karna, pehle se save info use karna (isse AI calls aur cost bachegi).
+
+Medical Report analysis: Agar user koi medical report (jaise prescription ya lab report) upload kare, to ek AI agent turant uska analysis karega aur user ko batayega ki use kya problems ho sakti hain, kya savdhaniya baratni chahiye, diet/exercise me kya rakhna hai. Ye agent sirf analysis results store karega, original report ka photo nahin (isse memory bachti hai).
+
+Weekly/Monthly Reports aur Diet Chart: Har hafte/mahine ke aakhir me ek report generate hogi jisme user ke total calories, proteins, vitamins liye gaye, aur exercise se burn kiye gaye calories dikhaye jayenge. Agar koi nutrient ki kami ho sakti hai to wo highlight hogi. In reports ke base par AI user ke liye personalized diet chart bhi banayega — uski health requirements aur vegetarian/non-veg preference ke hisab se. Ye report aur diet chart har hafte ek PDF me user ko mil jayegi.
+
+AI Agent ki zaroorat: Daily food detection aur analysis ke liye, medical reports analyse karne ke liye, aur diet plan banane ke liye AI ka use hoga. Aise design karo ki ek baar food ka data database me store ho jaane par bar-bar AI call na lage, kyunki aam taur par log roz wahi cheeze khate-pite hain. Exercise calculations backend formulas se hongi aur smart watch/Google Fit integration se step/heart-rate data lekar calories calculate ki jayengi. Is tarah system user ke khane, health reports aur workouts ko samajh kar unhe personalized diet/exercise plans provide karega.
