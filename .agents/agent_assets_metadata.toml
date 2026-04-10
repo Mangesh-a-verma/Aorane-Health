@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "LdSxjwX-l_1-bC4JqjtGK"
+uri = "file://artifacts/aorane-mobile/assets/images/icon.png"
+type = "image"
+title = "generated_image"

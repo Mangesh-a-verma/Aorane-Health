@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/aorane-mobile/"
+title = "AORANE Mobile App"
+version = "1.0.0"
+id = "artifacts/aorane-mobile"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/aorane-mobile/" ]
+localPort = 18624
+
+[services.development]
+run = "pnpm --filter @workspace/aorane-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/aorane-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/aorane-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "18624"
+BASE_PATH = "/aorane-mobile/"

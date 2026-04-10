@@ -112,8 +112,20 @@ artifacts/
 - Family: ₹499/month (4 members)
 - Business: ₹89-149/seat/month
 
+### ✅ Phase 3: Mobile App — COMPLETE
+Expo mobile app running on port 18624 with:
+- **Auth Flow**: Login (OTP + Google) → Verify OTP → Setup PIN → Main tabs
+- **Onboarding**: 5 steps — Name/DOB/Gender → Physical → Health Conditions → Lifestyle → Goals
+- **5 Tabs**: Dashboard, Food, Exercise, Medicine, Profile
+- **Dashboard**: Health Ring (score + confidence %) + Water Tracker + Calorie Ring + Stats
+- **Food**: Meal-wise logging + AI scan + food search + macros tracking
+- **Exercise**: 10+ exercise types + duration + intensity + calorie burn
+- **Medicine**: Schedules with reminders + meal timing
+- **Profile**: BMI card + Privacy switches (sleep/stress/medicine default OFF) + Logout
+- **Colors**: Teal #00BFA6 (primary), Purple #7C3AED (accent), Navy #0A0F1E (background)
+- **API**: Connected to Express API server via EXPO_PUBLIC_API_URL
+
 ## Pending
-- [ ] Mobile App (Expo) — Phase 3
 - [ ] Business Portal (React/Vite) — Phase 4
 - [ ] Admin Panel (React/Vite) — Phase 5
 - [ ] Razorpay payment integration
