@@ -2,82 +2,107 @@ import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
-import { useColors } from "@/hooks/useColors";
+import { Platform, StyleSheet, View, Text, useColorScheme } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+
+function TabIcon({ name, focused, label }: { name: keyof typeof Ionicons.glyphMap; focused: boolean; label: string }) {
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
+  return (
+    <View style={tabIconStyles.wrap}>
+      {focused ? (
+        <LinearGradient colors={["#0077B6", "#1B998B"]} style={tabIconStyles.activeBox}>
+          <Ionicons name={name} size={19} color="#FFF" />
+        </LinearGradient>
+      ) : (
+        <View style={tabIconStyles.inactiveBox}>
+          <Ionicons name={name} size={20} color={isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.35)"} />
+        </View>
+      )}
+    </View>
+  );
+}
+
+const tabIconStyles = StyleSheet.create({
+  wrap: { alignItems: "center", justifyContent: "center" },
+  activeBox: { width: 46, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
+  inactiveBox: { width: 46, height: 30, alignItems: "center", justifyContent: "center" },
+});
 
 export default function TabLayout() {
-  const colors = useColors();
   const scheme = useColorScheme();
   const isDark = scheme === "dark";
   const isIOS = Platform.OS === "ios";
-  const isWeb = Platform.OS === "web";
-
-  const activeTint = isDark ? "#38BDF8" : "#0077B6";
-  const inactiveTint = isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)";
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: activeTint,
-        tabBarInactiveTintColor: inactiveTint,
+        tabBarActiveTintColor: isDark ? "#38BDF8" : "#0077B6",
+        tabBarInactiveTintColor: isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.35)",
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : (isDark ? "rgba(4,13,28,0.9)" : "rgba(240,248,255,0.92)"),
-          borderTopWidth: 1,
-          borderTopColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.12)",
+          height: Platform.OS === "web" ? 68 : 76,
+          backgroundColor: isIOS ? "transparent" : (isDark ? "rgba(4,20,40,0.95)" : "rgba(240,249,255,0.97)"),
+          borderTopWidth: 0,
           elevation: 0,
-          ...(isWeb ? { height: 84 } : {}),
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: isDark ? 0.4 : 0.08,
+          shadowRadius: 16,
         },
         tabBarBackground: () =>
           isIOS ? (
-            <BlurView
-              intensity={80}
-              tint={isDark ? "dark" : "light"}
-              style={StyleSheet.absoluteFill}
-            />
-          ) : isWeb ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(4,13,28,0.92)" : "rgba(240,248,255,0.95)" }]} />
+            <View style={{ flex: 1 }}>
+              <BlurView intensity={90} tint={isDark ? "dark" : "extraLight"} style={StyleSheet.absoluteFill} />
+              <View style={[StyleSheet.absoluteFill, { borderTopWidth: 1, borderTopColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,119,182,0.1)" }]} />
+            </View>
           ) : null,
         tabBarLabelStyle: {
           fontFamily: "Inter_500Medium",
-          fontSize: 11,
+          fontSize: 10,
+          marginTop: -2,
         },
+        tabBarItemStyle: {
+          paddingTop: 8,
+        },
+        tabBarIcon: ({ focused, name }: { focused: boolean; name: keyof typeof Ionicons.glyphMap }) =>
+          null,
       }}
     >
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: "Dashboard",
-          tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
+          title: "Home",
+          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "grid" : "grid-outline"} focused={focused} label="Home" />,
         }}
       />
       <Tabs.Screen
         name="food"
         options={{
           title: "Food",
-          tabBarIcon: ({ color, size }) => <Ionicons name="restaurant-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "restaurant" : "restaurant-outline"} focused={focused} label="Food" />,
         }}
       />
       <Tabs.Screen
         name="exercise"
         options={{
           title: "Exercise",
-          tabBarIcon: ({ color, size }) => <Ionicons name="barbell-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "barbell" : "barbell-outline"} focused={focused} label="Exercise" />,
         }}
       />
       <Tabs.Screen
         name="medicine"
         options={{
           title: "Medicine",
-          tabBarIcon: ({ color, size }) => <Ionicons name="medical-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "medical" : "medical-outline"} focused={focused} label="Medicine" />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "person" : "person-outline"} focused={focused} label="Profile" />,
         }}
       />
     </Tabs>

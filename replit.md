@@ -125,8 +125,18 @@ Expo mobile app running on port 18624 with:
 - **Colors**: Teal #00BFA6 (primary), Purple #7C3AED (accent), Navy #0A0F1E (background)
 - **API**: Connected to Express API server via EXPO_PUBLIC_API_URL
 
+### ✅ Phase 4: Business Portal — COMPLETE
+React + Vite web portal running on port 22981 at `/business-portal/`:
+- **Auth**: Login (email+password), 3-step Registration (OrgType → Details → Admin)
+- **Dashboard**: Org code banner, stats cards, seat capacity bar, org details panel
+- **Members**: Grid view with avatar initials, blood group, join date, search filter
+- **Enrollment Codes**: Create/list codes with usage bars, expiry, plan type badges
+- **Settings**: Admin profile, org details, seat info, logout
+- **Layout**: Dark sidebar with org info + seat progress, topbar with org code chip
+- **API**: Connected to Express `/api/business/*` endpoints via JWT auth
+- **Colors**: AORANE Blue #0077B6 + Teal #1B998B on dark navy background
+
 ## Pending
-- [ ] Business Portal (React/Vite) — Phase 4
 - [ ] Admin Panel (React/Vite) — Phase 5
 - [ ] Razorpay payment integration
 - [ ] Firebase FCM setup
