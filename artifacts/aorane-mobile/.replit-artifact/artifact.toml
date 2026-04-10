@@ -10,7 +10,7 @@ name = "expo"
 version = "1.0.0"
 
 [[services]]
-ensurePreviewReachable = "/status"
+ensurePreviewReachable = "/"
 name = "expo"
 paths = [ "/aorane-mobile/" ]
 localPort = 18624
