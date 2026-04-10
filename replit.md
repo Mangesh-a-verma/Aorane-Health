@@ -41,11 +41,14 @@ Admin Panel      ──┘         ↑ Redis Cache (Upstash)
 
 ### ✅ Food Database Seeded — 1061 Indian Foods
 food_items table populated with IFCT-verified data:
-- **Source**: VitaCoach IFCT database (1014 items) + verified IFCT staples (47 items)
-- **Coverage**: 21 categories including Dal & Lentils (57), Rice & Grains (68), Breads & Rotis (44), Snacks & Street Food (73), Sweets & Desserts (237), Vegetable Dishes (82), Beverages (71), Chicken/Mutton/Fish/Eggs (105 nonveg items), Paneer (22), Condiments & Chutneys (99)
-- **Nutrients per food**: calories, protein, carbs, fat, fiber, sugar, sodium, calcium, iron, vitamin C (per 100g)
-- **Extra fields**: Hindi name (name_hi stored in food_name_local JSONB), cuisine_type=indian, country_code=IN, dietary_tags (veg/nonveg), is_verified=true
-- **Search**: ILIKE-based case-insensitive search via `/food/search?q=` endpoint works instantly
+- **Source**: VitaCoach IFCT database (1014 items) + verified IFCT staples (47 items) + Alcohol/Tobacco (40 items)
+- **Total**: 1101 items
+- **Coverage**: 21 food categories + Alcohol (Beer/Spirits/Wine/Traditional, 23 items) + Tobacco (Cigarettes/Gutka/Khaini/Pan masala/Hookah/Cessation, 17 items)
+- **Alcohol subcategories**: Beer (7), Spirits & Liquor (8), Wine (3), Traditional Alcohol (5) — Kingfisher, Haywards, Whisky, Rum, Toddy, Feni, Mahua etc.
+- **Tobacco subcategories**: Cigarettes/Beedi (7), Smokeless Tobacco (8: Gutka, Khaini, Zarda, Naswar, Mawa, Pan masala, Hookah), Cessation Products (Nicotine patch/gum)
+- **Nutrients per food**: calories, protein, carbs, fat, fiber, sugar, sodium, calcium, iron, vitamin C (per 100g/serving)
+- **Extra fields**: Hindi name (food_name_local JSONB), cuisine_type=indian, country_code=IN, dietary_tags=[alcohol/tobacco/veg/nonveg], serving_size_g, serving_description
+- **Search**: ILIKE-based case-insensitive search via `/food/search?q=` endpoint; alcohol/tobacco filterable by dietary_tags
 
 ### ✅ Phase 2: API Server — COMPLETE
 Express.js API server running on port 8080 with:
