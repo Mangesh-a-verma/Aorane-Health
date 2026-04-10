@@ -153,4 +153,52 @@ export const api = {
 
   computeHealthScore: (date: string) =>
     request<{ score: Record<string, unknown> }>("POST", `/health/score/${date}/compute`),
+
+  // ── AI Coach ────────────────────────────────────────────
+  getDietPlan: (days = 1, language = "en") =>
+    request<{
+      plan: {
+        targetCalories: number;
+        targetProteinG: number;
+        targetCarbsG: number;
+        targetFatG: number;
+        days: Array<{
+          day: number;
+          dayName: string;
+          totalCalories: number;
+          meals: {
+            breakfast: { items: MealItem[]; totalCalories: number };
+            lunch: { items: MealItem[]; totalCalories: number };
+            dinner: { items: MealItem[]; totalCalories: number };
+            snacks: { items: MealItem[]; totalCalories: number };
+          };
+          waterIntakeMl: number;
+          tip: string;
+        }>;
+        generalTips: string[];
+      };
+      generatedAt: string;
+    }>("POST", "/ai/diet-plan", { days, preferences: { language } }),
+
+  getHealthTip: (context?: string) =>
+    request<{ tip: string; tipHindi: string; category: string; emoji: string }>(
+      "POST", "/ai/health-tip", { context }
+    ),
+
+  getMealSwap: (mealName: string, reason?: string, dietaryPref = "vegetarian") =>
+    request<{
+      original: string;
+      swaps: Array<{ name: string; nameHindi: string; reason: string; calories: number; benefit: string }>;
+    }>("POST", "/ai/meal-swap", { mealName, reason, dietaryPref }),
 };
+
+interface MealItem {
+  name: string;
+  nameHindi: string;
+  quantityG: number;
+  quantityDesc: string;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+}

@@ -9,6 +9,7 @@ import medicalRouter from "./modules/medical";
 import bloodRouter from "./modules/blood";
 import businessRouter from "./modules/business";
 import adminRouter from "./modules/admin";
+import aiRouter from "./modules/ai";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(medicalRouter);
 router.use(bloodRouter);
 router.use(businessRouter);
 router.use(adminRouter);
+router.use(aiRouter);
 
 export default router;
