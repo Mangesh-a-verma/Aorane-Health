@@ -66,6 +66,6 @@ const styles = StyleSheet.create({
   orb1: { position: "absolute", width: 400, height: 400, borderRadius: 200, top: -150, right: -130, opacity: 0.25 },
   orb2: { position: "absolute", width: 300, height: 300, borderRadius: 150, bottom: 40, left: -100, opacity: 0.2 },
   glowBehind: { position: "absolute", alignSelf: "center" },
-  glowCircle: { width: W * 0.9, height: 220, borderRadius: 110 },
-  logo: { width: W - 60, height: 150 },
+  glowCircle: { width: W * 1.1, height: 400, borderRadius: 200 },
+  logo: { width: W - 10, height: 250 },
 });
