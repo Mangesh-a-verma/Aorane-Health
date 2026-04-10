@@ -3,7 +3,7 @@ previewPath = "/aorane-mobile/"
 title = "AORANE Mobile App"
 version = "1.0.0"
 id = "artifacts/aorane-mobile"
-router = "path"
+router = "expo-domain"
 
 [[integratedSkills]]
 name = "expo"
@@ -11,8 +11,7 @@ version = "1.0.0"
 
 [[services]]
 name = "expo"
-paths = [ "/aorane-mobile/" ]
-localPort = 18624
+localPort = 8081
 
 [services.development]
 run = "node web-server.js"
@@ -22,5 +21,5 @@ build = [ "pnpm", "--filter", "@workspace/aorane-mobile", "run", "build" ]
 run = [ "pnpm", "--filter", "@workspace/aorane-mobile", "run", "serve" ]
 
 [services.env]
-PORT = "18624"
-BASE_PATH = "/aorane-mobile/"
+PORT = "8081"
+BASE_PATH = "/"
