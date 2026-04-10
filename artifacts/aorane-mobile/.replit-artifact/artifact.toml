@@ -3,13 +3,13 @@ previewPath = "/aorane-mobile/"
 title = "AORANE Mobile App"
 version = "1.0.0"
 id = "artifacts/aorane-mobile"
+router = "path"
 
 [[integratedSkills]]
 name = "expo"
 version = "1.0.0"
 
 [[services]]
-ensurePreviewReachable = "/aorane-mobile/"
 name = "expo"
 paths = [ "/aorane-mobile/" ]
 localPort = 18624
