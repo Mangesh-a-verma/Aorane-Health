@@ -1,20 +1,59 @@
 import { Redirect } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
-import { useColors } from "@/hooks/useColors";
+import { View, Image, StyleSheet, Dimensions, Animated, useColorScheme } from "react-native";
+import { useEffect, useRef } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+
+const { width: W, height: H } = Dimensions.get("window");
+
+function SplashScreen() {
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
+  const logoAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(logoAnim, { toValue: 1, friction: 7, tension: 45, useNativeDriver: true }),
+      Animated.timing(glowAnim, { toValue: 1, duration: 1200, useNativeDriver: false }),
+    ]).start();
+  }, []);
+
+  const glowOpacity = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] });
+
+  return (
+    <View style={styles.root}>
+      <LinearGradient
+        colors={isDark ? ["#010610", "#03101E", "#041420"] : ["#E0F2FE", "#EFF9FF", "#ECFDF5"]}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={[styles.orb1, { backgroundColor: isDark ? "#0369A1" : "#BAE6FD" }]} />
+      <View style={[styles.orb2, { backgroundColor: isDark ? "#065F46" : "#A7F3D0" }]} />
+
+      <Animated.View style={[styles.center, {
+        opacity: logoAnim,
+        transform: [{ scale: logoAnim.interpolate({ inputRange: [0, 1], outputRange: [0.75, 1] }) }],
+      }]}>
+        <Animated.View style={[styles.glowBehind, { opacity: glowOpacity }]}>
+          <LinearGradient
+            colors={["rgba(0,119,182,0.7)", "rgba(27,153,139,0.4)", "transparent"]}
+            style={styles.glowCircle}
+          />
+        </Animated.View>
+        <Image
+          source={require("../assets/images/aorane-logo.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </Animated.View>
+    </View>
+  );
+}
 
 export default function Index() {
   const { isLoading, isAuthenticated, isOnboardingDone, isPinSet } = useAuth();
-  const colors = useColors();
 
-  if (isLoading) {
-    return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
-
+  if (isLoading) return <SplashScreen />;
   if (!isAuthenticated) return <Redirect href="/(auth)/login" />;
   if (!isOnboardingDone) return <Redirect href="/(onboarding)/" />;
   if (!isPinSet) return <Redirect href="/(auth)/setup-pin" />;
@@ -22,5 +61,11 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  orb1: { position: "absolute", width: 400, height: 400, borderRadius: 200, top: -150, right: -130, opacity: 0.25 },
+  orb2: { position: "absolute", width: 300, height: 300, borderRadius: 150, bottom: 40, left: -100, opacity: 0.2 },
+  glowBehind: { position: "absolute", alignSelf: "center" },
+  glowCircle: { width: W * 0.9, height: 220, borderRadius: 110 },
+  logo: { width: W - 60, height: 150 },
 });
