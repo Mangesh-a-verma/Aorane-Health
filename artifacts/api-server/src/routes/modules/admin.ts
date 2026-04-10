@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, adminUsersTable, usersTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable } from "@workspace/db";
-import { eq, desc, ilike, count, or } from "drizzle-orm";
+import { db, adminUsersTable, usersTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable } from "@workspace/db";
+import { eq, desc, ilike, count, or, sql } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import { signAdminToken } from "../../lib/jwt";
 import type { AdminRequest } from "../../middlewares/admin-auth";
@@ -208,6 +208,88 @@ router.get("/admin/audit-logs", requireAdmin, async (req: AdminRequest, res) => 
     res.json({ logs });
   } catch {
     res.status(500).json({ error: "Failed to fetch audit logs" });
+  }
+});
+
+// ─── Subscriptions ────────────────────────────────────────────────────────────
+router.get("/admin/subscriptions", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const subs = await db.select().from(subscriptionsTable).orderBy(desc(subscriptionsTable.createdAt)).limit(100);
+    res.json({ subscriptions: subs });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch subscriptions" });
+  }
+});
+
+router.post("/admin/subscriptions/grant", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { userId, plan, durationDays = 30 } = req.body as { userId: string; plan: string; durationDays?: number };
+    if (!userId || !plan) { res.status(400).json({ error: "userId and plan required" }); return; }
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + durationDays);
+    const [sub] = await db.insert(subscriptionsTable).values({ userId, plan, status: "active", source: "admin_grant", expiresAt }).returning();
+    await db.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, userId));
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "grant_subscription", targetType: "user", targetId: userId, details: { plan, durationDays } });
+    res.status(201).json({ success: true, subscription: sub });
+  } catch {
+    res.status(500).json({ error: "Failed to grant subscription" });
+  }
+});
+
+router.patch("/admin/subscriptions/:id/cancel", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const [sub] = await db.update(subscriptionsTable).set({ status: "cancelled", cancelledAt: new Date() }).where(eq(subscriptionsTable.id, req.params.id)).returning();
+    if (sub?.userId) {
+      await db.update(usersTable).set({ plan: "free" }).where(eq(usersTable.id, sub.userId));
+    }
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "cancel_subscription", targetType: "subscription", targetId: req.params.id, details: {} });
+    res.json({ success: true, subscription: sub });
+  } catch {
+    res.status(500).json({ error: "Failed to cancel subscription" });
+  }
+});
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
+router.get("/admin/analytics", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const [totalUsers] = await db.select({ count: count() }).from(usersTable);
+    const [totalOrgs] = await db.select({ count: count() }).from(organizationsTable);
+    const [activeSubs] = await db.select({ count: count() }).from(subscriptionsTable).where(eq(subscriptionsTable.status, "active"));
+    const planBreakdown = await db.select({ plan: usersTable.plan, count: count() }).from(usersTable).groupBy(usersTable.plan);
+    const [payments] = await db.select({ total: sql<number>`COALESCE(SUM(CAST(amount AS NUMERIC)), 0)` }).from(paymentsTable).where(eq(paymentsTable.status, "success"));
+    res.json({
+      totalUsers: Number(totalUsers.count),
+      totalOrganizations: Number(totalOrgs.count),
+      activeSubscriptions: Number(activeSubs.count),
+      totalRevenue: Number(payments.total || 0),
+      planBreakdown: planBreakdown.map(p => ({ plan: p.plan, count: Number(p.count) })),
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch analytics" });
+  }
+});
+
+// ─── Platform Costs ───────────────────────────────────────────────────────────
+router.get("/admin/platform-costs", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const [totalUsers] = await db.select({ count: count() }).from(usersTable);
+    const userCount = Number(totalUsers.count);
+    res.json({
+      costs: [
+        { category: "Supabase DB",       monthlyUSD: 25,  description: "PostgreSQL hosting + backups" },
+        { category: "API Server (Render)",monthlyUSD: 7,   description: "Express API deployment" },
+        { category: "Gemini AI API",      monthlyUSD: 15,  description: "Food scan + diet plans + report analysis" },
+        { category: "SMS OTP (Fast2SMS)", monthlyUSD: 8,   description: `Approx ${Math.round(userCount * 2)} OTPs/month` },
+        { category: "Expo / EAS Build",   monthlyUSD: 29,  description: "Mobile app builds + OTA updates" },
+        { category: "Domain & SSL",       monthlyUSD: 3,   description: "aorane.com + certificates" },
+      ],
+      totalMonthlyUSD: 87,
+      totalMonthlyINR: 87 * 84,
+      userCount,
+      costPerUser: userCount > 0 ? Number((87 / userCount).toFixed(2)) : 87,
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch platform costs" });
   }
 });
 

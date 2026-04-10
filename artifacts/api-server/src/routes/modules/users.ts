@@ -176,4 +176,42 @@ router.patch("/users/privacy", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+// ─── Health Scorecard / Aorane ID ────────────────────────────────────────────
+router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!));
+    const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, req.userId!));
+    const phone = user?.phone || "";
+    const gender = profile?.gender || "other";
+    const genderCode = gender === "male" ? "M" : gender === "female" ? "F" : "X";
+    const stateMap: Record<string, string> = { "IN": "MH" };
+    const stateCode = stateMap[user?.countryCode || "IN"] || "IN";
+    const phoneDigits = phone.replace(/\D/g, "").slice(-9) || "000000000";
+    const aoraneId = `${stateCode}-${genderCode}-${phoneDigits}`;
+    const bmi = profile?.bmi || null;
+    let bmiCategory = "Normal";
+    if (bmi) {
+      const b = Number(bmi);
+      if (b < 18.5) bmiCategory = "Underweight";
+      else if (b < 25) bmiCategory = "Normal";
+      else if (b < 30) bmiCategory = "Overweight";
+      else bmiCategory = "Obese";
+    }
+    res.json({
+      aoraneId,
+      name: profile?.fullName || "AORANE User",
+      bloodGroup: profile?.bloodGroup || "Unknown",
+      bmi: bmi || "N/A",
+      bmiCategory,
+      plan: user?.plan || "free",
+      gender: profile?.gender || "other",
+      age: profile?.dateOfBirth ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / (86400000 * 365)) : null,
+      memberSince: user?.createdAt,
+      qrData: JSON.stringify({ aoraneId, name: profile?.fullName, bloodGroup: profile?.bloodGroup }),
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch scorecard" });
+  }
+});
+
 export default router;

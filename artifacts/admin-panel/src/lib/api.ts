@@ -84,4 +84,13 @@ export const api = {
   createLanguage: (data: Partial<Language>) => req<{ language: Language }>("/admin/languages", { method: "POST", body: JSON.stringify(data) }),
 
   auditLogs: () => req<{ logs: AuditLog[] }>("/admin/audit-logs"),
+
+  subscriptions: () => req<{ subscriptions: Array<Record<string, unknown>> }>("/admin/subscriptions"),
+  grantSubscription: (userId: string, plan: string, durationDays?: number) =>
+    req<{ success: boolean; subscription: Record<string, unknown> }>("/admin/subscriptions/grant", { method: "POST", body: JSON.stringify({ userId, plan, durationDays }) }),
+  cancelSubscription: (id: string) =>
+    req<{ success: boolean }>(`/admin/subscriptions/${id}/cancel`, { method: "PATCH" }),
+
+  analytics: () => req<{ totalUsers: number; totalOrganizations: number; activeSubscriptions: number; totalRevenue: number; planBreakdown: Array<{ plan: string; count: number }> }>("/admin/analytics"),
+  platformCosts: () => req<{ costs: Array<{ category: string; monthlyUSD: number; description: string }>; totalMonthlyUSD: number; totalMonthlyINR: number; userCount: number; costPerUser: number }>("/admin/platform-costs"),
 };

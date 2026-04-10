@@ -16,6 +16,9 @@ import Announcements from "@/pages/Announcements";
 import BloodRequests from "@/pages/BloodRequests";
 import Languages from "@/pages/Languages";
 import AuditLogs from "@/pages/AuditLogs";
+import Subscriptions from "@/pages/Subscriptions";
+import Analytics from "@/pages/Analytics";
+import PlatformCosts from "@/pages/PlatformCosts";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +68,9 @@ function Router() {
       <Route path="/blood-requests" component={() => <Protected component={BloodRequests} />} />
       <Route path="/languages" component={() => <Protected component={Languages} />} />
       <Route path="/audit-logs" component={() => <Protected component={AuditLogs} />} />
+      <Route path="/subscriptions" component={() => <Protected component={Subscriptions} />} />
+      <Route path="/analytics" component={() => <Protected component={Analytics} />} />
+      <Route path="/platform-costs" component={() => <Protected component={PlatformCosts} />} />
       <Route component={NotFound} />
     </Switch>
   );

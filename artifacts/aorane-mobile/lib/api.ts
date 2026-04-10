@@ -208,6 +208,54 @@ export const api = {
 
   respondToBloodEmergency: (requestId: string, response: "can_help" | "later" | "unavailable") =>
     request<{ success: boolean }>("POST", `/blood/request/${requestId}/respond`, { response }),
+
+  // ── Stress Tracking ────────────────────────────────────────
+  logStress: (data: { stressType: string; mood?: string; stressScore?: number; pillars?: Record<string, number> }) =>
+    request<{ success: boolean; log: Record<string, unknown>; stressScore: number }>("POST", "/stress/log", data),
+  getStressLogs: (limit?: number) =>
+    request<{ logs: Array<Record<string, unknown>>; avgScore: number; count: number }>("GET", `/stress/logs${limit ? `?limit=${limit}` : ""}`),
+  getStressInsight: () =>
+    request<{ avgScore: number; insight: string; logsCount: number }>("GET", "/stress/insight"),
+
+  // ── Family Health ──────────────────────────────────────────
+  getFamilyGroup: () =>
+    request<{ group: Record<string, unknown> | null; members: Array<Record<string, unknown>>; isOwner: boolean }>("GET", "/family/group"),
+  createFamilyGroup: () =>
+    request<{ success: boolean; group: Record<string, unknown>; inviteCode: string }>("POST", "/family/create"),
+  joinFamilyGroup: (inviteCode: string) =>
+    request<{ success: boolean; group: Record<string, unknown> }>("POST", "/family/join", { inviteCode }),
+  leaveFamilyGroup: () =>
+    request<{ success: boolean }>("DELETE", "/family/leave"),
+
+  // ── Period Tracker ─────────────────────────────────────────
+  getPeriodLogs: () =>
+    request<{ logs: Array<Record<string, unknown>>; prediction: Record<string, unknown> | null }>("GET", "/period/logs"),
+  logPeriod: (data: { startDate: string; endDate?: string; symptoms?: string[]; flow?: string; notes?: string }) =>
+    request<{ success: boolean; log: Record<string, unknown>; prediction: Record<string, unknown> | null }>("POST", "/period/log", data),
+
+  // ── Payment / Upgrade ──────────────────────────────────────
+  createPaymentOrder: (plan: string, promoCode?: string) =>
+    request<{ success: boolean; paymentId: string; razorpayOrderId: string | null; razorpayKeyId: string | null; amount: number; plan: string; discount: number; isTestMode: boolean }>("POST", "/payment/order", { plan, promoCode }),
+  verifyPayment: (data: { paymentId: string; razorpayOrderId?: string; razorpayPaymentId?: string; razorpaySignature?: string; plan: string; isTestMode?: boolean }) =>
+    request<{ success: boolean; message: string }>("POST", "/payment/verify", data),
+  validatePromoCode: (code: string, plan: string) =>
+    request<{ valid: boolean; discount: number; code: string; message: string }>("POST", "/payment/promo/validate", { code, plan }),
+
+  // ── Scorecard ──────────────────────────────────────────────
+  getScorecard: () =>
+    request<{ aoraneId: string; name: string; bloodGroup: string; bmi: string; bmiCategory: string; plan: string; gender: string; age: number | null; memberSince: string; qrData: string }>("GET", "/users/scorecard"),
+
+  // ── Water ─────────────────────────────────────────────────
+  logWater: (data: { glassesCount: number; drinkType?: string }) =>
+    request<{ success: boolean; log: Record<string, unknown> }>("POST", "/health/water", data),
+  getWaterLogs: (date: string) =>
+    request<{ logs: Array<Record<string, unknown>>; totalGlasses: number; goalGlasses: number; progressPct: number }>("GET", `/health/water/${date}`),
+
+  // ── PIN Auth ───────────────────────────────────────────────
+  setPIN: (pin: string) =>
+    request<{ success: boolean; message: string }>("POST", "/auth/pin/set", { pin }),
+  loginWithPIN: (phone: string, pin: string) =>
+    request<{ accessToken: string; refreshToken: string; user: Record<string, unknown> }>("POST", "/auth/pin/login", { phone, pin }, false),
 };
 
 interface MealItem {

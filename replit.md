@@ -125,17 +125,25 @@ artifacts/
 - Business: ₹89-149/seat/month
 
 ### ✅ Phase 3: Mobile App — COMPLETE
-Expo mobile app running on port 18624 with:
-- **Auth Flow**: Login (OTP + Google) → Verify OTP → Setup PIN → Main tabs
+Expo mobile app running with static export (web server) with:
+- **Auth Flow**: Login (OTP|PIN toggle tabs + Google) → Verify OTP → Setup PIN → Main tabs
 - **Onboarding**: 5 steps — Name/DOB/Gender → Physical → Health Conditions → Lifestyle → Goals
-- **5 Tabs**: Dashboard, Food, Exercise, Medicine, Profile
+- **6 Tabs**: Dashboard, Food, Exercise, Medicine, AI Coach, Profile
 - **Dashboard**: Health Ring (score + confidence %) + Water Tracker + Calorie Ring + Stats
 - **Food**: Meal-wise logging + AI scan + food search + macros tracking
-- **Exercise**: 10+ exercise types + duration + intensity + calorie burn
+- **Exercise**: 10+ exercise types + duration + intensity + calorie burn + MET formula
 - **Medicine**: Schedules with reminders + meal timing
-- **Profile**: BMI card + Privacy switches (sleep/stress/medicine default OFF) + Logout
-- **Colors**: Teal #00BFA6 (primary), Purple #7C3AED (accent), Navy #0A0F1E (background)
-- **API**: Connected to Express API server via EXPO_PUBLIC_API_URL
+- **AI Coach**: Diet plan builder + personalized recommendations
+- **Profile**: BMI card + Privacy switches + Health Tools section → 6 new health screens
+- **Health Tools (Profile sub-pages)**:
+  - `stress.tsx` — Stress logging (1-10 scale, mood options, notes)
+  - `scorecard.tsx` — Health Scorecard (ring chart, category breakdown, weekly trend)
+  - `water.tsx` — Smart Water Tracker (goal-based, quick-add ml)
+  - `family.tsx` — Family Health Hub (add members, see their health summaries)
+  - `period.tsx` — Period Tracker (cycle calendar, log flow, symptoms)
+  - `upgrade.tsx` — Premium Plans page (Free/Max/Pro/Family with Razorpay)
+- **Colors**: Primary #0077B6, Accent #1B998B, Dark BG #010814
+- **API**: Connected to Express API server via EXPO_PUBLIC_API_URL (Render)
 
 ### ✅ Phase 4: Business Portal — COMPLETE
 React + Vite web portal running on port 22981 at `/business-portal/`:
@@ -153,8 +161,11 @@ React + Vite super-admin panel running on port 20130 at `/admin-panel/`:
 - **Auth**: Email + password login with restricted-access banner, JWT auth
 - **Default Admin**: superadmin@aorane.in / admin123
 - **Dashboard**: Platform health banner, user + org stats, quick action links
-- **Users (10-tab sidebar)**: Table view with plan changer, ban/activate toggles, search
+- **Users**: Table view with plan changer, ban/activate toggles, search
 - **Organizations**: Card grid with org type icons, seat usage, status badges
+- **Analytics**: DAU/MAU trends, revenue graphs, feature usage breakdown (NEW)
+- **Subscriptions**: Active/churned subscriptions table, MRR, churn rate (NEW)
+- **Platform Costs**: Infrastructure cost breakdown vs revenue health (NEW)
 - **Feature Flags**: Toggle switches for platform features, create new flags
 - **Food Database**: Admin-verified food items table, add new items with macros
 - **Promo Codes**: Usage tracking table, create codes with discount % and expiry
@@ -165,10 +176,26 @@ React + Vite super-admin panel running on port 20130 at `/admin-panel/`:
 - **API**: Connected to Express `/api/admin/*` endpoints via JWT auth
 - **Design**: Dark navy sidebar, red "ADMIN PANEL" badge, AORANE blue/teal accents
 
-## Pending
-- [ ] Razorpay payment integration
-- [ ] Firebase FCM setup
-- [ ] Diet plan AI agent
+## Pending / Next Steps
+- [ ] Razorpay payment integration (upgrade.tsx ready; needs live Razorpay key)
+- [ ] Firebase FCM setup (push_tokens table ready)
 - [ ] Stress PPG camera feature
 - [ ] Wearable adapter implementation
 - [ ] Weekly PDF report generation
+- [ ] Business Portal org-type differentiation (Hospital vs Gym vs Insurance dashboards)
+- [ ] SMS OTP via Fast2SMS (live key needed)
+
+## API Routes Summary
+- `/api/auth/*` — OTP, Google, PIN, JWT refresh
+- `/api/users/*` — Profile, preferences, privacy
+- `/api/food/*` — Logs, search, AI scan
+- `/api/health/*` — Exercise, water, scores
+- `/api/medicine/*` — Schedules, logs
+- `/api/stress/*` — Stress logs
+- `/api/family/*` — Family groups + members
+- `/api/period/*` — Period logs + predictions
+- `/api/payment/*` — Razorpay payment flow
+- `/api/scorecard/*` — Health scorecard
+- `/api/blood/*` — Blood emergency
+- `/api/business/*` — Business portal APIs
+- `/api/admin/*` — Admin panel APIs (users, orgs, analytics, subscriptions, costs)

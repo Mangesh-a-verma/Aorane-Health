@@ -62,6 +62,9 @@ export default function LoginScreen() {
   const [selectedLang, setSelectedLang] = useState("hi");
   const [isLoading, setIsLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [loginMode, setLoginMode] = useState<"otp" | "pin">("otp");
+  const [pin, setPin] = useState("");
+  const [pinFocused, setPinFocused] = useState(false);
 
   const logoAnim = useRef(new Animated.Value(0)).current;
   const cardAnim = useRef(new Animated.Value(0)).current;
@@ -92,6 +95,21 @@ export default function LoginScreen() {
       router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang: selectedLang } });
     } catch (err: unknown) {
       Alert.alert("Error", err instanceof Error ? err.message : "Failed to send OTP");
+    } finally { setIsLoading(false); }
+  };
+
+  const handlePinLogin = async () => {
+    if (phone.length !== 10) { Alert.alert("Phone Number Chahiye", "Pehle 10-digit phone number daalo"); return; }
+    if (pin.length < 4) { Alert.alert("PIN Chahiye", "4-6 digit PIN daalo"); return; }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsLoading(true);
+    try {
+      const result = await api.loginWithPIN(phone, pin);
+      const userData = result.user as { id: string; phone?: string; plan: string };
+      await loginWithToken(result.accessToken, result.refreshToken, { id: userData.id, phone: userData.phone || phone, plan: userData.plan || "free", languageCode: selectedLang }, false);
+      router.replace("/(tabs)/");
+    } catch (err: unknown) {
+      Alert.alert("PIN Login Failed", err instanceof Error ? err.message : "Galat phone number ya PIN");
     } finally { setIsLoading(false); }
   };
 
@@ -210,12 +228,23 @@ export default function LoginScreen() {
 
                 <View style={styles.cardHeader}>
                   <LinearGradient colors={["#0077B6", "#1B998B"]} style={styles.cardIconBox}>
-                    <Ionicons name="phone-portrait-outline" size={20} color="#FFF" />
+                    <Ionicons name={loginMode === "pin" ? "keypad-outline" : "phone-portrait-outline"} size={20} color="#FFF" />
                   </LinearGradient>
                   <View>
-                    <Text style={[styles.cardTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>Mobile se Login</Text>
-                    <Text style={[styles.cardSub, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>OTP aapke number pe aayega</Text>
+                    <Text style={[styles.cardTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>Login Karo</Text>
+                    <Text style={[styles.cardSub, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>{loginMode === "pin" ? "PIN se quick login" : "OTP aapke number pe aayega"}</Text>
                   </View>
+                </View>
+
+                {/* Mode Toggle */}
+                <View style={{ flexDirection: "row", backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,119,182,0.07)", borderRadius: 14, padding: 4, marginBottom: 16, gap: 4 }}>
+                  {(["otp","pin"] as const).map(mode => (
+                    <TouchableOpacity key={mode} onPress={() => { setLoginMode(mode); Haptics.selectionAsync(); }} style={{ flex: 1, paddingVertical: 9, borderRadius: 11, backgroundColor: loginMode === mode ? "#0077B6" : "transparent", alignItems: "center" }}>
+                      <Text style={{ color: loginMode === mode ? "#FFF" : (isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)"), fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                        {mode === "otp" ? "📱 OTP" : "🔐 PIN"}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
 
                 {/* Glass Phone Input */}
@@ -252,15 +281,35 @@ export default function LoginScreen() {
                   )}
                 </View>
 
-                {/* OTP Button */}
-                <TouchableOpacity onPress={handleSendOtp} disabled={isLoading || !isActive} activeOpacity={0.85} style={{ marginTop: 6 }}>
-                  {isActive ? (
-                    <LinearGradient colors={["#0077B6", "#0EA5E9", "#1B998B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.otpBtn}>
+                {/* PIN Input (only when PIN mode) */}
+                {loginMode === "pin" && (
+                  <View style={[styles.phoneRow, {
+                    backgroundColor: glassInputBg, marginTop: 0, marginBottom: 12,
+                    borderColor: pinFocused ? "#8B5CF6" : (isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.9)"),
+                    borderWidth: pinFocused ? 2 : 1.5,
+                  }]}>
+                    <View style={[styles.ccBox, { borderRightColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(139,92,246,0.18)" }]}>
+                      <Text style={{ fontSize: 17 }}>🔐</Text>
+                    </View>
+                    <TextInput
+                      style={[styles.phoneInput, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_500Medium" }]}
+                      placeholder="4-6 digit PIN"
+                      placeholderTextColor={isDark ? "rgba(255,255,255,0.22)" : "rgba(10,22,40,0.28)"}
+                      keyboardType="numeric" maxLength={6} value={pin} onChangeText={setPin} secureTextEntry
+                      onFocus={() => setPinFocused(true)} onBlur={() => setPinFocused(false)}
+                    />
+                  </View>
+                )}
+
+                {/* OTP / PIN Button */}
+                <TouchableOpacity onPress={loginMode === "pin" ? handlePinLogin : handleSendOtp} disabled={isLoading || !isActive || (loginMode === "pin" && pin.length < 4)} activeOpacity={0.85} style={{ marginTop: 6 }}>
+                  {(isActive && (loginMode === "otp" || pin.length >= 4)) ? (
+                    <LinearGradient colors={loginMode === "pin" ? ["#7C3AED", "#8B5CF6", "#0077B6"] : ["#0077B6", "#0EA5E9", "#1B998B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.otpBtn}>
                       {isLoading ? <ActivityIndicator color="#FFF" /> : (
                         <>
-                          <Text style={[styles.otpText, { fontFamily: "Inter_700Bold" }]}>OTP Bhejein</Text>
+                          <Text style={[styles.otpText, { fontFamily: "Inter_700Bold" }]}>{loginMode === "pin" ? "PIN se Login" : "OTP Bhejein"}</Text>
                           <View style={styles.arrowCircle}>
-                            <Ionicons name="arrow-forward" size={18} color="#0077B6" />
+                            <Ionicons name="arrow-forward" size={18} color={loginMode === "pin" ? "#7C3AED" : "#0077B6"} />
                           </View>
                         </>
                       )}
@@ -268,13 +317,17 @@ export default function LoginScreen() {
                   ) : (
                     <View style={[styles.otpBtn, {
                       backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.5)",
-                      borderWidth: 1,
-                      borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.8)",
+                      borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.8)",
                     }]}>
-                      <Text style={[styles.otpText, { color: isDark ? "rgba(255,255,255,0.22)" : "rgba(10,22,40,0.22)", fontFamily: "Inter_700Bold" }]}>OTP Bhejein</Text>
+                      <Text style={[styles.otpText, { color: isDark ? "rgba(255,255,255,0.22)" : "rgba(10,22,40,0.22)", fontFamily: "Inter_700Bold" }]}>{loginMode === "pin" ? "PIN se Login" : "OTP Bhejein"}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
+                {loginMode === "pin" && (
+                  <Text style={{ textAlign: "center", color: isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.35)", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 8 }}>
+                    PIN set karne ke liye OTP se login karo → Profile → Set PIN
+                  </Text>
+                )}
 
                 {/* Divider */}
                 <View style={styles.divRow}>

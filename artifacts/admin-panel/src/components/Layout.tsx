@@ -4,13 +4,16 @@ import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard, Users, Building2, Flag, UtensilsCrossed,
   Tag, Megaphone, Droplet, Languages, ClipboardList, LogOut,
-  Menu, X, ShieldAlert, ChevronRight,
+  Menu, X, ShieldAlert, ChevronRight, CreditCard, BarChart3, DollarSign,
 } from "lucide-react";
 
 const NAV = [
   { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "#0077B6" },
   { path: "/users", icon: Users, label: "Users", color: "#1B998B" },
   { path: "/organizations", icon: Building2, label: "Organizations", color: "#8B5CF6" },
+  { path: "/subscriptions", icon: CreditCard, label: "Subscriptions", color: "#10B981" },
+  { path: "/analytics", icon: BarChart3, label: "Analytics", color: "#0077B6" },
+  { path: "/platform-costs", icon: DollarSign, label: "Platform Costs", color: "#F59E0B" },
   { path: "/feature-flags", icon: Flag, label: "Feature Flags", color: "#F59E0B" },
   { path: "/food-items", icon: UtensilsCrossed, label: "Food Database", color: "#10B981" },
   { path: "/promo-codes", icon: Tag, label: "Promo Codes", color: "#EF4444" },

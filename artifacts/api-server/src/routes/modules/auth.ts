@@ -189,6 +189,46 @@ router.get("/auth/me", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+// ─── PIN Login ───────────────────────────────────────────────────────────────
+router.post("/auth/pin/set", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { pin } = req.body as { pin: string };
+    if (!pin || !/^\d{4,6}$/.test(pin)) {
+      res.status(400).json({ error: "PIN 4-6 digits ka hona chahiye" }); return;
+    }
+    const pinHash = hashOtp(pin);
+    cache.set(`pin:${req.userId}`, pinHash, 86400 * 365);
+    res.json({ success: true, message: "PIN set ho gaya" });
+  } catch {
+    res.status(500).json({ error: "Failed to set PIN" });
+  }
+});
+
+router.post("/auth/pin/login", async (req, res) => {
+  try {
+    const { phone, pin } = req.body as { phone: string; pin: string };
+    if (!phone || !pin) { res.status(400).json({ error: "Phone and PIN required" }); return; }
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+    if (!user || !user.isActive || user.isBanned) {
+      res.status(401).json({ error: "User nahi mila ya ban hai" }); return;
+    }
+    const storedPinHash = cache.get(`pin:${user.id}`);
+    if (!storedPinHash) {
+      res.status(400).json({ error: "PIN set nahi kiya gaya. OTP se login karo." }); return;
+    }
+    if (!verifyOtpHash(pin, storedPinHash as string)) {
+      res.status(401).json({ error: "Galat PIN" }); return;
+    }
+    await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
+    const payload = { userId: user.id, phone: phone, plan: user.plan };
+    const accessToken = signUserToken(payload);
+    const refreshToken = signRefreshToken(payload);
+    res.json({ accessToken, refreshToken, user: { id: user.id, phone: user.phone, plan: user.plan } });
+  } catch {
+    res.status(500).json({ error: "PIN login failed" });
+  }
+});
+
 function generateReferralCode(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let code = "AOR";

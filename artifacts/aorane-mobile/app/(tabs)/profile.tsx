@@ -140,6 +140,38 @@ export default function ProfileScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
+        {/* Health Tools Section */}
+        <GlassCard style={[styles.section, { marginBottom: 14 }]}>
+          <View style={styles.sectionHeaderRow}>
+            <LinearGradient colors={["#1B998B","#10B981"]} style={styles.sectionIconBg}>
+              <Ionicons name="heart-outline" size={16} color="#FFF" />
+            </LinearGradient>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.sectionTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>Health Tools</Text>
+              <Text style={[styles.sectionSub, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>Saare health features ek jagah</Text>
+            </View>
+          </View>
+          {[
+            { emoji: "🪪", label: "Health Scorecard (AORANE ID)", desc: "ATM card style health ID + QR code", route: "/scorecard", grad: ["#0077B6","#023E8A"] as [string,string] },
+            { emoji: "💧", label: "Water Tracker", desc: "Roz 8 glass paani track karo", route: "/water", grad: ["#0EA5E9","#0077B6"] as [string,string] },
+            { emoji: "🧘", label: "Stress Tracker", desc: "Mood + 5-Pillar analysis + 4-7-8 Breathing", route: "/stress", grad: ["#8B5CF6","#6D28D9"] as [string,string] },
+            { emoji: "👨‍👩‍👧‍👦", label: "Family Health", desc: "Pariwar ki health ek group mein", route: "/family", grad: ["#10B981","#059669"] as [string,string] },
+            { emoji: "🌸", label: "Period Tracker", desc: "Cycle log + AI prediction + symptoms", route: "/period", grad: ["#EC4899","#9333EA"] as [string,string] },
+          ].map((item, idx) => (
+            <TouchableOpacity key={item.label} onPress={() => router.push(item.route as "/scorecard")}
+              style={[styles.menuItem, { borderTopColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)", borderTopWidth: idx > 0 ? 1 : 0 }]}>
+              <LinearGradient colors={item.grad} style={styles.menuIconBg}>
+                <Text style={{ fontSize: 16 }}>{item.emoji}</Text>
+              </LinearGradient>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.menuLabel, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>{item.label}</Text>
+                <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontSize: 11, fontFamily: "Inter_400Regular" }}>{item.desc}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={isDark ? "rgba(255,255,255,0.25)" : "rgba(10,22,40,0.3)"} />
+            </TouchableOpacity>
+          ))}
+        </GlassCard>
+
         {/* Privacy Section */}
         <GlassCard style={styles.section}>
           <View style={styles.sectionHeaderRow}>
@@ -181,7 +213,7 @@ export default function ProfileScreen() {
             <Text style={[styles.sectionTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>Account</Text>
           </View>
           {[
-            { icon: "diamond-outline" as const, label: "Upgrade to Pro", color: "#7C3AED", grad: ["#7C3AED","#0077B6"] as [string,string], onPress: () => Alert.alert("Coming Soon", "Plan upgrade coming soon") },
+            { icon: "diamond-outline" as const, label: "Upgrade Plan", color: "#7C3AED", grad: ["#7C3AED","#0077B6"] as [string,string], onPress: () => router.push("/upgrade") },
             { icon: "notifications-outline" as const, label: "Notifications", color: "#0077B6", grad: ["#0077B6","#1B998B"] as [string,string], onPress: () => Alert.alert("Coming Soon") },
             { icon: "help-circle-outline" as const, label: "Help & Support", color: "#1B998B", grad: ["#1B998B","#059669"] as [string,string], onPress: () => Alert.alert("Coming Soon") },
           ].map((item, idx, arr) => (

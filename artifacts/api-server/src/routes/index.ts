@@ -10,6 +10,10 @@ import bloodRouter from "./modules/blood";
 import businessRouter from "./modules/business";
 import adminRouter from "./modules/admin";
 import aiRouter from "./modules/ai";
+import stressRouter from "./modules/stress";
+import familyRouter from "./modules/family";
+import periodRouter from "./modules/period";
+import paymentRouter from "./modules/payment";
 
 const router: IRouter = Router();
 
@@ -24,5 +28,9 @@ router.use(bloodRouter);
 router.use(businessRouter);
 router.use(adminRouter);
 router.use(aiRouter);
+router.use(stressRouter);
+router.use(familyRouter);
+router.use(periodRouter);
+router.use(paymentRouter);
 
 export default router;
