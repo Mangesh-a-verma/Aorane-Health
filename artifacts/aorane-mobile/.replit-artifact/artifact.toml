@@ -3,20 +3,19 @@ previewPath = "/aorane-mobile/"
 title = "AORANE Mobile App"
 version = "1.0.0"
 id = "artifacts/aorane-mobile"
-router = "expo-domain"
 
 [[integratedSkills]]
 name = "expo"
 version = "1.0.0"
 
 [[services]]
-ensurePreviewReachable = "/"
+ensurePreviewReachable = "/aorane-mobile/"
 name = "expo"
 paths = [ "/aorane-mobile/" ]
 localPort = 18624
 
 [services.development]
-run = "pnpm --filter @workspace/aorane-mobile run dev"
+run = "node web-server.js"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/aorane-mobile", "run", "build" ]
