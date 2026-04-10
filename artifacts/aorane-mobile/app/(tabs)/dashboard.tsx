@@ -142,8 +142,14 @@ export default function DashboardScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.root, { backgroundColor: isDark ? "#040D1C" : "#EEF4FF" }]}>
-        <LinearGradient colors={isDark ? ["#040D1C", "#062040", "#063330"] : ["#E0F2FE", "#F0FDF9"]} style={StyleSheet.absoluteFill} />
+      <View style={styles.root}>
+        <LinearGradient
+          colors={isDark
+            ? ["#010814", "#031628", "#051E30", "#061A2A"]
+            : ["#C8E9FA", "#D9F4EE", "#E8F4FF", "#D4F0F7"]}
+          locations={[0, 0.3, 0.65, 1]}
+          style={StyleSheet.absoluteFill}
+        />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 14 }}>
           <ActivityIndicator size="large" color={isDark ? "#38BDF8" : "#0077B6"} />
           <Text style={[styles.loadText, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.4)", fontFamily: "Inter_400Regular" }]}>
@@ -157,12 +163,16 @@ export default function DashboardScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={isDark ? ["#020912", "#041428", "#040F22"] : ["#E8F4FD", "#F5FBFF", "#F0FDF4"]}
+        colors={isDark
+          ? ["#010814", "#031628", "#051E30", "#061A2A"]
+          : ["#C8E9FA", "#D9F4EE", "#E8F4FF", "#D4F0F7"]}
+        locations={[0, 0.3, 0.65, 1]}
         style={StyleSheet.absoluteFill}
       />
-      {/* Orbs */}
-      <View style={[styles.orb1, { backgroundColor: isDark ? "#0369A1" : "#BAE6FD" }]} />
-      <View style={[styles.orb2, { backgroundColor: isDark ? "#065F46" : "#A7F3D0" }]} />
+      {/* Orbs — more vivid */}
+      <View style={[styles.orb1, { backgroundColor: isDark ? "#0369A1" : "#7DD3FC" }]} />
+      <View style={[styles.orb2, { backgroundColor: isDark ? "#065F46" : "#6EE7B7" }]} />
+      <View style={[styles.orb3, { backgroundColor: isDark ? "#1E3A5F" : "#BAE6FD" }]} />
 
       {/* Sticky header on scroll */}
       <Animated.View style={[styles.stickyHeader, { opacity: headerOpacity, top: topPad, backgroundColor: isDark ? "rgba(4,20,40,0.9)" : "rgba(232,244,253,0.95)" }]}>
@@ -328,8 +338,9 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   loadText: { fontSize: 14 },
-  orb1: { position: "absolute", width: 360, height: 360, borderRadius: 180, top: -120, right: -100, opacity: 0.28 },
-  orb2: { position: "absolute", width: 280, height: 280, borderRadius: 140, bottom: 60, left: -80, opacity: 0.2 },
+  orb1: { position: "absolute", width: 380, height: 380, borderRadius: 190, top: -130, right: -110, opacity: 0.52 },
+  orb2: { position: "absolute", width: 300, height: 300, borderRadius: 150, bottom: 60, left: -90, opacity: 0.46 },
+  orb3: { position: "absolute", width: 180, height: 180, borderRadius: 90, top: "40%", right: -50, opacity: 0.38 },
   stickyHeader: { position: "absolute", left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 18, paddingVertical: 10, zIndex: 100, overflow: "hidden" },
   stickyLogo: { width: 130, height: 42 },
   stickyScore: { fontSize: 22 },
