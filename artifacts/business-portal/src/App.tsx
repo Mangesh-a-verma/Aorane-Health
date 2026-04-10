@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 
+import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Dashboard from "@/pages/Dashboard";
@@ -16,11 +17,11 @@ const queryClient = new QueryClient();
 
 function NotFound() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-screen flex items-center justify-center bg-[#F0FAFB]">
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-foreground mb-2">404</h1>
-        <p className="text-muted-foreground">Page nahi mila</p>
-        <a href="/business-portal/" className="text-primary hover:underline text-sm mt-3 inline-block">Dashboard pe jao</a>
+        <h1 className="text-4xl font-bold text-[#0D1F33] mb-2">404</h1>
+        <p className="text-[#7A90A4] mb-4">Page nahi mila</p>
+        <a href="/" className="text-[#0077B6] hover:underline text-sm">Home pe jao</a>
       </div>
     </div>
   );
@@ -38,10 +39,10 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-[#F0FAFB]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-          <p className="text-muted-foreground text-sm">Loading...</p>
+          <div className="w-8 h-8 border-2 border-[#0077B6]/30 border-t-[#0077B6] rounded-full animate-spin" />
+          <p className="text-[#7A90A4] text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -51,11 +52,34 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   return <Component />;
 }
 
+function PublicOnlyRoute({ component: Component }: { component: React.ComponentType }) {
+  const { token, isLoading } = useAuth();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (!isLoading && token) {
+      navigate("/dashboard");
+    }
+  }, [token, isLoading, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F0FAFB]">
+        <div className="w-8 h-8 border-2 border-[#0077B6]/30 border-t-[#0077B6] rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (token) return null;
+  return <Component />;
+}
+
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Login} />
-      <Route path="/register" component={Register} />
+      <Route path="/" component={() => <PublicOnlyRoute component={Landing} />} />
+      <Route path="/login" component={() => <PublicOnlyRoute component={Login} />} />
+      <Route path="/register" component={() => <PublicOnlyRoute component={Register} />} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/members" component={() => <ProtectedRoute component={Members} />} />
       <Route path="/codes" component={() => <ProtectedRoute component={EnrollmentCodes} />} />
