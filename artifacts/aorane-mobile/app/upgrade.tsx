@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   TextInput, Platform, useColorScheme, Alert, Linking,
@@ -10,6 +10,26 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+
+declare global {
+  interface Window {
+    Razorpay: new (opts: RazorpayOptions) => RazorpayInstance;
+  }
+}
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  order_id: string;
+  name: string;
+  description: string;
+  image?: string;
+  prefill?: { name?: string; contact?: string; email?: string };
+  theme?: { color?: string };
+  handler: (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => void;
+  modal?: { ondismiss?: () => void };
+}
+interface RazorpayInstance { open(): void; }
 
 const PLANS = [
   {
@@ -24,6 +44,18 @@ const PLANS = [
   },
 ];
 
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise(resolve => {
+    if (typeof window === "undefined") { resolve(false); return; }
+    if (window.Razorpay) { resolve(true); return; }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
 function GlassCard({ children, style }: { children: React.ReactNode; style?: object }) {
   const isDark = useColorScheme() === "dark";
   return (
@@ -33,6 +65,25 @@ function GlassCard({ children, style }: { children: React.ReactNode; style?: obj
         {children}
       </View>
     </LinearGradient>
+  );
+}
+
+function SuccessOverlay({ plan, onDone }: { plan: string; onDone: () => void }) {
+  const isDark = useColorScheme() === "dark";
+  return (
+    <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.85)", zIndex: 999 }]}>
+      <LinearGradient colors={["#0077B6","#1B998B"]} style={{ borderRadius: 28, padding: 40, alignItems: "center", width: 300 }}>
+        <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+          <Ionicons name="checkmark-circle" size={56} color="#FFF" />
+        </View>
+        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 26, textAlign: "center", marginBottom: 8 }}>🎉 Congratulations!</Text>
+        <Text style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter_500Medium", fontSize: 16, textAlign: "center", marginBottom: 6 }}>{plan.toUpperCase()} Plan Active Hai!</Text>
+        <Text style={{ color: "rgba(255,255,255,0.65)", fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center", marginBottom: 28 }}>Aapke saare premium features unlock ho gaye</Text>
+        <TouchableOpacity onPress={onDone} style={{ backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14, width: "100%", alignItems: "center" }}>
+          <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>Dashboard Par Jao</Text>
+        </TouchableOpacity>
+      </LinearGradient>
+    </View>
   );
 }
 
@@ -46,11 +97,19 @@ export default function UpgradeScreen() {
   const [promoMsg, setPromoMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [validatingPromo, setValidatingPromo] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [rzpReady, setRzpReady] = useState(false);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bg = isDark ? "#010814" : "#F0F9FF";
 
   const plan = PLANS.find(p => p.key === selectedPlan)!;
   const finalPrice = Math.round(plan.price * (1 - discount / 100));
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      loadRazorpayScript().then(ok => setRzpReady(ok));
+    }
+  }, []);
 
   const validatePromo = async () => {
     if (!promoCode.trim()) return;
@@ -65,34 +124,90 @@ export default function UpgradeScreen() {
     } finally { setValidatingPromo(false); }
   };
 
+  const onPaymentSuccess = async (paymentId: string, rzPaymentId: string, rzOrderId: string, rzSignature: string, isTestMode = false) => {
+    try {
+      await api.verifyPayment({ paymentId, razorpayPaymentId: rzPaymentId, razorpayOrderId: rzOrderId, razorpaySignature: rzSignature, plan: selectedPlan, isTestMode });
+      if (refreshUser) await refreshUser();
+      setSuccess(true);
+    } catch (e: unknown) {
+      Alert.alert("Verification Failed", (e as Error).message || "Payment verify nahi hua");
+    }
+  };
+
+  const openRazorpayNative = (orderRes: { paymentId: string; razorpayOrderId: string; razorpayKeyId: string; amount: number }) => {
+    const callbackUrl = `${process.env.EXPO_PUBLIC_API_URL?.replace("/api","")||""}/api/payment/rzp-callback`;
+    const params = new URLSearchParams({
+      key: orderRes.razorpayKeyId,
+      order_id: orderRes.razorpayOrderId,
+      name: "AORANE Health",
+      description: `${plan.label} Plan - 1 Month`,
+      callback_url: callbackUrl,
+      cancel_url: callbackUrl,
+    });
+    const url = `https://api.razorpay.com/v1/checkout/embedded?${params.toString()}`;
+    Linking.openURL(url);
+  };
+
   const handleUpgrade = async () => {
     setLoading(true);
     try {
       const orderRes = await api.createPaymentOrder(selectedPlan, promoCode.trim().toUpperCase() || undefined);
+
       if (orderRes.isTestMode) {
         Alert.alert(
           "Test Mode",
-          `Razorpay keys configure nahi hain. Test mein payment directly activate karein?\n\nPlan: ${plan.label}\nAmount: ₹${finalPrice}`,
+          `Razorpay keys configure nahi hain.\n\nKya test payment activate karein?\n\nPlan: ${plan.label} | Amount: ₹${finalPrice}`,
           [
             { text: "Cancel", style: "cancel" },
-            { text: "Test Activate", onPress: async () => {
-              await api.verifyPayment({ paymentId: orderRes.paymentId, plan: selectedPlan, isTestMode: true });
-              Alert.alert("🎉 Congratulations!", `${plan.label} Plan activate ho gaya!`, [
-                { text: "Done", onPress: () => router.back() }
-              ]);
-            }},
+            {
+              text: "Test Activate ✓",
+              onPress: async () => {
+                await onPaymentSuccess(orderRes.paymentId, "test_pay_" + Date.now(), "test_order", "test_sig", true);
+              }
+            },
           ]
         );
-      } else if (orderRes.razorpayKeyId && orderRes.razorpayOrderId) {
-        const rzpUrl = `https://rzp.io/l/${orderRes.razorpayOrderId}`;
-        Alert.alert("Razorpay Checkout", `Amount: ₹${finalPrice}\nOrder ID: ${orderRes.razorpayOrderId}\n\nBrowser mein payment page khulega`, [
-          { text: "Cancel", style: "cancel" },
-          { text: "Pay Now", onPress: () => Linking.openURL(rzpUrl) },
-        ]);
+        return;
       }
+
+      if (Platform.OS === "web" && rzpReady && window.Razorpay) {
+        const rzp = new window.Razorpay({
+          key: orderRes.razorpayKeyId,
+          amount: orderRes.amount * 100,
+          currency: "INR",
+          order_id: orderRes.razorpayOrderId,
+          name: "AORANE Health",
+          description: `${plan.label} Plan - 1 Month`,
+          prefill: {
+            contact: (user?.phone as string) || "",
+          },
+          theme: { color: plan.color },
+          handler: async (response) => {
+            setLoading(true);
+            await onPaymentSuccess(
+              orderRes.paymentId,
+              response.razorpay_payment_id,
+              response.razorpay_order_id,
+              response.razorpay_signature
+            );
+            setLoading(false);
+          },
+          modal: {
+            ondismiss: () => setLoading(false),
+          },
+        });
+        rzp.open();
+        setLoading(false);
+        return;
+      }
+
+      openRazorpayNative(orderRes);
+
     } catch (e: unknown) {
-      Alert.alert("Error", (e as Error).message || "Payment failed");
-    } finally { setLoading(false); }
+      Alert.alert("Error", (e as Error).message || "Payment failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -105,8 +220,8 @@ export default function UpgradeScreen() {
             <Ionicons name="arrow-back" size={20} color={isDark ? "#FFF" : "#0077B6"} />
           </TouchableOpacity>
           <View>
-            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>AORANE Upgrade ✨</Text>
-            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Premium features unlock karo</Text>
+            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>AORANE Premium ✨</Text>
+            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Razorpay Secure Checkout</Text>
           </View>
         </View>
 
@@ -127,7 +242,7 @@ export default function UpgradeScreen() {
         <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 12 }}>Plan Chunein</Text>
         <View style={{ gap: 12, marginBottom: 16 }}>
           {PLANS.map(p => (
-            <TouchableOpacity key={p.key} onPress={() => setSelectedPlan(p.key as "pro" | "max")} activeOpacity={0.85}>
+            <TouchableOpacity key={p.key} onPress={() => { setSelectedPlan(p.key as "pro" | "max"); setDiscount(0); setPromoMsg(""); setPromoCode(""); }} activeOpacity={0.85}>
               <LinearGradient
                 colors={selectedPlan === p.key ? p.gradient : (isDark ? ["rgba(255,255,255,0.04)","rgba(255,255,255,0.02)"] : ["rgba(255,255,255,0.8)","rgba(240,249,255,0.6)"] as [string,string])}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -168,12 +283,12 @@ export default function UpgradeScreen() {
             <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 10 }}>Promo Code</Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
               <TextInput
-                value={promoCode} onChangeText={setPromoCode}
-                placeholder="Code daalo" placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.3)"}
+                value={promoCode} onChangeText={t => { setPromoCode(t); setPromoMsg(""); setDiscount(0); }}
+                placeholder="Code daalo (e.g. AORANE20)" placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.3)"}
                 style={{ flex: 1, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,119,182,0.06)", borderRadius: 12, padding: 12, color: isDark ? "#FFF" : "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 14, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.15)", textTransform: "uppercase" }}
                 autoCapitalize="characters"
               />
-              <TouchableOpacity onPress={validatePromo} disabled={validatingPromo} style={{ backgroundColor: "#1B998B", borderRadius: 12, paddingHorizontal: 16, alignItems: "center", justifyContent: "center" }}>
+              <TouchableOpacity onPress={validatePromo} disabled={validatingPromo || !promoCode.trim()} style={{ backgroundColor: "#1B998B", borderRadius: 12, paddingHorizontal: 16, alignItems: "center", justifyContent: "center", opacity: !promoCode.trim() ? 0.5 : 1 }}>
                 <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13 }}>{validatingPromo ? "..." : "Apply"}</Text>
               </TouchableOpacity>
             </View>
@@ -181,32 +296,54 @@ export default function UpgradeScreen() {
           </View>
         </GlassCard>
 
-        <LinearGradient colors={isDark ? ["rgba(255,255,255,0.06)","rgba(255,255,255,0.02)"] : ["rgba(255,255,255,0.8)","rgba(240,249,255,0.6)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 18, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.12)" }}>
+        <LinearGradient colors={isDark ? ["rgba(255,255,255,0.06)","rgba(255,255,255,0.02)"] : ["rgba(255,255,255,0.8)","rgba(240,249,255,0.6)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 18, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.12)" }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
-            <Text style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(10,22,40,0.6)", fontFamily: "Inter_400Regular", fontSize: 14 }}>{plan.label} Plan</Text>
+            <Text style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(10,22,40,0.6)", fontFamily: "Inter_400Regular", fontSize: 14 }}>{plan.label} Plan (1 month)</Text>
             <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>₹{plan.price}</Text>
           </View>
           {discount > 0 && (
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
-              <Text style={{ color: "#10B981", fontFamily: "Inter_500Medium", fontSize: 14 }}>Discount ({discount}%)</Text>
+              <Text style={{ color: "#10B981", fontFamily: "Inter_500Medium", fontSize: 14 }}>Promo Discount ({discount}%)</Text>
               <Text style={{ color: "#10B981", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>-₹{plan.price - finalPrice}</Text>
             </View>
           )}
           <View style={{ height: 1, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.1)", marginVertical: 8 }} />
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
             <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16 }}>Total</Text>
-            <Text style={{ color: "#0077B6", fontFamily: "Inter_700Bold", fontSize: 20 }}>₹{finalPrice}/mo</Text>
+            <View style={{ alignItems: "flex-end" }}>
+              {discount > 0 && <Text style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.35)", fontFamily: "Inter_400Regular", fontSize: 12, textDecorationLine: "line-through" }}>₹{plan.price}</Text>}
+              <Text style={{ color: "#0077B6", fontFamily: "Inter_700Bold", fontSize: 22 }}>₹{finalPrice}/mo</Text>
+            </View>
           </View>
         </LinearGradient>
 
-        <TouchableOpacity onPress={handleUpgrade} disabled={loading} style={{ borderRadius: 16, overflow: "hidden" }}>
+        <TouchableOpacity onPress={handleUpgrade} disabled={loading} style={{ borderRadius: 16, overflow: "hidden", opacity: loading ? 0.7 : 1 }}>
           <LinearGradient colors={plan.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ padding: 18, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10 }}>
-            <Ionicons name="card" size={22} color="#FFF" />
-            <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 17 }}>{loading ? "Processing..." : `₹${finalPrice} mein Upgrade Karo`}</Text>
+            <Ionicons name={loading ? "hourglass" : "card"} size={22} color="#FFF" />
+            <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 17 }}>
+              {loading ? "Processing..." : `₹${finalPrice} mein Upgrade Karo`}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
-        <Text style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 10 }}>Razorpay secure payment • Kabhi bhi cancel kar sako</Text>
+
+        <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 14 }}>
+          <Ionicons name="lock-closed" size={12} color={isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)"} />
+          <Text style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" }}>256-bit SSL • Razorpay Secure • Kabhi bhi cancel kar sako</Text>
+        </View>
+
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: 16, marginTop: 16, paddingBottom: 10 }}>
+          {["UPI", "Cards", "NetBanking", "Wallets"].map(m => (
+            <View key={m} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,119,182,0.08)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.12)" }}>
+              <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 10, fontFamily: "Inter_600SemiBold" }}>{m}</Text>
+            </View>
+          ))}
+        </View>
+
       </ScrollView>
+
+      {success && (
+        <SuccessOverlay plan={selectedPlan} onDone={() => { setSuccess(false); router.replace("/(tabs)"); }} />
+      )}
     </View>
   );
 }
