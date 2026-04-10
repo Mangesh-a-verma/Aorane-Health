@@ -270,7 +270,7 @@ export default function LoginScreen() {
                     activeOpacity={0.8}
                   >
                     <View style={[styles.socialIconBox, { backgroundColor: "#1877F2" }]}>
-                      <Text style={[styles.socialBtnG, { color: "#FFF", fontSize: 16 }]}>f</Text>
+                      <Text style={[styles.socialBtnG, { color: "#FFF", fontSize: 12 }]}>f</Text>
                     </View>
                     <Text style={[styles.socialLabel, { color: isDark ? "rgba(255,255,255,0.75)" : "#1877F2", fontFamily: "Inter_500Medium" }]}>Facebook</Text>
                   </TouchableOpacity>
@@ -282,7 +282,7 @@ export default function LoginScreen() {
                     activeOpacity={0.8}
                   >
                     <View style={[styles.socialIconBox, { backgroundColor: isDark ? "#FFF" : "#000" }]}>
-                      <Text style={[styles.socialBtnG, { color: isDark ? "#000" : "#FFF", fontSize: 13, fontWeight: "900" }]}>✕</Text>
+                      <Text style={[styles.socialBtnG, { color: isDark ? "#000" : "#FFF", fontSize: 10, fontWeight: "900" }]}>✕</Text>
                     </View>
                     <Text style={[styles.socialLabel, { color: isDark ? "rgba(255,255,255,0.75)" : "#1A1A1A", fontFamily: "Inter_500Medium" }]}>X</Text>
                   </TouchableOpacity>
@@ -352,8 +352,8 @@ const styles = StyleSheet.create({
 
   socialRow: { flexDirection: "row", gap: 10 },
   socialBtn: { flex: 1, flexDirection: "column", alignItems: "center", gap: 7, paddingVertical: 14, borderRadius: 16, borderWidth: 1 },
-  socialIconBox: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 },
-  socialBtnG: { fontSize: 17, fontWeight: "bold" },
+  socialIconBox: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 },
+  socialBtnG: { fontSize: 13, fontWeight: "bold" },
   socialLabel: { fontSize: 12 },
 
   badgeRow: { flexDirection: "row", gap: 8, justifyContent: "center" },
