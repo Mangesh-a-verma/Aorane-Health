@@ -14,7 +14,7 @@ export const storage = {
     return AsyncStorage.getItem("refresh_token");
   },
   async clearTokens(): Promise<void> {
-    await AsyncStorage.multiRemove(["auth_token", "refresh_token", "user_data", "onboarding_done", "pin_set"]);
+    await AsyncStorage.multiRemove(["auth_token", "refresh_token", "user_data", "onboarding_done", "pin_set", "biometric_enabled"]);
   },
   async setUser(user: Record<string, unknown>): Promise<void> {
     await AsyncStorage.setItem("user_data", JSON.stringify(user));
@@ -42,6 +42,13 @@ export const storage = {
   },
   async getPin(): Promise<string | null> {
     return AsyncStorage.getItem("app_pin");
+  },
+  async setBiometricEnabled(enabled: boolean): Promise<void> {
+    await AsyncStorage.setItem("biometric_enabled", enabled ? "1" : "0");
+  },
+  async isBiometricEnabled(): Promise<boolean> {
+    const val = await AsyncStorage.getItem("biometric_enabled");
+    return val === "1";
   },
   async setLanguage(lang: string): Promise<void> {
     await AsyncStorage.setItem("language", lang);
