@@ -1,27 +1,124 @@
-# Workspace
+# AORANE — Indian Health Platform
 
-## Overview
+## Project Overview
+AORANE is a comprehensive Indian health platform with three components:
+1. **Mobile App** (Expo — Android/iOS) — Individual health tracking
+2. **Business Portal** (React Web CRM) — Adaptive for all business types
+3. **Admin Panel** (React Web) — Full platform control
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+All three share one PostgreSQL database and API server.
 
-## Stack
+## Architecture
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+```
+Mobile App (Expo) ──┐
+Business Portal  ───┼──→ API Server (Express/Railway) → PostgreSQL (Supabase)
+Admin Panel      ──┘         ↑ Redis Cache (Upstash)
+```
 
-## Key Commands
+## Tech Stack
+- **Backend**: Express.js (Node.js), Drizzle ORM, PostgreSQL
+- **Mobile**: Expo (React Native) — planned
+- **Frontend**: React + Vite — planned
+- **Auth**: JWT (30d user, 12h admin), OTP via Fast2SMS, Google OAuth
+- **AI**: Gemini 2.0 Flash — food scan, tips, diet plans, medical reports
+- **Payments**: Razorpay
+- **Notifications**: Firebase FCM + Fast2SMS
+- **Storage**: Supabase
+- **Cache**: In-memory (production: Upstash Redis)
 
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
+## Current Status
 
-See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+### ✅ Phase 1: Database — COMPLETE
+46 PostgreSQL tables created and pushed to Supabase:
+- Users: users, user_profiles, user_preferences, user_privacy_settings, user_auth_providers, user_medical_conditions, user_health_goals
+- Health: food_logs, food_items, food_scan_cache, exercise_logs, water_logs, medicine_schedules, medicine_logs, stress_logs, period_logs, medical_reports, daily_health_scores
+- Community: family_groups, family_members, blood_donors, blood_emergency_requests, blood_emergency_responses
+- Business: organizations, org_admins, org_members, enrollment_codes, insurance_api_keys
+- Revenue: subscriptions, payments, promo_codes, referrals
+- Platform: push_tokens, notifications, announcements, feature_flags, ad_campaigns, ad_impressions, ad_clicks, admin_users, admin_audit_logs
+- Infrastructure: wearable_connections, wearable_data, offline_queue, languages, translations
+
+### ✅ Phase 2: API Server — COMPLETE
+Express.js API server running on port 8080 with:
+- **Auth**: OTP send/verify, Google OAuth, JWT refresh, logout
+- **Users**: Profile CRUD, onboarding, medical conditions, health goals, preferences, privacy settings
+- **Food**: Logs, search, AI scan (Gemini-powered), daily summary
+- **Health**: Exercise logs, water logs, daily health scores (auto-computed), history
+- **Medicine**: Schedules, logs, adherence tracking
+- **Blood Emergency**: OTP-verified requests, donor registration, compatibility matching
+- **Business**: Registration, login, members, enrollment codes
+- **Admin**: Users, orgs, feature flags, food items, promo codes, announcements, blood moderation, languages, audit logs
+
+### Middleware
+- `requireAuth` — User JWT validation
+- `requireAdmin` — Admin JWT validation  
+- `requireBusinessAuth` — Business JWT validation
+- `requirePlan` — Plan-based feature gating
+- `checkPrivacy` — User privacy enforcement
+
+## Key Design Decisions
+1. **Privacy-first**: 8 privacy toggles, Stress/Sleep/Medicine DEFAULT OFF
+2. **Offline-first**: Offline queue table for later sync
+3. **Semantic cache**: Food scan checks DB cache first (90%+ hit target)
+4. **Medical = Findings ONLY**: PDFs never stored
+5. **Activity Confidence**: Every health score shows data completeness %
+6. **Blood Emergency**: Double OTP verification, rate limited 2/month, 48hr auto-expiry
+7. **Global-ready**: country_code, language_code, RTL support in all tables
+8. **Three-way entry**: Photo + Text + Voice for Food/Exercise/Water
+
+## File Structure
+```
+lib/
+├── db/src/schema/
+│   ├── users.ts           — User tables + enums
+│   ├── health-food.ts     — Food items, logs, AI cache
+│   ├── health-tracking.ts — Exercise, water, medicine, stress, period, medical reports
+│   ├── community.ts       — Family groups, blood emergency
+│   ├── business.ts        — Organizations, enrollments
+│   ├── platform.ts        — Ads, notifications, feature flags, admin
+│   ├── revenue.ts         — Subscriptions, payments, promos
+│   └── wearable.ts        — Wearables, offline queue, i18n
+│
+artifacts/
+└── api-server/src/
+    ├── lib/
+    │   ├── jwt.ts         — JWT sign/verify (user/admin/business)
+    │   ├── otp.ts         — OTP generation + Fast2SMS
+    │   └── redis.ts       — In-memory cache (Upstash-ready interface)
+    ├── middlewares/
+    │   ├── user-auth.ts   — User JWT middleware
+    │   ├── admin-auth.ts  — Admin JWT middleware
+    │   ├── business-auth.ts — Business JWT middleware
+    │   ├── plan-check.ts  — Plan feature gating
+    │   └── privacy-guard.ts — Privacy enforcement
+    └── routes/
+        ├── health.ts      — Health check
+        └── modules/
+            ├── auth.ts    — OTP, Google, JWT refresh
+            ├── users.ts   — Profile, preferences, privacy
+            ├── food.ts    — Logs, search, AI scan
+            ├── health.ts  — Exercise, water, scores
+            ├── medicine.ts — Schedules and logs
+            ├── blood.ts   — Emergency system
+            ├── business.ts — Portal APIs
+            └── admin.ts   — Admin panel APIs
+```
+
+## Plans
+- Free: ₹0
+- Max: ₹199/month  
+- Pro: ₹249/month
+- Family: ₹499/month (4 members)
+- Business: ₹89-149/seat/month
+
+## Pending
+- [ ] Mobile App (Expo) — Phase 3
+- [ ] Business Portal (React/Vite) — Phase 4
+- [ ] Admin Panel (React/Vite) — Phase 5
+- [ ] Razorpay payment integration
+- [ ] Firebase FCM setup
+- [ ] Diet plan AI agent
+- [ ] Stress PPG camera feature
+- [ ] Wearable adapter implementation
+- [ ] Weekly PDF report generation
