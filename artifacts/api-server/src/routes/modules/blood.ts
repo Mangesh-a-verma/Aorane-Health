@@ -121,6 +121,23 @@ router.post("/blood/request/verify-otp", requireAuth, async (req: AuthRequest, r
   }
 });
 
+router.get("/blood/donors", async (req, res) => {
+  try {
+    const { bloodGroup, city } = req.query as Record<string, string>;
+    let query = db.select().from(bloodDonorsTable).$dynamic();
+    const conditions = [eq(bloodDonorsTable.isAvailable, true), eq(bloodDonorsTable.otpVerified, true)];
+    if (bloodGroup) {
+      const compatible = COMPATIBLE_DONORS[bloodGroup] || [bloodGroup];
+      conditions.push(or(...compatible.map((g) => eq(bloodDonorsTable.bloodGroup, g as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-")))!);
+    }
+    if (city) conditions.push(eq(bloodDonorsTable.city, city));
+    const donors = await query.where(and(...conditions)).limit(20);
+    res.json({ donors });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch donors" });
+  }
+});
+
 router.get("/blood/requests/active", async (req, res) => {
   try {
     const requests = await db.select().from(bloodEmergencyRequestsTable)
@@ -163,6 +180,36 @@ router.post("/blood/request/:id/flag", requireAuth, async (req: AuthRequest, res
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Failed to flag request" });
+  }
+});
+
+// Simplified direct emergency request (no OTP for mobile UX)
+router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { bloodGroup, unitsNeeded, hospitalName, city, state, contactPhone, urgency, notes } = req.body as Record<string, unknown>;
+    if (!bloodGroup || !hospitalName || !city || !contactPhone) {
+      res.status(400).json({ error: "bloodGroup, hospitalName, city, contactPhone required" });
+      return;
+    }
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 72);
+    const [request] = await db.insert(bloodEmergencyRequestsTable).values({
+      requesterId: req.userId!,
+      bloodGroupNeeded: bloodGroup as string,
+      patientName: "Mobile User",
+      hospitalName: hospitalName as string,
+      hospitalCity: city as string,
+      hospitalState: (state as string) || "",
+      unitsNeeded: Number(unitsNeeded) || 1,
+      contactPhone: contactPhone as string,
+      contactName: "Mobile User",
+      notes: (notes as string) || "",
+      otpVerified: true,
+      expiresAt,
+    }).returning();
+    res.status(201).json({ success: true, request });
+  } catch {
+    res.status(500).json({ error: "Failed to create blood emergency" });
   }
 });
 

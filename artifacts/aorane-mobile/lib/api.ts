@@ -190,6 +190,24 @@ export const api = {
       original: string;
       swaps: Array<{ name: string; nameHindi: string; reason: string; calories: number; benefit: string }>;
     }>("POST", "/ai/meal-swap", { mealName, reason, dietaryPref }),
+
+  // ── Blood Emergency ──────────────────────────────────────
+  registerBloodDonor: (data: { bloodGroup: string; city: string; state: string; phone?: string; lat?: number; lng?: number }) =>
+    request<{ success: boolean; requiresOtp: boolean; message: string }>("POST", "/blood/donor/register", data),
+
+  getBloodDonors: (bloodGroup: string, city: string) =>
+    request<{ donors: Array<{ id: string; bloodGroup: string; city: string; state: string; isAvailable: boolean }> }>(
+      "GET", `/blood/donors?bloodGroup=${encodeURIComponent(bloodGroup)}&city=${encodeURIComponent(city)}`
+    ),
+
+  createBloodEmergency: (data: { bloodGroup: string; unitsNeeded: number; hospitalName: string; city: string; state: string; contactPhone: string; urgency?: string; notes?: string }) =>
+    request<{ success: boolean; request: Record<string, unknown> }>("POST", "/blood/emergency/direct", data),
+
+  getBloodEmergencies: () =>
+    request<{ requests: Array<Record<string, unknown>> }>("GET", "/blood/requests/active"),
+
+  respondToBloodEmergency: (requestId: string, response: "can_help" | "later" | "unavailable") =>
+    request<{ success: boolean }>("POST", `/blood/request/${requestId}/respond`, { response }),
 };
 
 interface MealItem {

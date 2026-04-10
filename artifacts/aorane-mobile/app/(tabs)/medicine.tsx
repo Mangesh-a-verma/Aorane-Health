@@ -11,6 +11,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { api } from "@/lib/api";
 import { storage } from "@/lib/storage";
+import {
+  scheduleMedicineReminders,
+  requestNotificationPermissions,
+  checkNotificationPermissions,
+} from "@/lib/notifications";
+import { exportMedicalReportPDF } from "@/lib/pdf";
 
 const { width: W } = Dimensions.get("window");
 
@@ -65,6 +71,7 @@ export default function MedicineScreen() {
   const [mealTiming, setMealTiming] = useState("after_meal");
   const [reminderTime, setReminderTime] = useState("08:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<boolean>(false);
 
   // Medical Report Scanner state
   const [showScanModal, setShowScanModal] = useState(false);
@@ -72,7 +79,11 @@ export default function MedicineScreen() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScanAnalysis | null>(null);
 
-  useEffect(() => { loadSchedules(); }, []);
+  useEffect(() => {
+    loadSchedules();
+    checkNotificationPermissions().then(setNotifPermission);
+  }, []);
+
   const loadSchedules = useCallback(async () => {
     try { const res = await api.getMedicineSchedules(); setSchedules(res.schedules as Schedule[]); } catch { }
     setIsLoading(false);
@@ -91,7 +102,24 @@ export default function MedicineScreen() {
       });
       if (!res.ok) throw new Error("Failed");
       setShowModal(false); setMedicineName(""); setDosage("");
-      await loadSchedules(); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await loadSchedules();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Schedule local notification reminder
+      if (Platform.OS !== "web") {
+        const granted = await requestNotificationPermissions();
+        if (granted) {
+          await scheduleMedicineReminders({
+            medicineId: `medicine_${medicineName.trim().toLowerCase().replace(/\s+/g, "_")}`,
+            medicineName: medicineName.trim(),
+            dosage,
+            times: [reminderTime],
+            mealTiming,
+          });
+          setNotifPermission(true);
+          Alert.alert("✅ Reminder Set!", `Roz ${reminderTime} baje ${medicineName.trim()} ka reminder aayega`, [{ text: "Theek hai" }]);
+        }
+      }
     } catch { Alert.alert("Error", "Medicine schedule save nahi hua"); }
     setIsSubmitting(false);
   };
@@ -146,7 +174,7 @@ export default function MedicineScreen() {
         <View>
           <Text style={[styles.title, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>Medicine 💊</Text>
           <Text style={[styles.subtitle, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>
-            {activeCount} active schedule{activeCount !== 1 ? "s" : ""}
+            {activeCount} active · {notifPermission ? "🔔 Reminders ON" : Platform.OS === "web" ? "💻 Web mode" : "🔕 Reminders OFF"}
           </Text>
         </View>
         <TouchableOpacity onPress={() => setShowModal(true)} activeOpacity={0.85}>
@@ -155,6 +183,38 @@ export default function MedicineScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      {/* Notification permission banner */}
+      {!notifPermission && Platform.OS !== "web" && schedules.length > 0 && (
+        <TouchableOpacity
+          onPress={async () => {
+            const granted = await requestNotificationPermissions();
+            setNotifPermission(granted);
+            if (granted) {
+              for (const s of schedules) {
+                await scheduleMedicineReminders({
+                  medicineId: `medicine_${s.id}`,
+                  medicineName: s.medicineName,
+                  dosage: s.dosage,
+                  times: s.reminderTimes,
+                  mealTiming: s.mealTiming,
+                });
+              }
+            }
+          }}
+          activeOpacity={0.85}
+          style={{ marginHorizontal: 18, marginBottom: 12 }}
+        >
+          <LinearGradient colors={["rgba(245,158,11,0.15)","rgba(239,68,68,0.1)"]} style={{ borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "rgba(245,158,11,0.3)" }}>
+            <Ionicons name="notifications-off-outline" size={18} color="#F59E0B" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: isDark ? "#FBBF24" : "#B45309", fontSize: 13, fontFamily: "Inter_600SemiBold" }}>Reminders band hain</Text>
+              <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontSize: 11, fontFamily: "Inter_400Regular" }}>Tap karein notification allow karne ke liye</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#F59E0B" />
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
 
       {/* AI Report Scanner Card */}
       <TouchableOpacity onPress={() => { setScanResult(null); setSelectedImage(null); setShowScanModal(true); }} activeOpacity={0.85} style={{ marginHorizontal: 18, marginBottom: 16 }}>
@@ -418,6 +478,25 @@ export default function MedicineScreen() {
                     </View>
                   </GlassCard>
                 )}
+
+                {/* PDF Export button */}
+                <TouchableOpacity
+                  onPress={async () => {
+                    try {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      await exportMedicalReportPDF(scanResult);
+                    } catch {
+                      Alert.alert("Error", "PDF export nahi hua");
+                    }
+                  }}
+                  activeOpacity={0.85}
+                  style={{ marginBottom: 10 }}
+                >
+                  <LinearGradient colors={["#0077B6","#1B998B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.retryWrap, { borderWidth: 0, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }]}>
+                    <Ionicons name="document-text-outline" size={18} color="#FFF" />
+                    <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>PDF Report Download / Share</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
 
                 {/* Retry button */}
                 <TouchableOpacity onPress={() => { setSelectedImage(null); setScanResult(null); }} style={[styles.retryWrap, { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)", borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)" }]}>

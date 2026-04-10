@@ -9,6 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { api } from "@/lib/api";
 import * as Haptics from "expo-haptics";
+import { exportDietPlanPDF } from "@/lib/pdf";
 
 const { width: W } = Dimensions.get("window");
 
@@ -326,6 +327,24 @@ export default function DietTab() {
                 ))}
               </View>
             )}
+
+            {/* PDF Export */}
+            <TouchableOpacity
+              onPress={async () => {
+                try {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  await exportDietPlanPDF(plan);
+                } catch {
+                  /* silent */
+                }
+              }}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={["#0077B6", "#1B998B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ height: 50, borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <Ionicons name="document-text-outline" size={18} color="#FFF" />
+                <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 15 }}>Diet Chart PDF Download / Share</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>

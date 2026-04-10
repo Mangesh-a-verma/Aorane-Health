@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   Switch, Alert, Platform, Image, useColorScheme, Dimensions,
 } from "react-native";
+import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -118,6 +119,26 @@ export default function ProfileScreen() {
             ))}
           </View>
         )}
+
+        {/* Blood Emergency Quick Access */}
+        <TouchableOpacity onPress={() => router.push("/blood")} activeOpacity={0.85}>
+          <LinearGradient
+            colors={["#DC2626", "#B91C1C"]}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            style={{ borderRadius: 18, padding: 1.5, marginBottom: 14 }}
+          >
+            <View style={{ borderRadius: 17, padding: 16, backgroundColor: isDark ? "rgba(8,0,0,0.5)" : "rgba(255,245,245,0.9)", flexDirection: "row", alignItems: "center", gap: 14 }}>
+              <View style={{ width: 50, height: 50, borderRadius: 14, backgroundColor: "rgba(220,38,38,0.15)", alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 26 }}>🩸</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: isDark ? "#FCA5A5" : "#DC2626", fontFamily: "Inter_700Bold", fontSize: 16 }}>Blood Emergency</Text>
+                <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>Donate blood · Emergency request · Donor list</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={isDark ? "#F87171" : "#DC2626"} />
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
 
         {/* Privacy Section */}
         <GlassCard style={styles.section}>
