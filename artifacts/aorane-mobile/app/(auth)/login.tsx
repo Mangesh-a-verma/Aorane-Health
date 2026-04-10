@@ -70,7 +70,7 @@ export default function LoginScreen() {
   useEffect(() => {
     Animated.parallel([
       Animated.spring(logoAnim, { toValue: 1, friction: 7, tension: 50, useNativeDriver: true }),
-      Animated.timing(cardAnim, { toValue: 1, duration: 600, delay: 300, useNativeDriver: true }),
+      Animated.timing(cardAnim, { toValue: 1, duration: 600, delay: 300, useNativeDriver: false }),
     ]).start();
     Animated.loop(
       Animated.sequence([
@@ -111,7 +111,7 @@ export default function LoginScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 28 }]}
+          contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 6, paddingBottom: insets.bottom + 28 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -249,18 +249,44 @@ export default function LoginScreen() {
                   <View style={[styles.divLine, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)" }]} />
                 </View>
 
-                {/* Google */}
-                <TouchableOpacity
-                  onPress={() => Alert.alert("Coming Soon", "Google login jald aayega!")}
-                  style={[styles.googleBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "#FFF", borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" }]}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.googleIconBox}>
-                    <Text style={styles.googleG}>G</Text>
-                  </View>
-                  <Text style={[styles.googleText, { color: isDark ? "rgba(255,255,255,0.8)" : "#1A1A1A", fontFamily: "Inter_500Medium" }]}>Continue with Google</Text>
-                  <Ionicons name="chevron-forward" size={16} color={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)"} />
-                </TouchableOpacity>
+                {/* Social Login Row */}
+                <View style={styles.socialRow}>
+                  {/* Google */}
+                  <TouchableOpacity
+                    onPress={() => Alert.alert("Coming Soon", "Google login jald aayega!")}
+                    style={[styles.socialBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#FFF", borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.09)" }]}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.socialIconBox, { backgroundColor: "#FFF", shadowColor: "#4285F4" }]}>
+                      <Text style={[styles.socialBtnG, { color: "#4285F4" }]}>G</Text>
+                    </View>
+                    <Text style={[styles.socialLabel, { color: isDark ? "rgba(255,255,255,0.75)" : "#1A1A1A", fontFamily: "Inter_500Medium" }]}>Google</Text>
+                  </TouchableOpacity>
+
+                  {/* Facebook */}
+                  <TouchableOpacity
+                    onPress={() => Alert.alert("Coming Soon", "Facebook login jald aayega!")}
+                    style={[styles.socialBtn, { backgroundColor: isDark ? "rgba(24,119,242,0.12)" : "#EEF4FF", borderColor: isDark ? "rgba(24,119,242,0.25)" : "rgba(24,119,242,0.2)" }]}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.socialIconBox, { backgroundColor: "#1877F2" }]}>
+                      <Text style={[styles.socialBtnG, { color: "#FFF", fontSize: 16 }]}>f</Text>
+                    </View>
+                    <Text style={[styles.socialLabel, { color: isDark ? "rgba(255,255,255,0.75)" : "#1877F2", fontFamily: "Inter_500Medium" }]}>Facebook</Text>
+                  </TouchableOpacity>
+
+                  {/* X (Twitter) */}
+                  <TouchableOpacity
+                    onPress={() => Alert.alert("Coming Soon", "X login jald aayega!")}
+                    style={[styles.socialBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#F8F8F8", borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" }]}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.socialIconBox, { backgroundColor: isDark ? "#FFF" : "#000" }]}>
+                      <Text style={[styles.socialBtnG, { color: isDark ? "#000" : "#FFF", fontSize: 13, fontWeight: "900" }]}>✕</Text>
+                    </View>
+                    <Text style={[styles.socialLabel, { color: isDark ? "rgba(255,255,255,0.75)" : "#1A1A1A", fontFamily: "Inter_500Medium" }]}>X</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </LinearGradient>
           </Animated.View>
@@ -288,15 +314,15 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { paddingHorizontal: 20 },
 
-  logoHero: { alignItems: "center", marginBottom: 22, paddingTop: 4 },
+  logoHero: { alignItems: "center", marginBottom: 10, paddingTop: 0 },
   glowBehind: { position: "absolute", top: -60, alignSelf: "center" },
   glowCircle: { width: W * 1.1, height: 420, borderRadius: 210 },
-  logo: { width: W - 8, height: 260, marginBottom: 14 },
+  logo: { width: W - 8, height: 260, marginBottom: -45 },
   taglinePill: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 22, borderWidth: 1 },
   taglineDot: { width: 7, height: 7, borderRadius: 3.5 },
   taglineText: { fontSize: 13.5 },
 
-  langSection: { marginBottom: 18 },
+  langSection: { marginBottom: 10 },
   langLabel: { fontSize: 10.5, letterSpacing: 1.4, marginBottom: 10 },
   langChip: { paddingHorizontal: 15, paddingVertical: 9, borderRadius: 22, borderWidth: 1 },
   langChipActive: { paddingHorizontal: 15, paddingVertical: 9, borderRadius: 22 },
@@ -324,10 +350,11 @@ const styles = StyleSheet.create({
   divLine: { flex: 1, height: 1 },
   divText: { fontSize: 13 },
 
-  googleBtn: { flexDirection: "row", alignItems: "center", gap: 12, height: 52, borderRadius: 16, borderWidth: 1, paddingHorizontal: 16 },
-  googleIconBox: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#FFF", alignItems: "center", justifyContent: "center", shadowColor: "#4285F4", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 3 },
-  googleG: { fontSize: 17, fontWeight: "bold", color: "#4285F4" },
-  googleText: { flex: 1, fontSize: 15 },
+  socialRow: { flexDirection: "row", gap: 10 },
+  socialBtn: { flex: 1, flexDirection: "column", alignItems: "center", gap: 7, paddingVertical: 14, borderRadius: 16, borderWidth: 1 },
+  socialIconBox: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 },
+  socialBtnG: { fontSize: 17, fontWeight: "bold" },
+  socialLabel: { fontSize: 12 },
 
   badgeRow: { flexDirection: "row", gap: 8, justifyContent: "center" },
   badge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 12, borderWidth: 1 },
