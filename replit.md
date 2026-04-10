@@ -39,13 +39,22 @@ Admin Panel      ──┘         ↑ Redis Cache (Upstash)
 - Platform: push_tokens, notifications, announcements, feature_flags, ad_campaigns, ad_impressions, ad_clicks, admin_users, admin_audit_logs
 - Infrastructure: wearable_connections, wearable_data, offline_queue, languages, translations
 
+### ✅ Food Database Seeded — 1061 Indian Foods
+food_items table populated with IFCT-verified data:
+- **Source**: VitaCoach IFCT database (1014 items) + verified IFCT staples (47 items)
+- **Coverage**: 21 categories including Dal & Lentils (57), Rice & Grains (68), Breads & Rotis (44), Snacks & Street Food (73), Sweets & Desserts (237), Vegetable Dishes (82), Beverages (71), Chicken/Mutton/Fish/Eggs (105 nonveg items), Paneer (22), Condiments & Chutneys (99)
+- **Nutrients per food**: calories, protein, carbs, fat, fiber, sugar, sodium, calcium, iron, vitamin C (per 100g)
+- **Extra fields**: Hindi name (name_hi stored in food_name_local JSONB), cuisine_type=indian, country_code=IN, dietary_tags (veg/nonveg), is_verified=true
+- **Search**: ILIKE-based case-insensitive search via `/food/search?q=` endpoint works instantly
+
 ### ✅ Phase 2: API Server — COMPLETE
 Express.js API server running on port 8080 with:
 - **Auth**: OTP send/verify, Google OAuth, JWT refresh, logout
 - **Users**: Profile CRUD, onboarding, medical conditions, health goals, preferences, privacy settings
-- **Food**: Logs, search, AI scan (Gemini-powered), daily summary
-- **Health**: Exercise logs, water logs, daily health scores (auto-computed), history
+- **Food**: Logs, search (1061 Indian foods DB), AI scan (Gemini-powered with vitamins), daily summary
+- **Health**: Exercise logs (MET formula, profile-aware), water logs, daily health scores (auto-computed), history
 - **Medicine**: Schedules, logs, adherence tracking
+- **Medical Reports**: AI scan via Gemini Vision (`/medical/scan`), reports list/delete
 - **Blood Emergency**: OTP-verified requests, donor registration, compatibility matching
 - **Business**: Registration, login, members, enrollment codes
 - **Admin**: Users, orgs, feature flags, food items, promo codes, announcements, blood moderation, languages, audit logs
