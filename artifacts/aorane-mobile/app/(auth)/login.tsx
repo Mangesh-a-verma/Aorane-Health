@@ -50,6 +50,7 @@ export default function LoginScreen() {
   const [loginMode, setLoginMode] = useState<"otp" | "pin">("otp");
   const [pin, setPin] = useState("");
   const [pinFocused, setPinFocused] = useState(false);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -68,13 +69,9 @@ export default function LoginScreen() {
     ).start();
   }, []);
 
-  const goToOtpScreen = (devOtp?: string) => {
-    if (devOtp) {
-      Alert.alert(
-        "🔧 Dev OTP",
-        `Your OTP is: ${devOtp}\n\n(Only visible in development mode)`,
-        [{ text: "Copy & Continue", onPress: () => router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } }) }]
-      );
+  const goToOtpScreen = (otp?: string) => {
+    if (otp) {
+      setDevOtp(otp);
     } else {
       router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } });
     }
@@ -85,7 +82,7 @@ export default function LoginScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsLoading(true);
     try {
-      const res = await api.sendOtp(phone) as { success: boolean; devOtp?: string };
+      const res = await api.sendOtp(phone);
       goToOtpScreen(res?.devOtp);
     } catch (err: unknown) {
       Alert.alert(t("otpError"), err instanceof Error ? err.message : t("otpError"));
@@ -97,13 +94,8 @@ export default function LoginScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setWhatsappLoading(true);
     try {
-      const res = await api.sendWhatsappOtp(phone) as { channel?: string; devOtp?: string };
-      if (res?.devOtp) {
-        goToOtpScreen(res.devOtp);
-      } else {
-        const msg = res?.channel === "whatsapp" ? t("otpSentWhatsapp") : t("otpSentSms");
-        Alert.alert(t("otpSent"), msg, [{ text: t("ok"), onPress: () => router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } }) }]);
-      }
+      const res = await api.sendWhatsappOtp(phone);
+      goToOtpScreen(res?.devOtp);
     } catch (err: unknown) {
       Alert.alert(t("otpError"), err instanceof Error ? err.message : t("otpError"));
     } finally { setWhatsappLoading(false); }
@@ -139,6 +131,27 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* ── DEV OTP BANNER ── */}
+          {devOtp && (
+            <View style={s.devOtpBanner}>
+              <View style={s.devOtpTop}>
+                <Text style={s.devOtpIcon}>🔧</Text>
+                <Text style={s.devOtpTitle}>Dev Mode — Aapka OTP</Text>
+                <TouchableOpacity onPress={() => setDevOtp(null)} style={s.devOtpClose}>
+                  <Ionicons name="close" size={16} color="#92400E" />
+                </TouchableOpacity>
+              </View>
+              <Text style={s.devOtpCode}>{devOtp}</Text>
+              <Text style={s.devOtpHint}>SMS delivery unavailable (DLT verification pending). Yeh code OTP screen mein enter karo.</Text>
+              <TouchableOpacity
+                onPress={() => { setDevOtp(null); router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } }); }}
+                style={s.devOtpBtn}
+              >
+                <Text style={s.devOtpBtnText}>OTP Enter Karne Jao →</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* ── HERO ── */}
           <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
             <View style={s.heroSection}>
@@ -407,6 +420,16 @@ const s = StyleSheet.create({
 
   comingSoonBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#E5E7EB" },
   comingSoonText: { fontSize: 9, fontFamily: "Inter_500Medium", color: "#6B7280" },
+
+  devOtpBanner: { backgroundColor: "#FEF3C7", borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 2, borderColor: "#F59E0B" },
+  devOtpTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+  devOtpIcon: { fontSize: 18 },
+  devOtpTitle: { flex: 1, fontSize: 13, fontFamily: "Inter_700Bold", color: "#92400E" },
+  devOtpClose: { width: 26, height: 26, borderRadius: 13, backgroundColor: "#FDE68A", alignItems: "center", justifyContent: "center" },
+  devOtpCode: { fontSize: 42, fontFamily: "Inter_700Bold", color: "#B45309", textAlign: "center", letterSpacing: 10, marginVertical: 8 },
+  devOtpHint: { fontSize: 11, color: "#92400E", fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 12, lineHeight: 16 },
+  devOtpBtn: { backgroundColor: "#F59E0B", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
+  devOtpBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
 
   badgeRow: { flexDirection: "row", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 10 },
   badge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 6, borderRadius: 12, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E8F2F7" },

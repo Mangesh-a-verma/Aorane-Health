@@ -32,10 +32,10 @@ async function request<T>(
 export const api = {
   // ── Auth ──────────────────────────────────────────────
   sendOtp: (phone: string) =>
-    request<{ success: boolean; message: string }>("POST", "/auth/send-otp", { phone }, false),
+    request<{ success: boolean; message: string; devOtp?: string }>("POST", "/auth/send-otp", { phone }, false),
 
   sendWhatsappOtp: (phone: string) =>
-    request<{ success: boolean; message: string; channel: "whatsapp" | "sms" }>("POST", "/auth/send-otp-whatsapp", { phone }, false),
+    request<{ success: boolean; message: string; channel: "whatsapp" | "sms"; devOtp?: string }>("POST", "/auth/send-otp-whatsapp", { phone }, false),
 
   verifyOtp: (phone: string, otp: string, languageCode = "hi") =>
     request<{ accessToken: string; refreshToken: string; isNewUser: boolean; user: { id: string; phone: string; plan: string; languageCode: string } }>(
