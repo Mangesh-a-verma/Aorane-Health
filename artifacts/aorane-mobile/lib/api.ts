@@ -375,6 +375,46 @@ export const api = {
       message?: string;
     }>("POST", "/ai/smart-scan", data as Record<string, unknown>),
 
+  // ── Health Intelligence (DeepSeek AI) ─────────────────────
+  getHealthPrediction: () =>
+    request<{
+      prediction: {
+        overallScore: number; overallLabel: string;
+        risks: { name: string; percentage: number; level: string; reason: string; icon: string }[];
+        recommendations: { title: string; detail: string; priority: string }[];
+        disclaimer: string; generatedFor: string;
+      };
+      cached: boolean; month: string; generatedAt: string;
+    }>("GET", "/health/intelligence/predict"),
+
+  refreshHealthPrediction: () =>
+    request<{ prediction: Record<string, unknown>; cached: boolean; month: string }>("POST", "/health/intelligence/predict/refresh", {}),
+
+  getWeeklyDietChart: () =>
+    request<{
+      dietChart: {
+        weekStart: string; targetCalories: number;
+        days: {
+          day: string; date: string;
+          breakfast: { time: string; items: string[]; calories: number };
+          lunch: { time: string; items: string[]; calories: number };
+          dinner: { time: string; items: string[]; calories: number };
+          snacks: { time: string; item: string; calories: number }[];
+          totalCalories: number; water: string; tip: string;
+        }[];
+        weeklyTips: string[];
+      };
+      cached: boolean; weekStart: string; generatedAt: string;
+    }>("GET", "/health/intelligence/diet-chart"),
+
+  refreshWeeklyDietChart: () =>
+    request<{ dietChart: Record<string, unknown>; weekStart: string }>("POST", "/health/intelligence/diet-chart/refresh", {}),
+
+  calculateExerciseCalories: (exerciseType: string, durationMinutes: number) =>
+    request<{ exerciseType: string; durationMinutes: number; weightKg: number; met: number; caloriesBurned: number }>(
+      "POST", "/health/intelligence/exercise/calories", { exerciseType, durationMinutes }
+    ),
+
   // ── Company Settings (public) ──────────────────────────────
   getCompanySettings: () =>
     request<{ settings: {

@@ -173,6 +173,33 @@ export const dailySuggestionsTable = pgTable("daily_suggestions", {
   userDateUniq: { columns: [t.userId, t.date] },
 }));
 
+// ── Monthly Health Predictions (DeepSeek AI — once per month per user) ────────
+export const healthPredictionsTable = pgTable("health_predictions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  month: text("month").notNull(),                        // YYYY-MM
+  predictionJson: jsonb("prediction_json").notNull(),    // { risks: [], recommendations: [], overallScore }
+  dataSnapshotJson: jsonb("data_snapshot_json"),         // 30-day aggregated data used for prediction
+  weatherContext: text("weather_context"),               // Weather at time of prediction
+  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  userMonthUniq: { columns: [t.userId, t.month] },
+}));
+
+// ── Weekly Diet Charts (DeepSeek AI — once per week per user) ─────────────────
+export const weeklyDietChartsTable = pgTable("weekly_diet_charts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  weekStart: text("week_start").notNull(),               // YYYY-MM-DD (Monday)
+  dietChartJson: jsonb("diet_chart_json").notNull(),     // { days: [{day, breakfast, lunch, dinner, snacks, totalCalories}] }
+  targetCalories: integer("target_calories"),
+  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  userWeekUniq: { columns: [t.userId, t.weekStart] },
+}));
+
 export type ExerciseLog = typeof exerciseLogsTable.$inferSelect;
 export type WaterLog = typeof waterLogsTable.$inferSelect;
 export type MedicineSchedule = typeof medicineSchedulesTable.$inferSelect;
@@ -182,3 +209,5 @@ export type PeriodLog = typeof periodLogsTable.$inferSelect;
 export type MedicalReport = typeof medicalReportsTable.$inferSelect;
 export type DailyHealthScore = typeof dailyHealthScoresTable.$inferSelect;
 export type DailySuggestion = typeof dailySuggestionsTable.$inferSelect;
+export type HealthPrediction = typeof healthPredictionsTable.$inferSelect;
+export type WeeklyDietChart = typeof weeklyDietChartsTable.$inferSelect;

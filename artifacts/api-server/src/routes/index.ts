@@ -18,6 +18,7 @@ import accidentEmergencyRouter from "./modules/accident-emergency";
 import adsRouter from "./modules/ads";
 import suggestionsRouter from "./modules/suggestions";
 import wearableRouter from "./modules/wearable";
+import intelligenceRouter from "./modules/intelligence";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(accidentEmergencyRouter);
 router.use(adsRouter);
 router.use(suggestionsRouter);
 router.use(wearableRouter);
+router.use(intelligenceRouter);
 
 export default router;

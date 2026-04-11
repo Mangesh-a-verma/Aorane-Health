@@ -396,6 +396,33 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </Animated.View>
 
+        {/* ── HEALTH INTELLIGENCE CARD ── */}
+        <Animated.View style={{ opacity: fadeAnim, marginBottom: 14 }}>
+          <TouchableOpacity onPress={() => router.push("/intelligence" as never)} activeOpacity={0.88}>
+            <LinearGradient colors={["#4F46E5", "#6366F1", "#818CF8"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.aiCard}>
+              <View style={s.aiShine} />
+              <View style={s.aiIconBox}>
+                <Text style={{ fontSize: 26 }}>🧠</Text>
+              </View>
+              <View style={{ flex: 1, gap: 3 }}>
+                <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 17 }}>Health Intelligence</Text>
+                <Text style={{ color: "rgba(255,255,255,0.82)", fontFamily: "Inter_400Regular", fontSize: 12.5 }}>
+                  Disease risk prediction & weekly diet chart
+                </Text>
+                <View style={{ flexDirection: "row", marginTop: 5, gap: 6 }}>
+                  <View style={s.aiBadge}>
+                    <Text style={{ color: "#FFF", fontSize: 10, fontFamily: "Inter_700Bold" }}>🔬 DeepSeek AI</Text>
+                  </View>
+                  <View style={[s.aiBadge, { backgroundColor: "rgba(255,255,255,0.15)" }]}>
+                    <Text style={{ color: "#FFF", fontSize: 10, fontFamily: "Inter_700Bold" }}>Monthly Predictions</Text>
+                  </View>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+
         {/* ── DAILY TIP (glass) ── */}
         <Animated.View style={[s.tipCard, { opacity: fadeAnim }]}>
           <LinearGradient colors={["#E0F7FA", "#E8F7FB"]} style={s.tipInner}>

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable } from "@workspace/db";
 import { eq, and, avg, desc, ilike, gte, sql } from "drizzle-orm";
 import { requireBusinessAuth } from "../../middlewares/business-auth";
+import { requireAuth } from "../../middlewares/user-auth";
 import { signBusinessToken } from "../../lib/jwt";
 import type { BusinessRequest } from "../../middlewares/business-auth";
 import crypto from "crypto";

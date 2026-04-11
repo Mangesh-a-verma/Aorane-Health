@@ -8,6 +8,7 @@ import {
 
 const PROVIDERS = [
   { value: "google", label: "Google (Gemini)" },
+  { value: "nvidia", label: "NVIDIA (DeepSeek V3)" },
   { value: "openai", label: "OpenAI (GPT)" },
   { value: "anthropic", label: "Anthropic (Claude)" },
   { value: "openrouter", label: "OpenRouter" },
@@ -18,6 +19,12 @@ const MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]> = {
     { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
     { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
     { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
+  ],
+  nvidia: [
+    { value: "deepseek-ai/deepseek-v3.2", label: "DeepSeek V3.2" },
+    { value: "deepseek-ai/deepseek-r1", label: "DeepSeek R1 (Reasoning)" },
+    { value: "meta/llama-3.1-70b-instruct", label: "Llama 3.1 70B" },
+    { value: "mistralai/mixtral-8x7b-instruct-v0.1", label: "Mixtral 8x7B" },
   ],
   openai: [
     { value: "gpt-4o", label: "GPT-4o" },
@@ -46,12 +53,15 @@ const DEFAULT_FEATURES: AiConfig[] = [
   { id: null, feature: "blood_ai", label: "Blood Report Analysis", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true },
   { id: null, feature: "meal_planner", label: "AI Meal Planner", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true },
   { id: null, feature: "health_suggestions", label: "Daily Health Suggestions", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true },
+  { id: null, feature: "health_prediction", label: "Monthly Disease Risk Prediction", provider: "nvidia", model: "deepseek-ai/deepseek-v3.2", apiKey: null, systemPrompt: null, isEnabled: true },
+  { id: null, feature: "weekly_diet_chart", label: "Weekly AI Diet Chart", provider: "nvidia", model: "deepseek-ai/deepseek-v3.2", apiKey: null, systemPrompt: null, isEnabled: true },
 ];
 
 const FEATURE_COLORS: Record<string, string> = {
   food_ai: "#10B981", medical_ai: "#0077B6", smart_scan: "#8B5CF6",
   water_ai: "#3B82F6", stress_ai: "#F59E0B", blood_ai: "#EF4444",
   meal_planner: "#EC4899", health_suggestions: "#1B998B",
+  health_prediction: "#6366F1", weekly_diet_chart: "#0EA5E9",
 };
 
 function FeatureCard({
@@ -330,13 +340,24 @@ export default function AIConfig() {
         {/* Global key notice */}
         <div className="flex items-start gap-3 bg-[#6366F1]/5 border border-[#6366F1]/20 rounded-xl p-4 text-sm text-foreground/80">
           <Info size={15} className="text-[#6366F1] shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium text-foreground mb-1">Global AI Key Setup</p>
-            <p className="text-xs text-muted-foreground">
-              Set <code className="font-mono bg-muted px-1.5 py-0.5 rounded text-[11px]">GOOGLE_GEMINI_API_KEY</code> in the API server environment for Gemini (default).
-              Per-feature API key overrides in each card take priority over the global key.
-              All AI features share the same infrastructure — only the model and prompt differ per feature.
-            </p>
+          <div className="space-y-2">
+            <p className="font-medium text-foreground">API Key Setup Guide</p>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Gemini (Google):</span>{" "}
+                Set <code className="font-mono bg-muted px-1.5 py-0.5 rounded text-[11px]">GOOGLE_GEMINI_API_KEY</code> in the API server environment.
+                Used for Food AI, Smart Scan, Medical AI, and daily suggestions.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">NVIDIA (DeepSeek):</span>{" "}
+                Set <code className="font-mono bg-muted px-1.5 py-0.5 rounded text-[11px]">NVIDIA_API_KEY</code> in the API server environment.
+                Used for monthly disease risk prediction and weekly diet chart generation.
+                Get your key at <span className="font-mono text-[11px]">build.nvidia.com</span>.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Per-feature API key overrides in each card above take priority over the global keys.
+              </p>
+            </div>
           </div>
         </div>
       </div>
