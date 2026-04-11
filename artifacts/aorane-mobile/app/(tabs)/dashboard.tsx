@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { HealthRing } from "@/components/HealthRing";
 import { WaterTracker } from "@/components/WaterTracker";
+import { AdsSlider } from "@/components/AdsSlider";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import * as Haptics from "expo-haptics";
@@ -286,6 +287,11 @@ export default function DashboardScreen() {
         {/* ── WATER TRACKER ── */}
         <Animated.View style={[s.sectionCard, { opacity: fadeAnim }]}>
           <WaterTracker current={water.current} goal={water.goal} onAdd={handleAddWater} />
+        </Animated.View>
+
+        {/* ── ADS SLIDER — Paytm style, mid-dashboard ── */}
+        <Animated.View style={{ opacity: fadeAnim }}>
+          <AdsSlider />
         </Animated.View>
 
         {/* ── DAILY TIP ── */}

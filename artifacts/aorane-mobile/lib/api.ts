@@ -312,6 +312,14 @@ export const api = {
     request<{ success: boolean; message: string }>("POST", "/auth/pin/set", { pin }),
   loginWithPIN: (phone: string, pin: string) =>
     request<{ accessToken: string; refreshToken: string; user: Record<string, unknown> }>("POST", "/auth/pin/login", { phone, pin }, false),
+
+  // ── Ads ───────────────────────────────────────────────────
+  getActiveAds: (screen: string = "dashboard") =>
+    request<{ ads: Array<Record<string, unknown>> }>("GET", `/ads/active?screen=${screen}`),
+  recordAdImpression: (adId: string) =>
+    request<{ success: boolean }>("POST", `/ads/${adId}/impression`, { platform: "mobile" }),
+  recordAdClick: (adId: string) =>
+    request<{ success: boolean; linkUrl: string | null }>("POST", `/ads/${adId}/click`, {}),
 };
 
 interface MealItem {

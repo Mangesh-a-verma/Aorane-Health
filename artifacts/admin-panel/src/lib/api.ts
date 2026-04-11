@@ -51,6 +51,30 @@ export type AuditLog = {
   id: string; adminId: string; action: string; targetType: string; targetId: string;
   details: Record<string, unknown> | null; createdAt: string;
 };
+export type AdCampaign = {
+  id: string;
+  adType: "google" | "direct";
+  title: string;
+  advertiserName: string | null;
+  bannerUrl: string | null;
+  linkUrl: string | null;
+  targetPlans: string[] | null;
+  targetCities: string[] | null;
+  targetAgeMin: number | null;
+  targetAgeMax: number | null;
+  status: "active" | "paused" | "expired" | "pending";
+  priority: number;
+  dealAmount: string | null;
+  impressionCount: number;
+  clickCount: number;
+  startsAt: string | null;
+  endsAt: string | null;
+  slidePosition: number | null;
+  targetScreen: string | null;
+  googleAdCode: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export const api = {
   login: (email: string, password: string) =>
@@ -93,4 +117,10 @@ export const api = {
 
   analytics: () => req<{ totalUsers: number; totalOrganizations: number; activeSubscriptions: number; totalRevenue: number; planBreakdown: Array<{ plan: string; count: number }> }>("/admin/analytics"),
   platformCosts: () => req<{ costs: Array<{ category: string; monthlyUSD: number; description: string }>; totalMonthlyUSD: number; totalMonthlyINR: number; userCount: number; costPerUser: number }>("/admin/platform-costs"),
+
+  ads: () => req<{ ads: AdCampaign[] }>("/admin/ads"),
+  createAd: (data: Partial<AdCampaign>) => req<{ ad: AdCampaign }>("/admin/ads", { method: "POST", body: JSON.stringify(data) }),
+  updateAd: (id: string, data: Partial<AdCampaign>) => req<{ ad: AdCampaign }>(`/admin/ads/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteAd: (id: string) => req<{ success: boolean }>(`/admin/ads/${id}`, { method: "DELETE" }),
+  toggleAd: (id: string) => req<{ status: string }>(`/admin/ads/${id}/toggle`, { method: "PATCH" }),
 };

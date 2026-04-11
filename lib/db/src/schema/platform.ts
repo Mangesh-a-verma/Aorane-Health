@@ -91,6 +91,11 @@ export const adCampaignsTable = pgTable("ad_campaigns", {
   clickCount: integer("click_count").notNull().default(0),
   startsAt: timestamp("starts_at", { withTimezone: true }),
   endsAt: timestamp("ends_at", { withTimezone: true }),
+  // ── Slider control fields ──────────────────────────────────────────
+  slidePosition: integer("slide_position").default(1),      // 1-5: kaunsa slot
+  targetScreen: text("target_screen").default("dashboard"), // dashboard | all
+  googleAdCode: text("google_ad_code"),                     // Google AdSense HTML (type=google)
+  // ──────────────────────────────────────────────────────────────────
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
