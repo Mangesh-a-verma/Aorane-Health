@@ -3,6 +3,11 @@
   "buildCommand": "npx pnpm@10 --filter @workspace/admin-panel build",
   "outputDirectory": "dist/public",
   "framework": null,
+  "build": {
+    "env": {
+      "VITE_API_URL": "https://aorane.onrender.com"
+    }
+  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
