@@ -86,7 +86,11 @@ const server = http.createServer((req, res) => {
       }
       const ext = path.extname(fp).toLowerCase();
       const mime = MIME[ext] || "application/octet-stream";
-      res.writeHead(200, { "Content-Type": mime, "Cache-Control": "no-cache" });
+      // Strong no-cache to prevent stale bundle serving
+      const cacheHeader = ext === ".html"
+        ? "no-store, no-cache, must-revalidate, max-age=0"
+        : "no-store, max-age=0";
+      res.writeHead(200, { "Content-Type": mime, "Cache-Control": cacheHeader, "Pragma": "no-cache", "Expires": "0" });
       fs.createReadStream(fp).pipe(res);
     } catch {
       const indexPath = path.join(DIST_DIR, "index.html");
