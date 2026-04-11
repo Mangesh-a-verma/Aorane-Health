@@ -27,6 +27,15 @@ Admin Panel      ──┘         ↑ Redis Cache (Upstash)
 - **Storage**: Supabase
 - **Cache**: In-memory (production: Upstash Redis)
 
+## Completed Features (Latest Session)
+- **Daily AI Suggestions System**: Gemini-powered Hinglish daily coach — food suggestions, exercise plan, water tracking, medical warnings, target progress, motivation message — cached per user per day
+- **Notification Settings**: Full UI + backend — medicine, water, food, period, AI suggestion toggles; calorie + water goals; wake up / bed time settings
+- **Dashboard AI Coach Widget**: Gradient banner card → links to full suggestions screen
+- **Profile → Notifications**: Updated to link to notification-settings screen (was "Coming Soon")
+- **New Screens**: `suggestions.tsx` (full Daily AI Coach), `notification-settings.tsx` (all reminder toggles)
+- **New API Routes**: `GET/POST /suggestions/daily|refresh`, `GET/PUT /notifications/settings`
+- **Schema Additions**: `dailySuggestionsTable` (daily AI cache), 8 new columns in `userPreferencesTable` — pushed to Supabase
+
 ## Current Status
 
 ### ✅ Phase 1: Database — COMPLETE

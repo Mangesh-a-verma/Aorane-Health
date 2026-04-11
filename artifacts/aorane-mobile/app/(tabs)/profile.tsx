@@ -214,7 +214,7 @@ export default function ProfileScreen() {
           </View>
           {[
             { icon: "diamond-outline" as const, label: "Upgrade Plan", color: "#7C3AED", grad: ["#7C3AED","#0077B6"] as [string,string], onPress: () => router.push("/upgrade" as never) },
-            { icon: "notifications-outline" as const, label: "Notifications", color: "#0077B6", grad: ["#0077B6","#1B998B"] as [string,string], onPress: () => Alert.alert("Coming Soon") },
+            { icon: "notifications-outline" as const, label: "Notifications & Reminders", color: "#0077B6", grad: ["#0077B6","#1B998B"] as [string,string], onPress: () => router.push("/notification-settings" as never) },
             { icon: "help-circle-outline" as const, label: "Help & Support", color: "#1B998B", grad: ["#1B998B","#059669"] as [string,string], onPress: () => Alert.alert("Coming Soon") },
           ].map((item, idx, arr) => (
             <TouchableOpacity key={item.label} onPress={item.onPress}

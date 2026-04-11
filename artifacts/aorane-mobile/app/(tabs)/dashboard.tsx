@@ -10,6 +10,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { HealthRing } from "@/components/HealthRing";
 import { WaterTracker } from "@/components/WaterTracker";
 import { AdsSlider } from "@/components/AdsSlider";
+import { router } from "expo-router";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import * as Haptics from "expo-haptics";
@@ -292,6 +293,27 @@ export default function DashboardScreen() {
         {/* ── ADS SLIDER — Paytm style, mid-dashboard ── */}
         <Animated.View style={{ opacity: fadeAnim }}>
           <AdsSlider />
+        </Animated.View>
+
+        {/* ── AI COACH WIDGET ── */}
+        <Animated.View style={{ opacity: fadeAnim }}>
+          <TouchableOpacity onPress={() => router.push("/suggestions" as never)} activeOpacity={0.88}>
+            <LinearGradient colors={["#0077B6", "#00B896"]} style={{ borderRadius: 20, padding: 18, flexDirection: "row", alignItems: "center", gap: 14 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 28 }}>🤖</Text>
+              </View>
+              <View style={{ flex: 1, gap: 3 }}>
+                <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 17 }}>Daily AI Coach</Text>
+                <Text style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", fontSize: 13 }}>Aaj ke liye personalized food, exercise aur health suggestions</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
+                  <View style={{ backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                    <Text style={{ color: "#FFF", fontSize: 10, fontFamily: "Inter_700Bold" }}>✨ Hinglish AI • Personalized</Text>
+                  </View>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+            </LinearGradient>
+          </TouchableOpacity>
         </Animated.View>
 
         {/* ── DAILY TIP ── */}

@@ -313,6 +313,16 @@ export const api = {
   loginWithPIN: (phone: string, pin: string) =>
     request<{ accessToken: string; refreshToken: string; user: Record<string, unknown> }>("POST", "/auth/pin/login", { phone, pin }, false),
 
+  // ── Suggestions & Notification Settings ───────────────────
+  getDailySuggestions: () =>
+    request<{ suggestions: Record<string, unknown>; fromCache: boolean; generatedAt: string; date: string }>("GET", "/suggestions/daily"),
+  refreshSuggestions: () =>
+    request<{ success: boolean }>("POST", "/suggestions/refresh", {}),
+  getNotificationSettings: () =>
+    request<{ settings: Record<string, unknown> }>("GET", "/notifications/settings"),
+  updateNotificationSettings: (settings: Record<string, unknown>) =>
+    request<{ success: boolean }>("PUT", "/notifications/settings", settings),
+
   // ── Ads ───────────────────────────────────────────────────
   getActiveAds: (screen: string = "dashboard") =>
     request<{ ads: Array<Record<string, unknown>> }>("GET", `/ads/active?screen=${screen}`),

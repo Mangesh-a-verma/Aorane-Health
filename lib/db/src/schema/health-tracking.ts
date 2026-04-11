@@ -158,6 +158,21 @@ export const insertMedicineScheduleSchema = createInsertSchema(medicineSchedules
 export const insertMedicineLogSchema = createInsertSchema(medicineLogsTable).omit({ id: true, createdAt: true });
 export const insertStressLogSchema = createInsertSchema(stressLogsTable).omit({ id: true, createdAt: true });
 
+// ── Daily AI Suggestions Cache (per user per day) ────────────────────────────
+export const dailySuggestionsTable = pgTable("daily_suggestions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  date: text("date").notNull(),                          // YYYY-MM-DD
+  suggestionsJson: jsonb("suggestions_json").notNull(),  // Full AI response
+  calorieGoalUsed: integer("calorie_goal_used"),
+  isAiGenerated: boolean("is_ai_generated").notNull().default(true),
+  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  userDateUniq: { columns: [t.userId, t.date] },
+}));
+
 export type ExerciseLog = typeof exerciseLogsTable.$inferSelect;
 export type WaterLog = typeof waterLogsTable.$inferSelect;
 export type MedicineSchedule = typeof medicineSchedulesTable.$inferSelect;
@@ -166,3 +181,4 @@ export type StressLog = typeof stressLogsTable.$inferSelect;
 export type PeriodLog = typeof periodLogsTable.$inferSelect;
 export type MedicalReport = typeof medicalReportsTable.$inferSelect;
 export type DailyHealthScore = typeof dailyHealthScoresTable.$inferSelect;
+export type DailySuggestion = typeof dailySuggestionsTable.$inferSelect;
