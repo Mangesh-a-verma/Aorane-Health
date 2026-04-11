@@ -89,7 +89,7 @@ export default function MedicineScreen() {
   }, []);
 
   const handleAdd = async () => {
-    if (!medicineName.trim()) { Alert.alert("Required", "Medicine name enter karein"); return; }
+    if (!medicineName.trim()) { Alert.alert("Required", "Please enter medicine name"); return; }
     setIsSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
@@ -117,10 +117,10 @@ export default function MedicineScreen() {
             mealTiming,
           });
           setNotifPermission(true);
-          Alert.alert("✅ Reminder Set!", `Roz ${reminderTime} baje ${medicineName.trim()} ka reminder aayega`, [{ text: "Theek hai" }]);
+          Alert.alert("✅ Reminder Set!", `Daily reminder set for ${medicineName.trim()} at ${reminderTime}`, [{ text: "OK" }]);
         }
       }
-    } catch { Alert.alert("Error", "Medicine schedule save nahi hua"); }
+    } catch { Alert.alert("Error", "Could not save medicine schedule. Please try again."); }
     setIsSubmitting(false);
   };
 
@@ -130,11 +130,11 @@ export default function MedicineScreen() {
       let result;
       if (fromCamera) {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
-        if (!perm.granted) { Alert.alert("Permission", "Camera permission chahiye"); return; }
+        if (!perm.granted) { Alert.alert("Permission", "Camera permission is required"); return; }
         result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.8, base64: true });
       } else {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!perm.granted) { Alert.alert("Permission", "Gallery permission chahiye"); return; }
+        if (!perm.granted) { Alert.alert("Permission", "Gallery permission is required"); return; }
         result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8, base64: true });
       }
       if (!result.canceled && result.assets[0]) {
@@ -144,7 +144,7 @@ export default function MedicineScreen() {
           await analyseReport(result.assets[0].base64, result.assets[0].mimeType || "image/jpeg");
         }
       }
-    } catch { Alert.alert("Error", "Image select nahi hua"); }
+    } catch { Alert.alert("Error", "Could not select image. Please try again."); }
   };
 
   const analyseReport = async (base64: string, mimeType: string) => {
@@ -154,7 +154,7 @@ export default function MedicineScreen() {
       const res = await api.scanMedicalReport({ imageBase64: base64, mimeType });
       setScanResult(res.analysis);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch { Alert.alert("AI Error", "Report analysis fail hua. Image clear hai? Dobara try karein."); }
+    } catch { Alert.alert("AI Error", "Report analysis failed. Please ensure the image is clear and try again."); }
     setIsScanning(false);
   };
 
@@ -208,8 +208,8 @@ export default function MedicineScreen() {
           <LinearGradient colors={["rgba(245,158,11,0.15)","rgba(239,68,68,0.1)"]} style={{ borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "rgba(245,158,11,0.3)" }}>
             <Ionicons name="notifications-off-outline" size={18} color="#F59E0B" />
             <View style={{ flex: 1 }}>
-              <Text style={{ color: isDark ? "#FBBF24" : "#B45309", fontSize: 13, fontFamily: "Inter_600SemiBold" }}>Reminders band hain</Text>
-              <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontSize: 11, fontFamily: "Inter_400Regular" }}>Tap karein notification allow karne ke liye</Text>
+              <Text style={{ color: isDark ? "#FBBF24" : "#B45309", fontSize: 13, fontFamily: "Inter_600SemiBold" }}>Reminders are off</Text>
+              <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontSize: 11, fontFamily: "Inter_400Regular" }}>Tap to allow notifications</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#F59E0B" />
           </LinearGradient>
@@ -225,7 +225,7 @@ export default function MedicineScreen() {
             </View>
             <View>
               <Text style={[styles.scanBannerTitle, { fontFamily: "Inter_700Bold" }]}>Medical Report Scan</Text>
-              <Text style={[styles.scanBannerSub, { fontFamily: "Inter_400Regular" }]}>AI se blood test, thyroid report analyse karein</Text>
+              <Text style={[styles.scanBannerSub, { fontFamily: "Inter_400Regular" }]}>Analyse blood test, thyroid & other reports with AI</Text>
             </View>
           </View>
           <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
@@ -239,9 +239,9 @@ export default function MedicineScreen() {
           <LinearGradient colors={["rgba(124,58,237,0.25)","rgba(0,119,182,0.15)"]} style={styles.emptyIconBg}>
             <Ionicons name="medkit-outline" size={44} color={isDark ? "#A78BFA" : "#7C3AED"} />
           </LinearGradient>
-          <Text style={[styles.emptyTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Koi medicine schedule nahi</Text>
+          <Text style={[styles.emptyTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>No medicine schedule added</Text>
           <Text style={[styles.emptyText, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular", textAlign: "center" }]}>
-            Apni medicines add karein aur reminder set karein
+            Add your medicines and set daily reminders
           </Text>
           <TouchableOpacity onPress={() => setShowModal(true)} activeOpacity={0.85}>
             <LinearGradient colors={["#7C3AED","#0077B6"]} style={styles.emptyBtn}>
@@ -345,7 +345,7 @@ export default function MedicineScreen() {
                 {!isScanning && !scanResult && (
                   <TouchableOpacity onPress={() => { setSelectedImage(null); setScanResult(null); }} style={[styles.changePhotoBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)" }]}>
                     <Ionicons name="refresh-outline" size={16} color={isDark ? "#F0F8FF" : "#0A1628"} />
-                    <Text style={[styles.changePhotoText, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_500Medium" }]}>Dobara try karein</Text>
+                    <Text style={[styles.changePhotoText, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_500Medium" }]}>Try again</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -358,10 +358,10 @@ export default function MedicineScreen() {
                   <LinearGradient colors={["rgba(124,58,237,0.25)","rgba(0,119,182,0.15)"]} style={styles.scanningIconBg}>
                     <Ionicons name="scan-outline" size={32} color={isDark ? "#A78BFA" : "#7C3AED"} />
                   </LinearGradient>
-                  <Text style={[styles.scanningTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>AI Report Analyse ho raha hai...</Text>
+                  <Text style={[styles.scanningTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>AI is analysing your report...</Text>
                   <ActivityIndicator color={isDark ? "#A78BFA" : "#7C3AED"} size="large" style={{ marginTop: 8 }} />
                   <Text style={[styles.scanningText, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>
-                    Values check ho rahi hain, normal ranges compare ho rahi hain...
+                    Checking values and comparing against normal ranges...
                   </Text>
                 </View>
               </GlassCard>
@@ -486,7 +486,7 @@ export default function MedicineScreen() {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       await exportMedicalReportPDF(scanResult);
                     } catch {
-                      Alert.alert("Error", "PDF export nahi hua");
+                      Alert.alert("Error", "Could not export PDF. Please try again.");
                     }
                   }}
                   activeOpacity={0.85}
@@ -501,7 +501,7 @@ export default function MedicineScreen() {
                 {/* Retry button */}
                 <TouchableOpacity onPress={() => { setSelectedImage(null); setScanResult(null); }} style={[styles.retryWrap, { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)", borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)" }]}>
                   <Ionicons name="camera-outline" size={18} color={isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)"} />
-                  <Text style={[styles.retryText, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>Doosra report scan karein</Text>
+                  <Text style={[styles.retryText, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>Scan another report</Text>
                 </TouchableOpacity>
               </>
             )}

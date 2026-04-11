@@ -97,14 +97,14 @@ export default function ExerciseScreen() {
   }, [selectedExercise, duration, intensity]);
 
   const handleAdd = async () => {
-    if (!selectedExercise || !duration) { Alert.alert("Required", "Exercise aur duration dono chahiye"); return; }
+    if (!selectedExercise || !duration) { Alert.alert("Required", "Please select exercise type and duration"); return; }
     setIsSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await api.logExercise({ exerciseType: selectedExercise, durationMinutes: parseInt(duration), intensity });
       setShowModal(false); setSelectedExercise(""); setDuration(""); setEstimate(null);
       await loadLogs(); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch { Alert.alert("Error", "Exercise log nahi hua"); }
+    } catch { Alert.alert("Error", "Could not log exercise. Please try again."); }
     setIsSubmitting(false);
   };
 
@@ -170,7 +170,7 @@ export default function ExerciseScreen() {
           <LinearGradient colors={["rgba(27,153,139,0.2)","rgba(0,119,182,0.12)"]} style={styles.emptyIconBg}>
             <MaterialCommunityIcons name="run" size={42} color={isDark ? "#2DD4BF" : "#1B998B"} />
           </LinearGradient>
-          <Text style={[styles.emptyTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Aaj ka exercise log karein</Text>
+          <Text style={[styles.emptyTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Log your exercise for today</Text>
           <Text style={[styles.emptyText, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>
             Formula: MET × Weight × Time × Gender
           </Text>

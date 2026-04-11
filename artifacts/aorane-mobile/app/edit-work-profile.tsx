@@ -93,7 +93,7 @@ export default function EditWorkProfileScreen() {
 
   const handleSave = async () => {
     if (!workProfile) {
-      Alert.alert("Zaroori", "Apna work profile select karo");
+      Alert.alert("Required", "Please select your work profile");
       return;
     }
     setSaving(true);
@@ -104,11 +104,11 @@ export default function EditWorkProfileScreen() {
       await api.refreshSuggestions().catch(() => {});
       Alert.alert(
         "Saved! ✅",
-        "Work profile save ho gaya! AI Coach ab aapke kaam ke hisaab se suggestions dega.",
+        "Work profile saved! AI Coach will now give suggestions based on your work type.",
         [{ text: "OK", onPress: () => router.back() }]
       );
     } catch {
-      Alert.alert("Error", "Save nahi hua. Dobara try karo.");
+      Alert.alert("Error", "Could not save. Please try again.");
     }
     setSaving(false);
   };
@@ -148,7 +148,7 @@ export default function EditWorkProfileScreen() {
         {/* Info Banner */}
         <View style={{ marginTop: 12, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 12, padding: 12 }}>
           <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 13, lineHeight: 19 }}>
-            🎯 Army waale ko Office waale se zyada calories chahiye — 1.725× vs 1.2× BMR. Sahi profile select karne se AORANE exact calculation dega!
+            🎯 A field worker needs more calories than an office worker — 1.725× vs 1.2× BMR. Select the right profile for exact AORANE calculations!
           </Text>
         </View>
       </LinearGradient>

@@ -46,7 +46,7 @@ function CaloriePie({ eaten, goal }: { eaten: number; goal: number }) {
       <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: over ? "#FEE2E2" : "#E0F2FE", alignItems: "center", justifyContent: "center", borderWidth: 5, borderColor: over ? C.red : C.primary }}>
         <Text style={{ color: over ? C.red : C.primary, fontSize: 13, fontFamily: "Inter_700Bold" }}>{Math.round(pct)}%</Text>
       </View>
-      <Text style={{ color: C.text, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>{remaining} kcal baaki</Text>
+      <Text style={{ color: C.text, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>{remaining} kcal remaining</Text>
     </View>
   );
 }
@@ -142,7 +142,7 @@ export default function SuggestionsScreen() {
       setError(null);
       Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
     } catch {
-      setError("Suggestions load nahi hue. Internet check karo.");
+      setError("Could not load suggestions. Please check your internet connection.");
     }
     setLoading(false);
     setRefreshing(false);
@@ -165,15 +165,15 @@ export default function SuggestionsScreen() {
   const medicalWarnings = (s?.medicalWarnings as MedicalWarning[]) || [];
   const motivation = s?.motivation as string || "";
   const targetProgress = s?.targetProgress as TargetProgress | undefined;
-  const greeting = s?.greeting as string || "Namaste! 🙏";
+  const greeting = s?.greeting as string || "Hello! 🙏";
 
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center", gap: 16 }}>
         <LinearGradient colors={["#E8F7FB", "#F0FAF6"]} style={StyleSheet.absoluteFill} />
         <ActivityIndicator size="large" color={C.primary} />
-        <Text style={{ color: C.primary, fontFamily: "Inter_600SemiBold", fontSize: 15 }}>AI Coach taiyaar ho raha hai... 🤖</Text>
-        <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13 }}>Aapki profile se personalized suggestions ban rahi hain</Text>
+        <Text style={{ color: C.primary, fontFamily: "Inter_600SemiBold", fontSize: 15 }}>AI Coach is getting ready... 🤖</Text>
+        <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13 }}>Building personalised suggestions from your profile</Text>
       </View>
     );
   }
@@ -189,7 +189,7 @@ export default function SuggestionsScreen() {
           <View style={{ flex: 1 }}>
             <Text style={{ color: "#FFF", fontSize: 21, fontFamily: "Inter_700Bold" }}>🤖 Daily AI Coach</Text>
             <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 12, fontFamily: "Inter_400Regular" }}>
-              {fromCache ? "Aaj ka personalized plan" : "Abhi generate hua ✨"} · Har roz naya
+              {fromCache ? "Today's personalized plan" : "Just generated ✨"} · Updated daily
             </Text>
           </View>
           <TouchableOpacity onPress={handleRefresh} style={styles.refreshBtn}>
@@ -220,14 +220,14 @@ export default function SuggestionsScreen() {
         {/* ── CALORIE STATUS ── */}
         {calorieStatus && (
           <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-            <SectionHeader icon="🔥" title="Aaj ka Calorie Status" color={C.orange} />
+            <SectionHeader icon="🔥" title="Today's Calorie Status" color={C.orange} />
             <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
               <CaloriePie eaten={calorieStatus.eaten} goal={calorieStatus.goal} />
               <View style={{ flex: 1, gap: 8 }}>
                 {[
                   { label: "Goal", value: calorieStatus.goal, color: C.primary },
-                  { label: "Khaaya", value: calorieStatus.eaten, color: C.green },
-                  { label: "Baaki", value: calorieStatus.remaining, color: calorieStatus.remaining === 0 ? C.red : C.yellow },
+                  { label: "Eaten", value: calorieStatus.eaten, color: C.green },
+                  { label: "Remaining", value: calorieStatus.remaining, color: calorieStatus.remaining === 0 ? C.red : C.yellow },
                 ].map((item) => (
                   <View key={item.label} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                     <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13 }}>{item.label}</Text>
@@ -286,7 +286,7 @@ export default function SuggestionsScreen() {
         {/* ── WATER ── */}
         {waterReminder && (
           <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-            <SectionHeader icon="💧" title="Paani Tracker" color={C.primary} />
+            <SectionHeader icon="💧" title="Water Tracker" color={C.primary} />
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
               {Array.from({ length: waterReminder.goal }, (_, i) => (
                 <View key={i} style={{ flex: 1, height: 28, borderRadius: 6, backgroundColor: i < waterReminder.current ? "#0077B620" : "#E8F2F8", borderWidth: 1, borderColor: i < waterReminder.current ? C.primary : C.border, alignItems: "center", justifyContent: "center" }}>
@@ -335,13 +335,13 @@ export default function SuggestionsScreen() {
                 <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13, lineHeight: 18, marginBottom: 8 }}>⚠️ {w.warning}</Text>
                 {w.foodsToAvoid?.length > 0 && (
                   <View style={{ backgroundColor: "#FFF5F5", borderRadius: 8, padding: 8, marginBottom: 6 }}>
-                    <Text style={{ color: C.red, fontFamily: "Inter_700Bold", fontSize: 11, marginBottom: 4 }}>❌ Yeh avoid karein:</Text>
+                    <Text style={{ color: C.red, fontFamily: "Inter_700Bold", fontSize: 11, marginBottom: 4 }}>❌ Avoid these:</Text>
                     <Text style={{ color: C.text, fontFamily: "Inter_400Regular", fontSize: 12 }}>{w.foodsToAvoid.join(" · ")}</Text>
                   </View>
                 )}
                 {w.foodsToPrefer?.length > 0 && (
                   <View style={{ backgroundColor: "#F0FFF4", borderRadius: 8, padding: 8 }}>
-                    <Text style={{ color: C.green, fontFamily: "Inter_700Bold", fontSize: 11, marginBottom: 4 }}>✅ Yeh khaayein:</Text>
+                    <Text style={{ color: C.green, fontFamily: "Inter_700Bold", fontSize: 11, marginBottom: 4 }}>✅ Eat these:</Text>
                     <Text style={{ color: C.text, fontFamily: "Inter_400Regular", fontSize: 12 }}>{w.foodsToPrefer.join(" · ")}</Text>
                   </View>
                 )}

@@ -165,7 +165,7 @@ export default function ProfileScreen() {
             ) : (
               <TouchableOpacity onPress={() => router.push("/edit-work-profile" as never)} style={{ backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,119,182,0.06)", borderRadius: 10, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.15)", paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Ionicons name="add-circle-outline" size={14} color={isDark ? "rgba(255,255,255,0.4)" : "#0077B6"} />
-                <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#0077B6", fontFamily: "Inter_500Medium", fontSize: 13 }}>Work Profile add karo</Text>
+                <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#0077B6", fontFamily: "Inter_500Medium", fontSize: 13 }}>Add Work Profile</Text>
               </TouchableOpacity>
             )}
             {profile.activityLevel ? (
@@ -178,7 +178,7 @@ export default function ProfileScreen() {
             ) : null}
           </View>
           <Text style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)", fontFamily: "Inter_400Regular", fontSize: 11, lineHeight: 16 }}>
-            💡 Work profile se AI aapki calorie needs better calculate karta hai — Army/Police ke liye zyada, Office job ke liye kam
+            💡 Work profile helps AI calculate your exact calorie needs — Field workers need more, office jobs need less
           </Text>
         </GlassCard>
 
@@ -196,9 +196,9 @@ export default function ProfileScreen() {
           {[
             { emoji: "🪪", label: "Health Scorecard (AORANE ID)", desc: "ATM card style health ID + QR code", route: "/scorecard", grad: ["#0077B6","#023E8A"] as [string,string] },
             { emoji: "⌚", label: "Smart Watch & Wearables", desc: "Google Fit, Smart Band, steps, heart rate, SpO2", route: "/wearable", grad: ["#34A853","#1A73E8"] as [string,string] },
-            { emoji: "💧", label: "Water Tracker", desc: "Roz 8 glass paani track karo", route: "/water", grad: ["#0EA5E9","#0077B6"] as [string,string] },
+            { emoji: "💧", label: "Water Tracker", desc: "Track 8 glasses of water daily", route: "/water", grad: ["#0EA5E9","#0077B6"] as [string,string] },
             { emoji: "🧘", label: "Stress Tracker", desc: "Mood + 5-Pillar analysis + 4-7-8 Breathing", route: "/stress", grad: ["#8B5CF6","#6D28D9"] as [string,string] },
-            { emoji: "👨‍👩‍👧‍👦", label: "Family Health", desc: "Pariwar ki health ek group mein", route: "/family", grad: ["#10B981","#059669"] as [string,string] },
+            { emoji: "👨‍👩‍👧‍👦", label: "Family Health", desc: "Manage whole family health together", route: "/family", grad: ["#10B981","#059669"] as [string,string] },
             { emoji: "🌸", label: "Period Tracker", desc: "Cycle log + AI prediction + symptoms", route: "/period", grad: ["#EC4899","#9333EA"] as [string,string] },
           ].map((item, idx) => (
             <TouchableOpacity key={item.label} onPress={() => router.push(item.route as never)}
@@ -224,7 +224,7 @@ export default function ProfileScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.sectionTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>Privacy Settings</Text>
               <Text style={[styles.sectionSub, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>
-                Aap decide karein kya share karna hai
+                You decide what to share
               </Text>
             </View>
           </View>

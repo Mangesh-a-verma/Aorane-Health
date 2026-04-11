@@ -89,7 +89,7 @@ function useVoice(onResult: (text: string) => void) {
     const win = window as unknown as Record<string, unknown>;
     const Ctor = (win["SpeechRecognition"] || win["webkitSpeechRecognition"]) as SpeechRecognitionConstructor | undefined;
     if (!Ctor) {
-      Alert.alert("Voice not supported", "Apna Chrome browser update karo ya text type karo");
+      Alert.alert("Voice not supported", "Please update your browser or type the food name");
       return;
     }
     const rec = new Ctor();
@@ -230,7 +230,7 @@ export default function FoodScreen() {
   const pickPhoto = async () => {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) { Alert.alert("Permission", "Gallery access chahiye"); return; }
+      if (!perm.granted) { Alert.alert("Permission", "Gallery access is required"); return; }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true, quality: 0.7, base64: true,
@@ -238,13 +238,13 @@ export default function FoodScreen() {
       if (!result.canceled && result.assets[0]?.base64) {
         await runScan({ imageBase64: result.assets[0].base64, mimeType: "image/jpeg" });
       }
-    } catch { Alert.alert("Error", "Photo select nahi hua"); }
+    } catch { Alert.alert("Error", "Could not select photo. Please try again."); }
   };
 
   const takePhoto = async () => {
     try {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) { Alert.alert("Permission", "Camera access chahiye"); return; }
+      if (!perm.granted) { Alert.alert("Permission", "Camera access is required"); return; }
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true, quality: 0.7, base64: true,
       });
@@ -287,7 +287,7 @@ export default function FoodScreen() {
       await loadLogs();
       setFavsLoaded(false); // refresh favs next time
     } catch (e: unknown) {
-      Alert.alert("Error", (e as Error).message || "Log nahi hua");
+      Alert.alert("Error", (e as Error).message || "Could not log food. Please try again.");
     }
     setSubmitting(false);
   };
@@ -300,7 +300,7 @@ export default function FoodScreen() {
           await api.deleteFoodLog(id);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           await loadLogs();
-        } catch { Alert.alert("Error", "Delete nahi hua"); }
+        } catch { Alert.alert("Error", "Could not delete entry. Please try again."); }
       }},
     ]);
   };
@@ -403,7 +403,7 @@ export default function FoodScreen() {
                   <TouchableOpacity onPress={() => openModal(mt)} activeOpacity={0.8}
                     style={{ borderWidth: 1.5, borderColor: C.border, borderStyle: "dashed", borderRadius: 14, padding: 14, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#fff8" }}>
                     <Ionicons name="add-circle-outline" size={18} color={ml.color} />
-                    <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13 }}>Food add karein</Text>
+                    <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13 }}>Add food</Text>
                   </TouchableOpacity>
                 ) : (
                   <Card>
@@ -424,7 +424,7 @@ export default function FoodScreen() {
                     ))}
                     <TouchableOpacity onPress={() => openModal(mt)} style={{ flexDirection: "row", alignItems: "center", gap: 6, padding: 12, borderTopWidth: 1, borderTopColor: C.border }}>
                       <Ionicons name="add-circle-outline" size={16} color={ml.color} />
-                      <Text style={{ color: ml.color, fontSize: 12, fontFamily: "Inter_500Medium" }}>Aur add karein</Text>
+                      <Text style={{ color: ml.color, fontSize: 12, fontFamily: "Inter_500Medium" }}>Add more</Text>
                     </TouchableOpacity>
                   </Card>
                 )}
@@ -581,11 +581,11 @@ export default function FoodScreen() {
                   <LinearGradient colors={[C.purple, C.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     style={{ borderRadius: 14, padding: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
                     <Ionicons name="sparkles" size={18} color="#FFF" />
-                    <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>AI Nutrition Analysis Karo</Text>
+                    <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Analyse Nutrition with AI</Text>
                   </LinearGradient>
                 </TouchableOpacity>
                 <Text style={{ color: C.muted, fontSize: 10, textAlign: "center", marginTop: 8 }}>
-                  AI result save ho jaayega — next time AI call nahi hogi
+                  AI result will be saved — no AI call needed next time
                 </Text>
               </Card>
             )}
@@ -612,7 +612,7 @@ export default function FoodScreen() {
                   {scanMeta.fromHistory && scanMeta.historyCount && (
                     <View style={{ backgroundColor: C.green + "15", borderRadius: 10, padding: 8, marginBottom: 10 }}>
                       <Text style={{ color: C.green, fontSize: 11, fontFamily: "Inter_500Medium" }}>
-                        ✅ Aapne yeh pehle {scanMeta.historyCount} baar khaya hai — history se data aaya, koi AI call nahi hui!
+                        ✅ You've eaten this {scanMeta.historyCount} times before — data loaded from history, no AI call made!
                       </Text>
                     </View>
                   )}

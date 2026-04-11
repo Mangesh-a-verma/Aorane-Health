@@ -132,9 +132,9 @@ export default function NotificationSettingsScreen() {
     try {
       await api.updateNotificationSettings(settings as unknown as Record<string, unknown>);
       setIsDirty(false);
-      Alert.alert("Saved! ✅", "Notification settings save ho gayi!");
+      Alert.alert("Saved! ✅", "Notification settings saved successfully!");
     } catch {
-      Alert.alert("Error", "Settings save nahi hui. Dobara try karo.");
+      Alert.alert("Error", "Could not save settings. Please try again.");
     }
     setSaving(false);
   };
@@ -157,7 +157,7 @@ export default function NotificationSettingsScreen() {
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={{ color: "#FFF", fontSize: 21, fontFamily: "Inter_700Bold" }}>🔔 Notification Settings</Text>
-            <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Reminders aur alerts customize karo</Text>
+            <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Customise your reminders and alerts</Text>
           </View>
         </View>
       </LinearGradient>
@@ -172,7 +172,7 @@ export default function NotificationSettingsScreen() {
           <SettingRow
             icon="🔔" iconBg="#EFF6FF"
             title="All Notifications"
-            subtitle="Sab notifications ek saath on/off karo"
+            subtitle="Turn all notifications on or off at once"
             value={settings.notificationsEnabled}
             onToggle={(v) => update("notificationsEnabled", v)}
           />
@@ -193,7 +193,7 @@ export default function NotificationSettingsScreen() {
           <SettingRow
             icon="💧" iconBg="#EFF9FF"
             title="Water Reminders"
-            subtitle="Paani peene ki reminder"
+            subtitle="Reminder to drink water"
             value={settings.waterReminders}
             onToggle={(v) => update("waterReminders", v)}
             disabled={!settings.notificationsEnabled}
