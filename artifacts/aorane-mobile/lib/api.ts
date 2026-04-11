@@ -34,6 +34,9 @@ export const api = {
   sendOtp: (phone: string) =>
     request<{ success: boolean; message: string }>("POST", "/auth/send-otp", { phone }, false),
 
+  sendWhatsappOtp: (phone: string) =>
+    request<{ success: boolean; message: string; channel: "whatsapp" | "sms" }>("POST", "/auth/send-otp-whatsapp", { phone }, false),
+
   verifyOtp: (phone: string, otp: string, languageCode = "hi") =>
     request<{ accessToken: string; refreshToken: string; isNewUser: boolean; user: { id: string; phone: string; plan: string; languageCode: string } }>(
       "POST", "/auth/verify-otp", { phone, otp, languageCode }, false

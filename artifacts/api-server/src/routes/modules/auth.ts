@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, usersTable, userPreferencesTable, userPrivacySettingsTable, userProfilesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { generateOtp, hashOtp, verifyOtpHash, sendSmsOtp } from "../../lib/otp";
+import { generateOtp, hashOtp, verifyOtpHash, sendSmsOtp, sendWhatsappOtp } from "../../lib/otp";
 import { cache } from "../../lib/redis";
 import { signUserToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -33,6 +33,33 @@ router.post("/auth/send-otp", async (req, res) => {
     res.json({ success: true, message: "OTP sent successfully" });
   } catch (err) {
     res.status(500).json({ error: "Failed to send OTP" });
+  }
+});
+
+router.post("/auth/send-otp-whatsapp", async (req, res) => {
+  try {
+    const { phone } = req.body as { phone: string };
+    if (!phone || !/^\d{10}$/.test(phone)) {
+      res.status(400).json({ error: "Valid 10-digit phone number required" });
+      return;
+    }
+    const rateLimitKey = `otp_req:${phone}`;
+    const attempts = cache.incrementRateLimit(rateLimitKey, 3600);
+    if (attempts > 5) {
+      res.status(429).json({ error: "Too many OTP requests. Try after 1 hour." });
+      return;
+    }
+    const otp = generateOtp(6);
+    const hashed = hashOtp(otp);
+    cache.setOtp(phone, hashed);
+    const result = await sendWhatsappOtp(phone, otp);
+    if (result.fallback) {
+      res.json({ success: true, message: "OTP SMS se bheja gaya (WhatsApp unavailable)", channel: "sms" });
+    } else {
+      res.json({ success: true, message: "OTP WhatsApp pe bheja gaya", channel: "whatsapp" });
+    }
+  } catch {
+    res.status(500).json({ error: "Failed to send WhatsApp OTP" });
   }
 });
 

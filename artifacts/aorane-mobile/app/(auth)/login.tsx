@@ -190,6 +190,22 @@ export default function LoginScreen() {
     } finally { setIsLoading(false); }
   };
 
+  const handleWhatsappOtp = async () => {
+    if (phone.length !== 10) { Alert.alert("Invalid Number", "10-digit mobile number daalo"); return; }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsLoading(true);
+    try {
+      const res = await api.sendWhatsappOtp(phone);
+      const channelMsg = res.channel === "whatsapp"
+        ? "OTP aapke WhatsApp pe bheja gaya ✅"
+        : "OTP SMS pe bheja gaya (WhatsApp unavailable)";
+      Alert.alert("OTP Bheja!", channelMsg, [{ text: "OK" }]);
+      router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang: selectedLang } });
+    } catch (err: unknown) {
+      Alert.alert("Error", err instanceof Error ? err.message : "WhatsApp OTP bhejne mein error");
+    } finally { setIsLoading(false); }
+  };
+
   const handlePinLogin = async () => {
     if (phone.length !== 10) { Alert.alert("Phone Chahiye", "10-digit phone number daalo"); return; }
     if (pin.length < 4) { Alert.alert("PIN Chahiye", "4-6 digit PIN daalo"); return; }
@@ -378,6 +394,27 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
+            {/* WhatsApp OTP button — only for OTP mode */}
+            {loginMode === "otp" && (
+              <TouchableOpacity
+                onPress={handleWhatsappOtp}
+                disabled={isLoading || !isActive}
+                activeOpacity={0.82}
+                style={[s.waBtn, (!isActive || isLoading) && s.waBtnDisabled]}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#25D366" size="small" />
+                ) : (
+                  <>
+                    <View style={s.waIconWrap}>
+                      <Text style={{ fontSize: 16 }}>💬</Text>
+                    </View>
+                    <Text style={[s.waBtnText, (!isActive) && { color: "#A0B4BF" }]}>WhatsApp pe OTP Mangaayein</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+
             {loginMode === "pin" && (
               <Text style={s.pinHint}>PIN set karne ke liye OTP se login karein → Profile → Set PIN</Text>
             )}
@@ -499,6 +536,11 @@ const s = StyleSheet.create({
   divRow: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 16 },
   divLine: { flex: 1, height: 1, backgroundColor: "#EDF2F7" },
   divText: { fontSize: 13, color: "#A0B4BF", fontFamily: "Inter_400Regular" },
+
+  waBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, height: 48, borderRadius: 14, backgroundColor: "#F0FFF4", borderWidth: 1.5, borderColor: "#25D366", marginTop: 10 },
+  waBtnDisabled: { borderColor: "#D1FAE5", backgroundColor: "#F8FFF9" },
+  waIconWrap: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#25D366", alignItems: "center", justifyContent: "center" },
+  waBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#128C7E" },
 
   googleBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, height: 52, borderRadius: 14, backgroundColor: "#FFF", borderWidth: 1.5, borderColor: "#E5E7EB", marginBottom: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 },
   googleIconWrap: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#4285F4", alignItems: "center", justifyContent: "center" },

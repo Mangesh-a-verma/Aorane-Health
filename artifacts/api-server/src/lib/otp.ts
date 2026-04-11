@@ -35,3 +35,28 @@ export async function sendSmsOtp(phone: string, otp: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function sendWhatsappOtp(phone: string, otp: string): Promise<{ success: boolean; fallback?: boolean }> {
+  const apiKey = process.env.FAST2SMS_API_KEY;
+  if (!apiKey) {
+    console.warn("FAST2SMS_API_KEY not set — WhatsApp OTP not sent:", otp);
+    return { success: true };
+  }
+  try {
+    const message = encodeURIComponent(`Aapka AORANE OTP hai: *${otp}*\n\nYeh code 5 minute mein expire ho jaayega.\nKisi ke saath share mat karein.\n\n- Team AORANE`);
+    const url = `https://www.fast2sms.com/dev/wa?authorization=${apiKey}&message=${message}&language=english&route=q&numbers=${phone}`;
+    const res = await fetch(url);
+    const data = await res.json() as { return: boolean; message?: string[] };
+    if (data.return === true) {
+      return { success: true };
+    }
+    // WhatsApp failed — try SMS fallback
+    console.warn("Fast2SMS WhatsApp failed, falling back to SMS:", data.message);
+    const smsSent = await sendSmsOtp(phone, otp);
+    return { success: smsSent, fallback: true };
+  } catch {
+    console.error("WhatsApp OTP error, falling back to SMS for", phone);
+    const smsSent = await sendSmsOtp(phone, otp);
+    return { success: smsSent, fallback: true };
+  }
+}
