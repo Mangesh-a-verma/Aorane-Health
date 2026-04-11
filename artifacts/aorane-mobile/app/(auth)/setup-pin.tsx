@@ -10,6 +10,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/context/AuthContext";
 import { storage } from "@/lib/storage";
 import { api } from "@/lib/api";
+import { useLanguage } from "@/context/LanguageContext";
 
 const { width: W } = Dimensions.get("window");
 const KEYS = ["1","2","3","4","5","6","7","8","9","","0","⌫"];
@@ -31,6 +32,7 @@ try { LocalAuthentication = require("expo-local-authentication"); } catch { }
 export default function SetupPinScreen() {
   const insets = useSafeAreaInsets();
   const { setPinComplete } = useAuth();
+  const { t } = useLanguage();
 
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
@@ -117,7 +119,7 @@ export default function SetupPinScreen() {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           triggerShake();
           setTimeout(() => {
-            Alert.alert("PIN match nahi hua", "Phir se try karein.");
+            Alert.alert(t("pinMismatch"), t("tryAgain"));
             setPin(""); setConfirmPin(""); setPhase("set"); switchPhase();
           }, 400);
         }
@@ -130,8 +132,8 @@ export default function SetupPinScreen() {
     if (biometricEnabled && biometricAvailable && LocalAuthentication) {
       try {
         const result = await LocalAuthentication.authenticateAsync({
-          promptMessage: "AORANE mein login karein",
-          cancelLabel: "Cancel",
+          promptMessage: t("loginWithAorane"),
+          cancelLabel: t("cancel"),
         });
         if (result.success) {
           await storage.setBiometricEnabled(true);
@@ -148,8 +150,8 @@ export default function SetupPinScreen() {
     if (val && biometricAvailable && LocalAuthentication) {
       try {
         const result = await LocalAuthentication.authenticateAsync({
-          promptMessage: "Biometric confirm karein",
-          cancelLabel: "Cancel",
+          promptMessage: t("confirmBiometric"),
+          cancelLabel: t("cancel"),
         });
         if (result.success) {
           setBiometricEnabled(true);
@@ -176,9 +178,9 @@ export default function SetupPinScreen() {
         </View>
         <View style={s.stepLabelRow}>
           <View style={s.stepPill}>
-            <Text style={s.stepPillTxt}>Step 3 of 3</Text>
+            <Text style={s.stepPillTxt}>{t("step3of3")}</Text>
           </View>
-          <Text style={s.stepName}>Security Setup</Text>
+          <Text style={s.stepName}>{t("securitySetup")}</Text>
         </View>
       </View>
 
@@ -200,8 +202,8 @@ export default function SetupPinScreen() {
                 <Ionicons name={biometricType === "face" ? "scan-outline" : "finger-print"} size={22} color="#FFF" />
               </LinearGradient>
               <View style={{ flex: 1 }}>
-                <Text style={s.bioTitle}>{biometricType === "face" ? "Face ID Enable Karein" : "Fingerprint Enable Karein"}</Text>
-                <Text style={s.bioDesc}>Har baar password type karne ki zaroorat nahi</Text>
+                <Text style={s.bioTitle}>{biometricType === "face" ? t("enableFaceId") : t("enableFingerprint")}</Text>
+                <Text style={s.bioDesc}>{t("biometricDesc")}</Text>
               </View>
               <Switch
                 value={biometricEnabled}
@@ -214,8 +216,8 @@ export default function SetupPinScreen() {
         )}
 
         <Animated.View style={{ opacity: phaseAnim, alignItems: "center" }}>
-          <Text style={s.title}>{phase === "set" ? "4-Digit PIN Banayein" : "PIN Confirm Karein"}</Text>
-          <Text style={s.subtitle}>{phase === "set" ? "Quick login ke liye secure PIN" : "Wahi PIN dobara enter karein"}</Text>
+          <Text style={s.title}>{phase === "set" ? t("createPin") : t("confirmPinTitle")}</Text>
+          <Text style={s.subtitle}>{phase === "set" ? t("createPinDesc") : t("confirmPinDesc")}</Text>
         </Animated.View>
 
         <Animated.View style={[s.dotsRow, { transform: [{ translateX: shakeAnim }] }]}>
@@ -254,12 +256,12 @@ export default function SetupPinScreen() {
         </View>
 
         <TouchableOpacity onPress={handleSkip} activeOpacity={0.7} style={s.skipWrap}>
-          <Text style={s.skipTxt}>{biometricEnabled ? "Sirf Biometric Use Karein  →" : "PIN Setup Skip Karein  →"}</Text>
+          <Text style={s.skipTxt}>{biometricEnabled ? t("useBiometricOnly") : t("skipPinSetup")}</Text>
         </TouchableOpacity>
 
         <View style={s.secNote}>
           <Ionicons name="lock-closed" size={12} color={C.primary} />
-          <Text style={s.secTxt}>PIN aapke device pe locally store hota hai — AORANE server pe nahi</Text>
+          <Text style={s.secTxt}>PIN is stored locally on your device — not on AORANE servers</Text>
         </View>
       </Animated.View>
     </View>

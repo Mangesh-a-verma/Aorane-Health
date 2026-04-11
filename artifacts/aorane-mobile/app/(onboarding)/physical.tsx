@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { GlassCard } from "@/components/GlassCard";
 import { GradientBackground } from "@/components/GradientBackground";
 import { api } from "@/lib/api";
+import { useLanguage } from "@/context/LanguageContext";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-", "Unknown"];
 
@@ -41,6 +42,8 @@ export default function OnboardingPhysical() {
   const scheme = useColorScheme();
   const isDark = scheme === "dark";
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
+
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const [bloodGroup, setBloodGroup] = useState("");
@@ -49,6 +52,7 @@ export default function OnboardingPhysical() {
   const bmi = height && weight
     ? (parseFloat(weight) / Math.pow(parseFloat(height) / 100, 2)).toFixed(1)
     : null;
+
   const getBMILabel = (b: string) => {
     const v = parseFloat(b);
     if (v < 18.5) return { label: "Underweight", color: "#F59E0B" };
@@ -69,7 +73,7 @@ export default function OnboardingPhysical() {
       await api.updateOnboardingStep(2);
       router.push("/(onboarding)/health");
     } catch {
-      Alert.alert("Error", "Failed to save. Try again.");
+      Alert.alert(t("error"), "Failed to save. Try again.");
     } finally {
       setIsLoading(false);
     }
@@ -82,9 +86,9 @@ export default function OnboardingPhysical() {
         <View style={styles.header}>
           <StepBar current={2} />
           <View style={styles.headerRow}>
-            <Text style={[styles.stepLabel, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,119,182,0.6)", fontFamily: "Inter_500Medium" }]}>Step 2 of 5</Text>
+            <Text style={[styles.stepLabel, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,119,182,0.6)", fontFamily: "Inter_500Medium" }]}>{t("step2of5")}</Text>
             <TouchableOpacity onPress={() => router.push("/(onboarding)/health")} style={styles.skipBtn}>
-              <Text style={[styles.skipText, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,119,182,0.5)", fontFamily: "Inter_400Regular" }]}>Skip</Text>
+              <Text style={[styles.skipText, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,119,182,0.5)", fontFamily: "Inter_400Regular" }]}>{t("skip")}</Text>
               <Ionicons name="chevron-forward" size={14} color={isDark ? "rgba(255,255,255,0.4)" : "rgba(0,119,182,0.5)"} />
             </TouchableOpacity>
           </View>
@@ -93,16 +97,16 @@ export default function OnboardingPhysical() {
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.content}>
             <Text style={[styles.emoji]}>📏</Text>
-            <Text style={[styles.title, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>Physical Details</Text>
+            <Text style={[styles.title, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>{t("physicalDetails")}</Text>
             <Text style={[styles.subtitle, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>
-              BMI aur health score calculate karne ke liye
+              {t("physicalSubtitle")}
             </Text>
 
             <GlassCard style={styles.card}>
               {/* Height & Weight */}
               <View style={styles.row}>
                 <View style={styles.half}>
-                  <Text style={[styles.label, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Lambai (cm)</Text>
+                  <Text style={[styles.label, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>{t("heightLabel")}</Text>
                   <View style={[styles.inputWrap, { borderColor: height ? "#0077B6" : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.2)"), backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,119,182,0.03)" }]}>
                     <Ionicons name="resize-outline" size={16} color={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,119,182,0.4)"} />
                     <TextInput
@@ -116,7 +120,7 @@ export default function OnboardingPhysical() {
                   </View>
                 </View>
                 <View style={styles.half}>
-                  <Text style={[styles.label, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Wajan (kg)</Text>
+                  <Text style={[styles.label, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>{t("weightLabel")}</Text>
                   <View style={[styles.inputWrap, { borderColor: weight ? "#0077B6" : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.2)"), backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,119,182,0.03)" }]}>
                     <Ionicons name="scale-outline" size={16} color={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,119,182,0.4)"} />
                     <TextInput
@@ -140,7 +144,7 @@ export default function OnboardingPhysical() {
                     style={styles.bmiCard}
                   >
                     <View>
-                      <Text style={[styles.bmiTitle, { color: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,119,182,0.7)", fontFamily: "Inter_400Regular" }]}>Aapka BMI</Text>
+                      <Text style={[styles.bmiTitle, { color: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,119,182,0.7)", fontFamily: "Inter_400Regular" }]}>{t("yourBmi")}</Text>
                       <Text style={[styles.bmiStatus, { color, fontFamily: "Inter_600SemiBold" }]}>{label}</Text>
                     </View>
                     <Text style={[styles.bmiValue, { color: isDark ? "#38BDF8" : "#0077B6", fontFamily: "Inter_700Bold" }]}>{bmi}</Text>
@@ -149,7 +153,7 @@ export default function OnboardingPhysical() {
               })()}
 
               {/* Blood Group */}
-              <Text style={[styles.label, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_600SemiBold", marginTop: 8 }]}>Blood Group</Text>
+              <Text style={[styles.label, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_600SemiBold", marginTop: 8 }]}>{t("bloodGroup")}</Text>
               <View style={styles.bloodGrid}>
                 {BLOOD_GROUPS.map((bg) => {
                   const selected = bloodGroup === bg;
@@ -183,7 +187,7 @@ export default function OnboardingPhysical() {
               {isLoading
                 ? <ActivityIndicator color="#FFF" />
                 : <>
-                    <Text style={[styles.ctaText, { fontFamily: "Inter_700Bold" }]}>Aage Barein</Text>
+                    <Text style={[styles.ctaText, { fontFamily: "Inter_700Bold" }]}>{t("continueBtn")}</Text>
                     <Ionicons name="arrow-forward" size={18} color="#FFF" />
                   </>
               }

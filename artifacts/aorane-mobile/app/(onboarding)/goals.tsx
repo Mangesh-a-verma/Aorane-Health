@@ -8,20 +8,21 @@ import { GlassCard } from "@/components/GlassCard";
 import { GradientBackground } from "@/components/GradientBackground";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 const GOALS = [
-  { value: "lose_weight", label: "Lose Weight", icon: "🔥", color: "#EF4444" },
-  { value: "gain_weight", label: "Gain Muscle", icon: "💪", color: "#7C3AED" },
-  { value: "maintain", label: "Maintain Weight", icon: "⚖️", color: "#0077B6" },
-  { value: "manage_condition", label: "Manage Condition", icon: "❤️", color: "#EC4899" },
-  { value: "eat_healthier", label: "Eat Healthier", icon: "🥗", color: "#10B981" },
-  { value: "better_sleep", label: "Better Sleep", icon: "😴", color: "#6366F1" },
-  { value: "reduce_stress", label: "Reduce Stress", icon: "🧘", color: "#14B8A6" },
-  { value: "build_habits", label: "Build Habits", icon: "📈", color: "#F59E0B" },
-  { value: "post_illness", label: "Post-illness Recovery", icon: "🏥", color: "#0077B6" },
-  { value: "pregnancy", label: "Pregnancy Health", icon: "🤰", color: "#EC4899" },
-  { value: "aging", label: "Healthy Aging", icon: "🌟", color: "#F59E0B" },
-  { value: "athletic", label: "Athletic Performance", icon: "🏃", color: "#10B981" },
+  { value: "lose_weight",       label: "Lose Weight",           icon: "🔥", color: "#EF4444" },
+  { value: "gain_weight",       label: "Gain Muscle",           icon: "💪", color: "#7C3AED" },
+  { value: "maintain",          label: "Maintain Weight",       icon: "⚖️", color: "#0077B6" },
+  { value: "manage_condition",  label: "Manage Condition",      icon: "❤️", color: "#EC4899" },
+  { value: "eat_healthier",     label: "Eat Healthier",         icon: "🥗", color: "#10B981" },
+  { value: "better_sleep",      label: "Better Sleep",          icon: "😴", color: "#6366F1" },
+  { value: "reduce_stress",     label: "Reduce Stress",         icon: "🧘", color: "#14B8A6" },
+  { value: "build_habits",      label: "Build Habits",          icon: "📈", color: "#F59E0B" },
+  { value: "post_illness",      label: "Post-illness Recovery", icon: "🏥", color: "#0077B6" },
+  { value: "pregnancy",         label: "Pregnancy Health",      icon: "🤰", color: "#EC4899" },
+  { value: "aging",             label: "Healthy Aging",         icon: "🌟", color: "#F59E0B" },
+  { value: "athletic",          label: "Athletic Performance",  icon: "🏃", color: "#10B981" },
 ];
 
 function StepBar({ current }: { current: number }) {
@@ -47,11 +48,12 @@ export default function OnboardingGoals() {
   const isDark = scheme === "dark";
   const insets = useSafeAreaInsets();
   const { setOnboardingComplete } = useAuth();
+  const { t } = useLanguage();
   const [selectedGoal, setSelectedGoal] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleFinish = async () => {
-    if (!selectedGoal) { Alert.alert("Zaroori", "Apna ek main goal chunein"); return; }
+    if (!selectedGoal) { Alert.alert(t("required"), t("goalRequired")); return; }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setIsLoading(true);
     try {
@@ -60,7 +62,7 @@ export default function OnboardingGoals() {
       await setOnboardingComplete();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert("Error", "Failed to save.");
+      Alert.alert(t("error"), "Failed to save.");
     } finally {
       setIsLoading(false);
     }
@@ -71,15 +73,15 @@ export default function OnboardingGoals() {
       <View style={[styles.root, { paddingTop: insets.top + 16 }]}>
         <View style={styles.header}>
           <StepBar current={5} />
-          <Text style={[styles.stepLabel, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,119,182,0.6)", fontFamily: "Inter_500Medium" }]}>Step 5 of 5 — Aakhri Step!</Text>
+          <Text style={[styles.stepLabel, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,119,182,0.6)", fontFamily: "Inter_500Medium" }]}>{t("step5of5")}</Text>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.content}>
             <Text style={styles.emoji}>🎯</Text>
-            <Text style={[styles.title, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>Aapka Main Goal?</Text>
+            <Text style={[styles.title, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>{t("yourMainGoal")}</Text>
             <Text style={[styles.subtitle, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>
-              AI aapke liye personalized plan banayega
+              AI will create a personalised plan for you
             </Text>
 
             <GlassCard style={styles.card}>
@@ -116,7 +118,6 @@ export default function OnboardingGoals() {
               </View>
             </GlassCard>
 
-            {/* Completion Message */}
             {selectedGoal && (
               <LinearGradient
                 colors={["rgba(0,119,182,0.15)", "rgba(27,153,139,0.1)"]}
@@ -124,7 +125,7 @@ export default function OnboardingGoals() {
               >
                 <Ionicons name="sparkles" size={18} color="#0077B6" />
                 <Text style={[styles.readyText, { color: isDark ? "#38BDF8" : "#0077B6", fontFamily: "Inter_600SemiBold" }]}>
-                  Aap taiyar hain! AORANE aapka plan bana raha hai...
+                  You are ready! AORANE is building your plan...
                 </Text>
               </LinearGradient>
             )}
@@ -142,7 +143,7 @@ export default function OnboardingGoals() {
                 ? <ActivityIndicator color="#FFF" />
                 : <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                     <Ionicons name="rocket" size={20} color="#FFF" />
-                    <Text style={[styles.ctaText, { fontFamily: "Inter_700Bold" }]}>AORANE Shuru Karein</Text>
+                    <Text style={[styles.ctaText, { fontFamily: "Inter_700Bold" }]}>Start AORANE</Text>
                   </View>
               }
             </LinearGradient>
