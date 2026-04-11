@@ -1,0 +1,1 @@
+export { exportMedicalReportPDF } from "./pdf";
