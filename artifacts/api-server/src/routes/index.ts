@@ -14,6 +14,7 @@ import stressRouter from "./modules/stress";
 import familyRouter from "./modules/family";
 import periodRouter from "./modules/period";
 import paymentRouter from "./modules/payment";
+import accidentEmergencyRouter from "./modules/accident-emergency";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(stressRouter);
 router.use(familyRouter);
 router.use(periodRouter);
 router.use(paymentRouter);
+router.use(accidentEmergencyRouter);
 
 export default router;

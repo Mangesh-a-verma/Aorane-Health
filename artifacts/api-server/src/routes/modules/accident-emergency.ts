@@ -115,7 +115,7 @@ router.post("/emergency/accident/sos", requireAuth, async (req: AuthRequest, res
       });
 
       // Return India's national emergency numbers (always available)
-      return res.json({
+      res.json({
         comingSoon: true,
         message: "Accident Emergency feature jald aa raha hai. Abhi yeh numbers use karein:",
         emergencyNumbers: [
