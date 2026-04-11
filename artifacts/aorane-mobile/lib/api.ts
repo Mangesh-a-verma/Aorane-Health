@@ -75,14 +75,27 @@ export const api = {
   logFood: (data: Record<string, unknown>) =>
     request<{ log: Record<string, unknown> }>("POST", "/food/log", data),
 
+  deleteFoodLog: (id: string) =>
+    request<{ success: boolean }>("DELETE", `/food/log/${id}`),
+
   searchFood: (q: string) =>
     request<{ items: Array<Record<string, unknown>> }>("GET", `/food/search?q=${encodeURIComponent(q)}`),
+
+  searchFoodHistory: (q: string) =>
+    request<{ items: Array<{ foodNameEn: string; calories: number; proteinG: number; carbsG: number; fatG: number; fiberG: number; count: number; lastEaten: string }> }>(
+      "GET", `/food/history-search?q=${encodeURIComponent(q)}`
+    ),
+
+  getFoodFavorites: () =>
+    request<{ favorites: Array<{ foodNameEn: string; calories: number; proteinG: number; carbsG: number; fatG: number; fiberG: number; count: number; lastEaten: string }> }>(
+      "GET", "/food/favorites"
+    ),
 
   getFoodSummary: (date: string) =>
     request<{ summary: Record<string, unknown> }>("GET", `/food/summary/${date}`),
 
-  // AI food scan — text name or image
-  scanFood: (data: { foodName?: string; imageBase64?: string }) =>
+  // AI food scan — History → DB → Cache → Gemini (4-level, cost-optimized)
+  scanFood: (data: { foodName?: string; imageBase64?: string; mimeType?: string }) =>
     request<{
       result: {
         foodNameEn: string; calories: number; proteinG: number; carbsG: number; fatG: number;
@@ -93,7 +106,9 @@ export const api = {
       };
       fromCache: boolean;
       fromDb: boolean;
-    }>("POST", "/food/scan", data),
+      fromHistory: boolean;
+      historyCount?: number;
+    }>("POST", "/food/scan", data as Record<string, unknown>),
 
   // ── Exercise ───────────────────────────────────────────
   getExerciseLogs: (date: string) =>

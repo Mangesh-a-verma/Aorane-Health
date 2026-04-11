@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { db, foodLogsTable, foodItemsTable, foodScanCacheTable } from "@workspace/db";
-import { eq, and, gte, lte, ilike } from "drizzle-orm";
+import { eq, and, gte, lte, ilike, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 
 const router = Router();
 
+// ── Food Logs ──────────────────────────────────────────────────────────────────
 router.get("/food/logs", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { date, startDate, endDate } = req.query as Record<string, string>;
@@ -58,9 +59,10 @@ router.delete("/food/log/:id", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+// ── DB Search ─────────────────────────────────────────────────────────────────
 router.get("/food/search", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { q, limit = "20" } = req.query as { q: string; limit?: string };
+    const { q, limit = "15" } = req.query as { q: string; limit?: string };
     if (!q || q.length < 2) { res.json({ items: [] }); return; }
     const items = await db.select().from(foodItemsTable)
       .where(ilike(foodItemsTable.foodNameEn, `%${q}%`))
@@ -71,18 +73,115 @@ router.get("/food/search", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────
-// AI Food Analysis — DB first, then Gemini with full nutrition
-// ─────────────────────────────────────────────────────────
+// ── Personal History Search (search in user's own logs — ZERO AI cost) ───────
+router.get("/food/history-search", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { q } = req.query as { q: string };
+    if (!q || q.length < 1) { res.json({ items: [] }); return; }
+
+    // Get distinct foods from user's history matching the query
+    const rows = await db.select({
+      foodNameEn: foodLogsTable.foodNameEn,
+      calories: sql<number>`AVG(${foodLogsTable.calories}::numeric)`.as("calories"),
+      proteinG: sql<number>`AVG(${foodLogsTable.proteinG}::numeric)`.as("proteinG"),
+      carbsG: sql<number>`AVG(${foodLogsTable.carbsG}::numeric)`.as("carbsG"),
+      fatG: sql<number>`AVG(${foodLogsTable.fatG}::numeric)`.as("fatG"),
+      fiberG: sql<number>`AVG(${foodLogsTable.fiberG}::numeric)`.as("fiberG"),
+      count: sql<number>`COUNT(*)`.as("count"),
+      lastEaten: sql<Date>`MAX(${foodLogsTable.loggedAt})`.as("lastEaten"),
+    })
+      .from(foodLogsTable)
+      .where(and(
+        eq(foodLogsTable.userId, req.userId!),
+        ilike(foodLogsTable.foodNameEn, `%${q}%`)
+      ))
+      .groupBy(foodLogsTable.foodNameEn)
+      .orderBy(desc(sql`COUNT(*)`))
+      .limit(10);
+
+    res.json({ items: rows });
+  } catch {
+    res.status(500).json({ error: "History search failed" });
+  }
+});
+
+// ── Favorites — top 12 most frequently eaten foods ────────────────────────────
+router.get("/food/favorites", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const rows = await db.select({
+      foodNameEn: foodLogsTable.foodNameEn,
+      calories: sql<number>`AVG(${foodLogsTable.calories}::numeric)`.as("calories"),
+      proteinG: sql<number>`AVG(${foodLogsTable.proteinG}::numeric)`.as("proteinG"),
+      carbsG: sql<number>`AVG(${foodLogsTable.carbsG}::numeric)`.as("carbsG"),
+      fatG: sql<number>`AVG(${foodLogsTable.fatG}::numeric)`.as("fatG"),
+      fiberG: sql<number>`AVG(${foodLogsTable.fiberG}::numeric)`.as("fiberG"),
+      count: sql<number>`COUNT(*)`.as("count"),
+      lastEaten: sql<Date>`MAX(${foodLogsTable.loggedAt})`.as("lastEaten"),
+    })
+      .from(foodLogsTable)
+      .where(eq(foodLogsTable.userId, req.userId!))
+      .groupBy(foodLogsTable.foodNameEn)
+      .orderBy(desc(sql`COUNT(*)`))
+      .limit(12);
+
+    res.json({ favorites: rows });
+  } catch {
+    res.status(500).json({ error: "Failed to get favorites" });
+  }
+});
+
+// ── AI Food Scan — 4-level lookup: History → DB → AI-Cache → Gemini AI ───────
+// This is the core of AI cost reduction: personal history is checked FIRST
 router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { foodName, imageBase64 } = req.body as { foodName?: string; imageBase64?: string };
+    const { foodName, imageBase64, mimeType } = req.body as { foodName?: string; imageBase64?: string; mimeType?: string };
     const searchTerm = foodName?.toLowerCase().trim();
 
-    // 1. Check local DB first
+    // ── Level 1: Personal History (ZERO AI cost — fastest) ──────────────────
     if (searchTerm) {
+      const [historyMatch] = await db.select({
+        foodNameEn: foodLogsTable.foodNameEn,
+        calories: sql<number>`AVG(${foodLogsTable.calories}::numeric)`.as("calories"),
+        proteinG: sql<number>`AVG(${foodLogsTable.proteinG}::numeric)`.as("proteinG"),
+        carbsG: sql<number>`AVG(${foodLogsTable.carbsG}::numeric)`.as("carbsG"),
+        fatG: sql<number>`AVG(${foodLogsTable.fatG}::numeric)`.as("fatG"),
+        fiberG: sql<number>`AVG(${foodLogsTable.fiberG}::numeric)`.as("fiberG"),
+        count: sql<number>`COUNT(*)`.as("count"),
+      })
+        .from(foodLogsTable)
+        .where(and(
+          eq(foodLogsTable.userId, req.userId!),
+          ilike(foodLogsTable.foodNameEn, searchTerm)
+        ))
+        .groupBy(foodLogsTable.foodNameEn)
+        .limit(1);
+
+      if (historyMatch) {
+        return res.json({
+          result: {
+            foodNameEn: historyMatch.foodNameEn,
+            calories: Math.round(Number(historyMatch.calories)),
+            proteinG: Math.round(Number(historyMatch.proteinG || 0) * 10) / 10,
+            carbsG: Math.round(Number(historyMatch.carbsG || 0) * 10) / 10,
+            fatG: Math.round(Number(historyMatch.fatG || 0) * 10) / 10,
+            fiberG: Math.round(Number(historyMatch.fiberG || 0) * 10) / 10,
+            servingSizeG: 100,
+            servingDescription: "100g / 1 serving",
+            category: "food",
+            dietaryTags: [],
+            vitamins: {},
+            healthTip: `Aapne yeh ${historyMatch.count} baar pehle khaya hai — data aapki history se aaya hai.`,
+          },
+          fromHistory: true,
+          fromDb: false,
+          fromCache: false,
+          historyCount: Number(historyMatch.count),
+        });
+      }
+
+      // ── Level 2: Main Curated DB ─────────────────────────────────────────
       const [dbItem] = await db.select().from(foodItemsTable)
-        .where(ilike(foodItemsTable.foodNameEn, searchTerm))
+        .where(ilike(foodItemsTable.foodNameEn, `%${searchTerm}%`))
         .limit(1);
 
       if (dbItem) {
@@ -101,33 +200,35 @@ router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
             vitamins: {},
           },
           fromDb: true,
+          fromHistory: false,
           fromCache: false,
         });
       }
 
-      // 2. Check scan cache
+      // ── Level 3: AI-Discovered Foods Cache (saved from previous AI calls) ─
       const [cached] = await db.select().from(foodScanCacheTable)
-        .where(eq(foodScanCacheTable.foodNameEn, searchTerm));
+        .where(ilike(foodScanCacheTable.foodNameEn, searchTerm));
       if (cached) {
         await db.update(foodScanCacheTable)
           .set({ hitCount: cached.hitCount + 1, lastUsedAt: new Date() })
           .where(eq(foodScanCacheTable.id, cached.id));
-        return res.json({ result: cached.aiResult, fromCache: true, fromDb: false });
+        return res.json({ result: cached.aiResult, fromCache: true, fromDb: false, fromHistory: false, hitCount: cached.hitCount + 1 });
       }
     }
 
-    const geminiKey = process.env.GEMINI_API_KEY;
+    // ── Level 4: Gemini AI (called only when not found anywhere) ─────────────
+    const geminiKey = process.env["GEMINI_API_KEY"];
     if (!geminiKey) {
       return res.status(503).json({ error: "AI service not configured" });
     }
 
-    // 3. Gemini AI — full nutritional breakdown
     let promptText = "";
     if (searchTerm) {
-      promptText = `You are a certified Indian dietitian. Analyze this Indian/common food: "${searchTerm}".
-Return ONLY a valid JSON object (no markdown, no extra text) with these exact fields:
+      promptText = `You are a certified Indian dietitian. The user typed "${searchTerm}" — this could be in Hindi, Hinglish, regional language or English. Identify the food and provide complete nutrition data.
+
+Return ONLY a valid JSON object (no markdown) with these exact fields:
 {
-  "foodNameEn": "string",
+  "foodNameEn": "string (English name of the food)",
   "calories": number (per 100g),
   "proteinG": number,
   "carbsG": number,
@@ -136,7 +237,7 @@ Return ONLY a valid JSON object (no markdown, no extra text) with these exact fi
   "sodiumMg": number,
   "sugarG": number,
   "servingSizeG": number,
-  "servingDescription": "string (e.g. 1 bowl / 1 roti / 1 cup)",
+  "servingDescription": "string (e.g. 1 bowl = 200g)",
   "category": "string (grain/protein/vegetable/fruit/dairy/snack/beverage/sweet)",
   "dietaryTags": ["veg" or "nonveg" or "vegan" or "jain" or "gluten-free"],
   "vitamins": {
@@ -150,36 +251,26 @@ Return ONLY a valid JSON object (no markdown, no extra text) with these exact fi
     "zinc_mg": number
   },
   "glycemicIndex": number or null,
-  "healthTip": "string (1 sentence health tip in English)"
+  "healthTip": "1 sentence health tip in Hinglish"
 }`;
     } else if (imageBase64) {
-      promptText = `You are a certified Indian dietitian. Analyze this food image.
-Return ONLY a valid JSON object with: foodNameEn, calories (per 100g), proteinG, carbsG, fatG, fiberG, sodiumMg, sugarG, servingSizeG, servingDescription, category, dietaryTags (array), vitamins (object with vitaminA_mcg, vitaminC_mg, vitaminD_mcg, vitaminB12_mcg, iron_mg, calcium_mg, potassium_mg, zinc_mg), glycemicIndex, healthTip.`;
+      promptText = `You are a certified Indian dietitian. Identify this food from the image and provide complete nutrition data. Return ONLY valid JSON with: foodNameEn, calories (per 100g), proteinG, carbsG, fatG, fiberG, sodiumMg, sugarG, servingSizeG, servingDescription, category, dietaryTags (array), vitamins (object with vitaminA_mcg, vitaminC_mg, vitaminD_mcg, vitaminB12_mcg, iron_mg, calcium_mg, potassium_mg, zinc_mg), glycemicIndex, healthTip.`;
     }
 
     const geminiBody: Record<string, unknown> = imageBase64
-      ? {
-          contents: [{
-            parts: [
-              { text: promptText },
-              { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
-            ]
-          }]
-        }
+      ? { contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: mimeType || "image/jpeg", data: imageBase64 } }] }] }
       : { contents: [{ parts: [{ text: promptText }] }] };
 
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(geminiBody) }
     );
-    const geminiData = await geminiRes.json() as {
-      candidates?: Array<{ content: { parts: Array<{ text: string }> } }>;
-    };
-
+    const geminiData = await geminiRes.json() as { candidates?: Array<{ content: { parts: Array<{ text: string }> } }> };
     const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const result = jsonMatch ? JSON.parse(jsonMatch[0]) : { raw: text, calories: 100, proteinG: 0, carbsG: 0, fatG: 0 };
+    const result = jsonMatch ? JSON.parse(jsonMatch[0]) : { foodNameEn: searchTerm || "Unknown Food", calories: 100, proteinG: 0, carbsG: 25, fatG: 2, fiberG: 0, servingSizeG: 100, servingDescription: "100g", category: "food", dietaryTags: [], vitamins: {} };
 
+    // Save to AI-discovered foods cache so it's NEVER called again for this food
     if (searchTerm) {
       await db.insert(foodScanCacheTable).values({
         foodNameEn: searchTerm,
@@ -187,8 +278,9 @@ Return ONLY a valid JSON object with: foodNameEn, calories (per 100g), proteinG,
       }).onConflictDoNothing();
     }
 
-    return res.json({ result, fromCache: false, fromDb: false });
+    return res.json({ result, fromCache: false, fromDb: false, fromHistory: false });
   } catch (err) {
+    console.error("Food scan error:", err);
     res.status(500).json({ error: "Food scan failed" });
   }
 });
@@ -210,12 +302,6 @@ router.get("/food/summary/:date", requireAuth, async (req: AuthRequest, res) => 
       totalCarbsG: logs.reduce((sum, l) => sum + Number(l.carbsG || 0), 0),
       totalFatG: logs.reduce((sum, l) => sum + Number(l.fatG || 0), 0),
       mealCount: logs.length,
-      breakdown: {
-        breakfast: logs.filter((l) => l.mealType === "breakfast"),
-        lunch: logs.filter((l) => l.mealType === "lunch"),
-        dinner: logs.filter((l) => l.mealType === "dinner"),
-        snack: logs.filter((l) => l.mealType === "snack"),
-      },
     };
     res.json({ summary });
   } catch {
