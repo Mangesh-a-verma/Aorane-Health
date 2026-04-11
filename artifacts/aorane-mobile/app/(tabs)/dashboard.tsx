@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, Platform, ActivityIndicator, Image,
+  RefreshControl, Platform, ActivityIndicator,
   Animated, Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -226,11 +226,13 @@ export default function DashboardScreen() {
   const [greeting, setGreeting] = useState("Good Morning");
   const [userName, setUserName] = useState("");
   const [aoraneId, setAoraneId] = useState("");
+  const [medicines, setMedicines] = useState<Array<{
+    id: string; medicineName: string; dosage?: string;
+    mealTiming: string; reminderTimes: string[]; isActive: boolean;
+  }>>([]);
 
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const headerOpacity = scrollY.interpolate({ inputRange: [0, 60], outputRange: [0, 1], extrapolate: "clamp" });
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scrollRef = useRef<Animated.ScrollView>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     const h = new Date().getHours();
@@ -244,10 +246,10 @@ export default function DashboardScreen() {
   const loadData = useCallback(async () => {
     try {
       const date = todayDate();
-      const [scoreRes, waterRes, foodRes, exerciseRes, activityRes, profileRes] = await Promise.allSettled([
+      const [scoreRes, waterRes, foodRes, exerciseRes, activityRes, profileRes, medRes] = await Promise.allSettled([
         api.getHealthScore(date), api.getWaterLog(date), api.getFoodSummary(date),
         api.getExerciseLogs(date), api.getActivityScore(date),
-        api.getProfile(),
+        api.getProfile(), api.getMedicineSchedules(),
       ]);
       if (scoreRes.status === "fulfilled") {
         const s = scoreRes.value.score as Record<string, number>;
@@ -281,12 +283,18 @@ export default function DashboardScreen() {
       if (profileRes.status === "fulfilled") {
         const p = profileRes.value.profile as Record<string, string>;
         setUserName(p?.fullName?.split(" ")?.[0] || "");
-        // Use stored aoraneId or format from user id as fallback
         if (p?.aoraneId) {
           setAoraneId(p.aoraneId);
         } else if (user?.id) {
           setAoraneId("AOR-" + user.id.slice(-6).toUpperCase());
         }
+      }
+      if (medRes.status === "fulfilled") {
+        const activeMeds = (medRes.value.schedules as Array<{
+          id: string; medicineName: string; dosage?: string;
+          mealTiming: string; reminderTimes: string[]; isActive: boolean;
+        }>).filter(m => m.isActive);
+        setMedicines(activeMeds);
       }
     } catch { }
     setIsLoading(false);
@@ -340,19 +348,8 @@ export default function DashboardScreen() {
       {/* Soft blobs */}
       <View style={s.blob1} /><View style={s.blob2} /><View style={s.blob3} />
 
-      {/* Sticky mini header */}
-      <Animated.View style={[s.stickyHdr, { opacity: headerOpacity, top: topPad }]}>
-        <Image source={require("../../assets/images/aorane-logo.png")} style={s.stickyLogo} resizeMode="contain" />
-        <View style={[s.scorePill, { backgroundColor: scoreColor + "18" }]}>
-          <Ionicons name="heart" size={12} color={scoreColor} />
-          <Text style={[s.scorePillText, { color: scoreColor }]}>{healthScore}</Text>
-        </View>
-      </Animated.View>
-
-      <Animated.ScrollView
+      <ScrollView
         ref={scrollRef}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-        scrollEventThrottle={16}
         contentContainerStyle={{ paddingTop: topPad + 6, paddingBottom: insets.bottom + 96, paddingHorizontal: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} tintColor={C.primary} colors={[C.primary]} />}
         showsVerticalScrollIndicator={false}
@@ -469,6 +466,61 @@ export default function DashboardScreen() {
               onPress={() => router.push("/health-report" as never)}
             />
           </View>
+        </Animated.View>
+
+        {/* ── MEDICINE REMINDER CARD ── */}
+        <Animated.View style={{ opacity: fadeAnim }}>
+          <View style={s.sectionRow}>
+            <Text style={[s.sectionTitle, { marginBottom: 0 }]}>Today's Medicines 💊</Text>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/medicine" as never)}>
+              <Text style={s.sectionLink}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          {medicines.length === 0 ? (
+            <TouchableOpacity onPress={() => router.push("/(tabs)/medicine" as never)} activeOpacity={0.85}>
+              <View style={s.medEmpty}>
+                <Ionicons name="medkit-outline" size={20} color={C.purple} />
+                <Text style={s.medEmptyText}>Koi medicine schedule nahi — Add karein</Text>
+                <Ionicons name="chevron-forward" size={14} color={C.purple} />
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <Glass>
+              {medicines.slice(0, 4).map((med, idx) => {
+                const mealLabel: Record<string, string> = {
+                  before_meal: "Khaane se pehle", after_meal: "Khaane ke baad",
+                  with_meal: "Khaane ke saath", anytime: "Kabhi bhi",
+                };
+                const mealColor: Record<string, string> = {
+                  before_meal: C.amber, after_meal: C.accent,
+                  with_meal: C.sky, anytime: C.purple,
+                };
+                const isLast = idx === Math.min(medicines.length, 4) - 1;
+                return (
+                  <View key={med.id} style={[s.medRow, isLast && { borderBottomWidth: 0 }]}>
+                    <View style={[s.medDot, { backgroundColor: (mealColor[med.mealTiming] || C.purple) + "20" }]}>
+                      <Ionicons name="medical" size={15} color={mealColor[med.mealTiming] || C.purple} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.medName}>{med.medicineName}{med.dosage ? ` · ${med.dosage}` : ""}</Text>
+                      <Text style={s.medSub}>{mealLabel[med.mealTiming] || "Kabhi bhi"} · {med.reminderTimes.join(", ")}</Text>
+                    </View>
+                    <View style={[s.medBadge, { backgroundColor: (mealColor[med.mealTiming] || C.purple) + "15" }]}>
+                      <Text style={[s.medBadgeText, { color: mealColor[med.mealTiming] || C.purple }]}>
+                        {med.reminderTimes[0] || ""}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+              {medicines.length > 4 && (
+                <TouchableOpacity onPress={() => router.push("/(tabs)/medicine" as never)} style={s.medMoreBtn}>
+                  <Text style={s.medMoreText}>+{medicines.length - 4} aur medicines</Text>
+                  <Ionicons name="chevron-forward" size={12} color={C.primary} />
+                </TouchableOpacity>
+              )}
+            </Glass>
+          )}
         </Animated.View>
 
         {/* ── NUTRITION CARD ── */}
@@ -637,7 +689,7 @@ export default function DashboardScreen() {
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 }
@@ -650,16 +702,6 @@ const s = StyleSheet.create({
   blob1: { position: "absolute", width: 340, height: 340, borderRadius: 170, backgroundColor: "#7DD3FC", opacity: 0.2, top: -110, right: -130 },
   blob2: { position: "absolute", width: 280, height: 280, borderRadius: 140, backgroundColor: "#6EE7B7", opacity: 0.15, bottom: 200, left: -100 },
   blob3: { position: "absolute", width: 200, height: 200, borderRadius: 100, backgroundColor: "#C7D2FE", opacity: 0.12, top: 300, left: 80 },
-
-  stickyHdr: {
-    position: "absolute", left: 0, right: 0, zIndex: 99,
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 18, paddingVertical: 8,
-    backgroundColor: "rgba(235,245,255,0.88)",
-  },
-  stickyLogo: { width: 90, height: 26 },
-  scorePill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  scorePillText: { fontSize: 13, fontFamily: "Inter_700Bold" },
 
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16, paddingTop: 4 },
   greet: { fontSize: 20, fontFamily: "Inter_700Bold", color: C.text },
@@ -700,6 +742,32 @@ const s = StyleSheet.create({
   calBarMeta1: { fontSize: 10.5, color: "rgba(255,255,255,0.78)", fontFamily: "Inter_400Regular" },
 
   sectionTitle: { fontSize: 14.5, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 10, letterSpacing: 0.2 },
+  sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  sectionLink: { fontSize: 12.5, fontFamily: "Inter_600SemiBold", color: C.primary },
+
+  // Medicine reminder styles
+  medEmpty: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: C.glass, borderRadius: 16, padding: 14, marginBottom: 14,
+    borderWidth: 1.2, borderColor: C.glassBorder,
+    shadowColor: C.glassShadow, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+  },
+  medEmptyText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: C.muted },
+  medRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: "rgba(0,119,182,0.06)",
+  },
+  medDot: { width: 36, height: 36, borderRadius: 11, alignItems: "center", justifyContent: "center" },
+  medName: { fontSize: 13.5, fontFamily: "Inter_600SemiBold", color: C.text, marginBottom: 2 },
+  medSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: C.muted },
+  medBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10 },
+  medBadgeText: { fontSize: 11.5, fontFamily: "Inter_700Bold" },
+  medMoreBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4,
+    paddingTop: 10, marginTop: 2, borderTopWidth: 1, borderTopColor: "rgba(0,119,182,0.08)",
+  },
+  medMoreText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: C.primary },
 
   qaRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
 
