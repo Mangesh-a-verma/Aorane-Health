@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -9,13 +9,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import * as WebBrowser from "expo-web-browser";
-import * as AuthSession from "expo-auth-session";
-import * as Crypto from "expo-crypto";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-
-WebBrowser.maybeCompleteAuthSession();
 
 const { width: W } = Dimensions.get("window");
 
@@ -31,7 +26,6 @@ const C = {
   border: "#E2EFF5",
   inputBg: "#F5FBFD",
   green: "#00B896",
-  orange: "#FF7F00",
 };
 
 const LANGUAGES = [
@@ -54,14 +48,6 @@ const FEATURES = [
   { icon: "medkit-outline", label: "Medicine Remind", color: "#F59E0B" },
 ];
 
-const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || "";
-
-const discovery = {
-  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-  tokenEndpoint: "https://oauth2.googleapis.com/token",
-  revocationEndpoint: "https://oauth2.googleapis.com/revoke",
-};
-
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { loginWithToken } = useAuth();
@@ -69,31 +55,11 @@ export default function LoginScreen() {
   const [phone, setPhone] = useState("");
   const [selectedLang, setSelectedLang] = useState("hi");
   const [isLoading, setIsLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [loginMode, setLoginMode] = useState<"otp" | "pin">("otp");
   const [pin, setPin] = useState("");
   const [pinFocused, setPinFocused] = useState(false);
-
-  // Web: fixed redirect URI (Google requires https://) — Google Console mein yahi add karo
-  // Native: deep link scheme
-  const redirectUri = useMemo(() => {
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      return `${window.location.origin}/aorane-mobile/`;
-    }
-    return AuthSession.makeRedirectUri({ scheme: "aorane" });
-  }, []);
-
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: GOOGLE_CLIENT_ID,
-      redirectUri,
-      scopes: ["openid", "profile", "email"],
-      responseType: AuthSession.ResponseType.Code,
-      usePKCE: true,
-    },
-    discovery
-  );
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -112,72 +78,6 @@ export default function LoginScreen() {
     ).start();
   }, []);
 
-  // Handle Google OAuth response
-  useEffect(() => {
-    if (response?.type === "success") {
-      handleGoogleSuccess(response.params.code, request?.codeVerifier);
-    } else if (response?.type === "error") {
-      setGoogleLoading(false);
-      Alert.alert("Google Login Failed", response.error?.message || "Google se login nahi ho saka");
-    } else if (response?.type === "dismiss") {
-      setGoogleLoading(false);
-    }
-  }, [response]);
-
-  const handleGoogleSuccess = async (code: string, codeVerifier?: string) => {
-    try {
-      // Exchange code for tokens using Google's token endpoint
-      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          code,
-          client_id: GOOGLE_CLIENT_ID,
-          redirect_uri: redirectUri,
-          grant_type: "authorization_code",
-          ...(codeVerifier ? { code_verifier: codeVerifier } : {}),
-        }).toString(),
-      });
-      const tokenData = await tokenRes.json() as { id_token?: string; access_token?: string; error?: string };
-
-      if (!tokenData.id_token) {
-        throw new Error(tokenData.error || "ID token nahi mila");
-      }
-
-      // Send id_token to our backend
-      const res = await api.googleLogin(tokenData.id_token);
-      await loginWithToken(
-        res.accessToken,
-        res.refreshToken,
-        { id: res.user.id, plan: res.user.plan, languageCode: selectedLang },
-        res.isNewUser
-      );
-
-      if (res.isNewUser) {
-        router.replace("/(onboarding)/" as never);
-      } else {
-        router.replace("/(tabs)/dashboard");
-      }
-    } catch (err: unknown) {
-      Alert.alert("Login Error", err instanceof Error ? err.message : "Google login mein kuch gadbad hui");
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    if (!GOOGLE_CLIENT_ID) {
-      Alert.alert("Setup Incomplete", "Google login abhi configure nahi hua hai");
-      return;
-    }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setGoogleLoading(true);
-    const result = await promptAsync();
-    if (!result || result.type === "dismiss") {
-      setGoogleLoading(false);
-    }
-  };
-
   const handleSendOtp = async () => {
     if (phone.length !== 10) { Alert.alert("Invalid Number", "10-digit mobile number daalo"); return; }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -193,17 +93,17 @@ export default function LoginScreen() {
   const handleWhatsappOtp = async () => {
     if (phone.length !== 10) { Alert.alert("Invalid Number", "10-digit mobile number daalo"); return; }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsLoading(true);
+    setWhatsappLoading(true);
     try {
       const res = await api.sendWhatsappOtp(phone);
       const channelMsg = res.channel === "whatsapp"
         ? "OTP aapke WhatsApp pe bheja gaya ✅"
-        : "OTP SMS pe bheja gaya (WhatsApp unavailable)";
+        : "OTP SMS pe bheja gaya";
       Alert.alert("OTP Bheja!", channelMsg, [{ text: "OK" }]);
       router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang: selectedLang } });
     } catch (err: unknown) {
-      Alert.alert("Error", err instanceof Error ? err.message : "WhatsApp OTP bhejne mein error");
-    } finally { setIsLoading(false); }
+      Alert.alert("Error", err instanceof Error ? err.message : "WhatsApp OTP mein error");
+    } finally { setWhatsappLoading(false); }
   };
 
   const handlePinLogin = async () => {
@@ -222,14 +122,13 @@ export default function LoginScreen() {
   };
 
   const isActive = phone.length === 10;
+  const anyLoading = isLoading || whatsappLoading;
 
   return (
     <View style={s.root}>
       <LinearGradient colors={["#E8F7FB", "#F0FAF6", "#FFFFFF"]} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFill} />
-
-      {/* Decorative blobs */}
-      <View style={[s.blob1]} />
-      <View style={[s.blob2]} />
+      <View style={s.blob1} />
+      <View style={s.blob2} />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView
@@ -242,20 +141,13 @@ export default function LoginScreen() {
             <View style={s.heroSection}>
               <Animated.View style={[s.logoRing, { transform: [{ scale: pulseAnim }] }]}>
                 <LinearGradient colors={C.gradient} style={s.logoRingInner}>
-                  <Image
-                    source={require("../../assets/images/aorane-logo.png")}
-                    style={s.logo}
-                    resizeMode="contain"
-                  />
+                  <Image source={require("../../assets/images/aorane-logo.png")} style={s.logo} resizeMode="contain" />
                 </LinearGradient>
               </Animated.View>
-
               <View style={s.taglineRow}>
                 <View style={s.taglineDot} />
                 <Text style={s.tagline}>Aapki health, aapke haath mein 🇮🇳</Text>
               </View>
-
-              {/* Feature chips */}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.featRow}>
                 {FEATURES.map(f => (
                   <View key={f.label} style={s.featChip}>
@@ -272,11 +164,7 @@ export default function LoginScreen() {
             <Text style={s.langHeading}>APNI BHASHA CHUNEIN</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
               {LANGUAGES.map(l => (
-                <TouchableOpacity
-                  key={l.code}
-                  onPress={() => { Haptics.selectionAsync(); setSelectedLang(l.code); }}
-                  activeOpacity={0.7}
-                >
+                <TouchableOpacity key={l.code} onPress={() => { Haptics.selectionAsync(); setSelectedLang(l.code); }} activeOpacity={0.7}>
                   {selectedLang === l.code ? (
                     <LinearGradient colors={C.gradient} style={s.langActive}>
                       <Text style={[s.langText, { color: "#FFF" }]}>{l.label}</Text>
@@ -293,7 +181,6 @@ export default function LoginScreen() {
 
           {/* ── LOGIN CARD ── */}
           <Animated.View style={[s.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            {/* Card Header */}
             <View style={s.cardTop}>
               <LinearGradient colors={C.gradient} style={s.cardIcon}>
                 <Ionicons name={loginMode === "pin" ? "keypad-outline" : "phone-portrait-outline"} size={18} color="#FFF" />
@@ -307,11 +194,7 @@ export default function LoginScreen() {
             {/* OTP / PIN Toggle */}
             <View style={s.toggle}>
               {(["otp", "pin"] as const).map(mode => (
-                <TouchableOpacity
-                  key={mode}
-                  onPress={() => { setLoginMode(mode); Haptics.selectionAsync(); }}
-                  style={[s.toggleBtn, loginMode === mode && s.toggleBtnActive]}
-                >
+                <TouchableOpacity key={mode} onPress={() => { setLoginMode(mode); Haptics.selectionAsync(); }} style={[s.toggleBtn, loginMode === mode && s.toggleBtnActive]}>
                   <Text style={[s.toggleText, loginMode === mode && s.toggleTextActive]}>
                     {mode === "otp" ? "📱 OTP" : "🔐 PIN"}
                   </Text>
@@ -365,10 +248,10 @@ export default function LoginScreen() {
               </View>
             )}
 
-            {/* CTA Button */}
+            {/* SMS OTP / PIN Button */}
             <TouchableOpacity
               onPress={loginMode === "pin" ? handlePinLogin : handleSendOtp}
-              disabled={isLoading || !isActive || (loginMode === "pin" && pin.length < 4)}
+              disabled={anyLoading || !isActive || (loginMode === "pin" && pin.length < 4)}
               activeOpacity={0.85}
               style={{ marginTop: 8 }}
             >
@@ -380,7 +263,7 @@ export default function LoginScreen() {
                 >
                   {isLoading ? <ActivityIndicator color="#FFF" /> : (
                     <>
-                      <Text style={s.ctaText}>{loginMode === "pin" ? "PIN se Login" : "OTP Bhejein"}</Text>
+                      <Text style={s.ctaText}>{loginMode === "pin" ? "PIN se Login" : "📱 SMS OTP Bhejein"}</Text>
                       <View style={s.ctaArrow}>
                         <Ionicons name="arrow-forward" size={16} color={loginMode === "pin" ? "#7C3AED" : C.primary} />
                       </View>
@@ -389,27 +272,27 @@ export default function LoginScreen() {
                 </LinearGradient>
               ) : (
                 <View style={s.ctaBtnDisabled}>
-                  <Text style={s.ctaTextDisabled}>{loginMode === "pin" ? "PIN se Login" : "OTP Bhejein"}</Text>
+                  <Text style={s.ctaTextDisabled}>{loginMode === "pin" ? "PIN se Login" : "📱 SMS OTP Bhejein"}</Text>
                 </View>
               )}
             </TouchableOpacity>
 
-            {/* WhatsApp OTP button — only for OTP mode */}
+            {/* WhatsApp OTP Button */}
             {loginMode === "otp" && (
               <TouchableOpacity
                 onPress={handleWhatsappOtp}
-                disabled={isLoading || !isActive}
+                disabled={anyLoading || !isActive}
                 activeOpacity={0.82}
-                style={[s.waBtn, (!isActive || isLoading) && s.waBtnDisabled]}
+                style={[s.waBtn, (!isActive || anyLoading) && s.waBtnDisabled]}
               >
-                {isLoading ? (
+                {whatsappLoading ? (
                   <ActivityIndicator color="#25D366" size="small" />
                 ) : (
                   <>
                     <View style={s.waIconWrap}>
                       <Text style={{ fontSize: 16 }}>💬</Text>
                     </View>
-                    <Text style={[s.waBtnText, (!isActive) && { color: "#A0B4BF" }]}>WhatsApp pe OTP Mangaayein</Text>
+                    <Text style={[s.waBtnText, !isActive && { color: "#A0B4BF" }]}>WhatsApp pe OTP Mangaayein</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -426,35 +309,19 @@ export default function LoginScreen() {
               <View style={s.divLine} />
             </View>
 
-            {/* Google Sign-In Button */}
+            {/* X (Twitter) — Coming Soon */}
             <TouchableOpacity
-              onPress={handleGoogleLogin}
-              disabled={googleLoading || !request}
-              activeOpacity={0.82}
-              style={s.googleBtn}
-            >
-              {googleLoading ? (
-                <ActivityIndicator color="#4285F4" size="small" />
-              ) : (
-                <>
-                  <View style={s.googleIconWrap}>
-                    <Text style={s.googleIconText}>G</Text>
-                  </View>
-                  <Text style={s.googleBtnText}>Google se Continue Karein</Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            {/* X (Twitter) — coming soon */}
-            <TouchableOpacity
-              onPress={() => Alert.alert("Jald Aayega", "X (Twitter) login jald aayega!")}
-              style={[s.socialBtn, { backgroundColor: "#F8F8F8", borderColor: "#E5E7EB", flexDirection: "row", gap: 10, paddingHorizontal: 16 }]}
+              onPress={() => Alert.alert("Jald Aayega! 🚀", "X (Twitter) se login jald available hoga.")}
               activeOpacity={0.75}
+              style={s.xBtn}
             >
-              <View style={[s.socialIcon, { backgroundColor: "#000" }]}>
-                <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 11 }}>✕</Text>
+              <View style={s.xIconWrap}>
+                <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 13 }}>✕</Text>
               </View>
-              <Text style={[s.socialLabel, { color: "#1A1A1A", fontSize: 13 }]}>X (Twitter) se Login</Text>
+              <Text style={s.xBtnText}>X (Twitter) se Login</Text>
+              <View style={s.comingSoonBadge}>
+                <Text style={s.comingSoonText}>Jald</Text>
+              </View>
             </TouchableOpacity>
           </Animated.View>
 
@@ -525,24 +392,20 @@ const s = StyleSheet.create({
   ctaTextDisabled: { color: "#A0B4BF", fontSize: 16, fontFamily: "Inter_700Bold" },
   pinHint: { textAlign: "center", color: "#7A90A4", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 8 },
 
+  waBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, height: 50, borderRadius: 14, backgroundColor: "#F0FFF4", borderWidth: 1.5, borderColor: "#25D366", marginTop: 10 },
+  waBtnDisabled: { borderColor: "#D1FAE5", backgroundColor: "#F8FFF9" },
+  waIconWrap: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#25D366", alignItems: "center", justifyContent: "center" },
+  waBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#128C7E" },
+
   divRow: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 16 },
   divLine: { flex: 1, height: 1, backgroundColor: "#EDF2F7" },
   divText: { fontSize: 13, color: "#A0B4BF", fontFamily: "Inter_400Regular" },
 
-  waBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, height: 48, borderRadius: 14, backgroundColor: "#F0FFF4", borderWidth: 1.5, borderColor: "#25D366", marginTop: 10 },
-  waBtnDisabled: { borderColor: "#D1FAE5", backgroundColor: "#F8FFF9" },
-  waIconWrap: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#25D366", alignItems: "center", justifyContent: "center" },
-  waBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#128C7E" },
-
-  googleBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, height: 52, borderRadius: 14, backgroundColor: "#FFF", borderWidth: 1.5, borderColor: "#E5E7EB", marginBottom: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 },
-  googleIconWrap: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#4285F4", alignItems: "center", justifyContent: "center" },
-  googleIconText: { color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 },
-  googleBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#1A1A1A" },
-
-  socialRow: { flexDirection: "row", gap: 10 },
-  socialBtn: { flex: 1, flexDirection: "column", alignItems: "center", gap: 6, paddingVertical: 12, borderRadius: 14, borderWidth: 1 },
-  socialIcon: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
-  socialLabel: { fontSize: 11.5, fontFamily: "Inter_500Medium" },
+  xBtn: { flexDirection: "row", alignItems: "center", gap: 10, height: 50, borderRadius: 14, backgroundColor: "#F8F8F8", borderWidth: 1.5, borderColor: "#E5E7EB", paddingHorizontal: 16 },
+  xIconWrap: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
+  xBtnText: { flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#1A1A1A" },
+  comingSoonBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#E5E7EB" },
+  comingSoonText: { fontSize: 10, fontFamily: "Inter_500Medium", color: "#6B7280" },
 
   badgeRow: { flexDirection: "row", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 10 },
   badge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 6, borderRadius: 12, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E8F2F7" },
