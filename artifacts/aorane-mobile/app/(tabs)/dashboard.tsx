@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
-import { HealthRing } from "@/components/HealthRing";
 import { WaterTracker } from "@/components/WaterTracker";
 import { AdsSlider } from "@/components/AdsSlider";
 import { router, useFocusEffect } from "expo-router";
@@ -36,6 +35,11 @@ const C = {
 };
 
 function todayDate() { return new Date().toISOString().slice(0, 10); }
+
+function formatAtmId(id: string): string {
+  const clean = id.replace(/[-\s]/g, "").toUpperCase();
+  return clean.match(/.{1,4}/g)?.join("  ") || id;
+}
 
 // ─── GLASS CARD ──────────────────────────────────────────────────────────────
 function Glass({ children, style, padding = 16 }: {
@@ -279,6 +283,8 @@ export default function DashboardScreen() {
     id: string; medicineName: string; dosage?: string;
     mealTiming: string; reminderTimes: string[]; isActive: boolean;
   }>>([]);
+  const [userAge, setUserAge] = useState<number | null>(null);
+  const [monthlyActivePct, setMonthlyActivePct] = useState(0);
   const [showActivityModal, setShowActivityModal] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -329,10 +335,16 @@ export default function DashboardScreen() {
           exercisePct: activityRes.value.exercisePct,
           label: activityRes.value.label,
         });
+        setMonthlyActivePct((activityRes.value as Record<string, unknown>).monthlyActivePct as number ?? 0);
       }
       if (profileRes.status === "fulfilled") {
         const p = profileRes.value.profile as Record<string, string>;
-        setUserName(p?.fullName?.split(" ")?.[0] || "");
+        const fullFirst = p?.fullName?.split(" ")?.[0] || "";
+        setUserName(fullFirst);
+        if (p?.dateOfBirth) {
+          const age = Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (86400000 * 365.25));
+          setUserAge(age);
+        }
         if (p?.aoraneId) {
           setAoraneId(p.aoraneId);
         } else if (user?.id) {
@@ -426,89 +438,77 @@ export default function DashboardScreen() {
           </View>
         </Animated.View>
 
-        {/* ── HERO SCORE CARD ── */}
-        <Animated.View style={{ opacity: fadeAnim, marginBottom: 14, overflow: "hidden", borderRadius: 22, marginHorizontal: 4 }}>
-          <LinearGradient
-            colors={["#005EA3", "#0077B6", "#0EA5E9", "#00B896"]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={s.heroCard}
+        {/* ── HERO SCORE CARD — PAN/ATM Format ── */}
+        <Animated.View style={{ opacity: fadeAnim, marginBottom: 14, alignItems: "center" }}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowActivityModal(true); }}
+            style={{ width: Math.floor(W / 2), borderRadius: 18, overflow: "hidden", shadowColor: "#003A75", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.32, shadowRadius: 14, elevation: 10 }}
           >
-            <View style={s.heroShine} />
-            <View style={s.heroShine2} />
+            <LinearGradient
+              colors={["#002D62", "#005EA3", "#0077B6", "#009E82"]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={s.heroCard}
+            >
+              {/* Shine overlays */}
+              <View style={s.heroShine} />
+              <View style={s.heroShine2} />
 
-            {/* Top row */}
-            <View style={s.heroTop}>
-              <View>
-                <Text style={s.heroSup}>HEALTH SCORE</Text>
-                <Text style={s.heroTitle}>Today's Report</Text>
-              </View>
-              <View style={[s.heroBadge, {
-                backgroundColor: healthScore >= 70
-                  ? "rgba(0,255,180,0.2)" : "rgba(255,193,7,0.25)"
-              }]}>
-                <Ionicons name={healthScore >= 70 ? "trending-up" : "trending-down"} size={12} color="#FFF" />
-                <Text style={s.heroBadgeText}>{healthScore >= 70 ? "Good" : "Improve"}</Text>
-              </View>
-            </View>
-
-            {/* Body */}
-            <View style={s.heroBody}>
-              <HealthRing score={healthScore} confidence={confidence} size={100} />
-              <View style={s.heroStats}>
-                {[
-                  { icon: "flame", val: `${calories.eaten}`, sub: "kcal", color: "#FFD580" },
-                  { icon: "barbell-outline", val: `${exerciseMin}m`, sub: "active", color: "#A7F3D0" },
-                  { icon: "water-outline", val: `${water.current}/${water.goal}`, sub: "glasses", color: "#BAE6FD" },
-                ].map(st => (
-                  <View key={st.sub} style={s.heroStatRow}>
-                    <View style={s.heroStatIcon}>
-                      <Ionicons name={st.icon as keyof typeof Ionicons.glyphMap} size={12} color={st.color} />
-                    </View>
-                    <View>
-                      <Text style={s.heroStatVal}>{st.val}</Text>
-                      <Text style={s.heroStatSub}>{st.sub}</Text>
-                    </View>
+              {/* ── TOP ROW: avatar/name | score/pillars ── */}
+              <View style={{ flexDirection: "row", gap: 9 }}>
+                {/* Left — Photo + Name + Age (PAN style) */}
+                <View style={{ flex: 45, gap: 4 }}>
+                  <View style={s.heroAvatar}>
+                    <Text style={s.heroAvatarLetter}>{(userName || "A")[0].toUpperCase()}</Text>
                   </View>
-                ))}
-              </View>
-            </View>
+                  <Text style={s.heroName} numberOfLines={2}>
+                    {(userName || "AORANE USER").toUpperCase()}
+                  </Text>
+                  {userAge ? <Text style={s.heroAge}>Age: {userAge} yr</Text> : null}
+                </View>
 
-            {/* Calorie bar */}
-            <View style={s.calBar}>
-              <View style={s.calBarLabels}>
-                <Text style={s.calBarLabel}>Calories Progress</Text>
-                <Text style={s.calBarVal}>{Math.round(calPct)}%</Text>
-              </View>
-              <View style={s.calBarTrack}>
-                <View style={[s.calBarFill, { width: `${calPct}%` }]} />
-              </View>
-              <View style={s.calBarMeta}>
-                <Text style={s.calBarMeta1}>🍛 {calories.eaten} eaten</Text>
-                <Text style={s.calBarMeta1}>🔥 {calories.burned} burned</Text>
-                <Text style={s.calBarMeta1}>🎯 {remaining} left</Text>
-              </View>
-            </View>
+                {/* Vertical divider */}
+                <View style={{ width: 0.8, backgroundColor: "rgba(255,255,255,0.2)", marginVertical: 2 }} />
 
-            {/* Activity Score row — tap to expand */}
-            {activeScore !== null && (
-              <TouchableOpacity
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowActivityModal(true); }}
-                activeOpacity={0.8}
-                style={s.activityRow}
-              >
-                <View style={s.activityRowLeft}>
-                  <Text style={s.activityRowLabel}>⚡ ACTIVITY SCORE</Text>
-                  <View style={s.activityRowBar}>
-                    <View style={[s.activityRowFill, { width: `${activeScore.overall}%` }]} />
+                {/* Right — Health Score + 3 Pillars */}
+                <View style={{ flex: 55, gap: 2 }}>
+                  <Text style={s.heroScoreSup}>HEALTH SCORE</Text>
+                  <Text style={s.heroScoreNum}>{healthScore}</Text>
+                  <View style={[s.heroStatusBadge, { backgroundColor: healthScore >= 70 ? "rgba(0,255,180,0.2)" : "rgba(255,193,7,0.25)" }]}>
+                    <Text style={s.heroStatusText}>{healthScore >= 70 ? "● GOOD" : "▲ IMPROVE"}</Text>
+                  </View>
+
+                  {/* 3 Calorie Pillars */}
+                  <View style={{ gap: 3, marginTop: 5 }}>
+                    {[
+                      { icon: "🔥", label: "CAL IN", val: calories.eaten },
+                      { icon: "⚡", label: "CAL OUT", val: calories.burned },
+                      { icon: "⚖️", label: "BALANCE", val: calories.eaten - calories.burned },
+                    ].map(p => (
+                      <View key={p.label} style={s.heroPillarRow}>
+                        <Text style={{ fontSize: 8 }}>{p.icon}</Text>
+                        <Text style={s.heroPillarLabel}>{p.label}</Text>
+                        <Text style={s.heroPillarVal}>{p.val}</Text>
+                      </View>
+                    ))}
                   </View>
                 </View>
-                <View style={s.activityRowRight}>
-                  <Text style={s.activityRowPct}>{activeScore.overall}%</Text>
-                  <Ionicons name="chevron-forward" size={13} color="rgba(255,255,255,0.6)" />
+              </View>
+
+              {/* ── Monthly Active Bar (1px thin) ── */}
+              <View style={{ marginTop: 10, gap: 3 }}>
+                <View style={s.heroMonthlyTrack}>
+                  <View style={[s.heroMonthlyFill, { width: `${Math.min(monthlyActivePct, 100)}%` as `${number}%` }]} />
                 </View>
-              </TouchableOpacity>
-            )}
-          </LinearGradient>
+                <Text style={s.heroMonthlyLabel}>{monthlyActivePct}% Active This Month</Text>
+              </View>
+
+              {/* ── AORANE ID — ATM format ── */}
+              <View style={s.heroAtmRow}>
+                <Text style={s.heroAtmId}>AOR  {formatAtmId(aoraneId.replace(/^AOR[-\s]?/i, ""))}</Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
         </Animated.View>
 
         {/* ── QUICK ACTIONS — single horizontal row ── */}
@@ -660,7 +660,9 @@ export default function DashboardScreen() {
               <BlurView intensity={55} tint="extraLight" style={StyleSheet.absoluteFill} />
             )}
             <View style={[StyleSheet.absoluteFill, { backgroundColor: C.glass, borderRadius: 20 }]} />
-            <WaterTracker current={water.current} goal={water.goal} onAdd={handleAddWater} />
+            <View style={{ paddingHorizontal: 14, paddingVertical: 12 }}>
+              <WaterTracker current={water.current} goal={water.goal} onAdd={handleAddWater} minimal />
+            </View>
           </View>
         </Animated.View>
 
@@ -810,28 +812,30 @@ const s = StyleSheet.create({
   notifBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: C.glass, borderWidth: 1.2, borderColor: C.glassBorder, alignItems: "center", justifyContent: "center" },
   notifDot: { position: "absolute", top: 6, right: 6, width: 7, height: 7, borderRadius: 3.5, backgroundColor: C.red, borderWidth: 1.5, borderColor: "#FFF" },
 
-  heroCard: { borderRadius: 22, padding: 14, overflow: "hidden", shadowColor: C.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 16, elevation: 10 },
-  heroShine: { position: "absolute", top: -60, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: "rgba(255,255,255,0.08)" },
-  heroShine2: { position: "absolute", bottom: -40, left: -20, width: 120, height: 120, borderRadius: 60, backgroundColor: "rgba(255,255,255,0.06)" },
-  heroTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
-  heroSup: { fontSize: 9.5, fontFamily: "Inter_700Bold", color: "rgba(255,255,255,0.65)", letterSpacing: 1.5, marginBottom: 3 },
-  heroTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#FFF" },
-  heroBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  heroBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#FFF" },
-  heroBody: { flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 16 },
-  heroStats: { flex: 1, gap: 10 },
-  heroStatRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  heroStatIcon: { width: 28, height: 28, borderRadius: 9, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center" },
-  heroStatVal: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#FFF" },
-  heroStatSub: { fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.65)" },
-  calBar: { marginTop: 4 },
-  calBarLabels: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
-  calBarLabel: { fontSize: 11, color: "rgba(255,255,255,0.75)", fontFamily: "Inter_500Medium" },
-  calBarVal: { fontSize: 11, color: "#FFF", fontFamily: "Inter_700Bold" },
-  calBarTrack: { height: 6, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 3, overflow: "hidden", marginBottom: 8 },
-  calBarFill: { height: 6, backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 3 },
-  calBarMeta: { flexDirection: "row", justifyContent: "space-between" },
-  calBarMeta1: { fontSize: 10.5, color: "rgba(255,255,255,0.78)", fontFamily: "Inter_400Regular" },
+  heroCard: { padding: 12 },
+  heroShine: { position: "absolute", top: -30, right: -20, width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(255,255,255,0.08)" },
+  heroShine2: { position: "absolute", bottom: -25, left: -10, width: 70, height: 70, borderRadius: 35, backgroundColor: "rgba(255,255,255,0.06)" },
+
+  heroAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.35)" },
+  heroAvatarLetter: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFF" },
+  heroName: { color: "#FFF", fontSize: 9.5, fontFamily: "Inter_700Bold", lineHeight: 12, letterSpacing: 0.4 },
+  heroAge: { color: "rgba(255,255,255,0.6)", fontSize: 8.5, fontFamily: "Inter_400Regular" },
+
+  heroScoreSup: { color: "rgba(255,255,255,0.55)", fontSize: 7, fontFamily: "Inter_700Bold", letterSpacing: 1.8 },
+  heroScoreNum: { color: "#FFF", fontSize: 30, fontFamily: "Inter_700Bold", lineHeight: 34 },
+  heroStatusBadge: { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2, alignSelf: "flex-start", marginBottom: 3 },
+  heroStatusText: { color: "#FFF", fontSize: 7.5, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+
+  heroPillarRow: { flexDirection: "row", alignItems: "center", gap: 3 },
+  heroPillarLabel: { color: "rgba(255,255,255,0.55)", fontSize: 7, fontFamily: "Inter_500Medium", flex: 1 },
+  heroPillarVal: { color: "#FFF", fontSize: 8.5, fontFamily: "Inter_700Bold" },
+
+  heroMonthlyTrack: { height: 1.5, backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 1, overflow: "hidden" },
+  heroMonthlyFill: { height: 1.5, backgroundColor: "rgba(255,255,255,0.85)", borderRadius: 1 },
+  heroMonthlyLabel: { color: "rgba(255,255,255,0.5)", fontSize: 7, fontFamily: "Inter_400Regular" },
+
+  heroAtmRow: { marginTop: 8, borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.15)", paddingTop: 6 },
+  heroAtmId: { color: "rgba(255,255,255,0.88)", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 2.5 },
 
   sectionTitle: { fontSize: 14.5, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 10, letterSpacing: 0.2 },
   sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },

@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   sub: { fontSize: 12, marginTop: 2 },
   addBtnWrap: { borderRadius: 18, overflow: "hidden" },
   addBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  bottleRow: { flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 12 },
+  bottleRow: { flexDirection: "row", alignItems: "flex-start", gap: 16, marginBottom: 12 },
   bottle: { width: 52, height: 100, borderRadius: 14, borderWidth: 2, overflow: "hidden", justifyContent: "flex-end", position: "relative" },
   bottleFill: { position: "absolute", bottom: 0, left: 0, right: 0 },
   bottleLabel: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },

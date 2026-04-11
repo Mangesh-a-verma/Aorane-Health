@@ -320,7 +320,20 @@ router.get("/users/activity-score", requireAuth, async (req: AuthRequest, res) =
   try {
     const date = (req.query.date as string) || new Date().toISOString().slice(0, 10);
     const result = await calculateActivePercent(req.userId!, date);
-    res.json({ date, ...result, label: getActiveLabel(result.overall) });
+
+    // Monthly active percentage: days with any exercise this calendar month
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const daysElapsed = Math.max(1, now.getDate());
+    const monthlyLogs = await db
+      .select({ loggedAt: exerciseLogsTable.loggedAt })
+      .from(exerciseLogsTable)
+      .where(and(eq(exerciseLogsTable.userId, req.userId!), gte(exerciseLogsTable.loggedAt, monthStart)))
+      .catch(() => [] as { loggedAt: Date }[]);
+    const activeDates = new Set(monthlyLogs.map(l => (l.loggedAt as Date).toISOString().slice(0, 10)));
+    const monthlyActivePct = Math.round((activeDates.size / daysElapsed) * 100);
+
+    res.json({ date, ...result, label: getActiveLabel(result.overall), monthlyActivePct });
   } catch {
     res.status(500).json({ error: "Failed to calculate activity score" });
   }

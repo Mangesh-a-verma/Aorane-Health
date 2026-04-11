@@ -181,26 +181,45 @@ export default function SuggestionsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       {/* Header */}
-      <LinearGradient colors={["#0077B6", "#00B896"]} style={{ paddingTop: topPad + 10, paddingHorizontal: 18, paddingBottom: 20 }}>
+      <LinearGradient colors={["#004D8A", "#0077B6", "#00A88A"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ paddingTop: topPad + 10, paddingHorizontal: 18, paddingBottom: 20 }}>
+        {/* Shine overlay */}
+        <View style={{ position: "absolute", top: -40, right: -30, width: 160, height: 160, borderRadius: 80, backgroundColor: "rgba(255,255,255,0.06)" }} />
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={22} color="#FFF" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: "#FFF", fontSize: 21, fontFamily: "Inter_700Bold" }}>🤖 Daily AI Coach</Text>
-            <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 12, fontFamily: "Inter_400Regular" }}>
-              {fromCache ? "Today's personalized plan" : "Just generated ✨"} · Updated daily
+            <Text style={{ color: "#FFF", fontSize: 22, fontFamily: "Inter_700Bold" }}>AI Daily Coach 🤖</Text>
+            <Text style={{ color: "rgba(255,255,255,0.72)", fontSize: 12, fontFamily: "Inter_400Regular" }}>
+              {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })} · {fromCache ? "Cached plan" : "Fresh plan ✨"}
             </Text>
           </View>
           <TouchableOpacity onPress={handleRefresh} style={styles.refreshBtn}>
-            <Ionicons name="refresh" size={18} color="#FFF" />
+            <Ionicons name="refresh-outline" size={18} color="#FFF" />
           </TouchableOpacity>
         </View>
 
         {/* Greeting */}
         {greeting && (
-          <View style={{ marginTop: 14, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 12, padding: 12 }}>
-            <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 14, lineHeight: 20 }}>{greeting}</Text>
+          <View style={{ marginTop: 14, backgroundColor: "rgba(255,255,255,0.13)", borderRadius: 14, padding: 13, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" }}>
+            <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 14, lineHeight: 21 }}>{greeting}</Text>
+          </View>
+        )}
+
+        {/* Quick Stats Strip */}
+        {calorieStatus && (
+          <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+            {[
+              { icon: "🔥", label: "Calories", val: `${calorieStatus.eaten}/${calorieStatus.goal}`, sub: "kcal" },
+              { icon: "💧", label: "Water", val: waterReminder ? `${waterReminder.current}/${waterReminder.goal}` : "—", sub: "glasses" },
+              { icon: "💪", label: "Exercise", val: exerciseSuggestion ? `${exerciseSuggestion.durationMinutes}` : "—", sub: "min goal" },
+            ].map(stat => (
+              <View key={stat.label} style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.14)", borderRadius: 12, padding: 10, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" }}>
+                <Text style={{ fontSize: 16 }}>{stat.icon}</Text>
+                <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13, marginTop: 2 }}>{stat.val}</Text>
+                <Text style={{ color: "rgba(255,255,255,0.6)", fontFamily: "Inter_400Regular", fontSize: 9.5 }}>{stat.sub}</Text>
+              </View>
+            ))}
           </View>
         )}
       </LinearGradient>

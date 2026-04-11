@@ -1,5 +1,5 @@
 /**
- * NVIDIA-hosted DeepSeek V3 API helper
+ * NVIDIA-hosted DeepSeek API helper
  * Non-streaming JSON output for health intelligence features
  */
 
@@ -22,7 +22,7 @@ export async function callDeepSeek(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "deepseek-ai/deepseek-v3.2",
+      model: "deepseek-ai/deepseek-r1",
       messages,
       temperature,
       top_p: 0.95,
@@ -40,8 +40,11 @@ export async function callDeepSeek(
     choices?: { message?: { content?: string } }[];
   };
 
-  const content = data.choices?.[0]?.message?.content ?? "";
+  let content = data.choices?.[0]?.message?.content ?? "";
   if (!content) throw new Error("Empty response from DeepSeek");
+
+  // Strip <think>...</think> reasoning blocks (DeepSeek-R1 chain-of-thought)
+  content = content.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 
   const jsonMatch = content.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("No JSON found in DeepSeek response");
