@@ -12,7 +12,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { LANGUAGE_NAMES, type LangCode } from "@/lib/translations";
 
 const { width: W } = Dimensions.get("window");
 
@@ -29,8 +28,6 @@ const C = {
   inputBg: "#F5FBFD",
 };
 
-const LANG_CODES = Object.keys(LANGUAGE_NAMES) as LangCode[];
-
 const FEATURES = [
   { icon: "nutrition-outline" as const, label: "AI Food Scan", color: "#00B896" },
   { icon: "fitness-outline" as const, label: "Exercise Tracker", color: "#0077B6" },
@@ -41,7 +38,7 @@ const FEATURES = [
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { loginWithToken } = useAuth();
-  const { lang, setLang, t } = useLanguage();
+  const { lang, t } = useLanguage();
 
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -173,30 +170,6 @@ export default function LoginScreen() {
                 ))}
               </ScrollView>
             </View>
-          </Animated.View>
-
-          {/* ── LANGUAGE PICKER ── */}
-          <Animated.View style={{ opacity: fadeAnim }}>
-            <Text style={s.langHeading}>{t("selectLanguage")}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
-              {LANG_CODES.map(code => (
-                <TouchableOpacity
-                  key={code}
-                  onPress={() => { Haptics.selectionAsync(); setLang(code); }}
-                  activeOpacity={0.7}
-                >
-                  {lang === code ? (
-                    <LinearGradient colors={C.gradient} style={s.langActive}>
-                      <Text style={[s.langText, { color: "#FFF" }]}>{LANGUAGE_NAMES[code]}</Text>
-                    </LinearGradient>
-                  ) : (
-                    <View style={s.langInactive}>
-                      <Text style={[s.langText, { color: C.muted }]}>{LANGUAGE_NAMES[code]}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
           </Animated.View>
 
           {/* ── LOGIN CARD ── */}
@@ -378,11 +351,6 @@ const s = StyleSheet.create({
   featRow: { gap: 8, paddingVertical: 2 },
   featChip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E2EFF5", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
   featLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
-
-  langHeading: { fontSize: 10, letterSpacing: 1.5, color: "#7A90A4", fontFamily: "Inter_500Medium", marginBottom: 10 },
-  langActive: { paddingHorizontal: 15, paddingVertical: 9, borderRadius: 22 },
-  langInactive: { paddingHorizontal: 15, paddingVertical: 9, borderRadius: 22, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E2EFF5" },
-  langText: { fontSize: 14, fontFamily: "Inter_500Medium" },
 
   card: { backgroundColor: "#FFFFFF", borderRadius: 24, padding: 20, marginTop: 16, marginBottom: 16, shadowColor: "#0077B6", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 8, borderWidth: 1, borderColor: "#E8F4FF" },
   cardTop: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 18 },

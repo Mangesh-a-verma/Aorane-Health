@@ -1,6 +1,10 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { type LangCode, translations, t as translate } from "@/lib/translations";
+import React, { createContext, useContext, useCallback } from "react";
+import { type LangCode, t as translate } from "@/lib/translations";
+
+// LANGUAGE SYSTEM: Currently locked to English.
+// To re-enable multi-language: restore AsyncStorage + useState for lang,
+// expose setLang in context, and add language selector UI in Profile screen.
+const CURRENT_LANG: LangCode = "en";
 
 type LanguageContextType = {
   lang: LangCode;
@@ -11,11 +15,12 @@ type LanguageContextType = {
 const LanguageContext = createContext<LanguageContextType | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<LangCode>("en");
+  const lang = CURRENT_LANG;
 
-  const setLang = useCallback(async (newLang: LangCode) => {
-    setLangState(newLang);
-    await AsyncStorage.setItem("app_language", newLang);
+  // setLang is kept in API for forward compatibility — will be wired up
+  // when multi-language UI is re-enabled.
+  const setLang = useCallback(async (_newLang: LangCode) => {
+    // Multi-language not active yet — no-op
   }, []);
 
   const t = useCallback(
