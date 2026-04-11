@@ -1,9 +1,9 @@
-import { Tabs, router } from "expo-router";
+import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useRef, useEffect, useCallback } from "react";
+import React, { useRef, useEffect } from "react";
 import {
   Platform, StyleSheet, View, Text,
-  TouchableOpacity, Animated, Dimensions, Pressable,
+  TouchableOpacity, Animated, Pressable,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
@@ -14,14 +14,16 @@ const PRIMARY  = "#0077B6";
 const SKY      = "#0EA5E9";
 const ACCENT   = "#00B896";
 const INACTIVE = "rgba(13,31,51,0.30)";
-const BAR_H    = 64;   // tab bar height (above safe area)
+const BAR_H    = 64;   // visible tab bar height
 const SCAN_D   = 60;   // scan button diameter
-const SCAN_LIFT = 20;  // how much it floats above the bar
+const SCAN_LIFT = 18;  // pixels the button floats above bar top
 
-// ── Individual icon + label ──────────────────────────────────────────────────
-function TabIcon({
-  name, focused, label,
-}: { name: keyof typeof Ionicons.glyphMap; focused: boolean; label: string }) {
+// ── Animated tab icon ────────────────────────────────────────────────────────
+function TabIcon({ name, focused, label }: {
+  name: keyof typeof Ionicons.glyphMap;
+  focused: boolean;
+  label: string;
+}) {
   const scale = useRef(new Animated.Value(1)).current;
   const dot   = useRef(new Animated.Value(0)).current;
 
@@ -49,13 +51,13 @@ function TabIcon({
   );
 }
 const ti = StyleSheet.create({
-  wrap:  { alignItems: "center", gap: 2, paddingTop: 4 },
+  wrap:  { alignItems: "center", gap: 2 },
   icon:  { width: 44, height: 30, borderRadius: 14, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   label: { fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 0.2 },
   dot:   { width: 4, height: 4, borderRadius: 2, backgroundColor: PRIMARY, marginTop: 1 },
 });
 
-// ── Floating SCAN button (rendered outside the tab row) ──────────────────────
+// ── Floating SCAN button ─────────────────────────────────────────────────────
 function ScanButton({ onPress }: { onPress: () => void }) {
   const scale = useRef(new Animated.Value(1)).current;
   const glow  = useRef(new Animated.Value(0)).current;
@@ -69,19 +71,17 @@ function ScanButton({ onPress }: { onPress: () => void }) {
     ).start();
   }, []);
 
-  const glowOp = glow.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.8] });
+  const glowOp = glow.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.75] });
 
   return (
     <Pressable
-      onPressIn={() => Animated.spring(scale, { toValue: 0.88, useNativeDriver: true, damping: 12 }).start()}
-      onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true, damping: 10 }).start()}
+      onPressIn ={() => Animated.spring(scale, { toValue: 0.88, useNativeDriver: true, damping: 12 }).start()}
+      onPressOut={() => Animated.spring(scale, { toValue: 1.00, useNativeDriver: true, damping: 10 }).start()}
       onPress={onPress}
-      style={sb.wrapper}
+      hitSlop={12}
     >
       <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
-        {/* Glow halo */}
         <Animated.View style={[sb.glow, { opacity: glowOp }]} />
-        {/* Button */}
         <LinearGradient
           colors={[PRIMARY, SKY, ACCENT]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -95,154 +95,148 @@ function ScanButton({ onPress }: { onPress: () => void }) {
   );
 }
 const sb = StyleSheet.create({
-  wrapper: { alignItems: "center", justifyContent: "flex-end" },
   glow: {
     position: "absolute",
-    width: SCAN_D + 20, height: SCAN_D + 20,
-    borderRadius: (SCAN_D + 20) / 2,
-    backgroundColor: SKY,
-    top: -10, left: -10,
+    width: SCAN_D + 18, height: SCAN_D + 18,
+    borderRadius: (SCAN_D + 18) / 2,
+    backgroundColor: SKY, opacity: 0.3,
+    top: -9, left: -9,
   },
   circle: {
     width: SCAN_D, height: SCAN_D,
     borderRadius: SCAN_D / 2,
     alignItems: "center", justifyContent: "center",
-    borderWidth: 3, borderColor: "rgba(255,255,255,0.9)",
+    borderWidth: 3, borderColor: "rgba(255,255,255,0.92)",
     shadowColor: PRIMARY,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
+    shadowOpacity: 0.45, shadowRadius: 14,
     elevation: 16,
   },
-  label: { fontSize: 9, fontFamily: "Inter_700Bold", color: PRIMARY, letterSpacing: 1, marginTop: 3 },
+  label: {
+    fontSize: 9, fontFamily: "Inter_700Bold",
+    color: PRIMARY, letterSpacing: 1, marginTop: 3,
+  },
 });
 
-// ── ROUTE CONFIG ─────────────────────────────────────────────────────────────
-const ROUTES = [
-  { name: "dashboard", iconOn: "home"           as const, iconOff: "home-outline"            as const, label: "Home"     },
-  { name: "index",     iconOn: "pulse"          as const, iconOff: "pulse-outline"           as const, label: "Activity" },
-  { name: "scan",      iconOn: "scan"           as const, iconOff: "scan-outline"            as const, label: "Scan"     }, // centre
-  { name: "profile",   iconOn: "person-circle"  as const, iconOff: "person-circle-outline"   as const, label: "Profile"  },
+// ── Tab config ───────────────────────────────────────────────────────────────
+const TABS = [
+  { name: "dashboard", on: "home"          as const, off: "home-outline"           as const, label: "Home"     },
+  { name: "index",     on: "pulse"         as const, off: "pulse-outline"          as const, label: "Activity" },
+  { name: "profile",   on: "person-circle" as const, off: "person-circle-outline"  as const, label: "Profile"  },
 ];
 
-// ── CUSTOM TAB BAR (overflow: visible — the REAL fix for floating button) ─────
+// ── Custom Tab Bar ───────────────────────────────────────────────────────────
+// Uses a single outer wrapper with overflow:visible so the floating
+// scan button can escape the bar bounds on Android & iOS equally.
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const totalHeight = BAR_H + insets.bottom;
+  const safeBottom = insets.bottom;
 
-  const activeRoute = state.routes[state.index]?.name;
+  // Total height the wrapper occupies (bar + safe area + space for scan btn)
+  const wrapperH = BAR_H + safeBottom + SCAN_LIFT + SCAN_D / 2;
+
+  const activeRoute = state.routes[state.index]?.name ?? "";
+
+  // Insert center scan slot between Activity and Profile
+  const slots: Array<"dashboard" | "index" | "scan" | "profile"> =
+    ["dashboard", "index", "scan", "profile"];
 
   return (
-    // Outer container: overflow visible so the floating button can escape the bar bounds
-    <View style={[ctb.outerWrap, { height: totalHeight + SCAN_LIFT }]} pointerEvents="box-none">
-
-      {/* ── Background card (solid, at bottom) ─────────────────────── */}
-      <View style={[ctb.bar, { height: totalHeight }]}>
+    <View
+      style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: wrapperH, overflow: "visible" }}
+      pointerEvents="box-none"
+    >
+      {/* ── Bar background ─────────────────────────────────── */}
+      <View style={[bar.bg, { height: BAR_H + safeBottom }]}>
         {Platform.OS === "ios" ? (
-          <BlurView intensity={85} tint="extraLight" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={90} tint="extraLight" style={StyleSheet.absoluteFill} />
         ) : null}
-        <View style={[StyleSheet.absoluteFill, {
-          backgroundColor: Platform.OS === "ios" ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.97)",
-          borderTopWidth: 0.8,
-          borderTopColor: "rgba(0,119,182,0.12)",
-        }]} />
-        {/* top highlight */}
-        <View style={ctb.topLine} />
+        <View style={[StyleSheet.absoluteFill, bar.solid,
+          { backgroundColor: Platform.OS === "ios" ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.97)" }
+        ]} />
+        <View style={bar.topLine} />
       </View>
 
-      {/* ── Tab row ─────────────────────────────────────────────────── */}
-      <View style={[ctb.row, { height: BAR_H, bottom: insets.bottom }]}>
-        {ROUTES.map((r) => {
-          const isFocused = activeRoute === r.name;
-
-          // ── Centre SCAN button ─────────────────────────────────
-          if (r.name === "scan") {
-            return (
-              <View key="scan" style={ctb.scanSlot} pointerEvents="box-none">
-                <View style={[ctb.scanFloat, { bottom: BAR_H - (SCAN_D / 2) - SCAN_LIFT }]}>
-                  <ScanButton onPress={() => navigation.navigate("scan")} />
-                </View>
-              </View>
-            );
+      {/* ── Tab row (3 normal tabs + center placeholder) ───── */}
+      <View style={[bar.row, { height: BAR_H, bottom: safeBottom }]}>
+        {slots.map((slot) => {
+          if (slot === "scan") {
+            // Transparent placeholder — same width as other tabs
+            return <View key="scan-slot" style={{ flex: 1 }} pointerEvents="none" />;
           }
-
-          // ── Regular tab ───────────────────────────────────────
+          const cfg     = TABS.find((t) => t.name === slot)!;
+          const focused = activeRoute === slot;
           return (
             <TouchableOpacity
-              key={r.name}
-              style={ctb.tabItem}
-              onPress={() => navigation.navigate(r.name)}
-              activeOpacity={0.75}
+              key={slot}
+              style={bar.tab}
+              onPress={() => navigation.navigate(slot)}
+              activeOpacity={0.7}
             >
               <TabIcon
-                name={isFocused ? r.iconOn : r.iconOff}
-                focused={isFocused}
-                label={r.label}
+                name={focused ? cfg.on : cfg.off}
+                focused={focused}
+                label={cfg.label}
               />
             </TouchableOpacity>
           );
         })}
       </View>
+
+      {/* ── Floating SCAN button — absolutely centred, above bar ── */}
+      <View
+        style={[
+          bar.scanWrap,
+          // bottomOffset: position button so its CENTRE sits at bar top + SCAN_LIFT
+          { bottom: safeBottom + BAR_H - SCAN_D / 2 + SCAN_LIFT },
+        ]}
+        pointerEvents="box-none"
+      >
+        <ScanButton onPress={() => navigation.navigate("scan")} />
+      </View>
     </View>
   );
 }
 
-const ctb = StyleSheet.create({
-  outerWrap: {
-    position: "absolute",
-    left: 0, right: 0, bottom: 0,
-    // overflow VISIBLE is the critical fix — allows scan btn to float above bar
-    overflow: "visible",
-  },
-  bar: {
-    position: "absolute",
-    left: 0, right: 0, bottom: 0,
+const bar = StyleSheet.create({
+  bg: {
+    position: "absolute", left: 0, right: 0, bottom: 0,
     overflow: "hidden",
+  },
+  solid: {
+    borderTopWidth: 0.8, borderTopColor: "rgba(0,119,182,0.12)",
   },
   topLine: {
     position: "absolute", top: 0, left: 32, right: 32,
-    height: 1, backgroundColor: "rgba(255,255,255,0.85)",
+    height: 1, backgroundColor: "rgba(255,255,255,0.9)",
   },
   row: {
-    position: "absolute",
-    left: 0, right: 0,
+    position: "absolute", left: 0, right: 0,
     flexDirection: "row",
-    alignItems: "flex-start",
-    overflow: "visible",
   },
-  tabItem: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "flex-start",
+  tab: {
+    flex: 1, alignItems: "center", justifyContent: "center",
     paddingTop: 8,
   },
-  scanSlot: {
-    flex: 1,
-    alignItems: "center",
-    overflow: "visible",
-  },
-  scanFloat: {
-    position: "absolute",
+  scanWrap: {
+    position: "absolute", left: 0, right: 0,
     alignItems: "center",
   },
 });
 
-// ── ROOT LAYOUT ──────────────────────────────────────────────────────────────
+// ── Root ─────────────────────────────────────────────────────────────────────
 export default function TabLayout() {
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: { display: "none" }, // hide default bar — we use custom
-      }}
+      screenOptions={{ headerShown: false }}
     >
       <Tabs.Screen name="dashboard" />
       <Tabs.Screen name="index"     />
       <Tabs.Screen name="scan"      />
       <Tabs.Screen name="profile"   />
 
-      {/* Hidden sub-screens — not shown in tab bar */}
+      {/* Hidden — accessible via router.push */}
       <Tabs.Screen name="food"     options={{ href: null }} />
       <Tabs.Screen name="exercise" options={{ href: null }} />
       <Tabs.Screen name="medicine" options={{ href: null }} />
