@@ -8,12 +8,12 @@ import {
 } from "lucide-react";
 
 const SLOT_LABELS: Record<number, string> = {
-  1: "Slot 1 — Pehla", 2: "Slot 2", 3: "Slot 3", 4: "Slot 4", 5: "Slot 5 — Aakhri",
+  1: "Slot 1 — First", 2: "Slot 2", 3: "Slot 3", 4: "Slot 4", 5: "Slot 5 — Last",
 };
 
 const SCREEN_OPTIONS = [
   { value: "dashboard", label: "Dashboard" },
-  { value: "all", label: "Sab Pages" },
+  { value: "all", label: "All Pages" },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -56,7 +56,7 @@ function AdCard({ ad, onEdit, onDelete, onToggle }: {
         ) : (
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
             <ImageIcon size={28} />
-            <span className="text-xs">Koi image nahi</span>
+            <span className="text-xs">No image</span>
           </div>
         )}
         {/* Slot badge */}
@@ -101,7 +101,7 @@ function AdCard({ ad, onEdit, onDelete, onToggle }: {
         {/* Target screen */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Globe size={11} />
-          <span>{ad.targetScreen === "all" ? "Sab Pages" : "Dashboard"}</span>
+          <span>{ad.targetScreen === "all" ? "All Pages" : "Dashboard"}</span>
         </div>
 
         {/* Link preview */}
@@ -179,9 +179,9 @@ function AdModal({
       <div className="bg-card border border-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="p-5 border-b border-border">
           <h2 className="font-bold text-lg text-foreground">
-            {initial?.id ? "Ad Edit Karo" : "Naya Ad Banao"}
+            {initial?.id ? "Edit Ad" : "Create New Ad"}
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Slider mein dikhne wala banner</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Banner for the mobile app slider</p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
@@ -236,16 +236,16 @@ function AdModal({
                 className="w-full border border-border rounded-lg px-3 py-2 text-xs bg-background font-mono focus:outline-none focus:ring-2 focus:ring-primary/30"
                 placeholder="<script async src='https://pagead2.googlesyndication.com/...'></script>&#10;<ins class='adsbygoogle' ...></ins>"
               />
-              <p className="text-xs text-muted-foreground mt-1">Google AdSense ka pura HTML code yahan paste karo</p>
+              <p className="text-xs text-muted-foreground mt-1">Paste the full Google AdSense HTML code here</p>
             </div>
           )}
 
           {/* Click URL */}
           <div>
-            <label className="text-xs font-semibold text-muted-foreground mb-1 block">Click karne pe kahan jaaye (URL)</label>
+            <label className="text-xs font-semibold text-muted-foreground mb-1 block">Click destination URL</label>
             <input value={form.linkUrl} onChange={(e) => set("linkUrl", e.target.value)}
               className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-              placeholder="https://example.com ya deep link"
+              placeholder="https://example.com or deep link"
             />
           </div>
 
@@ -262,7 +262,7 @@ function AdModal({
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Kahan dikhega</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Show on screen</label>
               <select value={form.targetScreen} onChange={(e) => set("targetScreen", e.target.value)}
                 className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
@@ -286,7 +286,7 @@ function AdModal({
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Priority (1=high)</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Priority (1=highest)</label>
               <input type="number" min={1} max={10} value={form.priority} onChange={(e) => set("priority", Number(e.target.value))}
                 className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
@@ -337,7 +337,7 @@ function AdModal({
             <button type="submit" disabled={saving}
               className="flex-1 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors"
             >
-              {saving ? "Saving..." : initial?.id ? "Update Karo" : "Ad Banao"}
+              {saving ? "Saving..." : initial?.id ? "Update Ad" : "Create Ad"}
             </button>
           </div>
         </form>
@@ -355,7 +355,7 @@ export default function AdsManager() {
   const load = async () => {
     setLoading(true);
     try { setAds((await api.ads()).ads); }
-    catch { setError("Ads load nahi hue"); }
+    catch { setError("Failed to load ads"); }
     setLoading(false);
   };
 
@@ -370,18 +370,18 @@ export default function AdsManager() {
       }
       setModalAd(undefined);
       load();
-    } catch { setError("Save nahi hua, dobara koshish karo"); }
+    } catch { setError("Save failed, please try again"); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Yeh ad delete hoga. Pakka?")) return;
+    if (!confirm("This ad will be deleted. Are you sure?")) return;
     try { await api.deleteAd(id); load(); }
-    catch { setError("Delete nahi hua"); }
+    catch { setError("Delete failed"); }
   };
 
   const handleToggle = async (id: string) => {
     try { await api.toggleAd(id); load(); }
-    catch { setError("Toggle nahi hua"); }
+    catch { setError("Toggle failed"); }
   };
 
   const totalImpressions = ads.reduce((s, a) => s + a.impressionCount, 0);
@@ -396,7 +396,7 @@ export default function AdsManager() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Ads Manager</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Mobile app ke slider mein dikhne wale banners control karo. Admin panel se direct publish hota hai.
+              Manage banners shown in the mobile app slider. Published directly from the admin panel.
             </p>
           </div>
           <div className="flex gap-2">
@@ -408,7 +408,7 @@ export default function AdsManager() {
               className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 transition-colors"
             >
               <Plus size={15} />
-              Naya Ad
+              New Ad
             </button>
           </div>
         </div>
@@ -416,7 +416,7 @@ export default function AdsManager() {
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
             {error}
-            <button onClick={() => setError(null)} className="ml-2 underline">Hatao</button>
+            <button onClick={() => setError(null)} className="ml-2 underline">Dismiss</button>
           </div>
         )}
 
@@ -455,7 +455,7 @@ export default function AdsManager() {
                       {slotAd.title.slice(0, 18)}{slotAd.title.length > 18 ? "…" : ""}
                     </span>
                   ) : (
-                    <span className="text-[10px] text-muted-foreground">Khaali</span>
+                    <span className="text-[10px] text-muted-foreground">Empty</span>
                   )}
                 </div>
               );
@@ -465,13 +465,13 @@ export default function AdsManager() {
 
         {/* Ads grid */}
         {loading ? (
-          <div className="text-center py-20 text-muted-foreground text-sm">Ads load ho rahe hain...</div>
+          <div className="text-center py-20 text-muted-foreground text-sm">Loading ads...</div>
         ) : ads.length === 0 ? (
           <div className="text-center py-20">
             <ImageIcon size={40} className="mx-auto text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">Koi ad nahi mila. Pehla ad banao!</p>
+            <p className="text-sm text-muted-foreground">No ads found. Create your first ad!</p>
             <button onClick={() => setModalAd({})} className="mt-3 px-4 py-2 bg-primary text-white text-sm rounded-lg hover:bg-primary/90 transition-colors">
-              Naya Ad Banao
+              Create New Ad
             </button>
           </div>
         ) : (

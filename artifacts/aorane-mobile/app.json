@@ -18,10 +18,12 @@
       "bundleIdentifier": "in.aorane.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "AORANE ko nazdeeki doctors, pharmacies aur hospitals dhundne ke liye aapki location chahiye.",
-        "NSFaceIDUsageDescription": "Quick login ke liye Face ID use karna chahte hain.",
-        "NSHealthShareUsageDescription": "AORANE aapki health data dekhne ke liye HealthKit access chahta hai.",
-        "NSUserNotificationsUsageDescription": "Medicine reminders aur health tips ke liye notifications chahiye."
+        "NSLocationWhenInUseUsageDescription": "AORANE uses your location to find nearby doctors, pharmacies and hospitals.",
+        "NSFaceIDUsageDescription": "AORANE uses Face ID for quick and secure login.",
+        "NSHealthShareUsageDescription": "AORANE reads your health data from HealthKit to provide personalised health insights.",
+        "NSHealthUpdateUsageDescription": "AORANE writes workout and activity data to HealthKit to keep your health records in sync.",
+        "NSCameraUsageDescription": "AORANE uses the camera to scan food items and analyse nutritional content.",
+        "NSUserNotificationsUsageDescription": "AORANE sends reminders for medicines, water intake and daily health tips."
       }
     },
     "android": {
@@ -61,13 +63,13 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "AORANE ko nearby doctors/hospitals dhundne ke liye location chahiye."
+          "locationAlwaysAndWhenInUsePermission": "AORANE uses your location to find nearby doctors, pharmacies and hospitals."
         }
       ],
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Face ID se quick login ke liye allow karein."
+          "faceIDPermission": "AORANE uses Face ID for quick and secure login."
         }
       ]
     ],

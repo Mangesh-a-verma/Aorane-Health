@@ -130,7 +130,7 @@ export default function UpgradeScreen() {
       if (refreshUser) await refreshUser();
       setSuccess(true);
     } catch (e: unknown) {
-      Alert.alert("Verification Failed", (e as Error).message || "Payment verify nahi hua");
+      Alert.alert("Verification Failed", (e as Error).message || "Payment could not be verified");
     }
   };
 
@@ -156,7 +156,7 @@ export default function UpgradeScreen() {
       if (orderRes.isTestMode) {
         Alert.alert(
           "Test Mode",
-          `Razorpay keys configure nahi hain.\n\nKya test payment activate karein?\n\nPlan: ${plan.label} | Amount: ₹${finalPrice}`,
+          `Razorpay keys are not configured.\n\nActivate test payment?\n\nPlan: ${plan.label} | Amount: ₹${finalPrice}`,
           [
             { text: "Cancel", style: "cancel" },
             {
@@ -235,7 +235,7 @@ export default function UpgradeScreen() {
               </View>
               <View>
                 <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 15 }}>Active Plan: {(user?.plan as string || "free").toUpperCase()}</Text>
-                <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Aapka premium plan active hai</Text>
+                <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Your premium plan is active</Text>
               </View>
             </View>
           </GlassCard>
@@ -323,14 +323,14 @@ export default function UpgradeScreen() {
           <LinearGradient colors={plan.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ padding: 18, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10 }}>
             <Ionicons name={loading ? "hourglass" : "card"} size={22} color="#FFF" />
             <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 17 }}>
-              {loading ? "Processing..." : `₹${finalPrice} mein Upgrade Karo`}
+              {loading ? "Processing..." : `Upgrade for ₹${finalPrice}`}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
 
         <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 14 }}>
           <Ionicons name="lock-closed" size={12} color={isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)"} />
-          <Text style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" }}>256-bit SSL • Razorpay Secure • Kabhi bhi cancel kar sako</Text>
+          <Text style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" }}>256-bit SSL • Razorpay Secure • Cancel anytime</Text>
         </View>
 
         <View style={{ flexDirection: "row", justifyContent: "center", gap: 16, marginTop: 16, paddingBottom: 10 }}>

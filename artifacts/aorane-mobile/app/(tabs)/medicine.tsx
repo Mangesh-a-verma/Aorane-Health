@@ -30,10 +30,10 @@ type ScanAnalysis = {
 };
 
 const MEAL_TIMING: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = {
-  before_meal: { label: "Khaane se pehle", icon: "arrow-back-circle-outline", color: "#F59E0B" },
-  after_meal:  { label: "Khaane ke baad",  icon: "arrow-forward-circle-outline", color: "#10B981" },
-  with_meal:   { label: "Khaane ke saath", icon: "restaurant-outline",           color: "#0EA5E9" },
-  anytime:     { label: "Kisi bhi waqt",   icon: "time-outline",                 color: "#8B5CF6" },
+  before_meal: { label: "Before meal", icon: "arrow-back-circle-outline", color: "#F59E0B" },
+  after_meal:  { label: "After meal",  icon: "arrow-forward-circle-outline", color: "#10B981" },
+  with_meal:   { label: "With meal",   icon: "restaurant-outline",           color: "#0EA5E9" },
+  anytime:     { label: "Anytime",     icon: "time-outline",                 color: "#8B5CF6" },
 };
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: keyof typeof Ionicons.glyphMap }> = {
@@ -312,7 +312,7 @@ export default function MedicineScreen() {
                     <LinearGradient colors={["#7C3AED","#4F46E5"]} style={styles.sourceBtn}>
                       <Ionicons name="camera-outline" size={28} color="#FFF" />
                       <Text style={[styles.sourceBtnText, { fontFamily: "Inter_600SemiBold" }]}>Camera</Text>
-                      <Text style={[styles.sourceBtnSub, { fontFamily: "Inter_400Regular" }]}>Abhi photo lo</Text>
+                      <Text style={[styles.sourceBtnSub, { fontFamily: "Inter_400Regular" }]}>Take a photo now</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => pickImage(false)} activeOpacity={0.85} style={{ flex: 1 }}>
@@ -326,8 +326,8 @@ export default function MedicineScreen() {
 
                 <GlassCard>
                   <View style={styles.tipsCard}>
-                    <Text style={[styles.tipsTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Best results ke liye:</Text>
-                    {["Report saaf aur readable ho", "Poori report visible ho", "Good lighting mein photo lo", "Blood test, thyroid, lipid panel sab chalega"].map((tip, i) => (
+                    <Text style={[styles.tipsTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>For best results:</Text>
+                    {["Report should be clear and readable", "Entire report must be visible", "Take photo in good lighting", "Works for blood test, thyroid, lipid panel and more"].map((tip, i) => (
                       <View key={i} style={styles.tipRow}>
                         <LinearGradient colors={["#7C3AED","#0077B6"]} style={styles.tipDot} />
                         <Text style={[styles.tipText, { color: isDark ? "rgba(255,255,255,0.55)" : "rgba(10,22,40,0.6)", fontFamily: "Inter_400Regular" }]}>{tip}</Text>

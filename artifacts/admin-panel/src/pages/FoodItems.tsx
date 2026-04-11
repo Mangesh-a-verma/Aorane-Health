@@ -52,7 +52,7 @@ export default function FoodItems() {
 
         <div className="relative mb-4">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Food item name search karein..."
+          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search food item name..."
             className="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-primary transition-all" />
         </div>
 

@@ -56,7 +56,7 @@ export default function Announcements() {
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-center">
             <Megaphone size={36} className="text-muted-foreground/30 mb-3" />
-            <p className="text-muted-foreground">Koi announcement nahi mili</p>
+            <p className="text-muted-foreground">No announcements found</p>
           </div>
         ) : (
           <div className="space-y-3">

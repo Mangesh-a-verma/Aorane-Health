@@ -130,7 +130,7 @@ router.get("/stress/insight", requireAuth, async (req: AuthRequest, res) => {
       ? Math.round(recentLogs.reduce((s, l) => s + l.stressScore, 0) / recentLogs.length)
       : 40;
 
-    const geminiKey = process.env["GEMINI_API_KEY"];
+    const geminiKey = process.env["GOOGLE_GEMINI_API_KEY"];
     let insight = "";
     let aiTips: string[] = [];
 

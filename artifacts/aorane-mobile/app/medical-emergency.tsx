@@ -96,7 +96,7 @@ export default function MedicalEmergencyScreen() {
                   <LiveBadge />
                 </View>
                 <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 }}>
-                  Blood donors dhundein, emergency request karein, ya khud donor banein. GPS se paas ke donors dikhte hain.
+                  Find blood donors, post an emergency request, or register as a donor yourself. Nearby donors are shown via GPS.
                 </Text>
               </View>
             </View>
@@ -141,7 +141,7 @@ export default function MedicalEmergencyScreen() {
                 <ComingSoonBadge />
               </View>
               <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 }}>
-                2-3 tap mein nearest hospital aur police ko automatic GPS location + call. Permissions ke baad launch hoga.
+                In 2–3 taps, send your GPS location automatically and call the nearest hospital or police. Launches after permissions are granted.
               </Text>
             </View>
           </View>
@@ -150,7 +150,7 @@ export default function MedicalEmergencyScreen() {
           <View style={{ backgroundColor: "#FFFBEB", borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: "#FDE68A" }}>
             <Text style={{ color: "#92400E", fontFamily: "Inter_700Bold", fontSize: 12, marginBottom: 8 }}>PLANNED FLOW — 3 Taps:</Text>
             {[
-              { step: "1", action: "SOS tap karo", detail: "2 second hold se accidental trigger ruke" },
+              { step: "1", action: "Tap SOS", detail: "Hold for 2 seconds to prevent accidental trigger" },
               { step: "2", action: "GPS auto-capture", detail: "Exact location + address automatically" },
               { step: "3", action: "Auto-dispatch", detail: "Nearest hospital (2-3 km) + Police 112 notify + Auto-call" },
             ].map((s) => (
@@ -226,7 +226,7 @@ export default function MedicalEmergencyScreen() {
             </View>
           ))}
           <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 4 }}>
-            Yeh numbers hamesha direct call ke liye available hain — koi app needed nahi
+            These numbers are always available for direct calls — no app needed
           </Text>
         </View>
       </ScrollView>

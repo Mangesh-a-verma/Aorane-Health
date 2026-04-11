@@ -160,7 +160,7 @@ export default function Users() {
               type="search"
               value={aoraneQuery}
               onChange={(e) => handleAoraneSearch(e.target.value)}
-              placeholder="AORANE ID (e.g. 125467123456) ya naam type karein..."
+              placeholder="Search by AORANE ID or name..."
               className="w-full bg-card border border-border rounded-xl pl-9 pr-10 py-2.5 text-sm focus:outline-none focus:border-primary transition-all font-mono"
             />
             {aoraneQuery && (
@@ -185,11 +185,11 @@ export default function Users() {
             <div className="mt-4">
               {searchResults.length === 0 ? (
                 <div className="text-center text-muted-foreground text-sm py-6 bg-muted/30 rounded-xl">
-                  Koi user nahi mila "{aoraneQuery}"
+                  No user found for "{aoraneQuery}"
                 </div>
               ) : (
                 <div>
-                  <div className="text-xs text-muted-foreground mb-3">{searchResults.length} result{searchResults.length !== 1 ? "s" : ""} mila</div>
+                  <div className="text-xs text-muted-foreground mb-3">{searchResults.length} result{searchResults.length !== 1 ? "s" : ""} found</div>
                   <div className="grid gap-3 md:grid-cols-2">
                     {searchResults.map((r) => <SearchResultCard key={r.userId} r={r} />)}
                   </div>

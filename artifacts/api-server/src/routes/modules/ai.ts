@@ -25,7 +25,7 @@ async function callGemini(prompt: string, geminiKey: string): Promise<string> {
 
 router.post("/ai/diet-plan", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
     if (!geminiKey) return res.status(503).json({ error: "AI service not configured" });
 
     const userId = req.userId!;
@@ -123,7 +123,7 @@ Return ONLY valid JSON (no markdown, no extra text):
 
 router.post("/ai/health-tip", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
     if (!geminiKey) return res.status(503).json({ error: "AI service not configured" });
 
     const { context = "" } = req.body as { context?: string };
@@ -148,7 +148,7 @@ Return ONLY valid JSON:
 
 router.post("/ai/meal-swap", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
     if (!geminiKey) return res.status(503).json({ error: "AI service not configured" });
 
     const { mealName, reason, dietaryPref = "vegetarian" } = req.body as { mealName: string; reason?: string; dietaryPref?: string };

@@ -50,7 +50,7 @@ export default function ProfileScreen() {
     try { await api.updatePrivacy({ [key]: value }); } catch { }
   };
 
-  const handleLogout = () => Alert.alert("Logout", "Kya aap sure hain?", [
+  const handleLogout = () => Alert.alert("Logout", "Are you sure you want to log out?", [
     { text: "Cancel", style: "cancel" },
     { text: "Logout", style: "destructive", onPress: () => logout() },
   ]);

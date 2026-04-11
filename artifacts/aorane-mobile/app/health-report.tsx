@@ -27,7 +27,7 @@ type Scorecard = {
 };
 
 const DEFAULT_CO: CompanySettings = {
-  companyName: "AORANE Health", companyLogoUrl: null, tagline: "Aapki health, aapke haath mein",
+  companyName: "AORANE Health", companyLogoUrl: null, tagline: "Your health, in your hands",
   website: "aorane.com", supportPhone: null, supportEmail: null, address: null,
   primaryColor: "#0077B6", accentColor: "#00B896",
   reportHeaderText: null, reportFooterText: null, reportLogoUrl: null,

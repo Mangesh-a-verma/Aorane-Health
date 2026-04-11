@@ -20,7 +20,7 @@ const router = Router();
 
 // ── Gemini helper (reused from ai.ts pattern) ─────────────────────────────────
 async function callGemini(prompt: string): Promise<string> {
-  const geminiKey = process.env.GEMINI_API_KEY;
+  const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
   if (!geminiKey) throw new Error("GEMINI_API_KEY not set");
 
   const res = await fetch(
@@ -363,13 +363,13 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       suggestionsJson: suggestions as Record<string, unknown>,
       generatedAt,
       calorieGoalUsed: calorieGoal,
-      isAiGenerated: !!(process.env.GEMINI_API_KEY),
+      isAiGenerated: true,
     });
 
     return res.json({ suggestions, fromCache: false, generatedAt, date: today });
   } catch (err) {
     console.error("Suggestions error:", err);
-    res.status(500).json({ error: "Suggestions generate nahi hue" });
+    res.status(500).json({ error: "Failed to generate suggestions" });
   }
 });
 
@@ -380,7 +380,7 @@ router.post("/suggestions/refresh", requireAuth, async (req: AuthRequest, res) =
     await db.delete(dailySuggestionsTable).where(
       and(eq(dailySuggestionsTable.userId, req.userId!), eq(dailySuggestionsTable.date, today))
     );
-    res.json({ success: true, message: "Cache cleared — /suggestions/daily pe dobara call karo" });
+    res.json({ success: true, message: "Cache cleared — call /suggestions/daily again" });
   } catch {
     res.status(500).json({ error: "Refresh failed" });
   }
@@ -392,7 +392,7 @@ router.get("/notifications/settings", requireAuth, async (req: AuthRequest, res)
     const [prefs] = await db.select().from(userPreferencesTable)
       .where(eq(userPreferencesTable.userId, req.userId!)).limit(1);
     if (!prefs) {
-      res.status(404).json({ error: "Preferences nahi mili" });
+      res.status(404).json({ error: "Preferences not found" });
       return;
     }
     res.json({
@@ -414,7 +414,7 @@ router.get("/notifications/settings", requireAuth, async (req: AuthRequest, res)
       },
     });
   } catch {
-    res.status(500).json({ error: "Settings load nahi hue" });
+    res.status(500).json({ error: "Failed to load settings" });
   }
 });
 
@@ -439,7 +439,7 @@ router.put("/notifications/settings", requireAuth, async (req: AuthRequest, res)
 
     res.json({ success: true });
   } catch {
-    res.status(500).json({ error: "Settings save nahi hue" });
+    res.status(500).json({ error: "Failed to save settings" });
   }
 });
 

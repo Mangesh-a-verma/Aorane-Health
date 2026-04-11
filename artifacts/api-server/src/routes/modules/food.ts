@@ -170,7 +170,7 @@ router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
             category: "food",
             dietaryTags: [],
             vitamins: {},
-            healthTip: `Aapne yeh ${historyMatch.count} baar pehle khaya hai — data aapki history se aaya hai.`,
+            healthTip: `You have eaten this ${historyMatch.count} times before — data loaded from your history.`,
           },
           fromHistory: true,
           fromDb: false,
@@ -217,7 +217,7 @@ router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
     }
 
     // ── Level 4: Gemini AI (called only when not found anywhere) ─────────────
-    const geminiKey = process.env["GEMINI_API_KEY"];
+    const geminiKey = process.env["GOOGLE_GEMINI_API_KEY"];
     if (!geminiKey) {
       return res.status(503).json({ error: "AI service not configured" });
     }

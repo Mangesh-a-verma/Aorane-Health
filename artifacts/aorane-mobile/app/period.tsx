@@ -58,11 +58,11 @@ export default function PeriodScreen() {
   };
 
   const saveLog = async () => {
-    if (!startDate) { Alert.alert("Date chahiye", "Period start date daalo"); return; }
+    if (!startDate) { Alert.alert("Date required", "Please enter your period start date"); return; }
     setSaving(true);
     try {
       await api.logPeriod({ startDate, endDate: endDate || undefined, flow: selectedFlow, symptoms: selectedSymptoms, notes });
-      Alert.alert("Log ho gaya! 🌸", "Period data save ho gaya");
+      Alert.alert("Logged! 🌸", "Your period data has been saved");
       setStartDate(new Date().toISOString().split("T")[0]);
       setEndDate(""); setNotes(""); setSelectedSymptoms([]);
       setTab("tracker"); load();
@@ -86,7 +86,7 @@ export default function PeriodScreen() {
           </TouchableOpacity>
           <View>
             <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>Period Tracker 🌸</Text>
-            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Cycle track karo, future predict karo</Text>
+            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Track your cycle, predict your future periods</Text>
           </View>
         </View>
 
@@ -126,10 +126,10 @@ export default function PeriodScreen() {
           <GlassCard>
             <View style={{ padding: 30, alignItems: "center" }}>
               <Text style={{ fontSize: 56 }}>🌸</Text>
-              <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 17, marginTop: 14, textAlign: "center" }}>Period Tracker shuru karo</Text>
-              <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 8, lineHeight: 20 }}>Pehla period log karo, phir AI aapka cycle predict karega</Text>
+              <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 17, marginTop: 14, textAlign: "center" }}>Start Period Tracker</Text>
+              <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 8, lineHeight: 20 }}>Log your first period and AI will predict your cycle</Text>
               <TouchableOpacity onPress={() => setTab("log")} style={{ marginTop: 20, backgroundColor: "#EC4899", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14 }}>
-                <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>+ Period Log Karo</Text>
+                <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>+ Log Period</Text>
               </TouchableOpacity>
             </View>
           </GlassCard>
@@ -174,7 +174,7 @@ export default function PeriodScreen() {
         {tab === "history" && (
           <View style={{ gap: 10 }}>
             {logs.length === 0 ? (
-              <GlassCard><View style={{ padding: 30, alignItems: "center" }}><Text style={{ fontSize: 40 }}>🌸</Text><Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 16, marginTop: 12 }}>Koi history nahi</Text></View></GlassCard>
+              <GlassCard><View style={{ padding: 30, alignItems: "center" }}><Text style={{ fontSize: 40 }}>🌸</Text><Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 16, marginTop: 12 }}>No history yet</Text></View></GlassCard>
             ) : logs.map((log, i) => (
               <GlassCard key={i}>
                 <View style={{ padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>

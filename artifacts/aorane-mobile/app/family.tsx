@@ -58,7 +58,7 @@ export default function FamilyScreen() {
     setCreating(true);
     try {
       const res = await api.createFamilyGroup();
-      Alert.alert("Family Group Bana Gaya! 🎉", `Invite Code: ${res.inviteCode}\n\nFamily members ko yeh code share karo!`);
+      Alert.alert("Family Group Created! 🎉", `Invite Code: ${res.inviteCode}\n\nShare this code with your family members!`);
       load();
     } catch (e: unknown) {
       Alert.alert("Error", (e as Error).message || "Failed");
@@ -70,7 +70,7 @@ export default function FamilyScreen() {
     setJoining(true);
     try {
       await api.joinFamilyGroup(joinCode.trim().toUpperCase());
-      Alert.alert("Joined! 🎉", "Family group mein shamil ho gaye!");
+      Alert.alert("Joined! 🎉", "You have successfully joined the family group!");
       setJoinCode("");
       load();
     } catch (e: unknown) {
@@ -78,7 +78,7 @@ export default function FamilyScreen() {
     } finally { setJoining(false); }
   };
 
-  const leaveGroup = () => Alert.alert("Leave Group?", "Kya aap pakka group chodna chahte hain?", [
+  const leaveGroup = () => Alert.alert("Leave Group?", "Are you sure you want to leave this group?", [
     { text: "Cancel", style: "cancel" },
     { text: "Leave", style: "destructive", onPress: async () => {
       try { await api.leaveFamilyGroup(); load(); } catch (e: unknown) { Alert.alert("Error", (e as Error).message || "Failed"); }
@@ -115,7 +115,7 @@ export default function FamilyScreen() {
                 </View>
                 <Ionicons name="copy-outline" size={22} color="rgba(255,255,255,0.7)" />
               </View>
-              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 8 }}>Yeh code family members ke saath share karo</Text>
+              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 8 }}>Share this code with your family members</Text>
             </LinearGradient>
 
             {/* Members */}
@@ -154,7 +154,7 @@ export default function FamilyScreen() {
               <View style={{ padding: 24, alignItems: "center" }}>
                 <Text style={{ fontSize: 56, marginBottom: 12 }}>👨‍👩‍👧‍👦</Text>
                 <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 18, marginBottom: 8, textAlign: "center" }}>Family Health Group</Text>
-                <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 }}>Apne pariwar ki health ek jagah track karo. Sabka health score, exercise, aur goals ek screen pe!</Text>
+                <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 }}>Track your family's health in one place. Everyone's health score, exercise, and goals on one screen!</Text>
               </View>
             </GlassCard>
 

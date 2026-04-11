@@ -23,8 +23,8 @@ const PERMS = [
     iconColor: "#0EA5E9",
     gradColors: ["#0077B6", "#0EA5E9"] as [string, string],
     title: "Location Access",
-    desc: "Nazdeeki doctor, pharmacy aur hospital dhundne ke liye",
-    benefit: "Emergency mein turant madad mile",
+    desc: "Find nearby doctors, pharmacies and hospitals",
+    benefit: "Get immediate help in an emergency",
   },
   {
     key: "notification",
@@ -32,8 +32,8 @@ const PERMS = [
     iconColor: "#F59E0B",
     gradColors: ["#F59E0B", "#EF4444"] as [string, string],
     title: "Notifications",
-    desc: "Medicine reminder, health tips aur appointment alerts",
-    benefit: "Kabhi koi dose miss na ho",
+    desc: "Medicine reminders, health tips and appointment alerts",
+    benefit: "Never miss a dose",
   },
   {
     key: "health",
@@ -41,8 +41,8 @@ const PERMS = [
     iconColor: "#10B981",
     gradColors: ["#059669", "#1B998B"] as [string, string],
     title: "Health & Activity",
-    desc: "Kadam ginti, calories burn aur physical activity track karne ke liye",
-    benefit: "Automatic fitness data — kuch type karne ki zaroorat nahi",
+    desc: "Track steps, calories burned and physical activity",
+    benefit: "Automatic fitness data — no manual entry needed",
   },
 ];
 
@@ -142,7 +142,7 @@ export default function PermissionsScreen() {
           </LinearGradient>
           <Text style={[styles.title, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>App Permissions</Text>
           <Text style={[styles.subtitle, { color: isDark ? "rgba(255,255,255,0.48)" : "rgba(10,22,40,0.52)", fontFamily: "Inter_400Regular" }]}>
-            Ye permissions AORANE ko better banati hain — sabhi optional hain
+            These permissions make AORANE work better — all are optional
           </Text>
         </View>
 
@@ -216,7 +216,7 @@ export default function PermissionsScreen() {
         <View style={[styles.privNote, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.6)", borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.88)" }]}>
           <Ionicons name="lock-closed" size={12} color={isDark ? "#38BDF8" : "#0077B6"} />
           <Text style={[styles.privTxt, { color: isDark ? "rgba(255,255,255,0.38)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>
-            Koi bhi data kabhi third-party ke saath share nahi hoga • AORANE Privacy Policy
+            Your data is never shared with third parties • AORANE Privacy Policy
           </Text>
         </View>
       </Animated.View>
@@ -230,13 +230,13 @@ export default function PermissionsScreen() {
         <TouchableOpacity onPress={handleContinue} activeOpacity={0.85} style={styles.ctaWrap}>
           <LinearGradient colors={["#0077B6", "#0EA5E9", "#1B998B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaBtn}>
             <Text style={[styles.ctaTxt, { fontFamily: "Inter_700Bold" }]}>
-              {allAsked ? "Aage Barein" : "Abhi Karo / Skip"}
+              {allAsked ? "Continue" : "Allow / Skip"}
             </Text>
             <Ionicons name="arrow-forward" size={18} color="#FFF" />
           </LinearGradient>
         </TouchableOpacity>
         <Text style={[styles.skipNote, { color: isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.35)", fontFamily: "Inter_400Regular" }]}>
-          Permissions baad mein Settings se bhi de sakte hain
+          You can always change permissions later in Settings
         </Text>
       </View>
     </View>

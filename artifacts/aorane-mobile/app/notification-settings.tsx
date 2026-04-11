@@ -269,7 +269,7 @@ export default function NotificationSettingsScreen() {
         <View style={{ backgroundColor: "#EFF9FF", borderRadius: 14, borderWidth: 1, borderColor: "#BAE6FD", padding: 14, flexDirection: "row", gap: 10 }}>
           <Ionicons name="information-circle-outline" size={20} color={C.primary} />
           <Text style={{ color: C.primary, fontFamily: "Inter_400Regular", fontSize: 12, flex: 1, lineHeight: 18 }}>
-            AORANE ki notifications aapko healthy habits maintain karne mein help karti hain. In-app notifications abhi available hain. Push notifications jald aayenge!
+            AORANE notifications help you maintain healthy habits. In-app notifications are available now. Push notifications coming soon!
           </Text>
         </View>
       </ScrollView>

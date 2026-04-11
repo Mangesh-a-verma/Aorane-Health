@@ -24,32 +24,32 @@ type WorkProfile = {
 
 const WORK_PROFILES: WorkProfile[] = [
   // Desk / Sedentary
-  { value: "Office/Desk Job",    label: "Office / Desk Job",    icon: "💼", activityHint: "sedentary", description: "Computer pe kaam, baithke",         calorieFactor: "1.2× BMR",  category: "💼 Desk / Sedentary" },
+  { value: "Office/Desk Job",    label: "Office / Desk Job",    icon: "💼", activityHint: "sedentary", description: "Computer work, mostly sitting",     calorieFactor: "1.2× BMR",  category: "💼 Desk / Sedentary" },
   { value: "IT/Software",        label: "IT / Software",        icon: "💻", activityHint: "sedentary", description: "Programming, system work",           calorieFactor: "1.2× BMR",  category: "💼 Desk / Sedentary" },
   { value: "Call Center/BPO",    label: "Call Center / BPO",    icon: "📞", activityHint: "sedentary", description: "Calling, customer service",           calorieFactor: "1.2× BMR",  category: "💼 Desk / Sedentary" },
-  { value: "Freelancer/WFH",     label: "Freelancer / WFH",     icon: "🏡", activityHint: "sedentary", description: "Ghar se kaam, flexible hours",       calorieFactor: "1.2× BMR",  category: "💼 Desk / Sedentary" },
+  { value: "Freelancer/WFH",     label: "Freelancer / WFH",     icon: "🏡", activityHint: "sedentary", description: "Work from home, flexible hours",     calorieFactor: "1.2× BMR",  category: "💼 Desk / Sedentary" },
   // Light Active
-  { value: "Teacher/Professor",  label: "Teacher / Professor",  icon: "📚", activityHint: "light",     description: "Class mein padhana, thodi chalna",   calorieFactor: "1.375× BMR", category: "🚶 Light Active" },
-  { value: "Doctor/Healthcare",  label: "Doctor / Healthcare",  icon: "🏥", activityHint: "light",     description: "Hospital, clinic, patients dekhna",  calorieFactor: "1.375× BMR", category: "🚶 Light Active" },
-  { value: "Business Owner",     label: "Business Owner",       icon: "🏢", activityHint: "light",     description: "Shop/office manage karna",            calorieFactor: "1.375× BMR", category: "🚶 Light Active" },
-  { value: "Housewife",          label: "Housewife",            icon: "🏠", activityHint: "light",     description: "Ghar ka kaam, cooking, cleaning",     calorieFactor: "1.375× BMR", category: "🚶 Light Active" },
-  { value: "House Husband",      label: "House Husband",        icon: "🏠", activityHint: "light",     description: "Ghar sambhalna, bachhe dekhna",       calorieFactor: "1.375× BMR", category: "🚶 Light Active" },
+  { value: "Teacher/Professor",  label: "Teacher / Professor",  icon: "📚", activityHint: "light",     description: "Teaching in class, light walking",   calorieFactor: "1.375× BMR", category: "🚶 Light Active" },
+  { value: "Doctor/Healthcare",  label: "Doctor / Healthcare",  icon: "🏥", activityHint: "light",     description: "Hospital, clinic, patient care",      calorieFactor: "1.375× BMR", category: "🚶 Light Active" },
+  { value: "Business Owner",     label: "Business Owner",       icon: "🏢", activityHint: "light",     description: "Managing shop or office",             calorieFactor: "1.375× BMR", category: "🚶 Light Active" },
+  { value: "Housewife",          label: "Housewife",            icon: "🏠", activityHint: "light",     description: "Home duties, cooking, cleaning",      calorieFactor: "1.375× BMR", category: "🚶 Light Active" },
+  { value: "House Husband",      label: "House Husband",        icon: "🏠", activityHint: "light",     description: "Managing home, childcare",            calorieFactor: "1.375× BMR", category: "🚶 Light Active" },
   { value: "Retired",            label: "Retired (Sewa Nivratt)", icon: "🌅", activityHint: "light",   description: "Retired, daily routine",              calorieFactor: "1.375× BMR", category: "🚶 Light Active" },
   { value: "Artist/Creative",    label: "Artist / Creative",    icon: "🎨", activityHint: "light",     description: "Design, music, writing",              calorieFactor: "1.375× BMR", category: "🚶 Light Active" },
   { value: "Student (School)",   label: "Student (School)",     icon: "🎒", activityHint: "light",     description: "School student, daily classes",       calorieFactor: "1.375× BMR", category: "🚶 Light Active" },
   // Moderate Active
-  { value: "Field/Sales",        label: "Field / Sales",        icon: "🚗", activityHint: "moderate",  description: "Bahar ghoomna, clients milna",        calorieFactor: "1.55× BMR",  category: "🏃 Moderate Active" },
-  { value: "Driver/Delivery",    label: "Driver / Delivery",    icon: "🚚", activityHint: "moderate",  description: "Gaadi chalana, delivery karna",       calorieFactor: "1.55× BMR",  category: "🏃 Moderate Active" },
+  { value: "Field/Sales",        label: "Field / Sales",        icon: "🚗", activityHint: "moderate",  description: "Travel for work, meeting clients",    calorieFactor: "1.55× BMR",  category: "🏃 Moderate Active" },
+  { value: "Driver/Delivery",    label: "Driver / Delivery",    icon: "🚚", activityHint: "moderate",  description: "Driving, making deliveries",          calorieFactor: "1.55× BMR",  category: "🏃 Moderate Active" },
   { value: "Factory Worker",     label: "Factory Worker",       icon: "🔧", activityHint: "moderate",  description: "Machine work, factory floor",          calorieFactor: "1.55× BMR",  category: "🏃 Moderate Active" },
-  { value: "ASHA/ANM Worker",    label: "ASHA / ANM Worker",    icon: "👩‍⚕️", activityHint: "moderate", description: "Village health worker, ghar visit",  calorieFactor: "1.55× BMR",  category: "🏃 Moderate Active" },
+  { value: "ASHA/ANM Worker",    label: "ASHA / ANM Worker",    icon: "👩‍⚕️", activityHint: "moderate", description: "Village health worker, home visits",  calorieFactor: "1.55× BMR",  category: "🏃 Moderate Active" },
   { value: "Student (College)",  label: "Student (College)",    icon: "🎓", activityHint: "moderate",  description: "College, campus activities",          calorieFactor: "1.55× BMR",  category: "🏃 Moderate Active" },
   // Very Active
   { value: "Police/CRPF",        label: "Police / CRPF",        icon: "👮", activityHint: "very",      description: "Patrol, training, duty",              calorieFactor: "1.725× BMR", category: "⚡ Very Active" },
   { value: "Army/Defence",       label: "Army / Defence",       icon: "🪖", activityHint: "very",      description: "Physical training, field duty",       calorieFactor: "1.725× BMR", category: "⚡ Very Active" },
-  { value: "Farmer/Agriculture", label: "Farmer / Agriculture", icon: "🌾", activityHint: "very",      description: "Khet ka kaam, physical labor",        calorieFactor: "1.725× BMR", category: "⚡ Very Active" },
+  { value: "Farmer/Agriculture", label: "Farmer / Agriculture", icon: "🌾", activityHint: "very",      description: "Field work, heavy physical labor",    calorieFactor: "1.725× BMR", category: "⚡ Very Active" },
   { value: "Construction Worker",label: "Construction Worker",  icon: "🏗️", activityHint: "very",      description: "Building, heavy manual work",         calorieFactor: "1.725× BMR", category: "⚡ Very Active" },
   { value: "Athlete/Sports",     label: "Athlete / Sports",     icon: "🏃", activityHint: "athlete",   description: "Professional sports, twice daily",    calorieFactor: "1.9× BMR",   category: "🏆 Athlete" },
-  { value: "Other",              label: "Other (Anya)",         icon: "✨", activityHint: "moderate",  description: "Koi aur kaam",                       calorieFactor: "1.55× BMR",  category: "✨ Other" },
+  { value: "Other",              label: "Other",                icon: "✨", activityHint: "moderate",  description: "Any other type of work",             calorieFactor: "1.55× BMR",  category: "✨ Other" },
 ];
 
 const ACTIVITY_LEVELS = [
@@ -140,7 +140,7 @@ export default function EditWorkProfileScreen() {
           <View style={{ flex: 1 }}>
             <Text style={{ color: "#FFF", fontSize: 21, fontFamily: "Inter_700Bold" }}>💼 Work Profile</Text>
             <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontFamily: "Inter_400Regular" }}>
-              Calorie calculation ke liye zaroori hai
+              Required for calorie calculation
             </Text>
           </View>
         </View>
@@ -214,7 +214,7 @@ export default function EditWorkProfileScreen() {
         {/* Activity Level */}
         <View style={{ gap: 10 }}>
           <Text style={{ color: C.muted, fontFamily: "Inter_700Bold", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>🏋️ Activity Level (Exercise)</Text>
-          <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>Yeh aapki daily exercise ke baare mein hai, kaam se alag</Text>
+          <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>This refers to your daily exercise outside of work</Text>
           {ACTIVITY_LEVELS.map((al) => {
             const selected = activityLevel === al.value;
             return (

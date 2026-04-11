@@ -42,7 +42,7 @@ export default function Subscriptions() {
   };
 
   const handleCancel = async (id: string) => {
-    if (!confirm("Kya aap subscription cancel karna chahte hain?")) return;
+    if (!confirm("Are you sure you want to cancel this subscription?")) return;
     try { await api.cancelSubscription(id); load(); } catch (e: unknown) { setErr((e as Error).message || "Failed"); }
   };
 

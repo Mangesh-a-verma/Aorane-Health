@@ -50,7 +50,7 @@ router.post("/medical/scan", requireAuth, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: "imageBase64 required" });
     }
 
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
     if (!geminiKey) {
       return res.status(503).json({ error: "AI service not configured" });
     }

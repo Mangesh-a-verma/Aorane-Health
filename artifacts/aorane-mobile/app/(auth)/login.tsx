@@ -139,7 +139,7 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
               <Text style={s.devOtpCode}>{devOtp}</Text>
-              <Text style={s.devOtpHint}>SMS delivery unavailable (DLT verification pending). Yeh code OTP screen mein enter karo.</Text>
+              <Text style={s.devOtpHint}>SMS delivery unavailable (DLT verification pending). Enter this code on the OTP screen.</Text>
               <TouchableOpacity
                 onPress={() => { setDevOtp(null); router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } }); }}
                 style={s.devOtpBtn}

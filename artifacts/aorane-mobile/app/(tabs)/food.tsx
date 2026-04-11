@@ -83,7 +83,7 @@ function useVoice(onResult: (text: string) => void) {
 
   const start = useCallback(() => {
     if (Platform.OS !== "web") {
-      Alert.alert("Voice", "App mein voice Android Chrome browser mein kaam karta hai");
+      Alert.alert("Voice Search", "Voice input works best in Android Chrome browser");
       return;
     }
     const win = window as unknown as Record<string, unknown>;
@@ -251,7 +251,7 @@ export default function FoodScreen() {
       if (!result.canceled && result.assets[0]?.base64) {
         await runScan({ imageBase64: result.assets[0].base64, mimeType: "image/jpeg" });
       }
-    } catch { Alert.alert("Error", "Camera nahi khula"); }
+    } catch { Alert.alert("Error", "Could not open camera. Please try again."); }
   };
 
   // ── AI Scan ──────────────────────────────────────────────────────────────────
@@ -263,7 +263,7 @@ export default function FoodScreen() {
       setScanMeta({ fromHistory: res.fromHistory, fromDb: res.fromDb, fromCache: res.fromCache, historyCount: res.historyCount });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: unknown) {
-      Alert.alert("AI Error", (e as Error).message || "Food analysis fail hua");
+      Alert.alert("AI Error", (e as Error).message || "Food analysis failed. Please try again.");
     }
     setScanning(false);
   };
@@ -293,7 +293,7 @@ export default function FoodScreen() {
   };
 
   const deleteLog = async (id: string, name: string) => {
-    Alert.alert("Delete?", `"${name}" hatana chahte ho?`, [
+    Alert.alert("Remove entry?", `Remove "${name}" from your food log?`, [
       { text: "Cancel", style: "cancel" },
       { text: "Delete", style: "destructive", onPress: async () => {
         try {
@@ -471,7 +471,7 @@ export default function FoodScreen() {
             {favorites.length > 0 && !scanResult && (
               <View style={{ marginBottom: 14 }}>
                 <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_600SemiBold", marginBottom: 8 }}>
-                  ⭐ FAVOURITE FOODS — ONE TAP SE ADD
+                  ⭐ FAVOURITES — ONE TAP ADD
                 </Text>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                   {favorites.slice(0, 10).map(fav => (
@@ -480,7 +480,7 @@ export default function FoodScreen() {
                       <Text style={{ fontSize: 13 }}>⭐</Text>
                       <View>
                         <Text style={{ color: C.text, fontFamily: "Inter_500Medium", fontSize: 12 }} numberOfLines={1}>{fav.foodNameEn}</Text>
-                        <Text style={{ color: C.muted, fontSize: 10 }}>{Math.round(fav.calories)} kcal · {fav.count}x khaya</Text>
+                        <Text style={{ color: C.muted, fontSize: 10 }}>{Math.round(fav.calories)} kcal · eaten {fav.count}x</Text>
                       </View>
                     </TouchableOpacity>
                   ))}
@@ -494,7 +494,7 @@ export default function FoodScreen() {
                 <Ionicons name="search" size={18} color={C.muted} />
                 <TextInput
                   style={{ flex: 1, color: C.text, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 12 }}
-                  placeholder="Food name likhein — Hindi, English, koi bhi bhasha..."
+                  placeholder="Food name — Hindi, English, any language..."
                   placeholderTextColor={C.muted}
                   value={text}
                   onChangeText={handleTextChange}
@@ -514,12 +514,12 @@ export default function FoodScreen() {
               <View style={{ flexDirection: "row", borderTopWidth: 1, borderTopColor: C.border }}>
                 <TouchableOpacity onPress={takePhoto} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10 }}>
                   <Ionicons name="camera-outline" size={18} color={C.primary} />
-                  <Text style={{ color: C.primary, fontFamily: "Inter_500Medium", fontSize: 12 }}>Photo kheechi</Text>
+                  <Text style={{ color: C.primary, fontFamily: "Inter_500Medium", fontSize: 12 }}>Take Photo</Text>
                 </TouchableOpacity>
                 <View style={{ width: 1, backgroundColor: C.border }} />
                 <TouchableOpacity onPress={pickPhoto} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10 }}>
                   <Ionicons name="images-outline" size={18} color={C.primary} />
-                  <Text style={{ color: C.primary, fontFamily: "Inter_500Medium", fontSize: 12 }}>Gallery se</Text>
+                  <Text style={{ color: C.primary, fontFamily: "Inter_500Medium", fontSize: 12 }}>From Gallery</Text>
                 </TouchableOpacity>
               </View>
             </Card>
@@ -527,21 +527,21 @@ export default function FoodScreen() {
             {listening && (
               <View style={{ backgroundColor: "#EF444415", borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <Animated.View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#EF4444", transform: [{ scale: pulseAnim }] }} />
-                <Text style={{ color: "#EF4444", fontFamily: "Inter_500Medium", fontSize: 13 }}>Sun raha hoon… bolo apna food</Text>
+                <Text style={{ color: "#EF4444", fontFamily: "Inter_500Medium", fontSize: 13 }}>Listening… say your food name</Text>
               </View>
             )}
 
             {/* History results */}
             {histResults.length > 0 && !scanResult && (
               <View style={{ marginBottom: 12 }}>
-                <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_600SemiBold", marginBottom: 6 }}>⏱️ AAPKI HISTORY</Text>
+                <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_600SemiBold", marginBottom: 6 }}>⏱️ YOUR HISTORY</Text>
                 <Card>
                   {histResults.map((item, i) => (
                     <TouchableOpacity key={item.foodNameEn} onPress={() => logItem(item, "text")} disabled={submitting}
                       style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 12, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: C.border }}>
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: C.text, fontFamily: "Inter_500Medium", fontSize: 13 }}>{item.foodNameEn}</Text>
-                        <Text style={{ color: C.muted, fontSize: 11 }}>{Math.round(item.calories)} kcal · {item.count}x khaya tha</Text>
+                        <Text style={{ color: C.muted, fontSize: 11 }}>{Math.round(item.calories)} kcal · eaten {item.count}x</Text>
                       </View>
                       <SourceBadge fromHistory={true} fromDb={false} fromCache={false} />
                       <Ionicons name="add-circle" size={24} color={C.green} />
@@ -575,7 +575,7 @@ export default function FoodScreen() {
             {noResults && !scanning && (
               <Card style={{ padding: 16, marginBottom: 12 }}>
                 <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13, marginBottom: 12, textAlign: "center" }}>
-                  "{text}" history aur database mein nahi mila
+                  "{text}" not found in history or database
                 </Text>
                 <TouchableOpacity onPress={() => runScan({ foodName: text })} activeOpacity={0.85}>
                   <LinearGradient colors={[C.purple, C.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -593,7 +593,7 @@ export default function FoodScreen() {
             {scanning && (
               <Card style={{ padding: 30, alignItems: "center", marginBottom: 12 }}>
                 <ActivityIndicator color={C.purple} size="large" />
-                <Text style={{ color: C.text, fontFamily: "Inter_500Medium", fontSize: 14, marginTop: 12 }}>AI analyse kar raha hai…</Text>
+                <Text style={{ color: C.text, fontFamily: "Inter_500Medium", fontSize: 14, marginTop: 12 }}>AI is analysing...</Text>
                 <Text style={{ color: C.muted, fontSize: 11, marginTop: 4 }}>History → DB → Cache → Gemini AI</Text>
               </Card>
             )}
@@ -662,7 +662,7 @@ export default function FoodScreen() {
                         : <>
                             <Ionicons name="add-circle-outline" size={18} color="#FFF" />
                             <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>
-                              {MEAL_META[activeMeal].label} mein Log Karo ✓
+                              Log to {MEAL_META[activeMeal].label} ✓
                             </Text>
                           </>
                       }

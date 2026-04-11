@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { api } from "@/lib/api";
-import { Users, Building2, Activity, Database, ShieldCheck, Zap } from "lucide-react";
+import { Users, Building2, Activity, Database, ShieldCheck, Zap, CreditCard, TrendingUp, IndianRupee, BarChart2 } from "lucide-react";
 
 function StatBox({ label, value, icon: Icon, color, sub }: { label: string; value: string | number; icon: React.ElementType; color: string; sub?: string }) {
   return (
@@ -25,20 +25,30 @@ const INFO_CARDS = [
   { label: "Auth", value: "JWT + OTP", icon: ShieldCheck, color: "#F59E0B" },
 ];
 
+type Analytics = {
+  totalUsers: number;
+  totalOrganizations: number;
+  activeSubscriptions: number;
+  totalRevenue: number;
+  planBreakdown: Array<{ plan: string; count: number }>;
+};
+
 export default function Dashboard() {
-  const [stats, setStats] = useState<{ totalUsers: number; totalOrganizations: number } | null>(null);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.overview().then((r) => setStats(r.stats)).catch(console.error).finally(() => setLoading(false));
+    api.analytics().then(setAnalytics).catch(console.error).finally(() => setLoading(false));
   }, []);
+
+  const L = (n: number | undefined) => loading ? "..." : (n ?? 0).toLocaleString("en-IN");
 
   return (
     <Layout>
       <div className="p-6 max-w-5xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">Platform Dashboard</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">AORANE platform ka real-time overview</p>
+          <p className="text-muted-foreground text-sm mt-0.5">Real-time platform overview</p>
         </div>
 
         {/* Hero banner */}
@@ -57,14 +67,43 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Main stats */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <StatBox label="Total Users" value={loading ? "..." : (stats?.totalUsers ?? 0)} icon={Users} color="#0077B6" sub="Registered accounts" />
-          <StatBox label="Organizations" value={loading ? "..." : (stats?.totalOrganizations ?? 0)} icon={Building2} color="#1B998B" sub="Business accounts" />
+        {/* Main stats — 2 rows */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <StatBox label="Total Users" value={L(analytics?.totalUsers)} icon={Users} color="#0077B6" sub="Registered accounts" />
+          <StatBox label="Organizations" value={L(analytics?.totalOrganizations)} icon={Building2} color="#1B998B" sub="Business accounts" />
+          <StatBox label="Active Subscriptions" value={L(analytics?.activeSubscriptions)} icon={CreditCard} color="#8B5CF6" sub="Paid plans" />
+          <StatBox label="Total Revenue" value={`₹${loading ? "..." : (analytics?.totalRevenue ?? 0).toLocaleString("en-IN")}`} icon={IndianRupee} color="#10B981" sub="All time" />
         </div>
 
+        {/* Plan breakdown */}
+        {analytics?.planBreakdown && analytics.planBreakdown.length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-5 mb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart2 size={15} className="text-muted-foreground" />
+              <h2 className="font-semibold text-foreground text-sm">Plan Distribution</h2>
+            </div>
+            <div className="flex gap-4 flex-wrap">
+              {analytics.planBreakdown.map((p) => {
+                const pct = analytics.totalUsers > 0 ? Math.round((p.count / analytics.totalUsers) * 100) : 0;
+                const colors: Record<string, string> = { free: "#6B7280", pro: "#0077B6", max: "#8B5CF6", family: "#10B981" };
+                return (
+                  <div key={p.plan} className="flex-1 min-w-[100px]">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="capitalize font-medium text-foreground">{p.plan}</span>
+                      <span className="text-muted-foreground">{p.count.toLocaleString("en-IN")} ({pct}%)</span>
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: colors[p.plan] || "#6B7280" }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Info grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           {INFO_CARDS.map((c) => (
             <div key={c.label} className="bg-card border border-border rounded-xl p-4">
               <c.icon size={16} style={{ color: c.color }} className="mb-2" />
@@ -75,14 +114,18 @@ export default function Dashboard() {
         </div>
 
         {/* Quick links */}
-        <div className="mt-5 bg-card border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-xl p-5">
           <h2 className="font-semibold text-foreground mb-3 text-sm">Quick Actions</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {[
               { href: "/users", label: "Manage Users", color: "#0077B6" },
-              { href: "/feature-flags", label: "Feature Flags", color: "#F59E0B" },
-              { href: "/promo-codes", label: "Promo Codes", color: "#EF4444" },
-              { href: "/audit-logs", label: "Audit Logs", color: "#6B7280" },
+              { href: "/analytics", label: "Analytics", color: "#8B5CF6" },
+              { href: "/ads", label: "Ads Manager", color: "#F59E0B" },
+              { href: "/feature-flags", label: "Feature Flags", color: "#10B981" },
+              { href: "/food-database", label: "Food Database", color: "#EF4444" },
+              { href: "/subscriptions", label: "Subscriptions", color: "#6B7280" },
+              { href: "/promo-codes", label: "Promo Codes", color: "#EC4899" },
+              { href: "/audit-logs", label: "Audit Logs", color: "#0EA5E9" },
             ].map((a) => (
               <a key={a.href} href={`/admin-panel${a.href}`}
                 className="flex items-center gap-2 p-2.5 rounded-lg border border-border hover:border-primary/30 hover:bg-muted/50 transition-all text-sm text-muted-foreground hover:text-foreground">
@@ -92,6 +135,40 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+
+        {/* Conversion stats */}
+        {analytics && (
+          <div className="mt-4 bg-card border border-border rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp size={15} className="text-muted-foreground" />
+              <h2 className="font-semibold text-foreground text-sm">Conversion Rate</h2>
+            </div>
+            <div className="flex items-center gap-6">
+              <div>
+                <span className="text-2xl font-bold text-foreground">
+                  {analytics.totalUsers > 0 ? ((analytics.activeSubscriptions / analytics.totalUsers) * 100).toFixed(1) : "0.0"}%
+                </span>
+                <p className="text-xs text-muted-foreground mt-0.5">Free → Paid</p>
+              </div>
+              <div className="h-10 w-px bg-border" />
+              <div>
+                <span className="text-2xl font-bold text-foreground">
+                  {analytics.totalOrganizations > 0 ? analytics.totalOrganizations : "0"}
+                </span>
+                <p className="text-xs text-muted-foreground mt-0.5">B2B Organisations</p>
+              </div>
+              <div className="h-10 w-px bg-border" />
+              <div>
+                <span className="text-2xl font-bold text-foreground">
+                  ₹{analytics.activeSubscriptions > 0 && analytics.totalRevenue > 0
+                    ? Math.round(analytics.totalRevenue / analytics.activeSubscriptions).toLocaleString("en-IN")
+                    : "0"}
+                </span>
+                <p className="text-xs text-muted-foreground mt-0.5">Avg. Revenue Per User</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

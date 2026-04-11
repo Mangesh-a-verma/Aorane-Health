@@ -103,7 +103,7 @@ export default function OnboardingHealth() {
             <Text style={styles.emoji}>🏥</Text>
             <Text style={[styles.title, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>Health Background</Text>
             <Text style={[styles.subtitle, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>
-              Optional — skip kar sakte hain
+              Optional — you can skip this step
             </Text>
 
             <GlassCard style={styles.card}>
@@ -111,7 +111,7 @@ export default function OnboardingHealth() {
               <Text style={[styles.sectionTitle, { color: isDark ? "rgba(255,255,255,0.85)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>
                 Medical Conditions
               </Text>
-              <Text style={[styles.sectionSub, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>Multiple choose kar sakte hain</Text>
+              <Text style={[styles.sectionSub, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>You can select multiple options</Text>
               <View style={styles.chipGrid}>
                 {CONDITIONS.map((c) => {
                   const sel = selectedConditions.includes(c);

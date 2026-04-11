@@ -20,18 +20,18 @@ const C = {
 };
 
 const MOODS = [
-  { key: "happy",    label: "Khush",    emoji: "😊", color: C.green,  score: 15, desc: "Sab theek hai!" },
-  { key: "neutral",  label: "Theek",    emoji: "😐", color: C.amber,  score: 40, desc: "Normal feel" },
-  { key: "stressed", label: "Stressed", emoji: "😟", color: C.orange, score: 72, desc: "Tension hai" },
-  { key: "sad",      label: "Udaas",    emoji: "😢", color: C.red,    score: 65, desc: "Mood down hai" },
+  { key: "happy",    label: "Happy",    emoji: "😊", color: C.green,  score: 15, desc: "All good!" },
+  { key: "neutral",  label: "Neutral",  emoji: "😐", color: C.amber,  score: 40, desc: "Feeling okay" },
+  { key: "stressed", label: "Stressed", emoji: "😟", color: C.orange, score: 72, desc: "Under pressure" },
+  { key: "sad",      label: "Sad",      emoji: "😢", color: C.red,    score: 65, desc: "Mood is low" },
 ];
 
 const PILLARS = [
-  { key: "sleep",    label: "Neend",    icon: "moon-outline" as const,       color: C.purple },
-  { key: "water",    label: "Paani",    icon: "water-outline" as const,      color: C.primary },
+  { key: "sleep",    label: "Sleep",    icon: "moon-outline" as const,       color: C.purple },
+  { key: "water",    label: "Water",    icon: "water-outline" as const,      color: C.primary },
   { key: "exercise", label: "Exercise", icon: "barbell-outline" as const,    color: C.green },
-  { key: "medicine", label: "Dawai",    icon: "medical-outline" as const,    color: C.amber },
-  { key: "food",     label: "Khaana",   icon: "restaurant-outline" as const, color: "#EC4899" },
+  { key: "medicine", label: "Medicine", icon: "medical-outline" as const,    color: C.amber },
+  { key: "food",     label: "Food",     icon: "restaurant-outline" as const, color: "#EC4899" },
 ];
 
 type DayData = { date: string; dayLabel: string; dayLabelHi: string; avgScore: number; count: number; dominantMood: string | null };
@@ -139,7 +139,7 @@ function BreathingCircle() {
     <View style={{ alignItems: "center", paddingVertical: 20 }}>
       <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 15, marginBottom: 4 }}>4-7-8 Breathing</Text>
       <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 18, textAlign: "center" }}>
-        Saans lene ki yeh technique stress turant kam karti hai
+        This breathing technique helps reduce stress immediately
       </Text>
       {active ? (
         <>
@@ -160,7 +160,7 @@ function BreathingCircle() {
       ) : (
         <TouchableOpacity onPress={startCycle} style={{ width: 110, height: 110, borderRadius: 55, backgroundColor: C.primary + "12", borderWidth: 2.5, borderColor: C.primary, alignItems: "center", justifyContent: "center" }}>
           <Text style={{ fontSize: 34 }}>🌬️</Text>
-          <Text style={{ color: C.primary, fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 4 }}>Shuru Karo</Text>
+          <Text style={{ color: C.primary, fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 4 }}>Get Started</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -220,7 +220,7 @@ export default function StressScreen() {
       const res = await api.logStress({ stressType: "five_pillar" });
       Alert.alert(
         "5-Pillar Analysis ✅",
-        `Aaj ka stress score: ${res.stressScore}/100\n\nYeh aaj ke paani, exercise, neend ke basis pe calculate hua.`
+        `Today's stress score: ${res.stressScore}/100\n\nCalculated based on today's water intake, exercise and sleep data.`
       );
       loadAll();
     } catch (e: unknown) {
@@ -339,8 +339,8 @@ export default function StressScreen() {
           <View style={{ gap: 12 }}>
             <Card>
               <View style={{ padding: 18 }}>
-                <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 4 }}>Abhi kaisa feel ho raha hai?</Text>
-                <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 16 }}>Ek mood select karo — aaj kai baar log kar sakte ho</Text>
+                <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 4 }}>How are you feeling right now?</Text>
+                <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 16 }}>Select a mood — you can log multiple times today</Text>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
                   {MOODS.map(m => (
                     <TouchableOpacity key={m.key} onPress={() => setSelectedMood(m.key)} activeOpacity={0.85}
@@ -354,7 +354,7 @@ export default function StressScreen() {
                 <TouchableOpacity onPress={submitMood} disabled={!selectedMood || logLoading} activeOpacity={0.85}
                   style={{ backgroundColor: selectedMood ? C.primary : C.border, borderRadius: 14, padding: 15, alignItems: "center" }}>
                   <Text style={{ color: selectedMood ? "#FFF" : C.muted, fontFamily: "Inter_700Bold", fontSize: 15 }}>
-                    {logLoading ? "Saving…" : "Mood Log Karo ✓"}
+                    {logLoading ? "Saving…" : "Log Mood ✓"}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -422,11 +422,11 @@ export default function StressScreen() {
               <TouchableOpacity onPress={submit5Pillar} disabled={pillarLoading} activeOpacity={0.85}
                 style={{ backgroundColor: C.accent, borderRadius: 14, padding: 15, alignItems: "center" }}>
                 <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>
-                  {pillarLoading ? "Calculating…" : "5-Pillar Analysis Karo 🔍"}
+                  {pillarLoading ? "Calculating…" : "Run 5-Pillar Analysis 🔍"}
                 </Text>
               </TouchableOpacity>
               <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 10 }}>
-                Jitna zyada data logged hoga, utna accurate result aayega
+                More data logged means more accurate results
               </Text>
             </View>
           </Card>
@@ -464,9 +464,9 @@ export default function StressScreen() {
               <Card>
                 <View style={{ padding: 36, alignItems: "center" }}>
                   <Text style={{ fontSize: 44, marginBottom: 12 }}>🧘</Text>
-                  <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 16, textAlign: "center" }}>Koi history nahi abhi</Text>
+                  <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 16, textAlign: "center" }}>No history yet</Text>
                   <Text style={{ color: C.muted, fontSize: 12, textAlign: "center", marginTop: 6, lineHeight: 18 }}>
-                    Mood Log tab pe jaake apna mood log karo
+                    Go to the Mood Log tab to log your mood
                   </Text>
                 </View>
               </Card>

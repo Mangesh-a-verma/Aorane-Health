@@ -81,8 +81,8 @@ function InputField({ value, onChangeText, placeholder, keyboard = "default", mu
 }
 
 function callPhone(phone?: string) {
-  if (!phone) { Alert.alert("No number", "Phone number available nahi hai"); return; }
-  Linking.openURL(`tel:${phone}`).catch(() => Alert.alert("Error", "Call nahi ho saka"));
+  if (!phone) { Alert.alert("No number", "Phone number not available"); return; }
+  Linking.openURL(`tel:${phone}`).catch(() => Alert.alert("Error", "Could not initiate call"));
 }
 
 function CallButton({ phone, label = "Call" }: { phone?: string; label?: string }) {
@@ -163,13 +163,13 @@ export default function BloodEmergencyScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission needed", "Location permission do toh nearby donors dhundh sakte hain");
+        Alert.alert("Permission needed", "Enable location permission to find nearby donors");
         return null;
       }
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       return { lat: loc.coords.latitude, lng: loc.coords.longitude };
     } catch {
-      Alert.alert("GPS Error", "Location nahi mil saki. Check karo ki GPS on hai.");
+      Alert.alert("GPS Error", "Could not get location. Please check that GPS is on.");
       return null;
     }
   };
@@ -188,9 +188,9 @@ export default function BloodEmergencyScreen() {
       setDonorLat(coords.lat);
       setDonorLng(coords.lng);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      Alert.alert("✅ Location mili!", `City: ${place?.city || "—"}\nState: ${place?.region || "—"}\n\nAap iske saath edit bhi kar sakte hain.`);
+      Alert.alert("✅ Location Found!", `City: ${place?.city || "—"}\nState: ${place?.region || "—"}\n\nYou can edit these fields if needed.`);
     } catch {
-      Alert.alert("Reverse geocode fail", "City/State auto-fill nahi hua, manually bharein");
+      Alert.alert("Location lookup failed", "Could not auto-fill city/state. Please enter manually.");
     }
     setGpsLoading(false);
   };
@@ -206,21 +206,21 @@ export default function BloodEmergencyScreen() {
       const res = await api.getBloodDonors(searchBloodGroup, undefined, { lat: coords.lat, lng: coords.lng, radiusKm: 50 });
       setDonors(res.donors);
       if (!res.donors.length) {
-        Alert.alert("Koi donor nahi mila", `50km ke andar ${searchBloodGroup} donors nahi mile.\n\nRadius badhake ya city search karke try karein.`);
+        Alert.alert("No donors found", `No ${searchBloodGroup} donors found within 50km.\n\nTry a wider radius or search by city.`);
       }
-    } catch { Alert.alert("Error", "Nearby donors nahi mile"); }
+    } catch { Alert.alert("Error", "Could not find nearby donors"); }
     setSearching(false);
   };
 
   const searchDonors = async () => {
-    if (!searchCity.trim()) { Alert.alert("Required", "City naam enter karein ya 'Mere Paas' button use karein"); return; }
+    if (!searchCity.trim()) { Alert.alert("Required", "Enter a city name or use the 'Near Me' button"); return; }
     setSearching(true);
     setNearbySearch(false);
     try {
       const res = await api.getBloodDonors(searchBloodGroup, searchCity.trim());
       setDonors(res.donors);
-      if (!res.donors.length) Alert.alert("Koi donor nahi mila", `${searchCity} mein ${searchBloodGroup} donors nahi mile.\n\nCompatible donors bhi check hote hain.`);
-    } catch { Alert.alert("Error", "Donors nahi mil sake"); }
+      if (!res.donors.length) Alert.alert("No donors found", `No ${searchBloodGroup} donors found in ${searchCity}.\n\nCompatible blood groups are also checked.`);
+    } catch { Alert.alert("Error", "Could not find donors"); }
     setSearching(false);
   };
 
@@ -231,9 +231,9 @@ export default function BloodEmergencyScreen() {
     try {
       await api.registerBloodDonor({ bloodGroup: donorBloodGroup, city: donorCity.trim(), state: donorState.trim(), phone: donorPhone.trim(), lat: donorLat, lng: donorLng });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      Alert.alert("✅ Registered!", "Aap blood donor ke roop mein register ho gaye hain!\n\nOTP verification phone par aayega. Thank you! 🙏\n\nEk donation se 3 lives bachte hain ❤️");
+      Alert.alert("✅ Registered!", "You are now registered as a blood donor!\n\nOTP verification will be sent to your phone. Thank you! 🙏\n\nOne donation saves 3 lives ❤️");
       setDonorCity(""); setDonorState(""); setDonorPhone("");
-    } catch (e) { Alert.alert("Error", (e as Error).message || "Registration fail hua"); }
+    } catch (e) { Alert.alert("Error", (e as Error).message || "Registration failed"); }
     setDonorSubmitting(false);
   };
 
@@ -253,14 +253,14 @@ export default function BloodEmergencyScreen() {
 
   const goToDisclaimer = () => {
     const missing: string[] = [];
-    if (!reqPatientName.trim()) missing.push("Patient ka naam");
-    if (!reqHospitalName.trim()) missing.push("Hospital ka naam");
-    if (!reqHospitalAddress.trim()) missing.push("Hospital ka pura address");
-    if (!reqHospitalCity.trim()) missing.push("Hospital ki city");
-    if (!reqHospitalPhone.trim()) missing.push("Hospital ka phone number");
-    if (!reqContactPhone.trim()) missing.push("Aapka contact number");
+    if (!reqPatientName.trim()) missing.push("Patient name");
+    if (!reqHospitalName.trim()) missing.push("Hospital name");
+    if (!reqHospitalAddress.trim()) missing.push("Hospital full address");
+    if (!reqHospitalCity.trim()) missing.push("Hospital city");
+    if (!reqHospitalPhone.trim()) missing.push("Hospital phone number");
+    if (!reqContactPhone.trim()) missing.push("Your contact number");
     if (missing.length) {
-      Alert.alert("Zaruri fields:", missing.map((m, i) => `${i + 1}. ${m}`).join("\n"));
+      Alert.alert("Required fields:", missing.map((m, i) => `${i + 1}. ${m}`).join("\n"));
       return;
     }
     setFormStep("disclaimer");
@@ -290,23 +290,23 @@ export default function BloodEmergencyScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setShowModal(false);
       resetModal();
-      Alert.alert("🆘 Emergency Posted!", "Blood emergency request sab donors ko bhej di gayi hai.\n\nDonors directly hospital contact karenge.");
+      Alert.alert("🆘 Emergency Posted!", "Blood emergency request sent to all donors.\n\nDonors will contact the hospital directly.");
       await loadEmergencies();
     } catch (e: unknown) {
-      Alert.alert("Error", (e as Error).message || "Request post nahi hua");
+      Alert.alert("Error", (e as Error).message || "Could not post request");
     }
     setReqSubmitting(false);
   };
 
   const flagRequest = async (id: string) => {
-    Alert.alert("Report Karein?", "Yeh request fake lagti hai? 3 reports aane par request automatically hide ho jaayegi.", [
+    Alert.alert("Report this request?", "Does this request look fake? It will be automatically hidden after 3 reports.", [
       { text: "Cancel", style: "cancel" },
       { text: "Report", style: "destructive", onPress: async () => {
         try {
           await api.flagBloodRequest(id);
-          Alert.alert("Reported", "Aapki report submit ho gayi. Team verify karegi.");
+          Alert.alert("Reported", "Your report has been submitted. Our team will verify it.");
           await loadEmergencies();
-        } catch { Alert.alert("Error", "Report nahi hua"); }
+        } catch { Alert.alert("Error", "Could not submit report"); }
       }},
     ]);
   };
@@ -363,8 +363,8 @@ export default function BloodEmergencyScreen() {
             ) : emergencies.length === 0 ? (
               <View style={{ alignItems: "center", paddingVertical: 40, gap: 10 }}>
                 <Ionicons name="checkmark-circle" size={52} color={C.green} />
-                <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 17 }}>Koi active emergency nahi</Text>
-                <Text style={{ color: C.muted, fontSize: 14, fontFamily: "Inter_400Regular" }}>Filhaal koi blood request nahi hai</Text>
+                <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 17 }}>No active emergencies</Text>
+                <Text style={{ color: C.muted, fontSize: 14, fontFamily: "Inter_400Regular" }}>There are no blood requests right now</Text>
               </View>
             ) : emergencies.map((req) => {
               const urgConf = URGENCY_CONFIG[(req.urgency as keyof typeof URGENCY_CONFIG)] || URGENCY_CONFIG.urgent;
@@ -503,7 +503,7 @@ export default function BloodEmergencyScreen() {
                 <LinearGradient colors={["#DC2626", "#B91C1C"]} style={styles.actionBtn}>
                   {searching && nearbySearch ? <ActivityIndicator color="#FFF" size="small" /> : <Ionicons name="navigate" size={18} color="#FFF" />}
                   <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>
-                    {searching && nearbySearch ? "GPS se dhundh raha hai..." : "📍 Mere Paas ke Donors (50 km)"}
+                    {searching && nearbySearch ? "Searching via GPS..." : "📍 Donors Near Me (50 km)"}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -511,18 +511,18 @@ export default function BloodEmergencyScreen() {
               {/* Divider */}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
-                <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>ya city se search karein</Text>
+                <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>or search by city</Text>
                 <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
               </View>
 
-              <InputField value={searchCity} onChangeText={setSearchCity} placeholder="City enter karein (e.g. Mumbai, Delhi)" />
+              <InputField value={searchCity} onChangeText={setSearchCity} placeholder="Enter city (e.g. Mumbai, Delhi)" />
               <TouchableOpacity onPress={searchDonors} disabled={searching} activeOpacity={0.85}
                 style={{ borderWidth: 1.5, borderColor: C.primary, borderRadius: 14, height: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 {searching && !nearbySearch ? <ActivityIndicator color={C.primary} size="small" /> : <Ionicons name="search" size={18} color={C.primary} />}
-                <Text style={{ color: C.primary, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{searching && !nearbySearch ? "Dhundh rahe hain..." : "City se Donors Dhundein"}</Text>
+                <Text style={{ color: C.primary, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{searching && !nearbySearch ? "Searching..." : "Search Donors by City"}</Text>
               </TouchableOpacity>
 
-              <Text style={{ color: C.muted, fontSize: 11, textAlign: "center" }}>Compatible blood groups bhi automatically check hote hain</Text>
+              <Text style={{ color: C.muted, fontSize: 11, textAlign: "center" }}>Compatible blood groups are also checked automatically</Text>
             </Card>
 
             {nearbySearch && userCoords && donors.length > 0 && (
@@ -596,13 +596,13 @@ export default function BloodEmergencyScreen() {
                 </TouchableOpacity>}
               </TouchableOpacity>
 
-              <InputField value={donorCity} onChangeText={setDonorCity} placeholder="Aapka shehar * (e.g. Delhi, Mumbai)" />
+              <InputField value={donorCity} onChangeText={setDonorCity} placeholder="Your city * (e.g. Delhi, Mumbai)" />
               <InputField value={donorState} onChangeText={setDonorState} placeholder="State * (e.g. Maharashtra, UP)" />
-              <InputField value={donorPhone} onChangeText={setDonorPhone} placeholder="Mobile number (OTP verification ke liye)" keyboard="phone-pad" />
+              <InputField value={donorPhone} onChangeText={setDonorPhone} placeholder="Mobile number (for OTP verification)" keyboard="phone-pad" />
               <TouchableOpacity onPress={registerDonor} disabled={donorSubmitting} activeOpacity={0.85}>
                 <LinearGradient colors={["#DC2626", "#B91C1C"]} style={styles.actionBtn}>
                   {donorSubmitting ? <ActivityIndicator color="#FFF" size="small" /> : <Ionicons name="heart" size={18} color="#FFF" />}
-                  <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 15 }}>{donorSubmitting ? "Register ho raha hai..." : "Donor Register Karein"}</Text>
+                  <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 15 }}>{donorSubmitting ? "Registering..." : "Register as Donor"}</Text>
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -615,8 +615,8 @@ export default function BloodEmergencyScreen() {
 
             {/* Eligibility */}
             <Card>
-              <Text style={styles.cardTitle}>Eligibility (Donate karne ke liye zaroorat)</Text>
-              {["Umra 18-65 saal ho", "Wajan kam se kam 50 kg ho", "Koi serious bimari na ho (diabetes controlled OK)", "Haemoglobin 12.5 g/dL se zyada ho", "Pichle 3 mahine mein donate na kiya ho", "Last 6 mahine mein koi surgery/tattoo na ho"].map((t, i) => (
+              <Text style={styles.cardTitle}>Eligibility Criteria</Text>
+              {["Age between 18–65 years", "Weight at least 50 kg", "No serious illness (controlled diabetes is OK)", "Haemoglobin above 12.5 g/dL", "Not donated in the last 3 months", "No surgery or tattoo in the last 6 months"].map((t, i) => (
                 <View key={i} style={{ flexDirection: "row", gap: 8, marginBottom: 6 }}>
                   <Ionicons name="checkmark-circle" size={16} color={C.green} style={{ marginTop: 1 }} />
                   <Text style={{ color: C.muted, fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 }}>{t}</Text>
@@ -677,11 +677,11 @@ export default function BloodEmergencyScreen() {
               </View>
               <View style={{ backgroundColor: "#FEE2E2", borderRadius: 10, padding: 10, marginBottom: 10 }}>
                 <Text style={{ color: C.dark, fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 }}>
-                  ⚠️ Donors directly hospital jaayenge. Pura aur sahi info bharein taki koi donor galat jagah na jaaye.
+                  ⚠️ Donors will go directly to the hospital. Please fill in complete and accurate information so donors reach the right location.
                 </Text>
               </View>
-              <InputField value={reqHospitalName} onChangeText={setReqHospitalName} placeholder="Hospital ka naam * (e.g. AIIMS Delhi)" />
-              <InputField value={reqHospitalAddress} onChangeText={setReqHospitalAddress} placeholder="Pura address * (ward/floor/building ke saath)" multiline />
+              <InputField value={reqHospitalName} onChangeText={setReqHospitalName} placeholder="Hospital name * (e.g. AIIMS Delhi)" />
+              <InputField value={reqHospitalAddress} onChangeText={setReqHospitalAddress} placeholder="Full address * (include ward/floor/building)" multiline />
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <View style={{ flex: 2 }}>
                   <InputField value={reqHospitalCity} onChangeText={setReqHospitalCity} placeholder="City *" />
@@ -703,24 +703,24 @@ export default function BloodEmergencyScreen() {
                 </View>
               </View>
               <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 8 }}>
-                Doctor ka number dene se donors confirm kar sakte hain aur proper guidance mil sakti hai
+                Providing a doctor's number helps donors confirm the request and get proper guidance
               </Text>
-              <InputField value={reqDoctorName} onChangeText={setReqDoctorName} placeholder="Attending doctor ka naam (optional)" />
-              <InputField value={reqDoctorPhone} onChangeText={setReqDoctorPhone} placeholder="Doctor ka direct number (optional)" keyboard="phone-pad" />
+              <InputField value={reqDoctorName} onChangeText={setReqDoctorName} placeholder="Attending doctor's name (optional)" />
+              <InputField value={reqDoctorPhone} onChangeText={setReqDoctorPhone} placeholder="Doctor's direct number (optional)" keyboard="phone-pad" />
 
               {/* Contact person */}
               <View style={{ height: 1, backgroundColor: C.border, marginVertical: 10 }} />
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
                 <Ionicons name="person" size={15} color={C.blue} />
-                <Text style={{ color: C.blue, fontFamily: "Inter_700Bold", fontSize: 13, textTransform: "uppercase" }}>Aapki Contact Info (Compulsory)</Text>
+                <Text style={{ color: C.blue, fontFamily: "Inter_700Bold", fontSize: 13, textTransform: "uppercase" }}>Your Contact Info (Required)</Text>
               </View>
-              <InputField value={reqContactName} onChangeText={setReqContactName} placeholder="Aapka naam (patient ke relative/friend)" />
-              <InputField value={reqContactPhone} onChangeText={setReqContactPhone} placeholder="Aapka mobile number * (donors call kar sakte hain)" keyboard="phone-pad" />
+              <InputField value={reqContactName} onChangeText={setReqContactName} placeholder="Your name (patient's relative or friend)" />
+              <InputField value={reqContactPhone} onChangeText={setReqContactPhone} placeholder="Your mobile number * (donors can call you)" keyboard="phone-pad" />
 
               {/* Notes */}
               <View style={{ height: 1, backgroundColor: C.border, marginVertical: 10 }} />
               <FieldLabel text="Additional Info (Optional)" />
-              <InputField value={reqNotes} onChangeText={setReqNotes} placeholder="Koi bhi zaroori jankari (e.g. ICU mein hain, O- zaroor chahiye)" multiline />
+              <InputField value={reqNotes} onChangeText={setReqNotes} placeholder="Any additional info (e.g. Patient in ICU, O- blood type needed urgently)" multiline />
 
               <TouchableOpacity onPress={goToDisclaimer} activeOpacity={0.85} style={{ marginTop: 14 }}>
                 <LinearGradient colors={["#DC2626", "#B91C1C"]} style={styles.actionBtn}>
@@ -767,15 +767,15 @@ export default function BloodEmergencyScreen() {
               <View style={{ backgroundColor: "#FEE2E2", borderRadius: 14, padding: 14, gap: 8 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <Ionicons name="warning" size={18} color={C.primary} />
-                  <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 14 }}>Disclaimer — Zaroor Padhein</Text>
+                  <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 14 }}>Disclaimer — Please Read</Text>
                 </View>
                 {[
-                  "Yeh information real aur accurate hai (fake request criminal offence hai)",
-                  "Donors seedha hospital jaayenge — hospital info sahi dena aapki zimmedari hai",
-                  "Aapka contact number donors ke saath share hoga",
-                  "Request 72 ghante ke baad automatically expire ho jaayegi",
-                  "Galat request 3 reports milne par automatically hide ho jaayegi",
-                  "AORANE blood ki safety/quality ke liye zimmedaar nahi hai — yeh sirf connecting platform hai",
+                  "This information is real and accurate (fake requests are a criminal offence)",
+                  "Donors will go directly to the hospital — you are responsible for providing accurate hospital information",
+                  "Your contact number will be shared with donors",
+                  "The request will automatically expire after 72 hours",
+                  "A request flagged by 3 reports will be automatically hidden",
+                  "AORANE is not responsible for the safety or quality of blood — this is a connecting platform only",
                 ].map((t, i) => (
                   <View key={i} style={{ flexDirection: "row", gap: 8 }}>
                     <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 12 }}>{i + 1}.</Text>
@@ -791,7 +791,7 @@ export default function BloodEmergencyScreen() {
                 <TouchableOpacity onPress={submitEmergency} disabled={reqSubmitting} style={{ flex: 2 }} activeOpacity={0.85}>
                   <LinearGradient colors={["#DC2626", "#B91C1C"]} style={styles.actionBtn}>
                     {reqSubmitting ? <ActivityIndicator color="#FFF" /> : <Ionicons name="alert-circle" size={18} color="#FFF" />}
-                    <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>{reqSubmitting ? "Bhej rahe hain..." : "✅ I Agree — Post Karein"}</Text>
+                    <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>{reqSubmitting ? "Posting..." : "✅ I Agree — Post Request"}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
