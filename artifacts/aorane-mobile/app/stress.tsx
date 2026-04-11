@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Animated, Platform, useColorScheme, Alert, Dimensions,
+  Animated, Platform, Alert, Dimensions,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -12,33 +12,94 @@ import { api } from "@/lib/api";
 
 const { width: W } = Dimensions.get("window");
 
+const C = {
+  bg: "#F0F9FF", card: "#FFFFFF", primary: "#0077B6", accent: "#00B896",
+  text: "#0D1F33", muted: "#7A90A4", border: "#E2EFF5",
+  purple: "#8B5CF6", green: "#10B981", orange: "#F97316", red: "#DC2626",
+  amber: "#F59E0B",
+};
+
 const MOODS = [
-  { key: "happy",   label: "Khush",   emoji: "😊", color: "#10B981", score: 15 },
-  { key: "neutral", label: "Theek",   emoji: "😐", color: "#F59E0B", score: 40 },
-  { key: "stressed",label: "Stressed",emoji: "😟", color: "#F97316", score: 72 },
-  { key: "sad",     label: "Udaas",   emoji: "😢", color: "#DC2626", score: 65 },
+  { key: "happy",    label: "Khush",    emoji: "😊", color: C.green,  score: 15, desc: "Sab theek hai!" },
+  { key: "neutral",  label: "Theek",    emoji: "😐", color: C.amber,  score: 40, desc: "Normal feel" },
+  { key: "stressed", label: "Stressed", emoji: "😟", color: C.orange, score: 72, desc: "Tension hai" },
+  { key: "sad",      label: "Udaas",    emoji: "😢", color: C.red,    score: 65, desc: "Mood down hai" },
 ];
 
 const PILLARS = [
-  { key: "sleep",    label: "Neend",    icon: "moon" as const,      color: "#8B5CF6" },
-  { key: "water",    label: "Paani",    icon: "water" as const,     color: "#0077B6" },
-  { key: "exercise", label: "Exercise", icon: "barbell" as const,   color: "#10B981" },
-  { key: "medicine", label: "Dawai",    icon: "medical" as const,   color: "#F59E0B" },
-  { key: "food",     label: "Khaana",   icon: "restaurant" as const,color: "#EC4899" },
+  { key: "sleep",    label: "Neend",    icon: "moon-outline" as const,       color: C.purple },
+  { key: "water",    label: "Paani",    icon: "water-outline" as const,      color: C.primary },
+  { key: "exercise", label: "Exercise", icon: "barbell-outline" as const,    color: C.green },
+  { key: "medicine", label: "Dawai",    icon: "medical-outline" as const,    color: C.amber },
+  { key: "food",     label: "Khaana",   icon: "restaurant-outline" as const, color: "#EC4899" },
 ];
 
-function GlassCard({ children, style }: { children: React.ReactNode; style?: object }) {
-  const isDark = useColorScheme() === "dark";
+type DayData = { date: string; dayLabel: string; dayLabelHi: string; avgScore: number; count: number; dominantMood: string | null };
+type InsightData = { avgScore: number; insight: string; tips: string[]; logsCount: number; aiPowered: boolean };
+type LogItem = { stressScore: number; stressType: string; mood?: string; pillars?: Record<string, number>; loggedAt: string };
+
+function scoreColor(s: number) {
+  return s === 0 ? C.border : s < 30 ? C.green : s < 55 ? C.amber : s < 75 ? C.orange : C.red;
+}
+function scoreLabel(s: number) {
+  return s < 30 ? "Low" : s < 55 ? "Moderate" : s < 75 ? "High" : "Critical";
+}
+function moodEmoji(m: string | null) {
+  return { happy: "😊", neutral: "😐", stressed: "😟", sad: "😢" }[m ?? ""] ?? "—";
+}
+
+function Card({ children, style }: { children: React.ReactNode; style?: object }) {
   return (
-    <LinearGradient
-      colors={isDark ? ["rgba(56,189,248,0.18)","rgba(45,212,191,0.08)","rgba(255,255,255,0.03)"] : ["rgba(255,255,255,0.9)","rgba(186,230,253,0.45)","rgba(255,255,255,0.7)"]}
-      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[{ borderRadius: 20, padding: 1.5 }, style]}
-    >
-      <View style={{ borderRadius: 19, overflow: "hidden", backgroundColor: isDark ? "rgba(4,20,40,0.5)" : "rgba(255,255,255,0.5)" }}>
-        {Platform.OS === "ios" ? <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(4,16,32,0.45)" : "rgba(255,255,255,0.45)" }]} />}
-        {children}
+    <View style={[{ backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.border, shadowColor: "#0077B6", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3, overflow: "hidden" }, style]}>
+      {Platform.OS === "ios"
+        ? <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
+        : null}
+      {children}
+    </View>
+  );
+}
+
+function WeeklyChart({ days }: { days: DayData[] }) {
+  const bars = useRef(days.map(() => new Animated.Value(0))).current;
+  const maxH = 90;
+
+  useEffect(() => {
+    Animated.stagger(60, bars.map((b, i) =>
+      Animated.timing(b, { toValue: days[i]?.avgScore || 0, duration: 500, useNativeDriver: false })
+    )).start();
+  }, [days]);
+
+  return (
+    <View style={{ paddingHorizontal: 16, paddingBottom: 16, paddingTop: 8 }}>
+      <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_500Medium", marginBottom: 12 }}>7-Din Ka Stress Trend</Text>
+      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 6, height: maxH + 36 }}>
+        {days.map((d, i) => {
+          const isToday = i === days.length - 1;
+          const col = scoreColor(d.avgScore);
+          const barH = bars[i]!.interpolate({ inputRange: [0, 100], outputRange: [0, maxH] });
+          return (
+            <View key={d.date} style={{ flex: 1, alignItems: "center" }}>
+              <View style={{ height: maxH, justifyContent: "flex-end", width: "100%" }}>
+                {d.count > 0 ? (
+                  <Animated.View style={{ height: barH, borderRadius: 6, backgroundColor: col, opacity: isToday ? 1 : 0.7 }} />
+                ) : (
+                  <View style={{ height: 4, borderRadius: 3, backgroundColor: C.border }} />
+                )}
+              </View>
+              {d.count > 0 && (
+                <Text style={{ color: col, fontSize: 9, fontFamily: "Inter_700Bold", marginTop: 3 }}>{d.avgScore}</Text>
+              )}
+              <Text style={{ color: isToday ? C.primary : C.muted, fontSize: 10, fontFamily: isToday ? "Inter_700Bold" : "Inter_400Regular", marginTop: 2 }}>
+                {d.dayLabel}
+              </Text>
+              {d.dominantMood && d.count > 0 && (
+                <Text style={{ fontSize: 9, marginTop: 1 }}>{moodEmoji(d.dominantMood)}</Text>
+              )}
+            </View>
+          );
+        })}
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -46,38 +107,60 @@ function BreathingCircle() {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [phase, setPhase] = useState<"inhale" | "hold" | "exhale">("inhale");
   const [active, setActive] = useState(false);
+  const loopRef = useRef<ReturnType<typeof Animated.loop> | null>(null);
 
-  const runCycle = () => {
+  const startCycle = () => {
+    setActive(true);
     const seq = Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 1.5, duration: 4000, useNativeDriver: false }),
+      Animated.timing(scaleAnim, { toValue: 1.55, duration: 4000, useNativeDriver: false }),
       Animated.delay(7000),
       Animated.timing(scaleAnim, { toValue: 1, duration: 8000, useNativeDriver: false }),
     ]);
     setPhase("inhale");
-    setTimeout(() => setPhase("hold"), 4000);
-    setTimeout(() => setPhase("exhale"), 11000);
-    Animated.loop(seq).start();
+    const t1 = setTimeout(() => setPhase("hold"), 4000);
+    const t2 = setTimeout(() => setPhase("exhale"), 11000);
+    const t3 = setTimeout(() => setPhase("inhale"), 19000);
+    loopRef.current = Animated.loop(seq);
+    loopRef.current.start();
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   };
 
+  const stop = () => {
+    loopRef.current?.stop();
+    setActive(false);
+    scaleAnim.setValue(1);
+    setPhase("inhale");
+  };
+
+  const phaseText = { inhale: "Saans lo… (4s)", hold: "Roko… (7s)", exhale: "Chodo… (8s)" }[phase];
+  const phaseColor = { inhale: C.primary, hold: C.purple, exhale: C.green }[phase];
+
   return (
-    <View style={{ alignItems: "center", marginVertical: 12 }}>
-      <Text style={{ color: "#38BDF8", fontFamily: "Inter_600SemiBold", fontSize: 13, marginBottom: 10 }}>4-7-8 Breathing</Text>
+    <View style={{ alignItems: "center", paddingVertical: 20 }}>
+      <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 15, marginBottom: 4 }}>4-7-8 Breathing</Text>
+      <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 18, textAlign: "center" }}>
+        Saans lene ki yeh technique stress turant kam karti hai
+      </Text>
       {active ? (
         <>
-          <Animated.View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(56,189,248,0.2)", transform: [{ scale: scaleAnim }], alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#38BDF8" }}>
-            <Text style={{ fontSize: 24 }}>🌬️</Text>
+          <Animated.View style={{
+            width: 110, height: 110, borderRadius: 55,
+            backgroundColor: phaseColor + "18",
+            transform: [{ scale: scaleAnim }],
+            alignItems: "center", justifyContent: "center",
+            borderWidth: 2.5, borderColor: phaseColor,
+          }}>
+            <Text style={{ fontSize: 30 }}>🌬️</Text>
           </Animated.View>
-          <Text style={{ color: "#38BDF8", fontFamily: "Inter_600SemiBold", marginTop: 10, fontSize: 14 }}>
-            {phase === "inhale" ? "Saans lo (4s)" : phase === "hold" ? "Roko (7s)" : "Chodo (8s)"}
-          </Text>
-          <TouchableOpacity onPress={() => { setActive(false); scaleAnim.setValue(1); }} style={{ marginTop: 10 }}>
-            <Text style={{ color: "#DC2626", fontFamily: "Inter_500Medium", fontSize: 13 }}>Rokna hai</Text>
+          <Text style={{ color: phaseColor, fontFamily: "Inter_700Bold", fontSize: 15, marginTop: 14 }}>{phaseText}</Text>
+          <TouchableOpacity onPress={stop} style={{ marginTop: 16, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 12, backgroundColor: C.red + "15" }}>
+            <Text style={{ color: C.red, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Rokna hai</Text>
           </TouchableOpacity>
         </>
       ) : (
-        <TouchableOpacity onPress={() => { setActive(true); runCycle(); }} style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(56,189,248,0.12)", borderWidth: 2, borderColor: "#38BDF8", alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ fontSize: 32 }}>🌬️</Text>
-          <Text style={{ color: "#38BDF8", fontSize: 10, fontFamily: "Inter_500Medium" }}>Start</Text>
+        <TouchableOpacity onPress={startCycle} style={{ width: 110, height: 110, borderRadius: 55, backgroundColor: C.primary + "12", borderWidth: 2.5, borderColor: C.primary, alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: 34 }}>🌬️</Text>
+          <Text style={{ color: C.primary, fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 4 }}>Shuru Karo</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -85,175 +168,356 @@ function BreathingCircle() {
 }
 
 export default function StressScreen() {
-  const isDark = useColorScheme() === "dark";
   const insets = useSafeAreaInsets();
-  const [tab, setTab] = useState<"mood" | "pillar" | "history">("mood");
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  const [tab, setTab] = useState<"today" | "pillar" | "history">("today");
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [insight, setInsight] = useState<{ avgScore: number; insight: string } | null>(null);
-  const [logs, setLogs] = useState<Array<Record<string, unknown>>>([]);
-  const [avgScore, setAvgScore] = useState(0);
+  const [logLoading, setLogLoading] = useState(false);
   const [pillarLoading, setPillarLoading] = useState(false);
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bg = isDark ? "#010814" : "#F0F9FF";
+  const [weekly, setWeekly] = useState<DayData[]>([]);
+  const [weekAvg, setWeekAvg] = useState(0);
+  const [insight, setInsight] = useState<InsightData | null>(null);
+  const [logs, setLogs] = useState<LogItem[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadAll(); }, []);
 
-  const loadData = async () => {
-    try {
-      const [insightRes, logsRes] = await Promise.allSettled([api.getStressInsight(), api.getStressLogs(14)]);
-      if (insightRes.status === "fulfilled") setInsight(insightRes.value);
-      if (logsRes.status === "fulfilled") { setLogs(logsRes.value.logs); setAvgScore(logsRes.value.avgScore); }
-    } catch { }
+  const loadAll = async () => {
+    setDataLoading(true);
+    const [weekRes, insightRes, logsRes] = await Promise.allSettled([
+      api.getStressWeekly(),
+      api.getStressInsight(),
+      api.getStressLogs(30),
+    ]);
+    if (weekRes.status === "fulfilled") {
+      setWeekly(weekRes.value.days);
+      setWeekAvg(weekRes.value.weekAvg);
+    }
+    if (insightRes.status === "fulfilled") setInsight(insightRes.value);
+    if (logsRes.status === "fulfilled") setLogs(logsRes.value.logs as LogItem[]);
+    setDataLoading(false);
   };
 
   const submitMood = async () => {
     if (!selectedMood) return;
-    setLoading(true);
+    setLogLoading(true);
     try {
       const res = await api.logStress({ stressType: "mood", mood: selectedMood });
-      Alert.alert("Done!", `Stress score: ${res.stressScore}/100 log ho gaya`);
+      const m = MOODS.find(x => x.key === selectedMood);
+      Alert.alert("Log Ho Gaya! ✅", `${m?.emoji} ${m?.label} — Stress score: ${res.stressScore}/100`);
       setSelectedMood(null);
-      loadData();
+      loadAll();
     } catch (e: unknown) {
       Alert.alert("Error", (e as Error).message || "Failed");
-    } finally { setLoading(false); }
+    } finally { setLogLoading(false); }
   };
 
   const submit5Pillar = async () => {
     setPillarLoading(true);
     try {
       const res = await api.logStress({ stressType: "five_pillar" });
-      Alert.alert("5-Pillar Analysis Done!", `Tera stress score: ${res.stressScore}/100\n\nYeh aaj ki activity ke basis pe calculate hua.`);
-      loadData();
+      Alert.alert(
+        "5-Pillar Analysis ✅",
+        `Aaj ka stress score: ${res.stressScore}/100\n\nYeh aaj ke paani, exercise, neend ke basis pe calculate hua.`
+      );
+      loadAll();
     } catch (e: unknown) {
       Alert.alert("Error", (e as Error).message || "Failed");
     } finally { setPillarLoading(false); }
   };
 
-  const getScoreColor = (s: number) => s < 30 ? "#10B981" : s < 55 ? "#F59E0B" : s < 75 ? "#F97316" : "#DC2626";
-  const getScoreLabel = (s: number) => s < 30 ? "Low" : s < 55 ? "Moderate" : s < 75 ? "High" : "Critical";
+  const todayStr = new Date().toISOString().split("T")[0]!;
+  const todayLogs = logs.filter(l => l.loggedAt?.split("T")[0] === todayStr);
+  const todayAvg = todayLogs.length
+    ? Math.round(todayLogs.reduce((s, l) => s + l.stressScore, 0) / todayLogs.length)
+    : 0;
 
   return (
-    <View style={{ flex: 1, backgroundColor: bg }}>
-      <LinearGradient colors={isDark ? ["#010814","#041428","#020C20"] : ["#E0F2FE","#BAE6FD","#F0FDF4"]} style={StyleSheet.absoluteFill} />
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <LinearGradient colors={["#E0F2FE", "#F0FAFB", "#F5FFF8"]} style={StyleSheet.absoluteFill} />
+
       <ScrollView contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: 100, paddingHorizontal: 16 }}>
 
+        {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-            <Ionicons name="arrow-back" size={20} color={isDark ? "#FFF" : "#0077B6"} />
+          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: C.primary + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+            <Ionicons name="arrow-back" size={20} color={C.primary} />
           </TouchableOpacity>
-          <View>
-            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>Stress Tracker</Text>
-            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Apna mental health track karo</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 22 }}>Stress Tracker 🧘</Text>
+            <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular" }}>Daily + weekly mood aur stress analysis</Text>
           </View>
         </View>
 
-        {insight && (
-          <GlassCard style={{ marginBottom: 16 }}>
-            <View style={{ padding: 16 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: getScoreColor(insight.avgScore) + "22", alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: getScoreColor(insight.avgScore) }}>
-                  <Text style={{ color: getScoreColor(insight.avgScore), fontFamily: "Inter_700Bold", fontSize: 20 }}>{insight.avgScore}</Text>
-                  <Text style={{ color: getScoreColor(insight.avgScore), fontSize: 9, fontFamily: "Inter_500Medium" }}>/ 100</Text>
+        {/* Today Summary Row */}
+        <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
+          <Card style={{ flex: 1, padding: 14 }}>
+            <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_500Medium" }}>Aaj ka avg</Text>
+            <Text style={{ color: todayAvg > 0 ? scoreColor(todayAvg) : C.muted, fontFamily: "Inter_700Bold", fontSize: 26, marginTop: 2 }}>
+              {todayAvg > 0 ? todayAvg : "—"}
+            </Text>
+            {todayAvg > 0 && <Text style={{ color: scoreColor(todayAvg), fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{scoreLabel(todayAvg)}</Text>}
+            <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 }}>{todayLogs.length} log{todayLogs.length !== 1 ? "s" : ""} today</Text>
+          </Card>
+          <Card style={{ flex: 1, padding: 14 }}>
+            <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_500Medium" }}>Weekly avg</Text>
+            <Text style={{ color: weekAvg > 0 ? scoreColor(weekAvg) : C.muted, fontFamily: "Inter_700Bold", fontSize: 26, marginTop: 2 }}>
+              {weekAvg > 0 ? weekAvg : "—"}
+            </Text>
+            {weekAvg > 0 && <Text style={{ color: scoreColor(weekAvg), fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{scoreLabel(weekAvg)}</Text>}
+            <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 }}>7-din ka trend</Text>
+          </Card>
+        </View>
+
+        {/* Weekly Chart */}
+        {weekly.length > 0 && (
+          <Card style={{ marginBottom: 14 }}>
+            <WeeklyChart days={weekly} />
+            <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: 16, paddingBottom: 12, flexWrap: "wrap" }}>
+              {[
+                { label: "Low (<30)", color: C.green },
+                { label: "Moderate", color: C.amber },
+                { label: "High", color: C.orange },
+                { label: "Critical", color: C.red },
+              ].map(leg => (
+                <View key={leg.label} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: leg.color }} />
+                  <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular" }}>{leg.label}</Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16 }}>Stress Level: {getScoreLabel(insight.avgScore)}</Text>
-                  <Text style={{ color: isDark ? "rgba(255,255,255,0.55)" : "rgba(10,22,40,0.55)", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 4, lineHeight: 17 }}>{insight.insight}</Text>
-                </View>
-              </View>
+              ))}
             </View>
-          </GlassCard>
+          </Card>
         )}
 
-        <View style={{ flexDirection: "row", backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,119,182,0.08)", borderRadius: 14, padding: 4, marginBottom: 18, gap: 4 }}>
-          {(["mood","pillar","history"] as const).map(t => (
-            <TouchableOpacity key={t} onPress={() => setTab(t)} style={{ flex: 1, paddingVertical: 9, borderRadius: 11, backgroundColor: tab === t ? "#0077B6" : "transparent", alignItems: "center" }}>
-              <Text style={{ color: tab === t ? "#FFF" : (isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)"), fontFamily: "Inter_600SemiBold", fontSize: 12 }}>
-                {t === "mood" ? "Mood" : t === "pillar" ? "5-Pillar" : "History"}
-              </Text>
+        {/* AI Insight Card */}
+        {insight && insight.logsCount > 0 && (
+          <Card style={{ marginBottom: 14 }}>
+            <LinearGradient colors={[C.purple + "15", C.primary + "08"]} style={{ borderRadius: 20, padding: 16 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: C.purple + "20", alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ fontSize: 16 }}>🤖</Text>
+                </View>
+                <View>
+                  <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 14 }}>AI Analysis</Text>
+                  <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular" }}>{insight.aiPowered ? "Gemini AI se" : "Pattern analysis"}</Text>
+                </View>
+              </View>
+              <Text style={{ color: C.text, fontFamily: "Inter_500Medium", fontSize: 13, lineHeight: 20, marginBottom: 12 }}>{insight.insight}</Text>
+              {insight.tips?.length > 0 && (
+                <View style={{ gap: 6 }}>
+                  {insight.tips.map((tip, i) => (
+                    <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                      <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: C.accent + "20", alignItems: "center", justifyContent: "center", marginTop: 1 }}>
+                        <Text style={{ color: C.accent, fontSize: 10, fontFamily: "Inter_700Bold" }}>{i + 1}</Text>
+                      </View>
+                      <Text style={{ color: C.text, fontSize: 12, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 18 }}>{tip}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </LinearGradient>
+          </Card>
+        )}
+
+        {/* Tabs */}
+        <View style={{ flexDirection: "row", backgroundColor: C.primary + "10", borderRadius: 14, padding: 4, marginBottom: 16, gap: 4 }}>
+          {([
+            { key: "today", label: "Mood Log" },
+            { key: "pillar", label: "5-Pillar" },
+            { key: "history", label: "History" },
+          ] as const).map(t => (
+            <TouchableOpacity key={t.key} onPress={() => setTab(t.key)} style={{ flex: 1, paddingVertical: 9, borderRadius: 11, backgroundColor: tab === t.key ? C.primary : "transparent", alignItems: "center" }}>
+              <Text style={{ color: tab === t.key ? "#FFF" : C.muted, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>{t.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {tab === "mood" && (
-          <GlassCard>
-            <View style={{ padding: 18 }}>
-              <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 4 }}>Abhi kaisa feel ho raha hai?</Text>
-              <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 16 }}>Ek mood select karo</Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
-                {MOODS.map(m => (
-                  <TouchableOpacity key={m.key} onPress={() => setSelectedMood(m.key)} style={{ flex: 1, minWidth: (W - 80) / 2, alignItems: "center", padding: 16, borderRadius: 16, borderWidth: 2, borderColor: selectedMood === m.key ? m.color : isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.15)", backgroundColor: selectedMood === m.key ? m.color + "22" : "transparent" }}>
-                    <Text style={{ fontSize: 34, marginBottom: 6 }}>{m.emoji}</Text>
-                    <Text style={{ color: selectedMood === m.key ? m.color : (isDark ? "#F0F8FF" : "#1a1a2e"), fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{m.label}</Text>
-                    <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.4)", fontSize: 10, fontFamily: "Inter_400Regular" }}>Score: {m.score}</Text>
-                  </TouchableOpacity>
-                ))}
+        {/* MOOD TAB */}
+        {tab === "today" && (
+          <View style={{ gap: 12 }}>
+            <Card>
+              <View style={{ padding: 18 }}>
+                <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 4 }}>Abhi kaisa feel ho raha hai?</Text>
+                <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 16 }}>Ek mood select karo — aaj kai baar log kar sakte ho</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
+                  {MOODS.map(m => (
+                    <TouchableOpacity key={m.key} onPress={() => setSelectedMood(m.key)} activeOpacity={0.85}
+                      style={{ flex: 1, minWidth: (W - 80) / 2, alignItems: "center", padding: 16, borderRadius: 16, borderWidth: 2, borderColor: selectedMood === m.key ? m.color : C.border, backgroundColor: selectedMood === m.key ? m.color + "15" : C.card }}>
+                      <Text style={{ fontSize: 36, marginBottom: 6 }}>{m.emoji}</Text>
+                      <Text style={{ color: selectedMood === m.key ? m.color : C.text, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{m.label}</Text>
+                      <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 }}>{m.desc}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TouchableOpacity onPress={submitMood} disabled={!selectedMood || logLoading} activeOpacity={0.85}
+                  style={{ backgroundColor: selectedMood ? C.primary : C.border, borderRadius: 14, padding: 15, alignItems: "center" }}>
+                  <Text style={{ color: selectedMood ? "#FFF" : C.muted, fontFamily: "Inter_700Bold", fontSize: 15 }}>
+                    {logLoading ? "Saving…" : "Mood Log Karo ✓"}
+                  </Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={submitMood} disabled={!selectedMood || loading} style={{ backgroundColor: selectedMood ? "#0077B6" : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.15)"), borderRadius: 14, padding: 15, alignItems: "center" }}>
-                <Text style={{ color: selectedMood ? "#FFF" : (isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.35)"), fontFamily: "Inter_700Bold", fontSize: 15 }}>{loading ? "Saving..." : "Mood Log Karo"}</Text>
-              </TouchableOpacity>
-              <View style={{ marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,119,182,0.1)" }}>
+            </Card>
+
+            {/* Today's logs mini list */}
+            {todayLogs.length > 0 && (
+              <Card>
+                <View style={{ padding: 14 }}>
+                  <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13, marginBottom: 10 }}>Aaj ke {todayLogs.length} logs</Text>
+                  {todayLogs.slice(0, 5).map((l, i) => {
+                    const t = new Date(l.loggedAt);
+                    const hhmm = t.toLocaleTimeString("hi-IN", { hour: "2-digit", minute: "2-digit" });
+                    return (
+                      <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 7, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: C.border }}>
+                        <Text style={{ fontSize: 20 }}>{moodEmoji(l.mood ?? null)}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: C.text, fontFamily: "Inter_500Medium", fontSize: 12 }}>
+                            {l.stressType === "mood" ? `Mood: ${l.mood}` : "5-Pillar Analysis"}
+                          </Text>
+                          <Text style={{ color: C.muted, fontSize: 10 }}>{hhmm}</Text>
+                        </View>
+                        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: scoreColor(l.stressScore) + "20", alignItems: "center", justifyContent: "center" }}>
+                          <Text style={{ color: scoreColor(l.stressScore), fontFamily: "Inter_700Bold", fontSize: 13 }}>{l.stressScore}</Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </Card>
+            )}
+
+            <Card>
+              <View style={{ paddingTop: 16, paddingHorizontal: 16, paddingBottom: 4 }}>
                 <BreathingCircle />
               </View>
-            </View>
-          </GlassCard>
+            </Card>
+          </View>
         )}
 
+        {/* 5-PILLAR TAB */}
         {tab === "pillar" && (
-          <GlassCard>
+          <Card>
             <View style={{ padding: 18 }}>
-              <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 4 }}>5-Pillar Stress Analysis</Text>
-              <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 16 }}>Aaj ki activities ke basis pe automatic stress calculate karega</Text>
-              <View style={{ gap: 12, marginBottom: 20 }}>
+              <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 4 }}>5-Pillar Stress Analysis</Text>
+              <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 16 }}>
+                Aaj ka paani, exercise aur neend dekh ke automatic stress calculate karega
+              </Text>
+              <View style={{ gap: 10, marginBottom: 20 }}>
                 {PILLARS.map(p => (
-                  <View key={p.key} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, backgroundColor: isDark ? "rgba(255,255,255,0.04)" : p.color + "10" }}>
-                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: p.color + "22", alignItems: "center", justifyContent: "center" }}>
+                  <View key={p.key} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: p.color + "10", borderWidth: 1, borderColor: p.color + "25" }}>
+                    <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: p.color + "20", alignItems: "center", justifyContent: "center" }}>
                       <Ionicons name={p.icon} size={20} color={p.color} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{p.label}</Text>
-                      <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontSize: 11, fontFamily: "Inter_400Regular" }}>Aaj ka data automatically fetch hoga</Text>
+                      <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{p.label}</Text>
+                      <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>
+                        {p.key === "sleep" ? "Profile se avg neend" : p.key === "water" ? "Aaj ke water logs" : p.key === "exercise" ? "Aaj ke exercise logs" : "Estimated score"}
+                      </Text>
                     </View>
-                    <Ionicons name="checkmark-circle" size={20} color={p.color} />
+                    <Ionicons name="checkmark-circle" size={22} color={p.color} />
                   </View>
                 ))}
               </View>
-              <TouchableOpacity onPress={submit5Pillar} disabled={pillarLoading} style={{ backgroundColor: "#1B998B", borderRadius: 14, padding: 15, alignItems: "center" }}>
-                <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>{pillarLoading ? "Calculating..." : "5-Pillar Analysis Karo"}</Text>
+              <TouchableOpacity onPress={submit5Pillar} disabled={pillarLoading} activeOpacity={0.85}
+                style={{ backgroundColor: C.accent, borderRadius: 14, padding: 15, alignItems: "center" }}>
+                <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>
+                  {pillarLoading ? "Calculating…" : "5-Pillar Analysis Karo 🔍"}
+                </Text>
               </TouchableOpacity>
+              <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 10 }}>
+                Jitna zyada data logged hoga, utna accurate result aayega
+              </Text>
             </View>
-          </GlassCard>
+          </Card>
         )}
 
+        {/* HISTORY TAB */}
         {tab === "history" && (
           <View style={{ gap: 10 }}>
+            {/* Weekly summary by day */}
+            {weekly.some(d => d.count > 0) && (
+              <Card>
+                <View style={{ padding: 14 }}>
+                  <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 14, marginBottom: 12 }}>Har din ka avg stress</Text>
+                  {[...weekly].reverse().filter(d => d.count > 0).map(d => (
+                    <View key={d.date} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: C.border }}>
+                      <View style={{ width: 36, alignItems: "center" }}>
+                        <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{d.dayLabel}</Text>
+                        {d.dominantMood && <Text style={{ fontSize: 14 }}>{moodEmoji(d.dominantMood)}</Text>}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ height: 6, borderRadius: 3, backgroundColor: C.border, overflow: "hidden" }}>
+                          <View style={{ height: "100%", width: `${d.avgScore}%`, backgroundColor: scoreColor(d.avgScore), borderRadius: 3 }} />
+                        </View>
+                      </View>
+                      <Text style={{ color: scoreColor(d.avgScore), fontFamily: "Inter_700Bold", fontSize: 14, width: 30, textAlign: "right" }}>{d.avgScore}</Text>
+                      <Text style={{ color: C.muted, fontSize: 10, width: 50 }}>{d.count} log{d.count !== 1 ? "s" : ""}</Text>
+                    </View>
+                  ))}
+                </View>
+              </Card>
+            )}
+
+            {/* Raw log list */}
             {logs.length === 0 ? (
-              <GlassCard><View style={{ padding: 30, alignItems: "center" }}><Text style={{ fontSize: 40 }}>🧘</Text><Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 16, marginTop: 12 }}>Koi history nahi</Text><Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 6 }}>Pehle mood ya 5-pillar analysis karo</Text></View></GlassCard>
-            ) : logs.map((log, i) => {
-              const s = Number(log.stressScore) || 0;
-              const c = getScoreColor(s);
-              const d = new Date(log.loggedAt as string);
-              return (
-                <GlassCard key={i}>
-                  <View style={{ padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
-                    <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: c + "22", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: c }}>
-                      <Text style={{ color: c, fontFamily: "Inter_700Bold", fontSize: 17 }}>{s}</Text>
+              <Card>
+                <View style={{ padding: 36, alignItems: "center" }}>
+                  <Text style={{ fontSize: 44, marginBottom: 12 }}>🧘</Text>
+                  <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 16, textAlign: "center" }}>Koi history nahi abhi</Text>
+                  <Text style={{ color: C.muted, fontSize: 12, textAlign: "center", marginTop: 6, lineHeight: 18 }}>
+                    Mood Log tab pe jaake apna mood log karo
+                  </Text>
+                </View>
+              </Card>
+            ) : (
+              logs.slice(0, 20).map((log, i) => {
+                const d = new Date(log.loggedAt);
+                const dateStr = d.toLocaleDateString("hi-IN", { day: "numeric", month: "short" });
+                const timeStr = d.toLocaleTimeString("hi-IN", { hour: "2-digit", minute: "2-digit" });
+                const pillars = log.pillars as Record<string, number> | undefined;
+                return (
+                  <Card key={i}>
+                    <View style={{ padding: 14 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                        <View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: scoreColor(log.stressScore) + "18", alignItems: "center", justifyContent: "center", borderWidth: 2.5, borderColor: scoreColor(log.stressScore) }}>
+                          <Text style={{ color: scoreColor(log.stressScore), fontFamily: "Inter_700Bold", fontSize: 18 }}>{log.stressScore}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                            <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{scoreLabel(log.stressScore)} Stress</Text>
+                            {log.mood && <Text style={{ fontSize: 16 }}>{moodEmoji(log.mood)}</Text>}
+                          </View>
+                          <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular" }}>
+                            {log.stressType === "mood" ? `Mood: ${log.mood}` : "5-Pillar Analysis"}
+                          </Text>
+                        </View>
+                        <View style={{ alignItems: "flex-end" }}>
+                          <Text style={{ color: C.text, fontSize: 11, fontFamily: "Inter_500Medium" }}>{dateStr}</Text>
+                          <Text style={{ color: C.muted, fontSize: 10 }}>{timeStr}</Text>
+                        </View>
+                      </View>
+                      {pillars && (
+                        <View style={{ flexDirection: "row", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                          {Object.entries(pillars).map(([k, v]) => {
+                            const p = PILLARS.find(x => x.key === k);
+                            return p ? (
+                              <View key={k} style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: p.color + "12", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                                <Ionicons name={p.icon} size={11} color={p.color} />
+                                <Text style={{ color: p.color, fontSize: 10, fontFamily: "Inter_600SemiBold" }}>{Math.round(v)}%</Text>
+                              </View>
+                            ) : null;
+                          })}
+                        </View>
+                      )}
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{getScoreLabel(s)} Stress</Text>
-                      <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>{log.stressType === "mood" ? `Mood: ${log.mood}` : "5-Pillar Analysis"}</Text>
-                    </View>
-                    <Text style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" }}>{d.toLocaleDateString("hi-IN")}</Text>
-                  </View>
-                </GlassCard>
-              );
-            })}
+                  </Card>
+                );
+              })
+            )}
           </View>
         )}
+
       </ScrollView>
     </View>
   );

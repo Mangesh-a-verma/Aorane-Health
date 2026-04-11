@@ -223,8 +223,10 @@ export const api = {
     request<{ success: boolean; log: Record<string, unknown>; stressScore: number }>("POST", "/stress/log", data),
   getStressLogs: (limit?: number) =>
     request<{ logs: Array<Record<string, unknown>>; avgScore: number; count: number }>("GET", `/stress/logs${limit ? `?limit=${limit}` : ""}`),
+  getStressWeekly: () =>
+    request<{ days: Array<{ date: string; dayLabel: string; dayLabelHi: string; avgScore: number; count: number; dominantMood: string | null }>; weekAvg: number; totalLogs: number }>("GET", "/stress/weekly"),
   getStressInsight: () =>
-    request<{ avgScore: number; insight: string; logsCount: number }>("GET", "/stress/insight"),
+    request<{ avgScore: number; insight: string; tips: string[]; logsCount: number; aiPowered: boolean }>("GET", "/stress/insight"),
 
   // ── Family Health ──────────────────────────────────────────
   getFamilyGroup: () =>
