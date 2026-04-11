@@ -339,6 +339,18 @@ export const api = {
     request<{ success: boolean }>("POST", `/ads/${adId}/impression`, { platform: "mobile" }),
   recordAdClick: (adId: string) =>
     request<{ success: boolean; linkUrl: string | null }>("POST", `/ads/${adId}/click`, {}),
+
+  // ── Company Settings (public) ──────────────────────────────
+  getCompanySettings: () =>
+    request<{ settings: {
+      companyName: string; companyLogoUrl: string | null; tagline: string | null;
+      website: string | null; supportPhone: string | null; supportEmail: string | null;
+      address: string | null; primaryColor: string; accentColor: string;
+      scorecardShowQr: boolean; scorecardShowBloodGroup: boolean; scorecardShowBmi: boolean;
+      scorecardShowActivePercent: boolean; scorecardBgGradientFrom: string; scorecardBgGradientTo: string;
+      reportHeaderText: string | null; reportFooterText: string | null; reportLogoUrl: string | null;
+      weeklyReportEnabled: boolean; monthlyReportEnabled: boolean;
+    } }>("GET", "/settings/company", undefined, false),
 };
 
 interface MealItem {

@@ -38,6 +38,24 @@ type Scorecard = {
   workProfile: string | null; profilePhotoUrl?: string | null;
   activePercent: ActivePercent;
 };
+type CompanySettings = {
+  companyName: string; companyLogoUrl: string | null; tagline: string | null;
+  website: string | null; supportPhone: string | null; supportEmail: string | null;
+  address: string | null; primaryColor: string; accentColor: string;
+  scorecardShowQr: boolean; scorecardShowBloodGroup: boolean; scorecardShowBmi: boolean;
+  scorecardShowActivePercent: boolean; scorecardBgGradientFrom: string; scorecardBgGradientTo: string;
+  reportHeaderText: string | null; reportFooterText: string | null; reportLogoUrl: string | null;
+  weeklyReportEnabled: boolean; monthlyReportEnabled: boolean;
+};
+const DEFAULT_COMPANY: CompanySettings = {
+  companyName: "AORANE Health", companyLogoUrl: null, tagline: "Aapki health, aapke haath mein",
+  website: "aorane.com", supportPhone: null, supportEmail: null, address: null,
+  primaryColor: "#0077B6", accentColor: "#00B896",
+  scorecardShowQr: true, scorecardShowBloodGroup: true, scorecardShowBmi: true, scorecardShowActivePercent: true,
+  scorecardBgGradientFrom: "#023E8A", scorecardBgGradientTo: "#1B998B",
+  reportHeaderText: null, reportFooterText: null, reportLogoUrl: null,
+  weeklyReportEnabled: true, monthlyReportEnabled: true,
+};
 
 const PLAN_COLORS: Record<string, string> = {
   free: "#6B7280", pro: "#0077B6", max: "#8B5CF6", family: "#10B981",
@@ -97,6 +115,7 @@ async function captureAndDownload(elementId: string, filename: string): Promise<
 export default function ScorecardScreen() {
   const insets = useSafeAreaInsets();
   const [card, setCard] = useState<Scorecard | null>(null);
+  const [company, setCompany] = useState<CompanySettings>(DEFAULT_COMPANY);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -105,7 +124,7 @@ export default function ScorecardScreen() {
   const [shareDate, setShareDate] = useState(new Date());
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  useEffect(() => { loadCard(); }, []);
+  useEffect(() => { loadCard(); loadCompany(); }, []);
 
   const loadCard = async () => {
     try {
@@ -113,6 +132,13 @@ export default function ScorecardScreen() {
       setCard(d as Scorecard);
     } catch { }
     setLoading(false);
+  };
+
+  const loadCompany = async () => {
+    try {
+      const d = await api.getCompanySettings();
+      setCompany({ ...DEFAULT_COMPANY, ...d.settings });
+    } catch { }
   };
 
   const handleDownload = async () => {
@@ -218,7 +244,7 @@ export default function ScorecardScreen() {
             >
               {/* Card gradient background */}
               <LinearGradient
-                colors={["#023E8A", "#0077B6", "#1B998B"]}
+                colors={[company.scorecardBgGradientFrom || "#023E8A", company.primaryColor || "#0077B6", company.scorecardBgGradientTo || "#1B998B"]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={styles.cardGrad}
               >
@@ -229,9 +255,16 @@ export default function ScorecardScreen() {
 
                 {/* ── TOP ROW: Logo + Plan Badge ── */}
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-                  <View>
-                    <Text style={{ color: "rgba(255,255,255,0.9)", fontFamily: "Inter_700Bold", fontSize: 20, letterSpacing: 2 }}>AORANE</Text>
-                    <Text style={{ color: "rgba(255,255,255,0.55)", fontFamily: "Inter_400Regular", fontSize: 9, letterSpacing: 1.5, marginTop: 1 }}>HEALTH IDENTITY CARD</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    {company.companyLogoUrl ? (
+                      <Image source={{ uri: company.companyLogoUrl }} style={{ width: 28, height: 28, borderRadius: 6 }} resizeMode="contain" />
+                    ) : null}
+                    <View>
+                      <Text style={{ color: "rgba(255,255,255,0.9)", fontFamily: "Inter_700Bold", fontSize: 18, letterSpacing: 2 }} numberOfLines={1}>
+                        {company.companyName.toUpperCase()}
+                      </Text>
+                      <Text style={{ color: "rgba(255,255,255,0.55)", fontFamily: "Inter_400Regular", fontSize: 9, letterSpacing: 1.5, marginTop: 1 }}>HEALTH IDENTITY CARD</Text>
+                    </View>
                   </View>
                   <View style={{ alignItems: "flex-end", gap: 6 }}>
                     <View style={[styles.planBadge, { backgroundColor: PLAN_COLORS[card.plan] || "#6B7280" }]}>
@@ -324,18 +357,20 @@ export default function ScorecardScreen() {
 
                 {/* ── BOTTOM: QR CODE + DIVIDER ── */}
                 <View style={styles.cardBottom}>
-                  {/* Left: QR code */}
-                  <View style={styles.qrBox}>
-                    <QRCode
-                      value={PLAYSTORE_URL}
-                      size={64}
-                      color="#FFFFFF"
-                      backgroundColor="transparent"
-                    />
-                    <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 7, fontFamily: "Inter_400Regular", marginTop: 4, textAlign: "center" }}>
-                      Scan to Download
-                    </Text>
-                  </View>
+                  {/* Left: QR code — only if enabled in company settings */}
+                  {company.scorecardShowQr && (
+                    <View style={styles.qrBox}>
+                      <QRCode
+                        value={PLAYSTORE_URL}
+                        size={64}
+                        color="#FFFFFF"
+                        backgroundColor="transparent"
+                      />
+                      <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 7, fontFamily: "Inter_400Regular", marginTop: 4, textAlign: "center" }}>
+                        Scan to Download
+                      </Text>
+                    </View>
+                  )}
                   {/* Divider */}
                   <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.15)", marginHorizontal: 14, alignSelf: "stretch" }} />
                   {/* Right: chip + company */}
@@ -360,7 +395,9 @@ export default function ScorecardScreen() {
                 {/* Company name */}
                 <View style={styles.companyRow}>
                   <View style={{ height: 1, flex: 1, backgroundColor: "rgba(255,255,255,0.12)", marginRight: 10 }} />
-                  <Text style={styles.companyText}>AORANE Health Pvt. Ltd. · aorane.com · India</Text>
+                  <Text style={styles.companyText} numberOfLines={1}>
+                    {company.companyName}{company.website ? ` · ${company.website}` : ""} · India
+                  </Text>
                   <View style={{ height: 1, flex: 1, backgroundColor: "rgba(255,255,255,0.12)", marginLeft: 10 }} />
                 </View>
               </LinearGradient>
@@ -397,6 +434,15 @@ export default function ScorecardScreen() {
                   <Text style={styles.actionBtnText}>{sharing ? "Sharing..." : "Share Card"}</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Health Report */}
+              <TouchableOpacity
+                onPress={() => router.push("/health-report" as never)}
+                style={[styles.actionBtn, { backgroundColor: "rgba(16,185,129,0.08)", borderWidth: 1.5, borderColor: "#10B981" }]}
+              >
+                <Ionicons name="document-text-outline" size={18} color="#10B981" />
+                <Text style={[styles.actionBtnText, { color: "#10B981" }]}>Generate Health Report</Text>
+              </TouchableOpacity>
 
               {/* Copy ID */}
               <TouchableOpacity

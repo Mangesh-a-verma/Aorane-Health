@@ -144,3 +144,33 @@ export type Notification = typeof notificationsTable.$inferSelect;
 export type FeatureFlag = typeof featureFlagsTable.$inferSelect;
 export type AdCampaign = typeof adCampaignsTable.$inferSelect;
 export type AdminUser = typeof adminUsersTable.$inferSelect;
+
+// ─── Company Settings (singleton row) ────────────────────────────────────────
+export const companySettingsTable = pgTable("company_settings", {
+  id: integer("id").primaryKey().default(1),
+  companyName: text("company_name").notNull().default("AORANE Health"),
+  companyLogoUrl: text("company_logo_url"),
+  tagline: text("tagline").default("Aapki health, aapke haath mein"),
+  website: text("website").default("aorane.com"),
+  supportPhone: text("support_phone"),
+  supportEmail: text("support_email"),
+  address: text("address"),
+  primaryColor: text("primary_color").default("#0077B6"),
+  accentColor: text("accent_color").default("#00B896"),
+  // Scorecard customization
+  scorecardShowQr: boolean("scorecard_show_qr").default(true),
+  scorecardShowBloodGroup: boolean("scorecard_show_blood_group").default(true),
+  scorecardShowBmi: boolean("scorecard_show_bmi").default(true),
+  scorecardShowActivePercent: boolean("scorecard_show_active_percent").default(true),
+  scorecardBgGradientFrom: text("scorecard_bg_gradient_from").default("#023E8A"),
+  scorecardBgGradientTo: text("scorecard_bg_gradient_to").default("#1B998B"),
+  // Report settings
+  reportHeaderText: text("report_header_text"),
+  reportFooterText: text("report_footer_text"),
+  reportLogoUrl: text("report_logo_url"),
+  weeklyReportEnabled: boolean("weekly_report_enabled").default(true),
+  monthlyReportEnabled: boolean("monthly_report_enabled").default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type CompanySettings = typeof companySettingsTable.$inferSelect;

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable } from "@workspace/db";
+import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable } from "@workspace/db";
 import { eq, desc, ilike, count, or, sql, and } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import { signAdminToken } from "../../lib/jwt";
@@ -328,6 +328,52 @@ router.get("/admin/platform-costs", requireAdmin, async (req: AdminRequest, res)
     });
   } catch {
     res.status(500).json({ error: "Failed to fetch platform costs" });
+  }
+});
+
+// ─── Company Settings (Branding + Templates) ─────────────────────────────────
+router.get("/admin/settings/company", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const rows = await db.select().from(companySettingsTable).limit(1);
+    if (rows.length === 0) {
+      const [created] = await db.insert(companySettingsTable).values({ id: 1 }).returning();
+      res.json({ settings: created });
+    } else {
+      res.json({ settings: rows[0] });
+    }
+  } catch {
+    res.status(500).json({ error: "Failed to fetch company settings" });
+  }
+});
+
+router.put("/admin/settings/company", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const body = req.body as Record<string, unknown>;
+    const rows = await db.select().from(companySettingsTable).limit(1);
+    let result;
+    if (rows.length === 0) {
+      [result] = await db.insert(companySettingsTable).values({ id: 1, ...body }).returning();
+    } else {
+      [result] = await db.update(companySettingsTable).set({ ...body, updatedAt: new Date() }).where(eq(companySettingsTable.id, 1)).returning();
+    }
+    res.json({ settings: result, success: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Failed to update company settings" });
+  }
+});
+
+// Public endpoint — used by mobile app scorecard & report
+router.get("/settings/company", async (req, res) => {
+  try {
+    const rows = await db.select().from(companySettingsTable).limit(1);
+    if (rows.length === 0) {
+      res.json({ settings: { companyName: "AORANE Health", tagline: "Aapki health, aapke haath mein", website: "aorane.com", primaryColor: "#0077B6", accentColor: "#00B896", scorecardBgGradientFrom: "#023E8A", scorecardBgGradientTo: "#1B998B", scorecardShowQr: true, scorecardShowBloodGroup: true, scorecardShowBmi: true, scorecardShowActivePercent: true, weeklyReportEnabled: true, monthlyReportEnabled: true } });
+    } else {
+      res.json({ settings: rows[0] });
+    }
+  } catch {
+    res.status(500).json({ error: "Failed to fetch settings" });
   }
 });
 

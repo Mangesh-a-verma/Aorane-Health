@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, Building2, Flag, UtensilsCrossed,
   Tag, Megaphone, Droplet, Languages, ClipboardList, LogOut,
   Menu, X, ShieldAlert, ChevronRight, CreditCard, BarChart3, DollarSign,
-  MonitorPlay,
+  MonitorPlay, Paintbrush2,
 } from "lucide-react";
 
 const NAV = [
@@ -16,6 +16,7 @@ const NAV = [
   { path: "/analytics", icon: BarChart3, label: "Analytics", color: "#0077B6" },
   { path: "/platform-costs", icon: DollarSign, label: "Platform Costs", color: "#F59E0B" },
   { path: "/ads", icon: MonitorPlay, label: "Ads Manager", color: "#EC4899" },
+  { path: "/branding", icon: Paintbrush2, label: "Branding & Templates", color: "#8B5CF6" },
   { path: "/feature-flags", icon: Flag, label: "Feature Flags", color: "#F59E0B" },
   { path: "/food-items", icon: UtensilsCrossed, label: "Food Database", color: "#10B981" },
   { path: "/promo-codes", icon: Tag, label: "Promo Codes", color: "#EF4444" },

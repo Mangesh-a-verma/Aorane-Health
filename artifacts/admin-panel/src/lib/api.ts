@@ -130,4 +130,8 @@ export const api = {
   updateAd: (id: string, data: Partial<AdCampaign>) => req<{ ad: AdCampaign }>(`/admin/ads/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteAd: (id: string) => req<{ success: boolean }>(`/admin/ads/${id}`, { method: "DELETE" }),
   toggleAd: (id: string) => req<{ status: string }>(`/admin/ads/${id}/toggle`, { method: "PATCH" }),
+
+  getCompanySettings: () => req<{ settings: Record<string, unknown> }>("/admin/settings/company"),
+  updateCompanySettings: (data: Record<string, unknown>) =>
+    req<{ settings: Record<string, unknown>; success: boolean }>("/admin/settings/company", { method: "PUT", body: JSON.stringify(data) }),
 };

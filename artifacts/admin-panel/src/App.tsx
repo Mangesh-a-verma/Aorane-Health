@@ -20,6 +20,7 @@ import Subscriptions from "@/pages/Subscriptions";
 import Analytics from "@/pages/Analytics";
 import PlatformCosts from "@/pages/PlatformCosts";
 import AdsManager from "@/pages/AdsManager";
+import Branding from "@/pages/Branding";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +74,7 @@ function Router() {
       <Route path="/analytics" component={() => <Protected component={Analytics} />} />
       <Route path="/platform-costs" component={() => <Protected component={PlatformCosts} />} />
       <Route path="/ads" component={() => <Protected component={AdsManager} />} />
+      <Route path="/branding" component={() => <Protected component={Branding} />} />
       <Route component={NotFound} />
     </Switch>
   );
