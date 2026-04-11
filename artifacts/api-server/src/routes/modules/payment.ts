@@ -88,12 +88,12 @@ router.post("/payment/promo/validate", requireAuth, async (req: AuthRequest, res
     if (!code) { res.status(400).json({ error: "Code required" }); return; }
     const [promo] = await db.select().from(promoCodesTable).where(eq(promoCodesTable.code, code.toUpperCase()));
     if (!promo) { res.status(404).json({ error: "Invalid promo code" }); return; }
-    if (!promo.isActive) { res.status(400).json({ error: "Yeh code expire ho gaya hai" }); return; }
-    if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) { res.status(400).json({ error: "Code ki validity khatam ho gayi" }); return; }
+    if (!promo.isActive) { res.status(400).json({ error: "This promo code is no longer active" }); return; }
+    if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) { res.status(400).json({ error: "This promo code has expired" }); return; }
     if (promo.applicablePlans && !promo.applicablePlans.includes(plan)) {
-      res.status(400).json({ error: `Yeh code ${promo.applicablePlans.join(", ")} ke liye hi valid hai` }); return;
+      res.status(400).json({ error: `This code is only valid for: ${promo.applicablePlans.join(", ")}` }); return;
     }
-    res.json({ valid: true, discount: promo.discountPct, code: promo.code, message: `${promo.discountPct}% discount milega!` });
+    res.json({ valid: true, discount: promo.discountPct, code: promo.code, message: `${promo.discountPct}% discount applied!` });
   } catch {
     res.status(500).json({ error: "Failed to validate promo code" });
   }

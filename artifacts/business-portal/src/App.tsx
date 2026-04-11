@@ -12,6 +12,9 @@ import Dashboard from "@/pages/Dashboard";
 import Members from "@/pages/Members";
 import EnrollmentCodes from "@/pages/EnrollmentCodes";
 import Settings from "@/pages/Settings";
+import Billing from "@/pages/Billing";
+import Analytics from "@/pages/Analytics";
+import Communications from "@/pages/Communications";
 
 const queryClient = new QueryClient();
 
@@ -82,7 +85,10 @@ function Router() {
       <Route path="/register" component={() => <PublicOnlyRoute component={Register} />} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/members" component={() => <ProtectedRoute component={Members} />} />
+      <Route path="/analytics" component={() => <ProtectedRoute component={Analytics} />} />
+      <Route path="/communications" component={() => <ProtectedRoute component={Communications} />} />
       <Route path="/codes" component={() => <ProtectedRoute component={EnrollmentCodes} />} />
+      <Route path="/billing" component={() => <ProtectedRoute component={Billing} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
       <Route component={NotFound} />
     </Switch>

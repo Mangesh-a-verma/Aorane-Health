@@ -1,9 +1,8 @@
 import { Router } from "express";
-import { db, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable } from "@workspace/db";
-import { eq, and, count, avg, desc, ilike } from "drizzle-orm";
+import { db, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable } from "@workspace/db";
+import { eq, and, avg, desc, ilike, gte, sql } from "drizzle-orm";
 import { requireBusinessAuth } from "../../middlewares/business-auth";
 import { signBusinessToken } from "../../lib/jwt";
-import { hashOtp } from "../../lib/otp";
 import type { BusinessRequest } from "../../middlewares/business-auth";
 import crypto from "crypto";
 
@@ -206,15 +205,202 @@ router.get("/business/enrollment-codes", requireBusinessAuth, async (req: Busine
   }
 });
 
+// ─── BUSINESS BILLING ─────────────────────────────────────────────────────────
+const ORG_PLANS: Record<string, { label: string; seats: number; price: number; priceYearly: number; color: string }> = {
+  starter:    { label: "Starter",    seats: 50,   price: 999,  priceYearly: 9990,  color: "#0077B6" },
+  growth:     { label: "Growth",     seats: 200,  price: 2999, priceYearly: 29990, color: "#7C3AED" },
+  enterprise: { label: "Enterprise", seats: 500,  price: 6999, priceYearly: 69990, color: "#DC2626" },
+};
+
+router.get("/business/billing/plans", requireBusinessAuth, async (_req: BusinessRequest, res) => {
+  res.json({ plans: ORG_PLANS });
+});
+
+router.get("/business/billing/subscription", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const [payment] = await db.select().from(orgPaymentsTable)
+      .where(and(eq(orgPaymentsTable.orgId, req.orgId!), eq(orgPaymentsTable.status, "success")))
+      .orderBy(desc(orgPaymentsTable.createdAt)).limit(1);
+    const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
+    res.json({ payment: payment || null, org, plans: ORG_PLANS });
+  } catch { res.status(500).json({ error: "Failed to fetch subscription" }); }
+});
+
+router.post("/business/billing/order", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const { plan, billing = "monthly" } = req.body as { plan: string; billing?: string };
+    if (!ORG_PLANS[plan]) { res.status(400).json({ error: "Invalid plan" }); return; }
+    const planInfo = ORG_PLANS[plan];
+    const amount = billing === "yearly" ? planInfo.priceYearly : planInfo.price;
+    const razorpayKeyId = process.env["RAZORPAY_KEY_ID"];
+    const razorpayKeySecret = process.env["RAZORPAY_KEY_SECRET"];
+    let razorpayOrderId: string | null = null;
+    if (razorpayKeyId && razorpayKeySecret) {
+      const auth = Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString("base64");
+      const rzRes = await fetch("https://api.razorpay.com/v1/orders", {
+        method: "POST",
+        headers: { "Authorization": `Basic ${auth}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: amount * 100, currency: "INR", receipt: `org_${req.orgId!.substring(0, 8)}` }),
+      });
+      if (rzRes.ok) { const d = await rzRes.json() as { id: string }; razorpayOrderId = d.id; }
+    }
+    const [payment] = await db.insert(orgPaymentsTable).values({
+      orgId: req.orgId!, plan, seats: planInfo.seats, amount: amount.toString(),
+      currency: "INR", razorpayOrderId, status: "pending",
+    }).returning();
+    res.json({ success: true, paymentId: payment.id, razorpayOrderId, razorpayKeyId: razorpayKeyId || null, amount, plan, planLabel: planInfo.label, seats: planInfo.seats, isTestMode: !razorpayKeyId });
+  } catch { res.status(500).json({ error: "Failed to create billing order" }); }
+});
+
+router.post("/business/billing/verify", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const { paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature, plan, isTestMode } = req.body as Record<string, unknown>;
+    const razorpayKeySecret = process.env["RAZORPAY_KEY_SECRET"];
+    if (!isTestMode && razorpayKeySecret) {
+      const body = `${razorpayOrderId}|${razorpayPaymentId}`;
+      const expectedSig = crypto.createHmac("sha256", razorpayKeySecret).update(body).digest("hex");
+      if (expectedSig !== razorpaySignature) { res.status(400).json({ error: "Payment signature invalid" }); return; }
+    }
+    const planInfo = ORG_PLANS[plan as string];
+    if (!planInfo) { res.status(400).json({ error: "Invalid plan" }); return; }
+    await db.update(orgPaymentsTable).set({ status: "success", razorpayPaymentId: razorpayPaymentId as string }).where(eq(orgPaymentsTable.id, paymentId as string));
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 365);
+    await db.update(organizationsTable).set({ totalSeats: planInfo.seats, plan: "pro" as "basic" | "pro" | "max", isVerified: true }).where(eq(organizationsTable.id, req.orgId!));
+    const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
+    res.json({ success: true, org, message: `${planInfo.label} plan activated! ${planInfo.seats} seats unlocked.` });
+  } catch { res.status(500).json({ error: "Failed to verify payment" }); }
+});
+
+// ─── ANALYTICS ────────────────────────────────────────────────────────────────
+router.get("/business/analytics", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const memberRows = await db.select({ userId: orgMembersTable.userId, joinedAt: orgMembersTable.joinedAt })
+      .from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.isActive, true)));
+    const memberIds = memberRows.map((m) => m.userId);
+
+    let profiles: { gender: string | null; bmi: string | null; plan: string; dateOfBirth: string | null }[] = [];
+    if (memberIds.length) {
+      const profileRows = await db.select({
+        gender: userProfilesTable.gender,
+        bmi: userProfilesTable.bmi,
+        plan: usersTable.plan,
+        dateOfBirth: userProfilesTable.dateOfBirth,
+      }).from(userProfilesTable)
+        .leftJoin(usersTable, eq(userProfilesTable.userId, usersTable.id))
+        .where(sql`${userProfilesTable.userId} = ANY(ARRAY[${sql.join(memberIds.map(id => sql`${id}::uuid`))}])`);
+      profiles = profileRows as typeof profiles;
+    }
+
+    const genderDist = { male: 0, female: 0, other: 0 };
+    const planDist: Record<string, number> = {};
+    const ageBuckets = { "18-25": 0, "26-35": 0, "36-45": 0, "46-55": 0, "55+": 0 };
+    let bmiSum = 0; let bmiCount = 0;
+
+    for (const p of profiles) {
+      if (p.gender === "male") genderDist.male++;
+      else if (p.gender === "female") genderDist.female++;
+      else genderDist.other++;
+      const plan = p.plan || "free";
+      planDist[plan] = (planDist[plan] || 0) + 1;
+      if (p.bmi) { bmiSum += parseFloat(p.bmi); bmiCount++; }
+      if (p.dateOfBirth) {
+        const age = Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (86400000 * 365.25));
+        if (age < 26) ageBuckets["18-25"]++;
+        else if (age < 36) ageBuckets["26-35"]++;
+        else if (age < 46) ageBuckets["36-45"]++;
+        else if (age < 56) ageBuckets["46-55"]++;
+        else ageBuckets["55+"]++;
+      }
+    }
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const joinTrend: Record<string, number> = {};
+    for (const m of memberRows) {
+      if (m.joinedAt && new Date(m.joinedAt) > thirtyDaysAgo) {
+        const d = new Date(m.joinedAt).toISOString().split("T")[0];
+        joinTrend[d] = (joinTrend[d] || 0) + 1;
+      }
+    }
+    const joinTrendArr = Object.entries(joinTrend).sort().map(([date, count]) => ({ date, count }));
+
+    res.json({
+      totalMembers: memberIds.length,
+      genderDist: [
+        { name: "Male", value: genderDist.male, color: "#0077B6" },
+        { name: "Female", value: genderDist.female, color: "#EC4899" },
+        { name: "Other", value: genderDist.other, color: "#6B7280" },
+      ],
+      planDist: Object.entries(planDist).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value })),
+      ageDist: Object.entries(ageBuckets).map(([name, value]) => ({ name, value })),
+      avgBmi: bmiCount > 0 ? (bmiSum / bmiCount).toFixed(1) : null,
+      joinTrend: joinTrendArr,
+    });
+  } catch (err) {
+    console.error("Analytics error:", err);
+    res.status(500).json({ error: "Failed to fetch analytics" });
+  }
+});
+
+// ─── ANNOUNCEMENTS ────────────────────────────────────────────────────────────
+router.get("/business/announcements", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const items = await db.select().from(orgAnnouncementsTable)
+      .where(eq(orgAnnouncementsTable.orgId, req.orgId!))
+      .orderBy(desc(orgAnnouncementsTable.createdAt)).limit(50);
+    res.json({ announcements: items });
+  } catch { res.status(500).json({ error: "Failed to fetch announcements" }); }
+});
+
+router.post("/business/announcements", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const { title, body, type = "announcement" } = req.body as { title: string; body: string; type?: string };
+    if (!title || !body) { res.status(400).json({ error: "Title and body required" }); return; }
+    const memberCount = await db.select({ count: sql<number>`count(*)::int` }).from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.isActive, true)));
+    const [ann] = await db.insert(orgAnnouncementsTable).values({
+      orgId: req.orgId!, title, body, type, sentCount: memberCount[0]?.count || 0,
+    }).returning();
+    res.status(201).json({ announcement: ann });
+  } catch { res.status(500).json({ error: "Failed to create announcement" }); }
+});
+
+// ─── MEMBER DETAIL ────────────────────────────────────────────────────────────
+router.get("/business/members/:userId/detail", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const { userId } = req.params;
+    const [member] = await db.select().from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId)));
+    if (!member) { res.status(404).json({ error: "Member not in organization" }); return; }
+    const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, userId));
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+    const recentScores = await db.select().from(dailyHealthScoresTable)
+      .where(eq(dailyHealthScoresTable.userId, userId))
+      .orderBy(desc(dailyHealthScoresTable.scoreDate)).limit(7);
+    res.json({ member, profile, user: { plan: user?.plan, aoraneId: profile?.aoraneId }, recentScores });
+  } catch { res.status(500).json({ error: "Failed to fetch member detail" }); }
+});
+
+router.post("/business/members/:userId/remove", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const { userId } = req.params;
+    await db.update(orgMembersTable).set({ isActive: false })
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId)));
+    const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
+    if (org && org.usedSeats > 0) {
+      await db.update(organizationsTable).set({ usedSeats: org.usedSeats - 1 }).where(eq(organizationsTable.id, req.orgId!));
+    }
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: "Failed to remove member" }); }
+});
+
 function generateOrgCode(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let code = "";
   for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
-}
-
-function requireAuth(req: unknown, res: unknown, next: () => void): void {
-  next();
 }
 
 export default router;

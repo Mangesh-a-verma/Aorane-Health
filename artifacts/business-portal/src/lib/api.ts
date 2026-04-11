@@ -18,94 +18,100 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
 }
 
 export interface Org {
-  id: string;
-  orgType: string;
-  name: string;
-  orgCode: string;
-  contactEmail: string;
-  contactPhone: string;
-  city: string;
-  state: string;
-  totalSeats: number;
-  usedSeats: number;
-  isActive: boolean;
-  createdAt: string;
+  id: string; orgType: string; name: string; orgCode: string;
+  contactEmail: string; contactPhone: string; city: string; state: string;
+  totalSeats: number; usedSeats: number; isActive: boolean; isVerified: boolean;
+  plan: string; createdAt: string;
 }
 
 export interface Admin {
-  id: string;
-  fullName: string;
-  role: string;
-  email: string;
+  id: string; fullName: string; role: string; email: string;
 }
 
 export interface Member {
-  memberId: string;
-  userId: string;
-  role: string;
-  joinedAt: string;
-  fullName: string | null;
-  bloodGroup: string | null;
+  memberId: string; userId: string; role: string; joinedAt: string;
+  fullName: string | null; bloodGroup: string | null;
 }
 
 export interface MemberSearchResult {
-  userId: string;
-  aoraneId: string | null;
-  name: string | null;
-  bloodGroup: string | null;
-  gender: string | null;
-  age: number | null;
-  city: string | null;
-  bmi: string | null;
-  plan: string;
+  userId: string; aoraneId: string | null; name: string | null;
+  bloodGroup: string | null; gender: string | null; age: number | null;
+  city: string | null; bmi: string | null; plan: string;
 }
 
 export interface EnrollmentCode {
-  id: string;
-  code: string;
-  planType: string;
-  totalSeats: number;
-  usedSeats: number;
-  validityDays: number;
-  expiresAt: string;
-  isActive: boolean;
-  createdAt: string;
+  id: string; code: string; planType: string; totalSeats: number;
+  usedSeats: number; validityDays: number; expiresAt: string;
+  isActive: boolean; createdAt: string;
 }
 
 export interface Overview {
-  org: Org;
-  memberCount: number;
-  activeSeats: number;
+  org: Org; memberCount: number; activeSeats: number;
+}
+
+export interface OrgPlan {
+  label: string; seats: number; price: number; priceYearly: number; color: string;
+}
+
+export interface Analytics {
+  totalMembers: number;
+  genderDist: { name: string; value: number; color: string }[];
+  planDist: { name: string; value: number }[];
+  ageDist: { name: string; value: number }[];
+  avgBmi: string | null;
+  joinTrend: { date: string; count: number }[];
+}
+
+export interface Announcement {
+  id: string; title: string; body: string; type: string; sentCount: number; createdAt: string;
+}
+
+export interface MemberDetail {
+  member: { userId: string; role: string; joinedAt: string };
+  profile: { fullName: string | null; bloodGroup: string | null; gender: string | null; bmi: string | null; dateOfBirth: string | null } | null;
+  user: { plan: string; aoraneId: string | null };
+  recentScores: { scoreDate: string; overallScore: number | null }[];
 }
 
 export const api = {
   login: (email: string, password: string) =>
-    request<{ token: string; admin: Admin; org: Org }>("/business/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    }),
+    request<{ token: string; admin: Admin; org: Org }>("/business/login", { method: "POST", body: JSON.stringify({ email, password }) }),
 
   register: (data: Record<string, unknown>) =>
-    request<{ success: boolean; org: Org; token: string; orgCode: string }>("/business/register", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+    request<{ success: boolean; org: Org; token: string; orgCode: string }>("/business/register", { method: "POST", body: JSON.stringify(data) }),
 
-  overview: () =>
-    request<Overview>("/business/overview"),
+  overview: () => request<Overview>("/business/overview"),
 
-  members: () =>
-    request<{ members: Member[] }>("/business/members"),
+  members: () => request<{ members: Member[] }>("/business/members"),
 
   searchMembers: (q: string) =>
     request<{ results: MemberSearchResult[]; count: number }>(`/business/members/search?q=${encodeURIComponent(q)}`),
 
-  getCodes: () =>
-    request<{ codes: EnrollmentCode[] }>("/business/enrollment-codes"),
+  getMemberDetail: (userId: string) =>
+    request<MemberDetail>(`/business/members/${userId}/detail`),
+
+  removeMember: (userId: string) =>
+    request<{ success: boolean }>(`/business/members/${userId}/remove`, { method: "POST" }),
+
+  getCodes: () => request<{ codes: EnrollmentCode[] }>("/business/enrollment-codes"),
 
   createCode: (data: { planType: string; totalSeats: number; validityDays: number }) =>
-    request<{ code: EnrollmentCode }>("/business/enrollment-codes", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+    request<{ code: EnrollmentCode }>("/business/enrollment-codes", { method: "POST", body: JSON.stringify(data) }),
+
+  getBillingPlans: () => request<{ plans: Record<string, OrgPlan> }>("/business/billing/plans"),
+
+  getBillingSubscription: () => request<{ payment: Record<string, unknown> | null; org: Org; plans: Record<string, OrgPlan> }>("/business/billing/subscription"),
+
+  createBillingOrder: (plan: string, billing: string) =>
+    request<{ paymentId: string; razorpayOrderId: string | null; razorpayKeyId: string | null; amount: number; plan: string; planLabel: string; seats: number; isTestMode: boolean }>("/business/billing/order", { method: "POST", body: JSON.stringify({ plan, billing }) }),
+
+  verifyBillingPayment: (data: Record<string, unknown>) =>
+    request<{ success: boolean; org: Org; message: string }>("/business/billing/verify", { method: "POST", body: JSON.stringify(data) }),
+
+  getAnalytics: () => request<Analytics>("/business/analytics"),
+
+  getAnnouncements: () => request<{ announcements: Announcement[] }>("/business/announcements"),
+
+  createAnnouncement: (data: { title: string; body: string; type: string }) =>
+    request<{ announcement: Announcement }>("/business/announcements", { method: "POST", body: JSON.stringify(data) }),
 };

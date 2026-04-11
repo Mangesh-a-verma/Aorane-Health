@@ -28,6 +28,16 @@ Admin Panel      ──┘         ↑ Redis Cache (Upstash)
 - **Cache**: In-memory (production: Upstash Redis)
 
 ## Completed Features (Latest Session)
+- **Business Portal — Billing Page**: Full Razorpay payment flow; 3 subscription tiers (Starter ₹999/50 seats, Growth ₹2999/200 seats, Enterprise ₹6999/500 seats); plan comparison cards; `setOrg` added to AuthContext
+- **Business Portal — Analytics Page**: Recharts-powered dashboard; area chart (7d member activity), pie chart (plan distribution), bar chart (health metrics); summary KPI cards
+- **Business Portal — Communications Page**: Announcements composer (title + message + type + expiry); announcement history list; sent via `/business/announcements` API
+- **Business Portal — Routes**: `/analytics`, `/communications`, `/billing` all wired in Router; imports and Layout nav updated
+- **Admin Panel — AI Config Page**: Full per-feature AI configuration; 8 features (Food AI, Medical AI, Smart Scan, Water, Stress, Blood, Meal Planner, Health Suggestions); provider/model dropdowns; optional API key override; custom system prompt; enable/disable toggle; stats overview
+- **Admin Panel — AI Config API**: `GET /admin/ai-config`, `PUT /admin/ai-config/:feature` routes added; `aiConfigTable` schema in platform.ts; persists to DB
+- **Hindi/Hinglish Sweep**: All UI strings in mobile app, business portal, admin panel, and API error messages cleaned to English
+- **DB Schema**: `orgPaymentsTable`, `orgAnnouncementsTable`, `aiConfigTable` added; schema pushed to Supabase
+
+## Previous Session Features
 - **AORANE 12-Digit ID**: Unique immutable ID stored in DB, format `[G][AA][CCC][RRRRRR]` (gender+age+cityHash+random), generated once at scorecard call, shown on health card with copy/share
 - **Active Percentage System**: Daily tracking score — food (35%), water (30%), exercise (25%), medicine (10%); `GET /users/activity-score`; dashboard widget with progress bars; scorecard "Data Reliability" section
 - **AORANE ID Search (Admin Panel)**: Full search by 12-digit AORANE ID or name, with result cards showing blood group, age, city, BMI, plan, active status

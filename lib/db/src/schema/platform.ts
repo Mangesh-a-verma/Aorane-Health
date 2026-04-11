@@ -139,6 +139,20 @@ export const adminAuditLogsTable = pgTable("admin_audit_logs", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const aiConfigTable = pgTable("ai_config", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  feature: text("feature").notNull().unique(),
+  label: text("label").notNull(),
+  provider: text("provider").notNull().default("gemini"),
+  model: text("model").notNull().default("gemini-2.0-flash"),
+  apiKey: text("api_key"),
+  systemPrompt: text("system_prompt"),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type AiConfig = typeof aiConfigTable.$inferSelect;
+
 export type PushToken = typeof pushTokensTable.$inferSelect;
 export type Notification = typeof notificationsTable.$inferSelect;
 export type FeatureFlag = typeof featureFlagsTable.$inferSelect;
@@ -150,7 +164,7 @@ export const companySettingsTable = pgTable("company_settings", {
   id: integer("id").primaryKey().default(1),
   companyName: text("company_name").notNull().default("AORANE Health"),
   companyLogoUrl: text("company_logo_url"),
-  tagline: text("tagline").default("Aapki health, aapke haath mein"),
+  tagline: text("tagline").default("Your Health, In Your Hands"),
   website: text("website").default("aorane.com"),
   supportPhone: text("support_phone"),
   supportEmail: text("support_email"),

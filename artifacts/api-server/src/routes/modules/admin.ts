@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable } from "@workspace/db";
+import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable } from "@workspace/db";
 import { eq, desc, ilike, count, or, sql, and } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import { signAdminToken } from "../../lib/jwt";
@@ -368,13 +368,54 @@ router.get("/settings/company", async (req, res) => {
   try {
     const rows = await db.select().from(companySettingsTable).limit(1);
     if (rows.length === 0) {
-      res.json({ settings: { companyName: "AORANE Health", tagline: "Aapki health, aapke haath mein", website: "aorane.com", primaryColor: "#0077B6", accentColor: "#00B896", scorecardBgGradientFrom: "#023E8A", scorecardBgGradientTo: "#1B998B", scorecardShowQr: true, scorecardShowBloodGroup: true, scorecardShowBmi: true, scorecardShowActivePercent: true, weeklyReportEnabled: true, monthlyReportEnabled: true } });
+      res.json({ settings: { companyName: "AORANE Health", tagline: "Your Health, In Your Hands", website: "aorane.com", primaryColor: "#0077B6", accentColor: "#00B896", scorecardBgGradientFrom: "#023E8A", scorecardBgGradientTo: "#1B998B", scorecardShowQr: true, scorecardShowBloodGroup: true, scorecardShowBmi: true, scorecardShowActivePercent: true, weeklyReportEnabled: true, monthlyReportEnabled: true } });
     } else {
       res.json({ settings: rows[0] });
     }
   } catch {
     res.status(500).json({ error: "Failed to fetch settings" });
   }
+});
+
+// ─── AI CONFIG ────────────────────────────────────────────────────────────────
+const DEFAULT_AI_FEATURES = [
+  { feature: "food_scan",    label: "Food Scan & Nutrition AI",    provider: "gemini", model: "gemini-2.0-flash" },
+  { feature: "medical_scan", label: "Medical Report AI",           provider: "gemini", model: "gemini-2.0-flash" },
+  { feature: "smart_scan",   label: "Smart Scan (Camera AI)",      provider: "gemini", model: "gemini-2.0-flash" },
+  { feature: "diet_plan",    label: "AI Diet Plan Generator",      provider: "gemini", model: "gemini-2.0-flash" },
+  { feature: "suggestions",  label: "Daily Health Suggestions",    provider: "gemini", model: "gemini-2.0-flash" },
+  { feature: "stress",       label: "Stress Insight Analysis",     provider: "gemini", model: "gemini-2.0-flash" },
+  { feature: "health_tip",   label: "Health Tip Generator",        provider: "gemini", model: "gemini-2.0-flash" },
+  { feature: "meal_swap",    label: "Meal Swap Suggestions",       provider: "gemini", model: "gemini-2.0-flash" },
+];
+
+router.get("/admin/ai-config", requireAdmin, async (_req: AdminRequest, res) => {
+  try {
+    const rows = await db.select().from(aiConfigTable);
+    if (rows.length === 0) {
+      res.json({ configs: DEFAULT_AI_FEATURES.map(f => ({ ...f, id: null, isEnabled: true, apiKey: null, systemPrompt: null })) });
+    } else {
+      const configMap = new Map(rows.map(r => [r.feature, r]));
+      const configs = DEFAULT_AI_FEATURES.map(f => configMap.get(f.feature) || { ...f, id: null, isEnabled: true, apiKey: null, systemPrompt: null });
+      res.json({ configs });
+    }
+  } catch { res.status(500).json({ error: "Failed to fetch AI config" }); }
+});
+
+router.put("/admin/ai-config/:feature", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { feature } = req.params;
+    const { provider, model, apiKey, systemPrompt, isEnabled } = req.body as Record<string, unknown>;
+    const label = DEFAULT_AI_FEATURES.find(f => f.feature === feature)?.label || feature;
+    const existing = await db.select().from(aiConfigTable).where(eq(aiConfigTable.feature, feature)).limit(1);
+    let result;
+    if (existing.length === 0) {
+      [result] = await db.insert(aiConfigTable).values({ feature, label, provider: provider as string || "gemini", model: model as string || "gemini-2.0-flash", apiKey: apiKey as string || null, systemPrompt: systemPrompt as string || null, isEnabled: isEnabled !== false }).returning();
+    } else {
+      [result] = await db.update(aiConfigTable).set({ provider: provider as string, model: model as string, apiKey: apiKey as string || null, systemPrompt: systemPrompt as string || null, isEnabled: isEnabled as boolean, updatedAt: new Date() }).where(eq(aiConfigTable.feature, feature)).returning();
+    }
+    res.json({ config: result, success: true });
+  } catch { res.status(500).json({ error: "Failed to update AI config" }); }
 });
 
 export default router;

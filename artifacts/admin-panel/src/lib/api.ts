@@ -134,4 +134,13 @@ export const api = {
   getCompanySettings: () => req<{ settings: Record<string, unknown> }>("/admin/settings/company"),
   updateCompanySettings: (data: Record<string, unknown>) =>
     req<{ settings: Record<string, unknown>; success: boolean }>("/admin/settings/company", { method: "PUT", body: JSON.stringify(data) }),
+
+  getAiConfig: () => req<{ configs: AiConfig[] }>("/admin/ai-config"),
+  updateAiConfig: (feature: string, data: Partial<AiConfig>) =>
+    req<{ config: AiConfig; success: boolean }>(`/admin/ai-config/${feature}`, { method: "PUT", body: JSON.stringify(data) }),
+};
+
+export type AiConfig = {
+  id: string | null; feature: string; label: string; provider: string; model: string;
+  apiKey: string | null; systemPrompt: string | null; isEnabled: boolean;
 };

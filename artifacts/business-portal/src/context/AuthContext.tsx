@@ -11,6 +11,7 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   login: (token: string, admin: Admin, org: Org) => void;
   logout: () => void;
+  setOrg: (org: Org) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -47,7 +48,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState({ token: null, admin: null, org: null, isLoading: false });
   };
 
-  return <AuthContext.Provider value={{ ...state, login, logout }}>{children}</AuthContext.Provider>;
+  const setOrg = (org: Org) => {
+    localStorage.setItem("bp_org", JSON.stringify(org));
+    setState(s => ({ ...s, org }));
+  };
+
+  return <AuthContext.Provider value={{ ...state, login, logout, setOrg }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
