@@ -8,10 +8,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { api } from "../lib/api";
+import { DS } from "../lib/theme";
 
-const PRIMARY = "#0077B6";
-const ACCENT = "#00B896";
-const BG = "#F7F9FC";
+const PRIMARY = DS.color.primary;
+const ACCENT = DS.color.green;
+const BG = DS.color.bgSoft;
 
 const RISK_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
   low:      { bg: "#ECFDF5", text: "#059669", bar: "#10B981" },

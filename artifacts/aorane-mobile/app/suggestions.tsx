@@ -7,14 +7,16 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { api } from "@/lib/api";
+import { DS } from "@/lib/theme";
 
 const C = {
-  bg: "#F0FAFB", card: "#FFFFFF", primary: "#0077B6", accent: "#00B896",
-  text: "#0D1F33", muted: "#7A90A4", border: "#E2EFF5",
-  red: "#EF4444", yellow: "#F59E0B", green: "#10B981", purple: "#7C3AED",
-  orange: "#F97316",
+  bg: DS.color.bgSoft, card: "#FFFFFF", primary: DS.color.primary, accent: DS.color.green,
+  text: DS.color.text, muted: DS.color.muted, border: DS.color.border,
+  red: DS.color.red, yellow: DS.color.yellow, green: DS.color.green, purple: DS.color.purple,
+  orange: DS.color.orange,
 };
 
 type Suggestion = Record<string, unknown>;
@@ -169,60 +171,61 @@ export default function SuggestionsScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center", gap: 16 }}>
-        <LinearGradient colors={["#E8F7FB", "#F0FAF6"]} style={StyleSheet.absoluteFill} />
-        <ActivityIndicator size="large" color={C.primary} />
-        <Text style={{ color: C.primary, fontFamily: "Inter_600SemiBold", fontSize: 15 }}>AI Coach is getting ready... 🤖</Text>
-        <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13 }}>Building personalised suggestions from your profile</Text>
+      <View style={{ flex: 1, backgroundColor: DS.color.bgSoft, alignItems: "center", justifyContent: "center", gap: 16 }}>
+        <ActivityIndicator size="large" color={DS.color.primary} />
+        <Text style={{ color: DS.color.primary, fontFamily: "Inter_600SemiBold", fontSize: 15 }}>AI Coach is getting ready... 🤖</Text>
+        <Text style={{ color: DS.color.muted, fontFamily: "Inter_400Regular", fontSize: 13 }}>Building personalised suggestions from your profile</Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg }}>
-      {/* Header */}
-      <LinearGradient colors={["#004D8A", "#0077B6", "#00A88A"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ paddingTop: topPad + 10, paddingHorizontal: 18, paddingBottom: 20 }}>
-        {/* Shine overlay */}
-        <View style={{ position: "absolute", top: -40, right: -30, width: 160, height: 160, borderRadius: 80, backgroundColor: "rgba(255,255,255,0.06)" }} />
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={22} color="#FFF" />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: "#FFF", fontSize: 22, fontFamily: "Inter_700Bold" }}>AI Daily Coach 🤖</Text>
-            <Text style={{ color: "rgba(255,255,255,0.72)", fontSize: 12, fontFamily: "Inter_400Regular" }}>
-              {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })} · {fromCache ? "Cached plan" : "Fresh plan ✨"}
-            </Text>
+    <View style={{ flex: 1, backgroundColor: DS.color.bgSoft }}>
+      {/* Glass Header */}
+      <View style={{ overflow: "hidden", borderBottomWidth: 0.5, borderBottomColor: "rgba(0,0,0,0.07)" }}>
+        {Platform.OS === "ios"
+          ? <BlurView intensity={80} tint="extraLight" style={StyleSheet.absoluteFill} />
+          : <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.96)" }]} />
+        }
+        <View style={{ paddingTop: topPad + 8, paddingHorizontal: 16, paddingBottom: 12 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <Ionicons name="chevron-back" size={22} color={DS.color.primary} />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: DS.color.text, fontSize: 22, fontFamily: "Inter_700Bold" }}>AI Daily Coach 🤖</Text>
+              <Text style={{ color: DS.color.muted, fontSize: 12, fontFamily: "Inter_400Regular" }}>
+                {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })} · {fromCache ? "Cached plan" : "Fresh plan ✨"}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={handleRefresh} style={styles.refreshBtn}>
+              <Ionicons name="refresh-outline" size={18} color={DS.color.primary} />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={handleRefresh} style={styles.refreshBtn}>
-            <Ionicons name="refresh-outline" size={18} color="#FFF" />
-          </TouchableOpacity>
+
+          {greeting && (
+            <View style={{ marginTop: 12, backgroundColor: DS.color.primarySoft, borderRadius: 14, padding: 13, borderWidth: 1, borderColor: DS.color.primary + "20" }}>
+              <Text style={{ color: DS.color.primary, fontFamily: "Inter_600SemiBold", fontSize: 14, lineHeight: 21 }}>{greeting}</Text>
+            </View>
+          )}
+
+          {calorieStatus && (
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+              {[
+                { icon: "🔥", label: "Calories", val: `${calorieStatus.eaten}/${calorieStatus.goal}`, sub: "kcal" },
+                { icon: "💧", label: "Water", val: waterReminder ? `${waterReminder.current}/${waterReminder.goal}` : "—", sub: "glasses" },
+                { icon: "💪", label: "Exercise", val: exerciseSuggestion ? `${exerciseSuggestion.durationMinutes}` : "—", sub: "min goal" },
+              ].map(stat => (
+                <View key={stat.label} style={{ flex: 1, backgroundColor: "#FFF", borderRadius: 12, padding: 10, alignItems: "center", borderWidth: 1, borderColor: DS.color.border }}>
+                  <Text style={{ fontSize: 16 }}>{stat.icon}</Text>
+                  <Text style={{ color: DS.color.text, fontFamily: "Inter_700Bold", fontSize: 13, marginTop: 2 }}>{stat.val}</Text>
+                  <Text style={{ color: DS.color.muted, fontFamily: "Inter_400Regular", fontSize: 9.5 }}>{stat.sub}</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
-
-        {/* Greeting */}
-        {greeting && (
-          <View style={{ marginTop: 14, backgroundColor: "rgba(255,255,255,0.13)", borderRadius: 14, padding: 13, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" }}>
-            <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 14, lineHeight: 21 }}>{greeting}</Text>
-          </View>
-        )}
-
-        {/* Quick Stats Strip */}
-        {calorieStatus && (
-          <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
-            {[
-              { icon: "🔥", label: "Calories", val: `${calorieStatus.eaten}/${calorieStatus.goal}`, sub: "kcal" },
-              { icon: "💧", label: "Water", val: waterReminder ? `${waterReminder.current}/${waterReminder.goal}` : "—", sub: "glasses" },
-              { icon: "💪", label: "Exercise", val: exerciseSuggestion ? `${exerciseSuggestion.durationMinutes}` : "—", sub: "min goal" },
-            ].map(stat => (
-              <View key={stat.label} style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.14)", borderRadius: 12, padding: 10, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" }}>
-                <Text style={{ fontSize: 16 }}>{stat.icon}</Text>
-                <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13, marginTop: 2 }}>{stat.val}</Text>
-                <Text style={{ color: "rgba(255,255,255,0.6)", fontFamily: "Inter_400Regular", fontSize: 9.5 }}>{stat.sub}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </LinearGradient>
+      </View>
 
       {error && (
         <View style={{ margin: 16, backgroundColor: "#FEE2E2", borderRadius: 12, padding: 14, flexDirection: "row", gap: 10 }}>
@@ -423,9 +426,9 @@ export default function SuggestionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  backBtn: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20, padding: 8 },
-  refreshBtn: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 16, padding: 8 },
-  card: { backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: C.border, padding: 16 },
+  backBtn: { backgroundColor: DS.color.primarySoft, borderRadius: 20, padding: 8 },
+  refreshBtn: { backgroundColor: DS.color.primarySoft, borderRadius: 16, padding: 8 },
+  card: { backgroundColor: "#FFF", borderRadius: 18, borderWidth: 1, borderColor: DS.color.border, padding: 16 },
   foodIcon: { width: 44, height: 44, borderRadius: 13, alignItems: "center", justifyContent: "center" },
-  targetBox: { borderWidth: 1.5, borderColor: C.border, borderRadius: 12, padding: 10, alignItems: "center", minWidth: 70 },
+  targetBox: { borderWidth: 1.5, borderColor: DS.color.border, borderRadius: 12, padding: 10, alignItems: "center", minWidth: 70 },
 });

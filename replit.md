@@ -10,7 +10,7 @@ I prefer detailed explanations and clear communication. Please ask before making
 AORANE's architecture consists of three main components: a mobile app (built with Expo/React Native), a Business Portal (React Web CRM), and an Admin Panel (React Web). All components share a single PostgreSQL database (managed by Supabase) and an Express.js API server, leveraging Drizzle ORM. Redis (Upstash) is used for caching.
 
 **UI/UX Decisions:**
-- **Mobile App:** Features a health-focused dashboard with a health ring, water tracker, and calorie ring. It includes 6 main tabs: Dashboard, Food, Exercise, Medicine, AI Coach, and Profile. Color scheme includes Primary #0077B6, Accent #1B998B, and Dark BG #010814.
+- **Mobile App:** Complete Apple Health-inspired redesign with white (#FFFFFF) background, Trust Blue (#007AFF) primary, Mint Green (#34C759) accent. Design system in `lib/theme.ts` (DS tokens). Lucide icons for general UI, MaterialCommunityIcons for exercise-specific icons. Glassmorphism glass headers (BlurView on iOS, semi-transparent on Android). White card sections with subtle blue shadows. CustomTabBar with animated pill. Screens: Dashboard (Paytm-style 3×2 grid), Exercise, Food, Medicine, Profile — all fully redesigned.
 - **Business Portal:** Designed with a dark sidebar displaying organization information and seat progress, and a top bar with an organization code chip. Uses AORANE Blue (#0077B6) and Teal (#1B998B) on a dark navy background.
 - **Admin Panel:** Features a dark navy sidebar with a prominent "ADMIN PANEL" badge and AORANE blue/teal accents.
 

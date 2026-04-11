@@ -1,17 +1,21 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal,
-  TextInput, Alert, ActivityIndicator, Platform, useColorScheme, Dimensions,
+  TextInput, Alert, ActivityIndicator, Platform, Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { router, useFocusEffect } from "expo-router";
 import { api } from "@/lib/api";
+import { DS } from "@/lib/theme";
+import { Plus, Timer, Flame, Trophy, X, ChevronRight, Dumbbell } from "lucide-react-native";
 
 const { width: W } = Dimensions.get("window");
+const P = DS.color.primary;
+const G = DS.color.green;
 
 type ExerciseLog = {
   id: string; exerciseType: string; durationMinutes: number;
@@ -19,55 +23,40 @@ type ExerciseLog = {
 };
 
 const EXERCISES = [
-  { name: "Walking",         icon: "walk",           color: "#10B981" },
-  { name: "Running",         icon: "run-fast",       color: "#EF4444" },
-  { name: "Yoga",            icon: "yoga",           color: "#8B5CF6" },
-  { name: "Cycling",         icon: "bike",           color: "#F59E0B" },
-  { name: "Swimming",        icon: "swim",           color: "#0EA5E9" },
-  { name: "Weight Training", icon: "weight-lifter",  color: "#7C3AED" },
-  { name: "Dancing",         icon: "dance-ballroom", color: "#EC4899" },
-  { name: "Cricket",         icon: "cricket",        color: "#059669" },
-  { name: "Badminton",       icon: "badminton",      color: "#0077B6" },
-  { name: "Skipping",        icon: "jump-rope",      color: "#F97316" },
-  { name: "HIIT",            icon: "fire",           color: "#DC2626" },
-  { name: "Zumba",           icon: "music",          color: "#DB2777" },
+  { name: "Walking",         icon: "walk",           color: "#34C759" },
+  { name: "Running",         icon: "run-fast",       color: "#FF3B30" },
+  { name: "Yoga",            icon: "yoga",           color: "#AF52DE" },
+  { name: "Cycling",         icon: "bike",           color: "#FF9500" },
+  { name: "Swimming",        icon: "swim",           color: "#32ADE6" },
+  { name: "Weight Training", icon: "weight-lifter",  color: "#5856D6" },
+  { name: "Dancing",         icon: "dance-ballroom", color: "#FF2D55" },
+  { name: "Cricket",         icon: "cricket",        color: "#34C759" },
+  { name: "Badminton",       icon: "badminton",      color: P },
+  { name: "Skipping",        icon: "jump-rope",      color: "#FF9500" },
+  { name: "HIIT",            icon: "fire",           color: "#FF3B30" },
+  { name: "Zumba",           icon: "music",          color: "#FF2D55" },
 ];
 
 const INTENSITIES = [
-  { value: "light",    label: "Light 🚶",    grad: ["#10B981","#059669"]  as [string,string] },
-  { value: "moderate", label: "Moderate 🚴", grad: ["#F59E0B","#D97706"]  as [string,string] },
-  { value: "intense",  label: "Intense 🔥",  grad: ["#EF4444","#7C3AED"]  as [string,string] },
+  { value: "light",    label: "Light 🚶",    grad: [G, "#059669"]              as [string, string] },
+  { value: "moderate", label: "Moderate 🚴", grad: [DS.color.orange, "#D97706"] as [string, string] },
+  { value: "intense",  label: "Intense 🔥",  grad: ["#FF3B30", "#AF52DE"]      as [string, string] },
 ];
 
 function todayDate() { return new Date().toISOString().slice(0, 10); }
 
-function GlassCard({ children, style }: { children: React.ReactNode; style?: object }) {
-  const scheme = useColorScheme(); const isDark = scheme === "dark";
-  return (
-    <LinearGradient
-      colors={isDark ? ["rgba(56,189,248,0.22)","rgba(45,212,191,0.12)","rgba(255,255,255,0.04)"] : ["rgba(255,255,255,0.95)","rgba(186,230,253,0.5)","rgba(167,243,208,0.35)"]}
-      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[{ borderRadius: 20, padding: 1.5 }, style]}
-    >
-      <View style={[{ borderRadius: 19, overflow: "hidden" }, { backgroundColor: isDark ? "rgba(8,18,40,0.55)" : "rgba(255,255,255,0.55)" }]}>
-        {Platform.OS === "ios" ? <BlurView intensity={isDark ? 75 : 55} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(8,16,36,0.4)" : "rgba(255,255,255,0.4)" }]} />}
-        {children}
-      </View>
-    </LinearGradient>
-  );
-}
-
 export default function ExerciseScreen() {
-  const scheme = useColorScheme(); const isDark = scheme === "dark";
   const insets = useSafeAreaInsets();
-  const [logs, setLogs] = useState<ExerciseLog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+  const [logs,             setLogs]             = useState<ExerciseLog[]>([]);
+  const [isLoading,        setIsLoading]        = useState(true);
+  const [showModal,        setShowModal]        = useState(false);
   const [selectedExercise, setSelectedExercise] = useState("");
-  const [duration, setDuration] = useState("");
-  const [intensity, setIntensity] = useState("moderate");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [estimate, setEstimate] = useState<{ calories: number; met: number; formula: string; weightKg: number; gender: string } | null>(null);
+  const [duration,         setDuration]         = useState("");
+  const [intensity,        setIntensity]        = useState("moderate");
+  const [isSubmitting,     setIsSubmitting]     = useState(false);
+  const [isCalculating,    setIsCalculating]    = useState(false);
+  const [estimate,         setEstimate]         = useState<{ calories: number; met: number; formula: string; weightKg: number; gender: string } | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => { loadLogs(); }, []);
 
@@ -79,7 +68,6 @@ export default function ExerciseScreen() {
   const totalMin = logs.reduce((s, l) => s + l.durationMinutes, 0);
   const totalCal = logs.reduce((s, l) => s + Number(l.caloriesBurned || 0), 0);
 
-  // Live calorie estimate as user selects exercise/duration/intensity
   useEffect(() => {
     if (!selectedExercise || !duration || parseInt(duration) < 1) { setEstimate(null); return; }
     const timeout = setTimeout(async () => {
@@ -112,200 +100,226 @@ export default function ExerciseScreen() {
     }
   };
 
-  // Refresh data when screen gains focus
-  const scrollRef = useRef<ScrollView>(null);
-  useFocusEffect(
-    useCallback(() => {
-      loadLogs();
-      scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, [])
-  );
+  useFocusEffect(useCallback(() => {
+    loadLogs();
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, []));
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad  = Platform.OS === "web" ? 67 : insets.top;
   const ringPct = Math.min(1, totalMin / 60);
 
   return (
-    <View style={styles.root}>
-      <LinearGradient
-        colors={isDark ? ["#010814","#031628","#051E30","#061A2A"] : ["#C8E9FA","#D9F4EE","#E8F4FF","#D4F0F7"]}
-        locations={[0,0.3,0.65,1]} style={StyleSheet.absoluteFill}
-      />
-      <View style={[styles.orb1, { backgroundColor: isDark ? "#065F46" : "#A7F3D0" }]} />
-      <View style={[styles.orb2, { backgroundColor: isDark ? "#7C1D1D" : "#FCA5A5" }]} />
+    <View style={s.root}>
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: DS.color.bgSoft }]} />
 
-      <View style={[styles.header, { paddingTop: topPad + 10 }]}>
-        <View>
-          <Text style={[styles.title, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>Exercise 💪</Text>
-          <Text style={[styles.subtitle, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>
-            {new Date().toLocaleDateString("hi-IN", { weekday: "long", day: "numeric", month: "short" })}
-          </Text>
-        </View>
-        <TouchableOpacity onPress={() => setShowModal(true)} activeOpacity={0.85}>
-          <LinearGradient colors={["#1B998B","#0077B6"]} style={styles.addBtn}>
-            <Ionicons name="add" size={22} color="#FFF" />
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-
-      {/* Stats Card */}
-      <GlassCard style={{ marginHorizontal: 18, marginBottom: 18 }}>
-        <View style={styles.statsCard}>
-          {[
-            { icon: "timer-outline" as const, label: "Minutes", value: `${totalMin}`, color: isDark ? "#2DD4BF" : "#1B998B", grads: ["rgba(45,212,191,0.25)","rgba(27,153,139,0.15)"] as [string,string] },
-            { icon: "flame-outline" as const, label: "Calories", value: `${Math.round(totalCal)}`, color: isDark ? "#FCD34D" : "#D97706", grads: ["rgba(252,211,77,0.25)","rgba(217,119,6,0.15)"] as [string,string] },
-            { icon: "trophy-outline" as const, label: "Sessions", value: `${logs.length}`, color: isDark ? "#38BDF8" : "#0077B6", grads: ["rgba(56,189,248,0.25)","rgba(0,119,182,0.15)"] as [string,string] },
-          ].map((s, i, arr) => (
-            <React.Fragment key={s.label}>
-              <View style={styles.statItem}>
-                <LinearGradient colors={s.grads} style={styles.statIconBg}>
-                  <Ionicons name={s.icon} size={20} color={s.color} />
-                </LinearGradient>
-                <Text style={[styles.statNum, { color: s.color, fontFamily: "Inter_700Bold" }]}>{s.value}</Text>
-                <Text style={[styles.statLabel, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>{s.label}</Text>
-              </View>
-              {i < arr.length - 1 && <View style={[styles.statDiv, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }]} />}
-            </React.Fragment>
-          ))}
-        </View>
-        <View style={[styles.progressBar, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }]}>
-          <LinearGradient colors={["#1B998B","#0077B6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={[styles.progressFill, { width: `${ringPct * 100}%` }]} />
-        </View>
-        <Text style={[styles.progressText, { color: isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.4)", fontFamily: "Inter_400Regular" }]}>
-          Daily goal: 60 min · {Math.round(ringPct * 100)}% complete
-        </Text>
-      </GlassCard>
-
-      {isLoading ? (
-        <View style={styles.loadingWrap}><ActivityIndicator color={isDark ? "#38BDF8" : "#0077B6"} size="large" /></View>
-      ) : logs.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <LinearGradient colors={["rgba(27,153,139,0.2)","rgba(0,119,182,0.12)"]} style={styles.emptyIconBg}>
-            <MaterialCommunityIcons name="run" size={42} color={isDark ? "#2DD4BF" : "#1B998B"} />
-          </LinearGradient>
-          <Text style={[styles.emptyTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Log your exercise for today</Text>
-          <Text style={[styles.emptyText, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>
-            Formula: MET × Weight × Time × Gender
-          </Text>
-          <TouchableOpacity onPress={() => setShowModal(true)} activeOpacity={0.85}>
-            <LinearGradient colors={["#1B998B","#0077B6"]} style={styles.emptyBtn}>
-              <Text style={[styles.emptyBtnText, { fontFamily: "Inter_600SemiBold" }]}>Exercise Add Karein</Text>
-            </LinearGradient>
+      {/* ── Glass Header ── */}
+      <View style={[s.headerWrap, { paddingTop: topPad }]}>
+        {Platform.OS === "ios"
+          ? <BlurView intensity={80} tint="extraLight" style={StyleSheet.absoluteFill} />
+          : <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.96)" }]} />
+        }
+        <View style={s.headerRow}>
+          <View>
+            <Text style={s.title}>Exercise 💪</Text>
+            <Text style={s.subtitle}>
+              {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => setShowModal(true)} activeOpacity={0.85} style={s.addBtn}>
+            <Plus size={22} color="#FFF" strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
-      ) : (
-        <ScrollView ref={scrollRef} contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: insets.bottom + 90 }} showsVerticalScrollIndicator={false}>
-          {logs.map((log) => {
-            const ex = EXERCISES.find(e => e.name === log.exerciseType);
-            const clr = ex?.color || "#0077B6";
+        <View style={s.headerBorder} />
+      </View>
+
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[
+          s.content,
+          { paddingBottom: insets.bottom + 100 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Stats card ── */}
+        <View style={s.card}>
+          <View style={s.statsRow}>
+            {[
+              { Icon: Timer,  label: "Minutes",  value: `${totalMin}`,          color: G },
+              { Icon: Flame,  label: "Calories", value: `${Math.round(totalCal)}`, color: DS.color.orange },
+              { Icon: Trophy, label: "Sessions", value: `${logs.length}`,        color: P },
+            ].map((item, i, arr) => (
+              <React.Fragment key={item.label}>
+                <View style={s.statItem}>
+                  <View style={[s.statIcon, { backgroundColor: item.color + "18" }]}>
+                    <item.Icon size={20} color={item.color} strokeWidth={2} />
+                  </View>
+                  <Text style={[s.statNum, { color: item.color }]}>{item.value}</Text>
+                  <Text style={s.statLabel}>{item.label}</Text>
+                </View>
+                {i < arr.length - 1 && <View style={s.statDiv} />}
+              </React.Fragment>
+            ))}
+          </View>
+
+          {/* Progress bar */}
+          <View style={s.progressTrack}>
+            <LinearGradient
+              colors={[G, P]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={[s.progressFill, { width: `${ringPct * 100}%` as any }]}
+            />
+          </View>
+          <Text style={s.progressText}>Daily goal: 60 min · {Math.round(ringPct * 100)}% complete</Text>
+        </View>
+
+        {/* ── Logs ── */}
+        {isLoading ? (
+          <ActivityIndicator color={P} size="large" style={{ marginTop: 40 }} />
+        ) : logs.length === 0 ? (
+          <View style={s.empty}>
+            <View style={[s.emptyIcon, { backgroundColor: DS.color.greenSoft }]}>
+              <Dumbbell size={42} color={G} strokeWidth={1.5} />
+            </View>
+            <Text style={s.emptyTitle}>Log your exercise today</Text>
+            <Text style={s.emptyDesc}>Formula: MET × Weight × Time × Gender</Text>
+            <TouchableOpacity style={s.emptyBtn} onPress={() => setShowModal(true)} activeOpacity={0.85}>
+              <LinearGradient colors={[P, G]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.emptyBtnGrad}>
+                <Text style={s.emptyBtnText}>Add Exercise</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          logs.map((log) => {
+            const ex  = EXERCISES.find((e) => e.name === log.exerciseType);
+            const clr = ex?.color || P;
             const ico = ex?.icon || "run-fast";
             return (
-              <GlassCard key={log.id} style={{ marginBottom: 12 }}>
-                <View style={styles.logItem}>
-                  <LinearGradient colors={[`${clr}35`,`${clr}18`]} style={styles.logIconBg}>
-                    <MaterialCommunityIcons name={ico as keyof typeof MaterialCommunityIcons.glyphMap} size={22} color={clr} />
-                  </LinearGradient>
-                  <View style={styles.logInfo}>
-                    <Text style={[styles.logName, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>{log.exerciseType}</Text>
-                    <Text style={[styles.logDetails, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>
-                      {log.durationMinutes} min · {log.intensity}
-                      {log.metValue ? ` · MET ${Number(log.metValue).toFixed(1)}` : ""}
-                    </Text>
-                  </View>
-                  <View style={styles.logCalWrap}>
-                    <Text style={[styles.logCal, { color: isDark ? "#FCD34D" : "#D97706", fontFamily: "Inter_700Bold" }]}>{Math.round(Number(log.caloriesBurned || 0))}</Text>
-                    <Text style={[styles.logCalUnit, { color: isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.4)", fontFamily: "Inter_400Regular" }]}>kcal</Text>
-                  </View>
+              <View key={log.id} style={s.logCard}>
+                <View style={[s.logIcon, { backgroundColor: clr + "18" }]}>
+                  <MaterialCommunityIcons name={ico as keyof typeof MaterialCommunityIcons.glyphMap} size={22} color={clr} />
                 </View>
-              </GlassCard>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.logName}>{log.exerciseType}</Text>
+                  <Text style={s.logDetails}>
+                    {log.durationMinutes} min · {log.intensity}
+                    {log.metValue ? ` · MET ${Number(log.metValue).toFixed(1)}` : ""}
+                  </Text>
+                </View>
+                <View style={s.logCal}>
+                  <Text style={[s.logCalNum, { color: DS.color.orange }]}>{Math.round(Number(log.caloriesBurned || 0))}</Text>
+                  <Text style={s.logCalUnit}>kcal</Text>
+                </View>
+              </View>
             );
-          })}
-        </ScrollView>
-      )}
+          })
+        )}
+      </ScrollView>
 
-      {/* Add Exercise Modal */}
+      {/* ── Add Exercise Modal ── */}
       <Modal visible={showModal} animationType="slide" presentationStyle="pageSheet">
-        <View style={styles.modalRoot}>
-          <LinearGradient colors={isDark ? ["#010814","#031628","#051E30"] : ["#C8E9FA","#D9F4EE","#E8F4FF"]} style={StyleSheet.absoluteFill} />
-          <View style={[styles.modalHeader, { borderBottomColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.1)" }]}>
-            <Text style={[styles.modalTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>Exercise Log Karein 🏃</Text>
-            <TouchableOpacity onPress={() => { setShowModal(false); setSelectedExercise(""); setDuration(""); setEstimate(null); }}
-              style={[styles.closeBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.07)" }]}>
-              <Ionicons name="close" size={20} color={isDark ? "#F0F8FF" : "#0A1628"} />
+        <View style={s.modalRoot}>
+          {/* Modal Header */}
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>Log Exercise 🏃</Text>
+            <TouchableOpacity
+              onPress={() => { setShowModal(false); setSelectedExercise(""); setDuration(""); setEstimate(null); }}
+              style={s.closeBtn}
+            >
+              <X size={20} color={DS.color.text} strokeWidth={2} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
-            {/* Exercise Grid */}
-            <Text style={[styles.modalLabel, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Exercise Type</Text>
-            <View style={styles.exGrid}>
+          <ScrollView contentContainerStyle={s.modalBody} keyboardShouldPersistTaps="handled">
+            {/* Exercise type grid */}
+            <Text style={s.modalLabel}>Exercise Type</Text>
+            <View style={s.exGrid}>
               {EXERCISES.map((ex) => (
-                <TouchableOpacity key={ex.name} onPress={() => setSelectedExercise(ex.name)} activeOpacity={0.8}>
-                  {selectedExercise === ex.name
-                    ? <LinearGradient colors={[ex.color, `${ex.color}CC`]} style={styles.exChip}>
-                        <MaterialCommunityIcons name={ex.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={15} color="#FFF" />
-                        <Text style={[styles.exName, { color: "#FFF", fontFamily: "Inter_600SemiBold" }]}>{ex.name}</Text>
-                      </LinearGradient>
-                    : <View style={[styles.exChip, { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.75)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,119,182,0.15)" }]}>
-                        <MaterialCommunityIcons name={ex.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={15} color={isDark ? "rgba(255,255,255,0.55)" : "#0077B6"} />
-                        <Text style={[styles.exName, { color: isDark ? "rgba(255,255,255,0.65)" : "#0A1628", fontFamily: "Inter_400Regular" }]}>{ex.name}</Text>
-                      </View>
-                  }
+                <TouchableOpacity
+                  key={ex.name}
+                  onPress={() => setSelectedExercise(ex.name)}
+                  activeOpacity={0.8}
+                >
+                  {selectedExercise === ex.name ? (
+                    <LinearGradient colors={[ex.color, ex.color + "CC"]} style={s.exChip}>
+                      <MaterialCommunityIcons name={ex.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={14} color="#FFF" />
+                      <Text style={[s.exName, { color: "#FFF" }]}>{ex.name}</Text>
+                    </LinearGradient>
+                  ) : (
+                    <View style={s.exChipOff}>
+                      <MaterialCommunityIcons name={ex.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={14} color={ex.color} />
+                      <Text style={[s.exName, { color: DS.color.text }]}>{ex.name}</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               ))}
             </View>
 
             {/* Duration */}
-            <Text style={[styles.modalLabel, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Duration (minutes)</Text>
+            <Text style={s.modalLabel}>Duration (minutes)</Text>
             <TextInput
-              style={[styles.input, { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.8)", borderColor: isDark ? "rgba(255,255,255,0.14)" : "rgba(0,119,182,0.2)", color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_400Regular" }]}
-              placeholder="30" placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.35)"}
-              keyboardType="numeric" value={duration} onChangeText={setDuration}
+              style={s.input}
+              placeholder="30"
+              placeholderTextColor={DS.color.muted}
+              keyboardType="numeric"
+              value={duration}
+              onChangeText={setDuration}
             />
 
             {/* Intensity */}
-            <Text style={[styles.modalLabel, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Intensity</Text>
-            <View style={styles.intensityRow}>
+            <Text style={s.modalLabel}>Intensity</Text>
+            <View style={s.intensityRow}>
               {INTENSITIES.map((item) => (
-                <TouchableOpacity key={item.value} onPress={() => setIntensity(item.value)} activeOpacity={0.8} style={{ flex: 1, borderRadius: 14, overflow: "hidden" }}>
-                  {intensity === item.value
-                    ? <LinearGradient colors={item.grad} style={styles.intensityBtn}><Text style={[styles.intensityText, { color: "#FFF", fontFamily: "Inter_600SemiBold" }]}>{item.label}</Text></LinearGradient>
-                    : <View style={[styles.intensityBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.75)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,119,182,0.15)" }]}><Text style={[styles.intensityText, { color: isDark ? "rgba(255,255,255,0.6)" : "#0077B6", fontFamily: "Inter_400Regular" }]}>{item.label}</Text></View>
-                  }
+                <TouchableOpacity
+                  key={item.value}
+                  onPress={() => setIntensity(item.value)}
+                  activeOpacity={0.8}
+                  style={{ flex: 1, borderRadius: 14, overflow: "hidden" }}
+                >
+                  {intensity === item.value ? (
+                    <LinearGradient colors={item.grad} style={s.intensityBtn}>
+                      <Text style={[s.intensityText, { color: "#FFF" }]}>{item.label}</Text>
+                    </LinearGradient>
+                  ) : (
+                    <View style={[s.intensityBtn, s.intensityOff]}>
+                      <Text style={[s.intensityText, { color: DS.color.muted }]}>{item.label}</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               ))}
             </View>
 
-            {/* Calorie Estimate Panel */}
+            {/* Calorie estimate */}
             {(isCalculating || estimate) && (
-              <GlassCard style={{ marginBottom: 24 }}>
-                <View style={styles.estimateCard}>
-                  {isCalculating ? (
-                    <ActivityIndicator color={isDark ? "#38BDF8" : "#0077B6"} />
-                  ) : estimate ? (
-                    <>
-                      <View style={styles.estimateTop}>
-                        <View>
-                          <Text style={[styles.estimateLabel, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>Calorie Estimate</Text>
-                          <Text style={[styles.estimateCal, { color: isDark ? "#FCD34D" : "#D97706", fontFamily: "Inter_700Bold" }]}>~{estimate.calories} kcal</Text>
-                        </View>
-                        <View style={styles.estimateRight}>
-                          <Text style={[styles.estimateMet, { color: isDark ? "#2DD4BF" : "#1B998B", fontFamily: "Inter_600SemiBold" }]}>MET {estimate.met.toFixed(1)}</Text>
-                          <Text style={[styles.estimateProfile, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>{estimate.weightKg}kg · {estimate.gender}</Text>
-                        </View>
+              <View style={s.estimateCard}>
+                {isCalculating ? (
+                  <ActivityIndicator color={P} />
+                ) : estimate ? (
+                  <>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                      <View>
+                        <Text style={s.estimateLabel}>Calorie Estimate</Text>
+                        <Text style={[s.estimateCal, { color: DS.color.orange }]}>~{estimate.calories} kcal</Text>
                       </View>
-                      <View style={[styles.formulaBox, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,119,182,0.06)", borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.1)" }]}>
-                        <Text style={[styles.formulaText, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>📐 {estimate.formula}</Text>
+                      <View style={{ alignItems: "flex-end" }}>
+                        <Text style={[s.estimateMet, { color: G }]}>MET {estimate.met.toFixed(1)}</Text>
+                        <Text style={s.estimateProfile}>{estimate.weightKg}kg · {estimate.gender}</Text>
                       </View>
-                    </>
-                  ) : null}
-                </View>
-              </GlassCard>
+                    </View>
+                    <View style={s.formulaBox}>
+                      <Text style={s.formulaText}>📐 {estimate.formula}</Text>
+                    </View>
+                  </>
+                ) : null}
+              </View>
             )}
 
+            {/* Save button */}
             <TouchableOpacity onPress={handleAdd} disabled={isSubmitting} activeOpacity={0.85}>
-              <LinearGradient colors={["#1B998B","#0077B6"]} style={styles.saveBtn}>
-                {isSubmitting ? <ActivityIndicator color="#FFF" /> : <Text style={[styles.saveText, { fontFamily: "Inter_700Bold" }]}>Log Karein ✓</Text>}
+              <LinearGradient colors={[P, G]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.saveBtn}>
+                {isSubmitting
+                  ? <ActivityIndicator color="#FFF" />
+                  : <Text style={s.saveText}>Save Exercise ✓</Text>
+                }
               </LinearGradient>
             </TouchableOpacity>
           </ScrollView>
@@ -315,59 +329,109 @@ export default function ExerciseScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  orb1: { position: "absolute", width: 280, height: 280, borderRadius: 140, top: -90, left: -60, opacity: 0.4 },
-  orb2: { position: "absolute", width: 240, height: 240, borderRadius: 120, bottom: 100, right: -60, opacity: 0.35 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingHorizontal: 18, paddingBottom: 12 },
-  title: { fontSize: 24 },
-  subtitle: { fontSize: 12, marginTop: 3 },
-  addBtn: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center" },
-  statsCard: { flexDirection: "row", padding: 18, alignItems: "center", justifyContent: "space-around" },
-  statItem: { alignItems: "center", gap: 6 },
-  statIconBg: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", marginBottom: 2 },
-  statNum: { fontSize: 22 },
-  statLabel: { fontSize: 11 },
-  statDiv: { width: 1, height: 50 },
-  progressBar: { marginHorizontal: 18, height: 4, borderRadius: 2, marginBottom: 8, overflow: "hidden" },
-  progressFill: { height: 4, borderRadius: 2 },
-  progressText: { fontSize: 11, textAlign: "center", paddingBottom: 14 },
-  loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
-  emptyWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14, paddingHorizontal: 40 },
-  emptyIconBg: { width: 90, height: 90, borderRadius: 45, alignItems: "center", justifyContent: "center" },
-  emptyTitle: { fontSize: 18, textAlign: "center" },
-  emptyText: { fontSize: 13, textAlign: "center", fontStyle: "italic" },
-  emptyBtn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 16 },
-  emptyBtnText: { color: "#FFF", fontSize: 16 },
-  logItem: { flexDirection: "row", alignItems: "center", gap: 14, padding: 14 },
-  logIconBg: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
-  logInfo: { flex: 1 },
-  logName: { fontSize: 15, marginBottom: 4 },
-  logDetails: { fontSize: 12 },
-  logCalWrap: { alignItems: "center" },
-  logCal: { fontSize: 18 },
-  logCalUnit: { fontSize: 10 },
-  modalRoot: { flex: 1 },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, paddingTop: 56, borderBottomWidth: 1 },
-  modalTitle: { fontSize: 20 },
-  closeBtn: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
-  modalLabel: { fontSize: 14, marginBottom: 12 },
-  exGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 24 },
-  exChip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12 },
-  exName: { fontSize: 13 },
-  input: { borderWidth: 1, borderRadius: 14, height: 52, paddingHorizontal: 16, fontSize: 16, marginBottom: 24 },
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: DS.color.bgSoft },
+
+  // Header
+  headerWrap: {
+    overflow: "hidden",
+    borderBottomWidth: 0.5, borderBottomColor: "rgba(0,0,0,0.07)",
+    ...Platform.select({ ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 8 }, android: { elevation: 4 }, default: {} }),
+  },
+  headerRow:   { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, paddingTop: 8 },
+  headerBorder:{ position: "absolute", bottom: 0, left: 0, right: 0, height: 0.5, backgroundColor: "rgba(0,0,0,0.06)" },
+  title:       { fontSize: 22, fontFamily: "Inter_700Bold", color: DS.color.text },
+  subtitle:    { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: 2 },
+  addBtn: {
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: P, alignItems: "center", justifyContent: "center",
+    ...DS.shadow.md,
+  },
+
+  content: { padding: 16, gap: 12 },
+
+  // Stats card
+  card:        { backgroundColor: "#FFF", borderRadius: DS.radius.xl, padding: 16, borderWidth: 1, borderColor: DS.color.border, ...DS.shadow.sm },
+  statsRow:    { flexDirection: "row", alignItems: "center", justifyContent: "space-around", paddingBottom: 14 },
+  statItem:    { alignItems: "center", gap: 6 },
+  statIcon:    { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  statNum:     { fontSize: 22, fontFamily: "Inter_700Bold" },
+  statLabel:   { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted },
+  statDiv:     { width: 1, height: 50, backgroundColor: DS.color.borderLight },
+  progressTrack: { height: 5, borderRadius: 3, backgroundColor: DS.color.bgSoft, overflow: "hidden", marginBottom: 6 },
+  progressFill:  { height: 5, borderRadius: 3 },
+  progressText:  { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, textAlign: "center" },
+
+  // Empty state
+  empty:       { alignItems: "center", paddingTop: 48, paddingHorizontal: 32, gap: 14 },
+  emptyIcon:   { width: 90, height: 90, borderRadius: 45, alignItems: "center", justifyContent: "center" },
+  emptyTitle:  { fontSize: 18, fontFamily: "Inter_600SemiBold", color: DS.color.text, textAlign: "center" },
+  emptyDesc:   { fontSize: 13, fontFamily: "Inter_400Regular", color: DS.color.muted, textAlign: "center", fontStyle: "italic" },
+  emptyBtn:    { borderRadius: 16, overflow: "hidden", ...DS.shadow.md },
+  emptyBtnGrad:{ paddingHorizontal: 28, paddingVertical: 14, alignItems: "center" },
+  emptyBtnText:{ color: "#FFF", fontSize: 16, fontFamily: "Inter_600SemiBold" },
+
+  // Log cards
+  logCard: {
+    backgroundColor: "#FFF", borderRadius: DS.radius.lg,
+    padding: 14, flexDirection: "row", alignItems: "center", gap: 14,
+    borderWidth: 1, borderColor: DS.color.border, ...DS.shadow.sm,
+  },
+  logIcon:    { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  logName:    { fontSize: 15, fontFamily: "Inter_600SemiBold", color: DS.color.text, marginBottom: 4 },
+  logDetails: { fontSize: 12, fontFamily: "Inter_400Regular", color: DS.color.muted },
+  logCal:     { alignItems: "center" },
+  logCalNum:  { fontSize: 18, fontFamily: "Inter_700Bold" },
+  logCalUnit: { fontSize: 10, fontFamily: "Inter_400Regular", color: DS.color.muted },
+
+  // Modal
+  modalRoot:   { flex: 1, backgroundColor: "#FFF" },
+  modalHeader: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    padding: 20, paddingTop: 56,
+    borderBottomWidth: 1, borderBottomColor: DS.color.borderLight,
+  },
+  modalTitle:  { fontSize: 20, fontFamily: "Inter_700Bold", color: DS.color.text },
+  closeBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: DS.color.bgSoft,
+    alignItems: "center", justifyContent: "center",
+  },
+  modalBody:   { padding: 20, paddingBottom: 60 },
+  modalLabel:  { fontSize: 14, fontFamily: "Inter_600SemiBold", color: DS.color.text, marginBottom: 12 },
+
+  exGrid:   { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 24 },
+  exChip:   { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12 },
+  exChipOff:{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, backgroundColor: DS.color.bgSoft, borderWidth: 1, borderColor: DS.color.border },
+  exName:   { fontSize: 13, fontFamily: "Inter_500Medium" },
+
+  input: {
+    borderWidth: 1, borderRadius: 14, height: 52, paddingHorizontal: 16,
+    fontSize: 16, fontFamily: "Inter_400Regular",
+    backgroundColor: DS.color.bgSoft, borderColor: DS.color.border,
+    color: DS.color.text, marginBottom: 24,
+  },
+
   intensityRow: { flexDirection: "row", gap: 8, marginBottom: 24 },
   intensityBtn: { paddingVertical: 14, alignItems: "center", borderRadius: 14 },
-  intensityText: { fontSize: 13 },
-  estimateCard: { padding: 16, gap: 12 },
-  estimateTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  estimateLabel: { fontSize: 12, marginBottom: 4 },
-  estimateCal: { fontSize: 28 },
-  estimateRight: { alignItems: "flex-end" },
-  estimateMet: { fontSize: 16 },
-  estimateProfile: { fontSize: 12, marginTop: 4 },
-  formulaBox: { borderWidth: 1, borderRadius: 10, padding: 10 },
-  formulaText: { fontSize: 11, lineHeight: 16 },
-  saveBtn: { height: 56, alignItems: "center", justifyContent: "center", borderRadius: 16 },
-  saveText: { color: "#FFF", fontSize: 17 },
+  intensityOff: { backgroundColor: DS.color.bgSoft, borderWidth: 1, borderColor: DS.color.border },
+  intensityText:{ fontSize: 13, fontFamily: "Inter_600SemiBold" },
+
+  estimateCard: {
+    backgroundColor: DS.color.bgSoft, borderRadius: DS.radius.md,
+    padding: 16, marginBottom: 24, gap: 12,
+    borderWidth: 1, borderColor: DS.color.border,
+  },
+  estimateLabel:  { fontSize: 12, fontFamily: "Inter_400Regular", color: DS.color.muted, marginBottom: 4 },
+  estimateCal:    { fontSize: 28, fontFamily: "Inter_700Bold" },
+  estimateMet:    { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  estimateProfile:{ fontSize: 12, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: 4 },
+  formulaBox: {
+    borderWidth: 1, borderRadius: 10, padding: 10,
+    backgroundColor: "#FFF", borderColor: DS.color.border,
+  },
+  formulaText:{ fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, lineHeight: 16 },
+
+  saveBtn:  { height: 56, alignItems: "center", justifyContent: "center", borderRadius: 16 },
+  saveText: { color: "#FFF", fontSize: 17, fontFamily: "Inter_700Bold" },
 });
