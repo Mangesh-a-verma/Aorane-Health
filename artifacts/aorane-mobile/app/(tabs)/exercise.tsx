@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal,
   TextInput, Alert, ActivityIndicator, Platform, useColorScheme, Dimensions,
@@ -8,6 +8,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
+import { router, useFocusEffect } from "expo-router";
 import { api } from "@/lib/api";
 
 const { width: W } = Dimensions.get("window");
@@ -103,10 +104,23 @@ export default function ExerciseScreen() {
     try {
       await api.logExercise({ exerciseType: selectedExercise, durationMinutes: parseInt(duration), intensity });
       setShowModal(false); setSelectedExercise(""); setDuration(""); setEstimate(null);
-      await loadLogs(); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch { Alert.alert("Error", "Could not log exercise. Please try again."); }
-    setIsSubmitting(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Auto navigate back to calling screen (Dashboard / Activity)
+      setTimeout(() => router.back(), 400);
+    } catch {
+      Alert.alert("Error", "Could not log exercise. Please try again.");
+      setIsSubmitting(false);
+    }
   };
+
+  // Refresh data when screen gains focus
+  const scrollRef = useRef<ScrollView>(null);
+  useFocusEffect(
+    useCallback(() => {
+      loadLogs();
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [])
+  );
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const ringPct = Math.min(1, totalMin / 60);
@@ -181,7 +195,7 @@ export default function ExerciseScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: insets.bottom + 90 }} showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: insets.bottom + 90 }} showsVerticalScrollIndicator={false}>
           {logs.map((log) => {
             const ex = EXERCISES.find(e => e.name === log.exerciseType);
             const clr = ex?.color || "#0077B6";

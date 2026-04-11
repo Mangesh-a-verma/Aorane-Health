@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
+import { router, useFocusEffect } from "expo-router";
 import { api } from "@/lib/api";
 
 const { width: W } = Dimensions.get("window");
@@ -268,6 +269,11 @@ export default function FoodScreen() {
     setScanning(false);
   };
 
+  // Auto-refresh when screen comes into focus (e.g. user navigates back)
+  useFocusEffect(
+    useCallback(() => { loadLogs(); }, [])
+  );
+
   // ── Log food ──────────────────────────────────────────────────────────────────
   const logItem = async (item: { foodNameEn: string; calories: number; proteinG?: number; carbsG?: number; fatG?: number; fiberG?: number }, method: string = "text") => {
     setSubmitting(true);
@@ -284,12 +290,13 @@ export default function FoodScreen() {
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       closeModal();
-      await loadLogs();
-      setFavsLoaded(false); // refresh favs next time
+      setFavsLoaded(false);
+      // Auto navigate back so user lands on the screen they came from
+      setTimeout(() => router.back(), 400);
     } catch (e: unknown) {
       Alert.alert("Error", (e as Error).message || "Could not log food. Please try again.");
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const deleteLog = async (id: string, name: string) => {

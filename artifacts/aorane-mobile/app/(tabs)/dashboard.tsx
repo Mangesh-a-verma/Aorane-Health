@@ -11,7 +11,7 @@ import { BlurView } from "expo-blur";
 import { HealthRing } from "@/components/HealthRing";
 import { WaterTracker } from "@/components/WaterTracker";
 import { AdsSlider } from "@/components/AdsSlider";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import * as Haptics from "expo-haptics";
@@ -233,6 +233,7 @@ export default function DashboardScreen() {
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerOpacity = scrollY.interpolate({ inputRange: [0, 60], outputRange: [0, 1], extrapolate: "clamp" });
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<Animated.ScrollView>(null);
 
   useEffect(() => {
     const h = new Date().getHours();
@@ -290,6 +291,14 @@ export default function DashboardScreen() {
     Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
   }, []);
 
+  // Refresh data + scroll to top every time Home tab is focused (e.g. after food/exercise log)
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [loadData])
+  );
+
   const handleAddWater = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try { await api.logWater({ glassesCount: 1 }); setWater((w) => ({ ...w, current: w.current + 1 })); } catch { }
@@ -338,6 +347,7 @@ export default function DashboardScreen() {
       </Animated.View>
 
       <Animated.ScrollView
+        ref={scrollRef}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingTop: topPad + 6, paddingBottom: insets.bottom + 96, paddingHorizontal: 16 }}

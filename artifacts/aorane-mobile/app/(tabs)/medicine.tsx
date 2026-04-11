@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, TextInput,
   Alert, ActivityIndicator, Platform, useColorScheme, Dimensions, Image,
@@ -9,6 +9,7 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
+import { router, useFocusEffect } from "expo-router";
 import { api } from "@/lib/api";
 import {
   scheduleMedicineReminders,
@@ -92,9 +93,10 @@ export default function MedicineScreen() {
     if (!medicineName.trim()) { Alert.alert("Required", "Please enter medicine name"); return; }
     setIsSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const savedName = medicineName.trim();
     try {
       await api.createMedicineSchedule({
-        medicineName: medicineName.trim(),
+        medicineName: savedName,
         dosage,
         mealTiming,
         reminderTimes: [reminderTime],
@@ -110,19 +112,35 @@ export default function MedicineScreen() {
         const granted = await requestNotificationPermissions();
         if (granted) {
           await scheduleMedicineReminders({
-            medicineId: `medicine_${medicineName.trim().toLowerCase().replace(/\s+/g, "_")}`,
-            medicineName: medicineName.trim(),
+            medicineId: `medicine_${savedName.toLowerCase().replace(/\s+/g, "_")}`,
+            medicineName: savedName,
             dosage,
             times: [reminderTime],
             mealTiming,
           });
           setNotifPermission(true);
-          Alert.alert("✅ Reminder Set!", `Daily reminder set for ${medicineName.trim()} at ${reminderTime}`, [{ text: "OK" }]);
+          // Navigate back AFTER user dismisses the reminder alert
+          Alert.alert("✅ Reminder Set!", `Daily reminder set for ${savedName} at ${reminderTime}`, [{
+            text: "OK", onPress: () => router.back(),
+          }]);
+          setIsSubmitting(false);
+          return;
         }
       }
+      // No alert shown — navigate back automatically
+      setTimeout(() => router.back(), 400);
     } catch { Alert.alert("Error", "Could not save medicine schedule. Please try again."); }
     setIsSubmitting(false);
   };
+
+  // Scroll ref + focus refresh
+  const scrollRef = useRef<ScrollView>(null);
+  useFocusEffect(
+    useCallback(() => {
+      loadSchedules();
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [])
+  );
 
   // ── Medical Report Scanner ─────────────────────────────
   const pickImage = async (fromCamera: boolean) => {
@@ -251,7 +269,7 @@ export default function MedicineScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: insets.bottom + 90 }} showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: insets.bottom + 90 }} showsVerticalScrollIndicator={false}>
           {schedules.map((s) => {
             const timing = MEAL_TIMING[s.mealTiming] || MEAL_TIMING.anytime;
             return (

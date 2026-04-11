@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   Switch, Alert, Platform, Image, useColorScheme, Dimensions,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -34,16 +34,24 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const [profile, setProfile] = useState<Record<string, unknown>>({});
   const [privacy, setPrivacy] = useState<Record<string, boolean>>({});
+  const scrollRef = useRef<ScrollView>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [p, priv] = await Promise.allSettled([api.getProfile(), api.getPrivacy()]);
-        if (p.status === "fulfilled") setProfile(p.value.profile as Record<string, unknown>);
-        if (priv.status === "fulfilled") setPrivacy(priv.value.privacy as Record<string, boolean>);
-      } catch { }
-    })();
+  const loadProfile = useCallback(async () => {
+    try {
+      const [p, priv] = await Promise.allSettled([api.getProfile(), api.getPrivacy()]);
+      if (p.status === "fulfilled") setProfile(p.value.profile as Record<string, unknown>);
+      if (priv.status === "fulfilled") setPrivacy(priv.value.privacy as Record<string, boolean>);
+    } catch { }
   }, []);
+
+  useEffect(() => { loadProfile(); }, []);
+
+  // Scroll to top when Profile tab is re-focused
+  useFocusEffect(
+    useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [])
+  );
 
   const togglePrivacy = async (key: string, value: boolean) => {
     setPrivacy((p) => ({ ...p, [key]: value }));
@@ -83,6 +91,7 @@ export default function ProfileScreen() {
       <View style={[styles.orb2, { backgroundColor: isDark ? "#4C1D95" : "#DDD6FE" }]} />
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
       >

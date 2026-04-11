@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { api } from "@/lib/api";
 import * as Haptics from "expo-haptics";
 
@@ -61,6 +61,7 @@ export default function ActivityScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<"food" | "exercise" | "medicine">("food");
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<ScrollView>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -82,6 +83,14 @@ export default function ActivityScreen() {
   }, []);
 
   useEffect(() => { loadData(); }, []);
+
+  // Refresh data + scroll to top whenever this tab is focused
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [])
+  );
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const totalCalEaten = foodLogs.reduce((s, l) => s + (l.calories || 0), 0);
@@ -121,6 +130,7 @@ export default function ActivityScreen() {
       <View style={s.blob1} /><View style={s.blob2} />
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: insets.bottom + 96, paddingHorizontal: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} tintColor={C.primary} colors={[C.primary]} />}
         showsVerticalScrollIndicator={false}
