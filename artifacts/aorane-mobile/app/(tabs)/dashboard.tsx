@@ -21,8 +21,8 @@ import {
 } from "lucide-react-native";
 
 const { width: W } = Dimensions.get("window");
-const P  = DS.color.primary;
-const G  = DS.color.green;
+const P  = DS.color.primary;   // #E8622A saffron-orange
+const G  = DS.color.green;     // #27AE60
 
 function todayDate() { return new Date().toISOString().slice(0, 10); }
 
@@ -275,8 +275,12 @@ export default function DashboardScreen() {
 
   return (
     <View style={s.root}>
-      {/* Pure white background */}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: DS.color.bgSoft }]} />
+      {/* Warm gradient background */}
+      <LinearGradient
+        colors={["#FFF8F3", "#FFE5D0", "#FFF8F3"]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
 
       <ScrollView
         ref={scrollRef}
@@ -294,11 +298,11 @@ export default function DashboardScreen() {
         {/* GLASSMORPHISM HEADER                                     */}
         {/* ──────────────────────────────────────────────────────── */}
         <View style={[s.headerWrap, { paddingTop: topPad }]}>
-          {Platform.OS === "ios" ? (
-            <BlurView intensity={80} tint="extraLight" style={StyleSheet.absoluteFill} />
-          ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.94)" }]} />
-          )}
+          <LinearGradient
+            colors={[DS.color.headerStart, DS.color.headerEnd]}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
           <View style={s.headerBorder} />
 
           <Animated.View style={[s.headerRow, { opacity: fadeAnim }]}>
@@ -308,7 +312,7 @@ export default function DashboardScreen() {
               onPress={() => router.push("/(tabs)/profile" as never)}
               activeOpacity={0.8}
             >
-              <LinearGradient colors={[P, "#32ADE6"]} style={s.avatar}>
+              <LinearGradient colors={["rgba(255,255,255,0.35)", "rgba(255,255,255,0.15)"]} style={s.avatar}>
                 <Text style={s.avatarLetter}>{(userName || user?.fullName || "A")[0].toUpperCase()}</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -335,7 +339,7 @@ export default function DashboardScreen() {
               onPress={() => router.push("/notification-settings" as never)}
               activeOpacity={0.8}
             >
-              <Bell size={20} color={P} strokeWidth={2} />
+              <Bell size={20} color="#FFF" strokeWidth={2} />
               <View style={s.bellDot} />
             </TouchableOpacity>
           </Animated.View>
@@ -374,7 +378,7 @@ export default function DashboardScreen() {
               style={s.heroOuter}
             >
               <LinearGradient
-                colors={["#003E8A", "#0055B3", P, "#32ADE6", G]}
+                colors={["#C0392B", "#E8622A", "#F5A623", "#F39C12"]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={s.heroCard}
               >
@@ -616,7 +620,7 @@ export default function DashboardScreen() {
 
           <TouchableOpacity onPress={() => router.push("/suggestions" as never)} activeOpacity={0.88}>
             <LinearGradient
-              colors={[P, "#32ADE6", G]}
+              colors={["#E8622A", "#F5A623", "#F39C12"]}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={s.aiCard}
             >
@@ -639,7 +643,7 @@ export default function DashboardScreen() {
             style={{ marginTop: 10 }}
           >
             <LinearGradient
-              colors={["#3730A3", "#4F46E5", "#818CF8"]}
+              colors={["#8E44AD", "#9B59B6", "#C39BD3"]}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={s.aiCard}
             >
@@ -760,30 +764,30 @@ const s = StyleSheet.create({
   avatar: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   avatarLetter: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFF" },
 
-  greet:    { fontSize: 15, fontFamily: "Inter_700Bold", color: DS.color.text },
-  dateText: { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: 1 },
+  greet:    { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFF" },
+  dateText: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)", marginTop: 1 },
 
   scorePill: {
     flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: DS.color.bgSoft, borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.22)", borderRadius: 20,
     paddingHorizontal: 10, paddingVertical: 6,
     marginLeft: "auto",
   },
   scoreDot:  { width: 7, height: 7, borderRadius: 3.5 },
-  scoreNum:  { fontSize: 15, fontFamily: "Inter_700Bold" },
-  scoreLabel:{ fontSize: 10, fontFamily: "Inter_400Regular", color: DS.color.muted },
+  scoreNum:  { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFF" },
+  scoreLabel:{ fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
 
   bellBtn: {
     width: 38, height: 38, borderRadius: 12,
-    backgroundColor: DS.color.primarySoft,
+    backgroundColor: "rgba(255,255,255,0.22)",
     alignItems: "center", justifyContent: "center",
     marginLeft: 8,
   },
   bellDot: {
     position: "absolute", top: 7, right: 7,
     width: 7, height: 7, borderRadius: 3.5,
-    backgroundColor: DS.color.red,
-    borderWidth: 1.5, borderColor: "#FFF",
+    backgroundColor: "#FFF",
+    borderWidth: 1.5, borderColor: DS.color.primary,
   },
 
   body: { paddingHorizontal: 16, paddingTop: 14, gap: 12 },

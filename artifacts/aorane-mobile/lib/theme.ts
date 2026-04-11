@@ -2,29 +2,39 @@ import { Platform, StyleSheet } from "react-native";
 
 export const DS = {
   color: {
-    bg:          "#FFFFFF",
-    bgSoft:      "#F5F8FF",
+    // Warm gradient palette
+    bg:          "#FFF8F3",
+    bgSoft:      "#FFF2E8",
     bgCard:      "#FFFFFF",
-    primary:     "#007AFF",
-    primarySoft: "#EAF3FF",
-    green:       "#34C759",
-    greenSoft:   "#E8F9ED",
-    orange:      "#FF9500",
-    orangeSoft:  "#FFF3E0",
-    red:         "#FF3B30",
-    redSoft:     "#FFE8E7",
-    purple:      "#AF52DE",
-    purpleSoft:  "#F5EEFF",
-    sky:         "#32ADE6",
-    skySoft:     "#E5F5FF",
-    yellow:      "#FFCC00",
-    text:        "#1C1C1E",
-    textSub:     "#48484A",
-    muted:       "#8E8E93",
-    border:      "rgba(0,0,0,0.08)",
-    borderLight: "rgba(0,0,0,0.04)",
-    glass:       "rgba(255,255,255,0.78)",
+    primary:     "#E8622A",      // warm saffron-orange
+    primarySoft: "#FDEEE6",
+    secondary:   "#F5A623",      // golden yellow
+    secondarySoft: "#FEF6E4",
+    green:       "#27AE60",
+    greenSoft:   "#E8F8EF",
+    orange:      "#F5A623",
+    orangeSoft:  "#FEF6E4",
+    red:         "#E74C3C",
+    redSoft:     "#FDEDEC",
+    purple:      "#8E44AD",
+    purpleSoft:  "#F4ECF7",
+    sky:         "#2980B9",
+    skySoft:     "#EAF4FB",
+    yellow:      "#F39C12",
+    // Text
+    text:        "#1A1A2E",
+    textSub:     "#4A4A6A",
+    muted:       "#9B9BB0",
+    // Borders / glass
+    border:      "rgba(232,98,42,0.12)",
+    borderLight: "rgba(232,98,42,0.06)",
+    glass:       "rgba(255,255,255,0.82)",
     glassBorder: "rgba(255,255,255,0.95)",
+    // Gradient stops
+    gradStart:   "#FFF8F3",
+    gradEnd:     "#FFE5D0",
+    headerStart: "#E8622A",
+    headerEnd:   "#F5A623",
   },
   radius: {
     xs:  8,
@@ -54,19 +64,19 @@ export const DS = {
   },
   shadow: {
     sm: Platform.select({
-      ios:     { shadowColor: "#007AFF", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 },
+      ios:     { shadowColor: "#E8622A", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.10, shadowRadius: 8 },
       android: { elevation: 3 },
-      default: { shadowColor: "#007AFF", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 },
+      default: { shadowColor: "#E8622A", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.10, shadowRadius: 8 },
     }),
     md: Platform.select({
-      ios:     { shadowColor: "#007AFF", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 14 },
+      ios:     { shadowColor: "#E8622A", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 14 },
       android: { elevation: 6 },
-      default: { shadowColor: "#007AFF", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 14 },
+      default: { shadowColor: "#E8622A", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 14 },
     }),
     lg: Platform.select({
-      ios:     { shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 20 },
+      ios:     { shadowColor: "#C0392B", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 20 },
       android: { elevation: 10 },
-      default: { shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 20 },
+      default: { shadowColor: "#C0392B", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 20 },
     }),
   },
 } as const;
@@ -76,7 +86,7 @@ export const BASE_CARD = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: "rgba(232,98,42,0.08)",
     overflow: "hidden",
   },
 }).card;
