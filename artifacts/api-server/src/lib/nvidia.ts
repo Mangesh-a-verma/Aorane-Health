@@ -1,6 +1,7 @@
 /**
- * NVIDIA-hosted DeepSeek API helper
+ * NVIDIA-hosted LLaMA 3.3 70B API helper
  * Non-streaming JSON output for health intelligence features
+ * Updated: DeepSeek-R1 reached EOL on 2026-01-26, migrated to meta/llama-3.3-70b-instruct
  */
 
 export interface NvidiaMessage {
@@ -22,7 +23,7 @@ export async function callDeepSeek(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "deepseek-ai/deepseek-r1",
+      model: "meta/llama-3.3-70b-instruct",
       messages,
       temperature,
       top_p: 0.95,

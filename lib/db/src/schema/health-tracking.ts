@@ -8,6 +8,7 @@ import {
   decimal,
   jsonb,
   pgEnum,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -184,7 +185,7 @@ export const healthPredictionsTable = pgTable("health_predictions", {
   generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
-  userMonthUniq: { columns: [t.userId, t.month] },
+  userMonthUniq: uniqueIndex("health_predictions_user_month_uniq").on(t.userId, t.month),
 }));
 
 // ── Weekly Diet Charts (DeepSeek AI — once per week per user) ─────────────────
@@ -197,7 +198,7 @@ export const weeklyDietChartsTable = pgTable("weekly_diet_charts", {
   generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
-  userWeekUniq: { columns: [t.userId, t.weekStart] },
+  userWeekUniq: uniqueIndex("weekly_diet_charts_user_week_uniq").on(t.userId, t.weekStart),
 }));
 
 export type ExerciseLog = typeof exerciseLogsTable.$inferSelect;

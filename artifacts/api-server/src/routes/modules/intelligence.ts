@@ -83,7 +83,7 @@ async function gather30DayData(userId: string) {
     .where(and(eq(waterLogsTable.userId, userId), gte(sql`DATE(${waterLogsTable.loggedAt})`, from)));
 
   const exerciseLogs = await db.select().from(exerciseLogsTable)
-    .where(and(eq(exerciseLogsTable.userId, userId), gte(exerciseLogsTable.date, from)));
+    .where(and(eq(exerciseLogsTable.userId, userId), gte(sql`DATE(${exerciseLogsTable.loggedAt})`, from)));
 
   const stressLogs = await db.select().from(stressLogsTable)
     .where(and(eq(stressLogsTable.userId, userId), gte(sql`DATE(${stressLogsTable.loggedAt})`, from)));
