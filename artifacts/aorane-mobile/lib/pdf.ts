@@ -18,7 +18,7 @@ interface ReportFinding {
 interface ScanAnalysis {
   reportType?: string; reportDate?: string; labName?: string;
   findings?: ReportFinding[];
-  criticalValues?: Array<{ testName: string; value: string; urgency: string }>;
+  criticalValues?: Array<{ testName: string; value: string; urgency?: string }>;
   overallAssessment?: string; aiAdvice?: string;
   dietRecommendations?: string[]; urgencyLevel?: string;
 }

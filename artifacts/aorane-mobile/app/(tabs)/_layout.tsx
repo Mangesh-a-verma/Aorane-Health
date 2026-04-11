@@ -7,7 +7,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+type BottomTabBarProps = { state: { routes: Array<{ name: string }>; index: number }; navigation: { navigate: (name: string) => void } };
 import { Home, Dumbbell, ScanLine, Pill, User } from "lucide-react-native";
 import { DS } from "@/lib/theme";
 
@@ -206,9 +206,7 @@ export default function TabLayout() {
       <Tabs.Screen name="scan"      />
       <Tabs.Screen name="medicine"  />
       <Tabs.Screen name="profile"   />
-      <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen name="food"  options={{ href: null }} />
-      <Tabs.Screen name="diet"  options={{ href: null }} />
     </Tabs>
   );
 }

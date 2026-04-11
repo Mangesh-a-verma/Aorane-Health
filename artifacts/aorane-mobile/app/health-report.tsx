@@ -359,8 +359,8 @@ export default function HealthReportScreen() {
                     <Text style={{ fontFamily: "Inter_700Bold", fontSize: 11, color: "#92400E", marginBottom: 4 }}>AI HEALTH INSIGHTS</Text>
                     <Text style={{ fontFamily: "Inter_400Regular", fontSize: 10, color: "#78350F", lineHeight: 16 }}>
                       {overall >= 70
-                        ? `Your health activity is ${getActiveLabel(overall).toLowerCase()} this ${reportType === "weekly" ? "week" : "month"}. Keep maintaining your current habits — especially your ${card?.activePercent?.foodPct ?? 0 > card?.activePercent?.waterPct ?? 0 ? "nutrition" : "hydration"} routine. Consistency is key to long-term health improvement.`
-                        : `Your ${reportType === "weekly" ? "weekly" : "monthly"} health score of ${overall}% shows room for improvement. Focus on increasing ${card?.activePercent?.waterPct ?? 0 < 50 ? "water intake 💧" : card?.activePercent?.foodPct ?? 0 < 50 ? "meal logging 🍛" : "daily exercise 🏃"}. Small daily improvements lead to significant health gains.`
+                        ? `Your health activity is ${getActiveLabel(overall).toLowerCase()} this ${reportType === "weekly" ? "week" : "month"}. Keep maintaining your current habits — especially your ${(card?.activePercent?.foodPct ?? 0) > (card?.activePercent?.waterPct ?? 0) ? "nutrition" : "hydration"} routine. Consistency is key to long-term health improvement.`
+                        : `Your ${reportType === "weekly" ? "weekly" : "monthly"} health score of ${overall}% shows room for improvement. Focus on increasing ${(card?.activePercent?.waterPct ?? 0) < 50 ? "water intake 💧" : (card?.activePercent?.foodPct ?? 0) < 50 ? "meal logging 🍛" : "daily exercise 🏃"}. Small daily improvements lead to significant health gains.`
                       }
                     </Text>
                   </View>

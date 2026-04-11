@@ -143,7 +143,7 @@ function ManualEntryModal({ visible, onClose, onSave }: {
                   onChangeText={(v) => setFields((s) => ({ ...s, [f.key]: v }))}
                   keyboardType={f.keyboard}
                   placeholder={`Enter ${f.label.toLowerCase()}`}
-                  style={{ backgroundColor: "#F8FAFC", border: "1px solid #E5EFF7" as unknown as undefined, borderWidth: 1, borderColor: "#E5EFF7", borderRadius: 10, padding: 12, fontSize: 15, color: "#0D1F33", fontFamily: "Inter_400Regular" }}
+                  style={{ backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#E5EFF7", borderRadius: 10, padding: 12, fontSize: 15, color: "#0D1F33", fontFamily: "Inter_400Regular" }}
                 />
               </View>
             ))}
