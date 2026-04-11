@@ -17,6 +17,7 @@ import paymentRouter from "./modules/payment";
 import accidentEmergencyRouter from "./modules/accident-emergency";
 import adsRouter from "./modules/ads";
 import suggestionsRouter from "./modules/suggestions";
+import wearableRouter from "./modules/wearable";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(paymentRouter);
 router.use(accidentEmergencyRouter);
 router.use(adsRouter);
 router.use(suggestionsRouter);
+router.use(wearableRouter);
 
 export default router;

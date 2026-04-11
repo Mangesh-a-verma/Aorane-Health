@@ -340,6 +340,22 @@ export const api = {
   recordAdClick: (adId: string) =>
     request<{ success: boolean; linkUrl: string | null }>("POST", `/ads/${adId}/click`, {}),
 
+  // ── Wearable / Smart Watch ─────────────────────────────────
+  getWearableProviders: () =>
+    request<{ providers: unknown[]; googleFitConfigured: boolean }>("GET", "/wearable/providers"),
+  getWearableConnections: () =>
+    request<{ connections: unknown[] }>("GET", "/wearable/connections"),
+  getWearableData: (params?: { provider?: string; limit?: number }) =>
+    request<{ latest: unknown; history: unknown[]; summary: unknown }>("GET", `/wearable/data${params?.limit ? `?limit=${params.limit}` : ""}`),
+  getGoogleFitAuthUrl: () =>
+    request<{ authUrl: string }>("GET", "/wearable/oauth/google-fit/url"),
+  syncWearableProvider: (provider: string) =>
+    request<{ success: boolean; data: unknown }>("POST", `/wearable/sync/${provider}`, {}),
+  addManualWearableData: (data: Record<string, unknown>) =>
+    request<{ success: boolean; data: unknown }>("POST", "/wearable/data/manual", data),
+  disconnectWearable: (provider: string) =>
+    request<{ success: boolean }>("DELETE", `/wearable/connections/${provider}`),
+
   // ── Company Settings (public) ──────────────────────────────
   getCompanySettings: () =>
     request<{ settings: {

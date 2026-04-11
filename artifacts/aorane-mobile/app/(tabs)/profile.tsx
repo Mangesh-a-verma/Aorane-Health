@@ -195,6 +195,7 @@ export default function ProfileScreen() {
           </View>
           {[
             { emoji: "🪪", label: "Health Scorecard (AORANE ID)", desc: "ATM card style health ID + QR code", route: "/scorecard", grad: ["#0077B6","#023E8A"] as [string,string] },
+            { emoji: "⌚", label: "Smart Watch & Wearables", desc: "Google Fit, Smart Band, steps, heart rate, SpO2", route: "/wearable", grad: ["#34A853","#1A73E8"] as [string,string] },
             { emoji: "💧", label: "Water Tracker", desc: "Roz 8 glass paani track karo", route: "/water", grad: ["#0EA5E9","#0077B6"] as [string,string] },
             { emoji: "🧘", label: "Stress Tracker", desc: "Mood + 5-Pillar analysis + 4-7-8 Breathing", route: "/stress", grad: ["#8B5CF6","#6D28D9"] as [string,string] },
             { emoji: "👨‍👩‍👧‍👦", label: "Family Health", desc: "Pariwar ki health ek group mein", route: "/family", grad: ["#10B981","#059669"] as [string,string] },

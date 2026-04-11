@@ -70,3 +70,8 @@ externalPort = 6800
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+APP_URL = "https://aorane.onrender.com"
