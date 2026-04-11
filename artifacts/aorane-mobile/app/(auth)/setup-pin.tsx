@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import { storage } from "@/lib/storage";
 import { api } from "@/lib/api";
 import { useLanguage } from "@/context/LanguageContext";
+import { router } from "expo-router";
 
 const { width: W } = Dimensions.get("window");
 const KEYS = ["1","2","3","4","5","6","7","8","9","","0","⌫"];
@@ -115,6 +116,7 @@ export default function SetupPinScreen() {
       if (biometricEnabled) await storage.setBiometricEnabled(true);
       try { await api.setPIN(savedPin); } catch { }
       await setPinComplete();
+      router.replace("/(tabs)/dashboard");
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       triggerShake();
@@ -176,11 +178,13 @@ export default function SetupPinScreen() {
         if (result.success) {
           await storage.setBiometricEnabled(true);
           await setPinComplete();
+          router.replace("/(tabs)/dashboard");
           return;
         }
       } catch { }
     }
     await setPinComplete();
+    router.replace("/(tabs)/dashboard");
   };
 
   const toggleBiometric = async (val: boolean) => {

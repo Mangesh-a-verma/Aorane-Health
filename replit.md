@@ -1,224 +1,44 @@
 # AORANE — Indian Health Platform
 
-## Project Overview
-AORANE is a comprehensive Indian health platform with three components:
-1. **Mobile App** (Expo — Android/iOS) — Individual health tracking
-2. **Business Portal** (React Web CRM) — Adaptive for all business types
-3. **Admin Panel** (React Web) — Full platform control
+## Overview
+AORANE is an Indian health platform designed to provide comprehensive health management. It comprises a mobile application for individual health tracking, a business portal for organizations, and an admin panel for platform control. The platform aims to revolutionize health management in India by offering personalized health insights, integrating with various health services, and providing robust administrative capabilities.
 
-All three share one PostgreSQL database and API server.
+## User Preferences
+I prefer detailed explanations and clear communication. Please ask before making any major changes to the codebase or architectural decisions. I want to follow an iterative development process, focusing on completing one feature set before moving to the next.
 
-## Architecture
+## System Architecture
+AORANE's architecture consists of three main components: a mobile app (built with Expo/React Native), a Business Portal (React Web CRM), and an Admin Panel (React Web). All components share a single PostgreSQL database (managed by Supabase) and an Express.js API server, leveraging Drizzle ORM. Redis (Upstash) is used for caching.
 
-```
-Mobile App (Expo) ──┐
-Business Portal  ───┼──→ API Server (Express/Railway) → PostgreSQL (Supabase)
-Admin Panel      ──┘         ↑ Redis Cache (Upstash)
-```
+**UI/UX Decisions:**
+- **Mobile App:** Features a health-focused dashboard with a health ring, water tracker, and calorie ring. It includes 6 main tabs: Dashboard, Food, Exercise, Medicine, AI Coach, and Profile. Color scheme includes Primary #0077B6, Accent #1B998B, and Dark BG #010814.
+- **Business Portal:** Designed with a dark sidebar displaying organization information and seat progress, and a top bar with an organization code chip. Uses AORANE Blue (#0077B6) and Teal (#1B998B) on a dark navy background.
+- **Admin Panel:** Features a dark navy sidebar with a prominent "ADMIN PANEL" badge and AORANE blue/teal accents.
 
-## Tech Stack
-- **Backend**: Express.js (Node.js), Drizzle ORM, PostgreSQL
-- **Mobile**: Expo (React Native) — planned
-- **Frontend**: React + Vite — planned
-- **Auth**: JWT (30d user, 12h admin), OTP via Fast2SMS, Google OAuth
-- **AI**: Gemini 2.0 Flash — food scan, tips, diet plans, medical reports
-- **Payments**: Razorpay
-- **Notifications**: Firebase FCM + Fast2SMS
-- **Storage**: Supabase
-- **Cache**: In-memory (production: Upstash Redis)
+**Technical Implementations & Feature Specifications:**
+- **Authentication:** Utilizes JWT for sessions (30-day user, 12-hour admin), OTP via Fast2SMS, and Google OAuth.
+- **AI Integration:** Gemini 2.0 Flash is integrated for advanced features like food scanning, diet plans, health tips, and medical report analysis. The Admin Panel allows per-feature AI configuration.
+- **Payment Gateway:** Razorpay is integrated for handling subscriptions and payments.
+- **Notifications:** Firebase FCM and Fast2SMS are used for notifications.
+- **Storage:** Supabase handles file storage.
+- **Database Schema:** A comprehensive PostgreSQL schema includes tables for users, health data (food, exercise, water, medicine, stress, period, medical reports), community features (family groups, blood donation), business entities (organizations, members, enrollment codes), revenue (subscriptions, payments, promo codes), and platform infrastructure.
+- **Privacy-first Design:** Features 8 privacy toggles, with sensitive data logging (Stress, Sleep, Medicine) defaulting to OFF.
+- **Offline-first Capability:** An offline queue table is implemented for data synchronization when connectivity is restored.
+- **Semantic Caching:** Food scan checks a database cache first to reduce AI API calls.
+- **Blood Emergency System:** Implements double OTP verification, rate limiting, and 48-hour auto-expiry for blood requests.
+- **Global Readiness:** Tables are designed to support `country_code`, `language_code`, and RTL (Right-to-Left) for future internationalization.
+- **Data Entry Flexibility:** Supports Photo, Text, and Voice input for logging Food, Exercise, and Water.
 
-## Completed Features (Latest Session)
-- **Business Portal — Billing Page**: Full Razorpay payment flow; 3 subscription tiers (Starter ₹999/50 seats, Growth ₹2999/200 seats, Enterprise ₹6999/500 seats); plan comparison cards; `setOrg` added to AuthContext
-- **Business Portal — Analytics Page**: Recharts-powered dashboard; area chart (7d member activity), pie chart (plan distribution), bar chart (health metrics); summary KPI cards
-- **Business Portal — Communications Page**: Announcements composer (title + message + type + expiry); announcement history list; sent via `/business/announcements` API
-- **Business Portal — Routes**: `/analytics`, `/communications`, `/billing` all wired in Router; imports and Layout nav updated
-- **Admin Panel — AI Config Page**: Full per-feature AI configuration; 8 features (Food AI, Medical AI, Smart Scan, Water, Stress, Blood, Meal Planner, Health Suggestions); provider/model dropdowns; optional API key override; custom system prompt; enable/disable toggle; stats overview
-- **Admin Panel — AI Config API**: `GET /admin/ai-config`, `PUT /admin/ai-config/:feature` routes added; `aiConfigTable` schema in platform.ts; persists to DB
-- **Hindi/Hinglish Sweep**: All UI strings in mobile app, business portal, admin panel, and API error messages cleaned to English
-- **DB Schema**: `orgPaymentsTable`, `orgAnnouncementsTable`, `aiConfigTable` added; schema pushed to Supabase
-
-## Previous Session Features
-- **AORANE 12-Digit ID**: Unique immutable ID stored in DB, format `[G][AA][CCC][RRRRRR]` (gender+age+cityHash+random), generated once at scorecard call, shown on health card with copy/share
-- **Active Percentage System**: Daily tracking score — food (35%), water (30%), exercise (25%), medicine (10%); `GET /users/activity-score`; dashboard widget with progress bars; scorecard "Data Reliability" section
-- **AORANE ID Search (Admin Panel)**: Full search by 12-digit AORANE ID or name, with result cards showing blood group, age, city, BMI, plan, active status
-- **AORANE ID Search (Business Portal)**: Same search but filtered to org members only
-- **Backend Search Endpoints**: `GET /admin/users/search?q=` (admin auth), `GET /business/members/search?q=` (business auth), `GET /users/search?q=` (user auth)
-- **Schema Updates**: `aoraneId TEXT UNIQUE`, `city TEXT`, `state TEXT` added to `userProfilesTable` — pushed to Supabase
-- **Daily AI Suggestions System**: Gemini-powered Hinglish daily coach — food suggestions, exercise plan, water tracking, medical warnings, target progress, motivation message — cached per user per day
-- **Notification Settings**: Full UI + backend — medicine, water, food, period, AI suggestion toggles; calorie + water goals; wake up / bed time settings
-- **Dashboard AI Coach Widget**: Gradient banner card → links to full suggestions screen
-- **Work Profile System**: 22 professions, TDEE multipliers 1.2×–1.9× BMR, shown on profile
-- **New API Routes**: `GET /users/scorecard` (now stores AORANE ID), `GET /users/activity-score`, `GET /admin/users/search`, `GET /business/members/search`
-
-## Current Status
-
-### ✅ Phase 1: Database — COMPLETE
-46 PostgreSQL tables created and pushed to Supabase:
-- Users: users, user_profiles, user_preferences, user_privacy_settings, user_auth_providers, user_medical_conditions, user_health_goals
-- Health: food_logs, food_items, food_scan_cache, exercise_logs, water_logs, medicine_schedules, medicine_logs, stress_logs, period_logs, medical_reports, daily_health_scores
-- Community: family_groups, family_members, blood_donors, blood_emergency_requests, blood_emergency_responses
-- Business: organizations, org_admins, org_members, enrollment_codes, insurance_api_keys
-- Revenue: subscriptions, payments, promo_codes, referrals
-- Platform: push_tokens, notifications, announcements, feature_flags, ad_campaigns, ad_impressions, ad_clicks, admin_users, admin_audit_logs
-- Infrastructure: wearable_connections, wearable_data, offline_queue, languages, translations
-
-### ✅ Food Database Seeded — 1061 Indian Foods
-food_items table populated with IFCT-verified data:
-- **Source**: VitaCoach IFCT database (1014 items) + verified IFCT staples (47 items) + Alcohol/Tobacco (40 items)
-- **Total**: 1101 items
-- **Coverage**: 21 food categories + Alcohol (Beer/Spirits/Wine/Traditional, 23 items) + Tobacco (Cigarettes/Gutka/Khaini/Pan masala/Hookah/Cessation, 17 items)
-- **Alcohol subcategories**: Beer (7), Spirits & Liquor (8), Wine (3), Traditional Alcohol (5) — Kingfisher, Haywards, Whisky, Rum, Toddy, Feni, Mahua etc.
-- **Tobacco subcategories**: Cigarettes/Beedi (7), Smokeless Tobacco (8: Gutka, Khaini, Zarda, Naswar, Mawa, Pan masala, Hookah), Cessation Products (Nicotine patch/gum)
-- **Nutrients per food**: calories, protein, carbs, fat, fiber, sugar, sodium, calcium, iron, vitamin C (per 100g/serving)
-- **Extra fields**: Hindi name (food_name_local JSONB), cuisine_type=indian, country_code=IN, dietary_tags=[alcohol/tobacco/veg/nonveg], serving_size_g, serving_description
-- **Search**: ILIKE-based case-insensitive search via `/food/search?q=` endpoint; alcohol/tobacco filterable by dietary_tags
-
-### ✅ Phase 2: API Server — COMPLETE
-Express.js API server running on port 8080 with:
-- **Auth**: OTP send/verify, Google OAuth, JWT refresh, logout
-- **Users**: Profile CRUD, onboarding, medical conditions, health goals, preferences, privacy settings
-- **Food**: Logs, search (1061 Indian foods DB), AI scan (Gemini-powered with vitamins), daily summary
-- **Health**: Exercise logs (MET formula, profile-aware), water logs, daily health scores (auto-computed), history
-- **Medicine**: Schedules, logs, adherence tracking
-- **Medical Reports**: AI scan via Gemini Vision (`/medical/scan`), reports list/delete
-- **Blood Emergency**: OTP-verified requests, donor registration, compatibility matching
-- **Business**: Registration, login, members, enrollment codes
-- **Admin**: Users, orgs, feature flags, food items, promo codes, announcements, blood moderation, languages, audit logs
-
-### Middleware
-- `requireAuth` — User JWT validation
-- `requireAdmin` — Admin JWT validation  
-- `requireBusinessAuth` — Business JWT validation
-- `requirePlan` — Plan-based feature gating
-- `checkPrivacy` — User privacy enforcement
-
-## Key Design Decisions
-1. **Privacy-first**: 8 privacy toggles, Stress/Sleep/Medicine DEFAULT OFF
-2. **Offline-first**: Offline queue table for later sync
-3. **Semantic cache**: Food scan checks DB cache first (90%+ hit target)
-4. **Medical = Findings ONLY**: PDFs never stored
-5. **Activity Confidence**: Every health score shows data completeness %
-6. **Blood Emergency**: Double OTP verification, rate limited 2/month, 48hr auto-expiry
-7. **Global-ready**: country_code, language_code, RTL support in all tables
-8. **Three-way entry**: Photo + Text + Voice for Food/Exercise/Water
-
-## File Structure
-```
-lib/
-├── db/src/schema/
-│   ├── users.ts           — User tables + enums
-│   ├── health-food.ts     — Food items, logs, AI cache
-│   ├── health-tracking.ts — Exercise, water, medicine, stress, period, medical reports
-│   ├── community.ts       — Family groups, blood emergency
-│   ├── business.ts        — Organizations, enrollments
-│   ├── platform.ts        — Ads, notifications, feature flags, admin
-│   ├── revenue.ts         — Subscriptions, payments, promos
-│   └── wearable.ts        — Wearables, offline queue, i18n
-│
-artifacts/
-└── api-server/src/
-    ├── lib/
-    │   ├── jwt.ts         — JWT sign/verify (user/admin/business)
-    │   ├── otp.ts         — OTP generation + Fast2SMS
-    │   └── redis.ts       — In-memory cache (Upstash-ready interface)
-    ├── middlewares/
-    │   ├── user-auth.ts   — User JWT middleware
-    │   ├── admin-auth.ts  — Admin JWT middleware
-    │   ├── business-auth.ts — Business JWT middleware
-    │   ├── plan-check.ts  — Plan feature gating
-    │   └── privacy-guard.ts — Privacy enforcement
-    └── routes/
-        ├── health.ts      — Health check
-        └── modules/
-            ├── auth.ts    — OTP, Google, JWT refresh
-            ├── users.ts   — Profile, preferences, privacy
-            ├── food.ts    — Logs, search, AI scan
-            ├── health.ts  — Exercise, water, scores
-            ├── medicine.ts — Schedules and logs
-            ├── blood.ts   — Emergency system
-            ├── business.ts — Portal APIs
-            └── admin.ts   — Admin panel APIs
-```
-
-## Plans
-- Free: ₹0
-- Max: ₹199/month  
-- Pro: ₹249/month
-- Family: ₹499/month (4 members)
-- Business: ₹89-149/seat/month
-
-### ✅ Phase 3: Mobile App — COMPLETE
-Expo mobile app running with static export (web server) with:
-- **Auth Flow**: Login (OTP|PIN toggle tabs + Google) → Verify OTP → Setup PIN → Main tabs
-- **Onboarding**: 5 steps — Name/DOB/Gender → Physical → Health Conditions → Lifestyle → Goals
-- **6 Tabs**: Dashboard, Food, Exercise, Medicine, AI Coach, Profile
-- **Dashboard**: Health Ring (score + confidence %) + Water Tracker + Calorie Ring + Stats
-- **Food**: Meal-wise logging + AI scan + food search + macros tracking
-- **Exercise**: 10+ exercise types + duration + intensity + calorie burn + MET formula
-- **Medicine**: Schedules with reminders + meal timing
-- **AI Coach**: Diet plan builder + personalized recommendations
-- **Profile**: BMI card + Privacy switches + Health Tools section → 6 new health screens
-- **Health Tools (Profile sub-pages)**:
-  - `stress.tsx` — Stress logging (1-10 scale, mood options, notes)
-  - `scorecard.tsx` — Health Scorecard (ring chart, category breakdown, weekly trend)
-  - `water.tsx` — Smart Water Tracker (goal-based, quick-add ml)
-  - `family.tsx` — Family Health Hub (add members, see their health summaries)
-  - `period.tsx` — Period Tracker (cycle calendar, log flow, symptoms)
-  - `upgrade.tsx` — Premium Plans page (Free/Max/Pro/Family with Razorpay)
-- **Colors**: Primary #0077B6, Accent #1B998B, Dark BG #010814
-- **API**: Connected to Express API server via EXPO_PUBLIC_API_URL (Render)
-
-### ✅ Phase 4: Business Portal — COMPLETE
-React + Vite web portal running on port 22981 at `/business-portal/`:
-- **Auth**: Login (email+password), 3-step Registration (OrgType → Details → Admin)
-- **Dashboard**: Org code banner, stats cards, seat capacity bar, org details panel
-- **Members**: Grid view with avatar initials, blood group, join date, search filter
-- **Enrollment Codes**: Create/list codes with usage bars, expiry, plan type badges
-- **Settings**: Admin profile, org details, seat info, logout
-- **Layout**: Dark sidebar with org info + seat progress, topbar with org code chip
-- **API**: Connected to Express `/api/business/*` endpoints via JWT auth
-- **Colors**: AORANE Blue #0077B6 + Teal #1B998B on dark navy background
-
-### ✅ Phase 5: Admin Panel — COMPLETE
-React + Vite super-admin panel running on port 20130 at `/admin-panel/`:
-- **Auth**: Email + password login with restricted-access banner, JWT auth
-- **Default Admin**: superadmin@aorane.in / admin123
-- **Dashboard**: Platform health banner, user + org stats, quick action links
-- **Users**: Table view with plan changer, ban/activate toggles, search
-- **Organizations**: Card grid with org type icons, seat usage, status badges
-- **Analytics**: DAU/MAU trends, revenue graphs, feature usage breakdown (NEW)
-- **Subscriptions**: Active/churned subscriptions table, MRR, churn rate (NEW)
-- **Platform Costs**: Infrastructure cost breakdown vs revenue health (NEW)
-- **Feature Flags**: Toggle switches for platform features, create new flags
-- **Food Database**: Admin-verified food items table, add new items with macros
-- **Promo Codes**: Usage tracking table, create codes with discount % and expiry
-- **Announcements**: Publish platform-wide announcements with scheduling
-- **Blood Emergency**: Moderate requests (flag, fulfil, cancel) with blood group display
-- **Languages**: i18n setup with translation completion bars, RTL support
-- **Audit Logs**: Full read-only audit trail of all admin actions, searchable
-- **API**: Connected to Express `/api/admin/*` endpoints via JWT auth
-- **Design**: Dark navy sidebar, red "ADMIN PANEL" badge, AORANE blue/teal accents
-
-## Pending / Next Steps
-- [ ] Razorpay payment integration (upgrade.tsx ready; needs live Razorpay key)
-- [ ] Firebase FCM setup (push_tokens table ready)
-- [ ] Stress PPG camera feature
-- [ ] Wearable adapter implementation
-- [ ] Weekly PDF report generation
-- [ ] Business Portal org-type differentiation (Hospital vs Gym vs Insurance dashboards)
-- [ ] SMS OTP via Fast2SMS (live key needed)
-
-## API Routes Summary
-- `/api/auth/*` — OTP, Google, PIN, JWT refresh
-- `/api/users/*` — Profile, preferences, privacy
-- `/api/food/*` — Logs, search, AI scan
-- `/api/health/*` — Exercise, water, scores
-- `/api/medicine/*` — Schedules, logs
-- `/api/stress/*` — Stress logs
-- `/api/family/*` — Family groups + members
-- `/api/period/*` — Period logs + predictions
-- `/api/payment/*` — Razorpay payment flow
-- `/api/scorecard/*` — Health scorecard
-- `/api/blood/*` — Blood emergency
-- `/api/business/*` — Business portal APIs
-- `/api/admin/*` — Admin panel APIs (users, orgs, analytics, subscriptions, costs)
+## External Dependencies
+- **Database:** PostgreSQL (managed by Supabase)
+- **Backend Framework:** Express.js (Node.js)
+- **ORM:** Drizzle ORM
+- **Mobile Development:** Expo (React Native)
+- **Frontend Development:** React + Vite
+- **Caching:** Upstash Redis
+- **SMS Gateway:** Fast2SMS (for OTP)
+- **OAuth:** Google OAuth
+- **AI Services:** Gemini 2.0 Flash
+- **Payment Gateway:** Razorpay
+- **Push Notifications:** Firebase Cloud Messaging (FCM)
+- **Cloud Hosting (API Server):** Railway
+- **Cloud Hosting (Mobile App, Business Portal, Admin Panel):** Render (for EXPO_PUBLIC_API_URL)
