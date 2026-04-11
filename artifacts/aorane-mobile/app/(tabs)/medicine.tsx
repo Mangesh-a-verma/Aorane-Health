@@ -119,16 +119,14 @@ export default function MedicineScreen() {
             mealTiming,
           });
           setNotifPermission(true);
-          // Navigate back AFTER user dismisses the reminder alert
           Alert.alert("✅ Reminder Set!", `Daily reminder set for ${savedName} at ${reminderTime}`, [{
-            text: "OK", onPress: () => router.back(),
+            text: "OK", onPress: () => { setShowModal(false); loadSchedules(); },
           }]);
           setIsSubmitting(false);
           return;
         }
       }
-      // No alert shown — navigate back automatically
-      setTimeout(() => router.back(), 400);
+      setShowModal(false); loadSchedules();
     } catch { Alert.alert("Error", "Could not save medicine schedule. Please try again."); }
     setIsSubmitting(false);
   };

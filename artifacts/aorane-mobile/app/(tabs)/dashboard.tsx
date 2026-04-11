@@ -110,47 +110,43 @@ const mb = StyleSheet.create({
   fill: { height: 6, borderRadius: 3 },
 });
 
-// ─── QUICK ACTION BUTTON ──────────────────────────────────────────────────────
-function QuickAction({ icon, label, color, bgColors, onPress }: {
-  icon: string; label: string; color: string;
-  bgColors: [string, string]; onPress: () => void;
+// ─── QUICK ACTION BUTTON (compact icon tile) ──────────────────────────────────
+function QuickAction({ icon, label, bgColors, onPress }: {
+  icon: string; label: string; bgColors: [string, string]; onPress: () => void;
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  function onIn() { Animated.spring(scaleAnim, { toValue: 0.92, useNativeDriver: true, damping: 12 }).start(); }
+  function onIn() { Animated.spring(scaleAnim, { toValue: 0.88, useNativeDriver: true, damping: 12 }).start(); }
   function onOut() { Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, damping: 10 }).start(); }
-
   return (
-    <TouchableOpacity
-      activeOpacity={1}
-      onPressIn={onIn} onPressOut={onOut}
+    <TouchableOpacity activeOpacity={1} onPressIn={onIn} onPressOut={onOut}
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(); }}
       style={{ flex: 1 }}
     >
-      <Animated.View style={[qa.card, { transform: [{ scale: scaleAnim }] }]}>
+      <Animated.View style={[qa.tile, { transform: [{ scale: scaleAnim }] }]}>
         <LinearGradient colors={bgColors} style={qa.iconBox}>
-          <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={22} color="#FFF" />
+          <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={24} color="#FFF" />
         </LinearGradient>
-        <Text style={qa.label}>{label}</Text>
+        <Text style={qa.label} numberOfLines={1}>{label}</Text>
       </Animated.View>
     </TouchableOpacity>
   );
 }
 const qa = StyleSheet.create({
-  card: {
-    flex: 1, alignItems: "center", gap: 8, padding: 14,
+  tile: {
+    alignItems: "center", gap: 6, paddingVertical: 12, paddingHorizontal: 4,
     backgroundColor: C.glass,
-    borderRadius: 18, borderWidth: 1.2, borderColor: C.glassBorder,
+    borderRadius: 16, borderWidth: 1.2, borderColor: C.glassBorder,
     shadowColor: C.glassShadow,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07, shadowRadius: 8, elevation: 3,
   },
   iconBox: {
-    width: 46, height: 46, borderRadius: 14,
+    width: 48, height: 48, borderRadius: 15,
     alignItems: "center", justifyContent: "center",
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
+    shadowOpacity: 0.15, shadowRadius: 5, elevation: 3,
   },
-  label: { fontSize: 11.5, fontFamily: "Inter_600SemiBold", color: C.text, textAlign: "center" },
+  label: { fontSize: 10.5, fontFamily: "Inter_600SemiBold", color: C.text, textAlign: "center" },
 });
 
 // ─── ACTIVITY ITEM ────────────────────────────────────────────────────────────
@@ -395,16 +391,16 @@ export default function DashboardScreen() {
 
             {/* Body */}
             <View style={s.heroBody}>
-              <HealthRing score={healthScore} confidence={confidence} size={140} />
+              <HealthRing score={healthScore} confidence={confidence} size={100} />
               <View style={s.heroStats}>
                 {[
-                  { icon: "flame", label: "Calories", val: `${calories.eaten}`, sub: "kcal eaten", color: "#FFD580" },
-                  { icon: "barbell-outline", label: "Exercise", val: `${exerciseMin}m`, sub: "active", color: "#A7F3D0" },
-                  { icon: "water-outline", label: "Water", val: `${water.current}/${water.goal}`, sub: "glasses", color: "#BAE6FD" },
+                  { icon: "flame", val: `${calories.eaten}`, sub: "kcal", color: "#FFD580" },
+                  { icon: "barbell-outline", val: `${exerciseMin}m`, sub: "active", color: "#A7F3D0" },
+                  { icon: "water-outline", val: `${water.current}/${water.goal}`, sub: "glasses", color: "#BAE6FD" },
                 ].map(st => (
-                  <View key={st.label} style={s.heroStatRow}>
+                  <View key={st.sub} style={s.heroStatRow}>
                     <View style={s.heroStatIcon}>
-                      <Ionicons name={st.icon as keyof typeof Ionicons.glyphMap} size={13} color={st.color} />
+                      <Ionicons name={st.icon as keyof typeof Ionicons.glyphMap} size={12} color={st.color} />
                     </View>
                     <View>
                       <Text style={s.heroStatVal}>{st.val}</Text>
@@ -433,34 +429,30 @@ export default function DashboardScreen() {
           </LinearGradient>
         </Animated.View>
 
-        {/* ── QUICK ACTIONS ── */}
+        {/* ── QUICK ACTIONS — single horizontal row ── */}
         <Animated.View style={{ opacity: fadeAnim }}>
           <Text style={s.sectionTitle}>Quick Actions</Text>
-          <View style={s.qaGrid}>
-            <View style={s.qaRow}>
-              <QuickAction
-                icon="restaurant-outline" label="Log Meal"
-                color={C.orange} bgColors={["#F97316", "#FB923C"]}
-                onPress={() => router.push("/(tabs)/food" as never)}
-              />
-              <QuickAction
-                icon="medkit-outline" label="Medicine"
-                color={C.purple} bgColors={["#7C3AED", "#8B5CF6"]}
-                onPress={() => router.push("/(tabs)/medicine" as never)}
-              />
-            </View>
-            <View style={s.qaRow}>
-              <QuickAction
-                icon="barbell-outline" label="Exercise"
-                color={C.accent} bgColors={["#059669", "#10B981"]}
-                onPress={() => router.push("/(tabs)/exercise" as never)}
-              />
-              <QuickAction
-                icon="document-text-outline" label="My Report"
-                color={C.primary} bgColors={["#005EA3", "#0077B6"]}
-                onPress={() => router.push("/health-report" as never)}
-              />
-            </View>
+          <View style={s.qaRow}>
+            <QuickAction
+              icon="restaurant-outline" label="Meal"
+              bgColors={["#F97316", "#FB923C"]}
+              onPress={() => router.push("/(tabs)/food" as never)}
+            />
+            <QuickAction
+              icon="medkit-outline" label="Medicine"
+              bgColors={["#7C3AED", "#8B5CF6"]}
+              onPress={() => router.push("/(tabs)/medicine" as never)}
+            />
+            <QuickAction
+              icon="barbell-outline" label="Exercise"
+              bgColors={["#059669", "#10B981"]}
+              onPress={() => router.push("/(tabs)/exercise" as never)}
+            />
+            <QuickAction
+              icon="document-text-outline" label="Report"
+              bgColors={["#005EA3", "#0077B6"]}
+              onPress={() => router.push("/health-report" as never)}
+            />
           </View>
         </Animated.View>
 
@@ -533,12 +525,16 @@ export default function DashboardScreen() {
           </Glass>
         </Animated.View>
 
-        {/* ── WATER TRACKER ── */}
+        {/* ── WATER TRACKER — same height as AdsSlider (118px) ── */}
         <Animated.View style={{ opacity: fadeAnim }}>
           <Text style={s.sectionTitle}>Hydration</Text>
-          <Glass padding={14}>
+          <View style={s.hydrationCard}>
+            {Platform.OS === "ios" && (
+              <BlurView intensity={55} tint="extraLight" style={StyleSheet.absoluteFill} />
+            )}
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: C.glass, borderRadius: 20 }]} />
             <WaterTracker current={water.current} goal={water.goal} onAdd={handleAddWater} />
-          </Glass>
+          </View>
         </Animated.View>
 
         {/* ── ACTIVITY SCORE ── */}
@@ -657,7 +653,7 @@ const s = StyleSheet.create({
   notifBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: C.glass, borderWidth: 1.2, borderColor: C.glassBorder, alignItems: "center", justifyContent: "center" },
   notifDot: { position: "absolute", top: 6, right: 6, width: 7, height: 7, borderRadius: 3.5, backgroundColor: C.red, borderWidth: 1.5, borderColor: "#FFF" },
 
-  heroCard: { borderRadius: 24, padding: 20, overflow: "hidden", shadowColor: C.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 12 },
+  heroCard: { borderRadius: 22, padding: 14, overflow: "hidden", shadowColor: C.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 16, elevation: 10 },
   heroShine: { position: "absolute", top: -60, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: "rgba(255,255,255,0.08)" },
   heroShine2: { position: "absolute", bottom: -40, left: -20, width: 120, height: 120, borderRadius: 60, backgroundColor: "rgba(255,255,255,0.06)" },
   heroTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
@@ -682,8 +678,21 @@ const s = StyleSheet.create({
 
   sectionTitle: { fontSize: 14.5, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 10, letterSpacing: 0.2 },
 
-  qaGrid: { gap: 10, marginBottom: 14 },
-  qaRow: { flexDirection: "row", gap: 10 },
+  qaRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
+
+  hydrationCard: {
+    height: 118,
+    borderRadius: 20,
+    overflow: "hidden",
+    borderWidth: 1.2, borderColor: C.glassBorder,
+    backgroundColor: Platform.OS === "ios" ? "transparent" : C.glass,
+    shadowColor: C.glassShadow,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
+    marginBottom: 14,
+    justifyContent: "center",
+    paddingHorizontal: 2,
+  },
 
   nutritionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
   nutritionTitle: { fontSize: 14.5, fontFamily: "Inter_700Bold", color: C.text },

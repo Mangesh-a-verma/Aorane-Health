@@ -121,7 +121,8 @@ const sb = StyleSheet.create({
 // ── Tab config ───────────────────────────────────────────────────────────────
 const TABS = [
   { name: "dashboard", on: "home"          as const, off: "home-outline"           as const, label: "Home"     },
-  { name: "index",     on: "pulse"         as const, off: "pulse-outline"          as const, label: "Activity" },
+  { name: "exercise",  on: "barbell"       as const, off: "barbell-outline"        as const, label: "Exercise" },
+  { name: "medicine",  on: "medkit"        as const, off: "medkit-outline"         as const, label: "Medical"  },
   { name: "profile",   on: "person-circle" as const, off: "person-circle-outline"  as const, label: "Profile"  },
 ];
 
@@ -137,9 +138,9 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
   const activeRoute = state.routes[state.index]?.name ?? "";
 
-  // Insert center scan slot between Activity and Profile
-  const slots: Array<"dashboard" | "index" | "scan" | "profile"> =
-    ["dashboard", "index", "scan", "profile"];
+  // Order: Home | Exercise | SCAN (center) | Medical | Profile
+  const slots: Array<"dashboard" | "exercise" | "scan" | "medicine" | "profile"> =
+    ["dashboard", "exercise", "scan", "medicine", "profile"];
 
   return (
     <View
@@ -231,16 +232,17 @@ export default function TabLayout() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
+      {/* Visible tabs — order: Home | Exercise | Scan | Medical | Profile */}
       <Tabs.Screen name="dashboard" />
-      <Tabs.Screen name="index"     />
+      <Tabs.Screen name="exercise"  />
       <Tabs.Screen name="scan"      />
+      <Tabs.Screen name="medicine"  />
       <Tabs.Screen name="profile"   />
 
       {/* Hidden — accessible via router.push */}
-      <Tabs.Screen name="food"     options={{ href: null }} />
-      <Tabs.Screen name="exercise" options={{ href: null }} />
-      <Tabs.Screen name="medicine" options={{ href: null }} />
-      <Tabs.Screen name="diet"     options={{ href: null }} />
+      <Tabs.Screen name="index" options={{ href: null }} />
+      <Tabs.Screen name="food"  options={{ href: null }} />
+      <Tabs.Screen name="diet"  options={{ href: null }} />
     </Tabs>
   );
 }

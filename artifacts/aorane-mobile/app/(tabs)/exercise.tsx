@@ -105,8 +105,7 @@ export default function ExerciseScreen() {
       await api.logExercise({ exerciseType: selectedExercise, durationMinutes: parseInt(duration), intensity });
       setShowModal(false); setSelectedExercise(""); setDuration(""); setEstimate(null);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // Auto navigate back to calling screen (Dashboard / Activity)
-      setTimeout(() => router.back(), 400);
+      loadLogs();
     } catch {
       Alert.alert("Error", "Could not log exercise. Please try again.");
       setIsSubmitting(false);
