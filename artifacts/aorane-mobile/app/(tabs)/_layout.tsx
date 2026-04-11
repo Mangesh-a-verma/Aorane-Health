@@ -1,39 +1,167 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import React, { useRef } from "react";
+import {
+  Platform,
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  Animated,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
+import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 
 const PRIMARY = "#0077B6";
+const SKY = "#0EA5E9";
 const ACCENT = "#00B896";
-const INACTIVE = "rgba(13,31,51,0.3)";
+const INACTIVE = "rgba(13,31,51,0.28)";
+const BAR_HEIGHT = 68;
+const SCAN_SIZE = 60;
+const SCAN_LIFT = 24;
 
-function TabIcon({ name, focused }: { name: keyof typeof Ionicons.glyphMap; focused: boolean }) {
+function TabIcon({
+  name,
+  focused,
+  label,
+}: {
+  name: keyof typeof Ionicons.glyphMap;
+  focused: boolean;
+  label: string;
+}) {
   return (
     <View style={ti.wrap}>
-      {focused ? (
-        <LinearGradient colors={[PRIMARY, ACCENT]} style={ti.activeBox}>
-          <Ionicons name={name} size={18} color="#FFF" />
-        </LinearGradient>
-      ) : (
-        <View style={ti.inactiveBox}>
-          <Ionicons name={name} size={20} color={INACTIVE} />
-        </View>
-      )}
+      <View style={[ti.iconWrap, focused && ti.activeIconWrap]}>
+        <Ionicons
+          name={name}
+          size={22}
+          color={focused ? PRIMARY : INACTIVE}
+        />
+      </View>
+      <Text style={[ti.label, { color: focused ? PRIMARY : INACTIVE }]}>
+        {label}
+      </Text>
     </View>
   );
 }
 
 const ti = StyleSheet.create({
-  wrap: { alignItems: "center", justifyContent: "center" },
-  activeBox: { width: 46, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
-  inactiveBox: { width: 46, height: 30, alignItems: "center", justifyContent: "center" },
+  wrap: { alignItems: "center", gap: 2, paddingTop: 6 },
+  iconWrap: { width: 44, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  activeIconWrap: { backgroundColor: "rgba(0,119,182,0.10)" },
+  label: { fontSize: 10, fontFamily: "Inter_500Medium" },
 });
 
-export default function TabLayout() {
-  const isIOS = Platform.OS === "ios";
+function ScanTabButton(props: BottomTabBarButtonProps) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
+  function handlePressIn() {
+    Animated.spring(scaleAnim, {
+      toValue: 0.91,
+      useNativeDriver: true,
+      damping: 12,
+    }).start();
+  }
+
+  function handlePressOut() {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      damping: 10,
+    }).start();
+  }
+
+  return (
+    <View style={scan.container} pointerEvents="box-none">
+      <TouchableOpacity
+        activeOpacity={1}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={props.onPress ?? undefined}
+        style={scan.touch}
+      >
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+          <LinearGradient
+            colors={[PRIMARY, SKY, ACCENT]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={scan.btn}
+          >
+            <Ionicons name="scan" size={26} color="#FFF" />
+          </LinearGradient>
+        </Animated.View>
+        <Text style={scan.label}>SCAN</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const scan = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    top: -(SCAN_LIFT),
+    height: BAR_HEIGHT + SCAN_LIFT,
+  },
+  touch: { alignItems: "center", gap: 3 },
+  btn: {
+    width: SCAN_SIZE,
+    height: SCAN_SIZE,
+    borderRadius: SCAN_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 10,
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.85)",
+  },
+  label: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: PRIMARY,
+    letterSpacing: 0.5,
+  },
+});
+
+function GlassBackground() {
+  const isIOS = Platform.OS === "ios";
+  if (isIOS) {
+    return (
+      <View style={StyleSheet.absoluteFill}>
+        <BlurView intensity={80} tint="extraLight" style={StyleSheet.absoluteFill} />
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: "rgba(255,255,255,0.55)",
+              borderTopWidth: 0.8,
+              borderTopColor: "rgba(0,119,182,0.15)",
+            },
+          ]}
+        />
+      </View>
+    );
+  }
+  return (
+    <View
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          backgroundColor: "rgba(255,255,255,0.96)",
+          borderTopWidth: 0.8,
+          borderTopColor: "rgba(0,119,182,0.15)",
+        },
+      ]}
+    />
+  );
+}
+
+export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
@@ -42,74 +170,90 @@ export default function TabLayout() {
         tabBarInactiveTintColor: INACTIVE,
         tabBarStyle: {
           position: "absolute",
-          height: Platform.OS === "web" ? 68 : 76,
-          backgroundColor: isIOS ? "transparent" : "rgba(255,255,255,0.97)",
-          borderTopWidth: 1,
-          borderTopColor: "#E2EFF5",
+          height: BAR_HEIGHT,
+          backgroundColor: Platform.OS === "ios" ? "transparent" : "rgba(255,255,255,0.96)",
+          borderTopWidth: 0,
           elevation: 0,
           shadowColor: "#0077B6",
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 14,
+          shadowOffset: { width: 0, height: -6 },
+          shadowOpacity: 0.10,
+          shadowRadius: 18,
         },
-        tabBarBackground: () =>
-          isIOS ? (
-            <View style={{ flex: 1 }}>
-              <BlurView intensity={90} tint="extraLight" style={StyleSheet.absoluteFill} />
-              <View style={[StyleSheet.absoluteFill, { borderTopWidth: 1, borderTopColor: "rgba(0,119,182,0.12)" }]} />
-            </View>
-          ) : null,
-        tabBarLabelStyle: {
-          fontFamily: "Inter_500Medium",
-          fontSize: 10,
-          marginTop: -2,
-        },
-        tabBarItemStyle: {
-          paddingTop: 8,
-        },
-        tabBarIcon: () => null,
+        tabBarBackground: () => <GlassBackground />,
+        tabBarShowLabel: false,
+        tabBarItemStyle: { paddingTop: 0 },
       }}
     >
       <Tabs.Screen
-        name="dashboard"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "grid" : "grid-outline"} focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
         name="food"
         options={{
-          title: "Food",
-          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "restaurant" : "restaurant-outline"} focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              name={focused ? "restaurant" : "restaurant-outline"}
+              focused={focused}
+              label="Food"
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="exercise"
         options={{
-          title: "Exercise",
-          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "barbell" : "barbell-outline"} focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              name={focused ? "barbell" : "barbell-outline"}
+              focused={focused}
+              label="Exercise"
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="scan"
+        options={{
+          tabBarButton: (props) => <ScanTabButton {...props} />,
         }}
       />
       <Tabs.Screen
         name="medicine"
         options={{
-          title: "Medicine",
-          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "medical" : "medical-outline"} focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="diet"
-        options={{
-          title: "AI Coach",
-          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "sparkles" : "sparkles-outline"} focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              name={focused ? "medical" : "medical-outline"}
+              focused={focused}
+              label="Medical"
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
-          tabBarIcon: ({ focused }) => <TabIcon name={focused ? "person" : "person-outline"} focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              name={focused ? "person-circle" : "person-circle-outline"}
+              focused={focused}
+              label="Profile"
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="diet"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="index"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

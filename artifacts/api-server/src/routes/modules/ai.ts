@@ -173,4 +173,102 @@ Return ONLY valid JSON:
   }
 });
 
+router.post("/ai/smart-scan", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
+    if (!geminiKey) return res.status(503).json({ error: "AI service not configured" });
+
+    const { imageBase64, mimeType = "image/jpeg" } = req.body as { imageBase64?: string; mimeType?: string };
+    if (!imageBase64) return res.status(400).json({ error: "imageBase64 required" });
+
+    const prompt = `You are an expert AI health assistant. Carefully analyze this image and determine what type of content it shows.
+
+TASK: First identify the type, then provide detailed analysis.
+
+TYPE DETECTION:
+- If it shows food, meal, dish, beverage, snack, ingredients → type = "food"
+- If it shows a medical/lab report, blood test, prescription, X-ray, scan, health document → type = "medical_report"
+- If it shows a medicine packet, pill bottle, tablet strip → type = "medicine"
+- Otherwise → type = "unknown"
+
+RESPONSE FORMAT (return ONLY valid JSON, no markdown):
+
+For food:
+{
+  "type": "food",
+  "foodName": "Name of the food",
+  "confidence": 0.95,
+  "calories": 250,
+  "proteinG": 8,
+  "carbsG": 35,
+  "fatG": 10,
+  "fiberG": 3,
+  "servingSize": "1 bowl (200g)",
+  "healthScore": 7,
+  "tags": ["vegetarian", "high-protein"],
+  "tip": "A brief health tip about this food",
+  "ingredients": ["main ingredient 1", "main ingredient 2"]
+}
+
+For medical_report:
+{
+  "type": "medical_report",
+  "reportType": "Blood Test / CBC / Lipid Profile / Thyroid / etc.",
+  "confidence": 0.90,
+  "patientName": "if visible, else null",
+  "date": "if visible, else null",
+  "summary": "2-3 sentence plain-language summary of the report",
+  "urgencyLevel": "normal | attention | urgent",
+  "keyFindings": [
+    { "parameter": "Hemoglobin", "value": "13.5 g/dL", "normalRange": "12-17 g/dL", "status": "normal | high | low" }
+  ],
+  "recommendations": ["Recommendation 1", "Recommendation 2"],
+  "disclaimer": "This is an AI analysis only. Please consult your doctor."
+}
+
+For medicine:
+{
+  "type": "medicine",
+  "confidence": 0.88,
+  "medicineName": "Name if readable",
+  "genericName": "Generic name if known",
+  "uses": "What it is typically used for",
+  "commonDosage": "Typical adult dosage",
+  "sideEffects": ["Common side effect 1", "Common side effect 2"],
+  "warnings": ["Warning 1"],
+  "disclaimer": "Always follow your doctor's prescription."
+}
+
+For unknown:
+{ "type": "unknown", "message": "Could not identify health-related content in this image." }`;
+
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: mimeType, data: imageBase64 } }
+            ]
+          }],
+          generationConfig: { temperature: 0.2 }
+        }),
+      }
+    );
+    if (!geminiRes.ok) throw new Error(`Gemini error: ${geminiRes.status}`);
+    const data = await geminiRes.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON in response");
+    const result = JSON.parse(jsonMatch[0]);
+    res.json(result);
+  } catch (err) {
+    console.error("smart-scan error:", err);
+    res.status(500).json({ error: "Smart scan failed. Please try again." });
+  }
+});
+
 export default router;
