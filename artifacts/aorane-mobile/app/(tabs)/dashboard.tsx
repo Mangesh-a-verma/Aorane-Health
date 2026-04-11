@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   RefreshControl, Platform, ActivityIndicator,
-  Animated, Dimensions, FlatList,
+  Animated, Dimensions, FlatList, Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -279,6 +279,7 @@ export default function DashboardScreen() {
     id: string; medicineName: string; dosage?: string;
     mealTiming: string; reminderTimes: string[]; isActive: boolean;
   }>>([]);
+  const [showActivityModal, setShowActivityModal] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<ScrollView>(null);
@@ -487,6 +488,26 @@ export default function DashboardScreen() {
                 <Text style={s.calBarMeta1}>🎯 {remaining} left</Text>
               </View>
             </View>
+
+            {/* Activity Score row — tap to expand */}
+            {activeScore !== null && (
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowActivityModal(true); }}
+                activeOpacity={0.8}
+                style={s.activityRow}
+              >
+                <View style={s.activityRowLeft}>
+                  <Text style={s.activityRowLabel}>⚡ ACTIVITY SCORE</Text>
+                  <View style={s.activityRowBar}>
+                    <View style={[s.activityRowFill, { width: `${activeScore.overall}%` }]} />
+                  </View>
+                </View>
+                <View style={s.activityRowRight}>
+                  <Text style={s.activityRowPct}>{activeScore.overall}%</Text>
+                  <Ionicons name="chevron-forward" size={13} color="rgba(255,255,255,0.6)" />
+                </View>
+              </TouchableOpacity>
+            )}
           </LinearGradient>
         </Animated.View>
 
@@ -643,48 +664,7 @@ export default function DashboardScreen() {
           </View>
         </Animated.View>
 
-        {/* ── ACTIVITY SCORE ── */}
-        {activeScore !== null && (
-          <Animated.View style={{ opacity: fadeAnim, marginBottom: 14 }}>
-            <Text style={s.sectionTitle}>Activity Score</Text>
-            <LinearGradient
-              colors={activeScore.overall >= 70
-                ? ["#064E3B", "#0D9488", "#0EA5E9"]
-                : activeScore.overall >= 40
-                  ? ["#92400E", "#F59E0B", "#FB923C"]
-                  : ["#374151", "#6B7280", "#9CA3AF"]}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={s.actCard}
-            >
-              <View style={s.actShine} />
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <View>
-                  <Text style={s.actSubLabel}>TODAY'S ACTIVITY</Text>
-                  <Text style={s.actLabel}>{activeScore.label}</Text>
-                </View>
-                <View style={s.actCircle}>
-                  <Text style={s.actScore}>{activeScore.overall}</Text>
-                  <Text style={s.actScoreSub}>% Active</Text>
-                </View>
-              </View>
-              {[
-                { label: "Food", pct: activeScore.foodPct, icon: "🍛" },
-                { label: "Water", pct: activeScore.waterPct, icon: "💧" },
-                { label: "Exercise", pct: activeScore.exercisePct, icon: "🏃" },
-              ].map((item) => (
-                <View key={item.label} style={{ marginBottom: 8 }}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-                    <Text style={{ color: "rgba(255,255,255,0.82)", fontSize: 11, fontFamily: "Inter_500Medium" }}>{item.icon} {item.label}</Text>
-                    <Text style={{ color: "#FFF", fontSize: 11, fontFamily: "Inter_700Bold" }}>{item.pct}%</Text>
-                  </View>
-                  <View style={{ height: 5, backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 3, overflow: "hidden" }}>
-                    <View style={{ height: 5, width: `${item.pct}%`, backgroundColor: "rgba(255,255,255,0.88)", borderRadius: 3 }} />
-                  </View>
-                </View>
-              ))}
-            </LinearGradient>
-          </Animated.View>
-        )}
+        {/* Activity Score section removed — now inside hero card */}
 
         {/* ── ADS ── */}
         <Animated.View style={{ opacity: fadeAnim, marginBottom: 14 }}>
@@ -729,6 +709,79 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
+
+      {/* ── ACTIVITY SCORE MODAL ── */}
+      <Modal
+        visible={showActivityModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowActivityModal(false)}
+      >
+        <TouchableOpacity
+          style={s.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowActivityModal(false)}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+            <View style={s.modalSheet}>
+              <View style={s.modalHandle} />
+
+              {/* Modal header */}
+              <View style={s.modalHeader}>
+                <View>
+                  <Text style={s.modalTitle}>⚡ Today's Activity</Text>
+                  <Text style={s.modalSub}>{activeScore?.label ?? ""}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowActivityModal(false)} style={s.modalCloseBtn}>
+                  <Ionicons name="close" size={18} color={C.muted} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Big % circle */}
+              {activeScore && (
+                <>
+                  <LinearGradient
+                    colors={activeScore.overall >= 70 ? ["#064E3B","#0D9488"] : activeScore.overall >= 40 ? ["#92400E","#F59E0B"] : ["#374151","#6B7280"]}
+                    style={s.modalCircle}
+                  >
+                    <Text style={s.modalCirclePct}>{activeScore.overall}%</Text>
+                    <Text style={s.modalCircleLabel}>Active</Text>
+                  </LinearGradient>
+
+                  {/* Breakdown bars */}
+                  {[
+                    { label: "Food", pct: activeScore.foodPct, icon: "🍛", color: C.orange },
+                    { label: "Water", pct: activeScore.waterPct, icon: "💧", color: C.sky },
+                    { label: "Exercise", pct: activeScore.exercisePct, icon: "🏃", color: C.accent },
+                  ].map(item => (
+                    <View key={item.label} style={s.modalBar}>
+                      <View style={s.modalBarHeader}>
+                        <Text style={s.modalBarLabel}>{item.icon} {item.label}</Text>
+                        <Text style={[s.modalBarPct, { color: item.color }]}>{item.pct}%</Text>
+                      </View>
+                      <View style={s.modalBarTrack}>
+                        <View style={[s.modalBarFill, { width: `${item.pct}%`, backgroundColor: item.color }]} />
+                      </View>
+                    </View>
+                  ))}
+
+                  {/* Tips */}
+                  <View style={s.modalTip}>
+                    <Ionicons name="bulb-outline" size={15} color={C.amber} />
+                    <Text style={s.modalTipText}>
+                      {activeScore.overall >= 70
+                        ? "Aaj ka din bahut productive raha! Keep it up 💪"
+                        : activeScore.overall >= 40
+                        ? "Acha progress! Thoda aur exercise aur paani peeyo"
+                        : "Kal se food, water aur exercise track karo for better score"}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -856,4 +909,66 @@ const s = StyleSheet.create({
   aiSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)", lineHeight: 17 },
   aiBadge: { backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start" },
   aiBadgeText: { color: "#FFF", fontSize: 10, fontFamily: "Inter_700Bold" },
+
+  // Activity row inside hero card
+  activityRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    marginTop: 12, paddingTop: 10,
+    borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.18)",
+  },
+  activityRowLeft: { flex: 1, gap: 5 },
+  activityRowLabel: { fontSize: 9.5, fontFamily: "Inter_700Bold", color: "rgba(255,255,255,0.65)", letterSpacing: 1.2 },
+  activityRowBar: { height: 5, backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 3, overflow: "hidden" },
+  activityRowFill: { height: 5, backgroundColor: "rgba(255,255,255,0.85)", borderRadius: 3 },
+  activityRowRight: { flexDirection: "row", alignItems: "center", gap: 4, paddingLeft: 12 },
+  activityRowPct: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFF" },
+
+  // Activity Modal
+  modalOverlay: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 24, paddingBottom: 36,
+    shadowColor: "#000", shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15, shadowRadius: 20, elevation: 20,
+  },
+  modalHandle: {
+    width: 38, height: 4, borderRadius: 2,
+    backgroundColor: "rgba(0,0,0,0.12)",
+    alignSelf: "center", marginBottom: 18,
+  },
+  modalHeader: {
+    flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between", marginBottom: 20,
+  },
+  modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: C.text },
+  modalSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: C.muted, marginTop: 2 },
+  modalCloseBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.06)",
+    alignItems: "center", justifyContent: "center",
+  },
+  modalCircle: {
+    width: 100, height: 100, borderRadius: 50,
+    alignItems: "center", justifyContent: "center",
+    alignSelf: "center", marginBottom: 24,
+  },
+  modalCirclePct: { fontSize: 30, fontFamily: "Inter_700Bold", color: "#FFF" },
+  modalCircleLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.75)" },
+  modalBar: { marginBottom: 16 },
+  modalBarHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 7 },
+  modalBarLabel: { fontSize: 13.5, fontFamily: "Inter_600SemiBold", color: C.text },
+  modalBarPct: { fontSize: 13.5, fontFamily: "Inter_700Bold" },
+  modalBarTrack: { height: 8, backgroundColor: "rgba(0,0,0,0.07)", borderRadius: 4, overflow: "hidden" },
+  modalBarFill: { height: 8, borderRadius: 4 },
+  modalTip: {
+    flexDirection: "row", alignItems: "flex-start", gap: 10,
+    backgroundColor: "rgba(245,158,11,0.08)",
+    borderRadius: 14, padding: 12, marginTop: 4,
+    borderWidth: 1, borderColor: "rgba(245,158,11,0.2)",
+  },
+  modalTipText: { flex: 1, fontSize: 12.5, fontFamily: "Inter_400Regular", color: C.text, lineHeight: 18 },
 });
