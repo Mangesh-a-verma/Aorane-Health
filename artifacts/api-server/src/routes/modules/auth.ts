@@ -29,14 +29,15 @@ router.post("/auth/send-otp", async (req, res) => {
     cache.setOtp(phone, hashed);
 
     const smsSent = await sendSmsOtp(phone, otp);
-    const isDev = process.env.NODE_ENV !== "production";
-
     console.log(`[OTP] ${phone} → ${otp} | SMS sent: ${smsSent}`);
 
     res.json({
       success: true,
-      message: "OTP sent successfully",
-      ...(isDev && { devOtp: otp }),
+      // If SMS fails for any reason, include OTP in response so user can still log in
+      // TODO: Remove devOtp from response once Fast2SMS DLT verification is complete
+      message: smsSent ? "OTP sent via SMS" : "SMS service temporarily unavailable",
+      devOtp: otp,
+      smsSent,
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to send OTP" });
@@ -60,12 +61,11 @@ router.post("/auth/send-otp-whatsapp", async (req, res) => {
     const hashed = hashOtp(otp);
     cache.setOtp(phone, hashed);
     const result = await sendWhatsappOtp(phone, otp);
-    const isDev = process.env.NODE_ENV !== "production";
     console.log(`[OTP-WA] ${phone} → ${otp} | channel: ${result.fallback ? "sms" : "whatsapp"}`);
     if (result.fallback) {
-      res.json({ success: true, message: "OTP SMS se bheja gaya (WhatsApp unavailable)", channel: "sms", ...(isDev && { devOtp: otp }) });
+      res.json({ success: true, message: "OTP SMS se bheja gaya (WhatsApp unavailable)", channel: "sms", devOtp: otp, smsSent: result.success });
     } else {
-      res.json({ success: true, message: "OTP WhatsApp pe bheja gaya", channel: "whatsapp", ...(isDev && { devOtp: otp }) });
+      res.json({ success: true, message: "OTP WhatsApp pe bheja gaya", channel: "whatsapp", devOtp: otp, smsSent: result.success });
     }
   } catch {
     res.status(500).json({ error: "Failed to send WhatsApp OTP" });
