@@ -121,7 +121,7 @@ export default function ProfileScreen() {
         )}
 
         {/* Blood Emergency Quick Access */}
-        <TouchableOpacity onPress={() => router.push("/blood")} activeOpacity={0.85}>
+        <TouchableOpacity onPress={() => router.push("/blood" as never)} activeOpacity={0.85}>
           <LinearGradient
             colors={["#DC2626", "#B91C1C"]}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -158,7 +158,7 @@ export default function ProfileScreen() {
             { emoji: "👨‍👩‍👧‍👦", label: "Family Health", desc: "Pariwar ki health ek group mein", route: "/family", grad: ["#10B981","#059669"] as [string,string] },
             { emoji: "🌸", label: "Period Tracker", desc: "Cycle log + AI prediction + symptoms", route: "/period", grad: ["#EC4899","#9333EA"] as [string,string] },
           ].map((item, idx) => (
-            <TouchableOpacity key={item.label} onPress={() => router.push(item.route as "/scorecard")}
+            <TouchableOpacity key={item.label} onPress={() => router.push(item.route as never)}
               style={[styles.menuItem, { borderTopColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)", borderTopWidth: idx > 0 ? 1 : 0 }]}>
               <LinearGradient colors={item.grad} style={styles.menuIconBg}>
                 <Text style={{ fontSize: 16 }}>{item.emoji}</Text>
@@ -213,7 +213,7 @@ export default function ProfileScreen() {
             <Text style={[styles.sectionTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>Account</Text>
           </View>
           {[
-            { icon: "diamond-outline" as const, label: "Upgrade Plan", color: "#7C3AED", grad: ["#7C3AED","#0077B6"] as [string,string], onPress: () => router.push("/upgrade") },
+            { icon: "diamond-outline" as const, label: "Upgrade Plan", color: "#7C3AED", grad: ["#7C3AED","#0077B6"] as [string,string], onPress: () => router.push("/upgrade" as never) },
             { icon: "notifications-outline" as const, label: "Notifications", color: "#0077B6", grad: ["#0077B6","#1B998B"] as [string,string], onPress: () => Alert.alert("Coming Soon") },
             { icon: "help-circle-outline" as const, label: "Help & Support", color: "#1B998B", grad: ["#1B998B","#059669"] as [string,string], onPress: () => Alert.alert("Coming Soon") },
           ].map((item, idx, arr) => (

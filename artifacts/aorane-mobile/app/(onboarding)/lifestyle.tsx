@@ -124,7 +124,7 @@ export default function OnboardingLifestyle() {
             </GlassCard>
 
             {/* Activity Level */}
-            <GlassCard style={[styles.card, { marginTop: 14 }]}>
+            <GlassCard style={{ ...styles.card, marginTop: 14 }}>
               <Text style={[styles.sectionTitle, { color: isDark ? "rgba(255,255,255,0.85)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Activity Level</Text>
               <Text style={[styles.sectionSub, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>Aap kitna active hain?</Text>
               <View style={styles.activityList}>

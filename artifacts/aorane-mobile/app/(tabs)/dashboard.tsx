@@ -156,7 +156,7 @@ export default function DashboardScreen() {
 
   const handleAddWater = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    try { await api.logWater(1); setWater((w) => ({ ...w, current: w.current + 1 })); } catch { }
+    try { await api.logWater({ glassesCount: 1 }); setWater((w) => ({ ...w, current: w.current + 1 })); } catch { }
   };
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;

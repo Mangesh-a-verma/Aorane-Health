@@ -132,7 +132,7 @@ export default function OnboardingHealth() {
               </View>
             </GlassCard>
 
-            <GlassCard style={[styles.card, { marginTop: 14 }]}>
+            <GlassCard style={{ ...styles.card, marginTop: 14 }}>
               {/* Food Preference */}
               <Text style={[styles.sectionTitle, { color: isDark ? "rgba(255,255,255,0.85)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Food Preference</Text>
               <View style={styles.chipGrid}>

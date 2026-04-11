@@ -99,7 +99,7 @@ export default function LoginScreen() {
       const result = await api.loginWithPIN(phone, pin);
       const userData = result.user as { id: string; phone?: string; plan: string };
       await loginWithToken(result.accessToken, result.refreshToken, { id: userData.id, phone: userData.phone || phone, plan: userData.plan || "free", languageCode: selectedLang }, false);
-      router.replace("/(tabs)/");
+      router.replace("/(tabs)/" as never);
     } catch (err: unknown) {
       Alert.alert("Login Failed", err instanceof Error ? err.message : "Galat phone ya PIN");
     } finally { setIsLoading(false); }

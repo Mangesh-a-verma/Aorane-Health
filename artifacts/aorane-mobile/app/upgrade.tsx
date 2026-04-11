@@ -170,7 +170,7 @@ export default function UpgradeScreen() {
         return;
       }
 
-      if (Platform.OS === "web" && rzpReady && window.Razorpay) {
+      if (Platform.OS === "web" && rzpReady && window.Razorpay && orderRes.razorpayKeyId && orderRes.razorpayOrderId) {
         const rzp = new window.Razorpay({
           key: orderRes.razorpayKeyId,
           amount: orderRes.amount * 100,
@@ -201,7 +201,9 @@ export default function UpgradeScreen() {
         return;
       }
 
-      openRazorpayNative(orderRes);
+      if (orderRes.razorpayOrderId && orderRes.razorpayKeyId) {
+        openRazorpayNative({ paymentId: orderRes.paymentId, razorpayOrderId: orderRes.razorpayOrderId, razorpayKeyId: orderRes.razorpayKeyId, amount: orderRes.amount });
+      }
 
     } catch (e: unknown) {
       Alert.alert("Error", (e as Error).message || "Payment failed. Please try again.");

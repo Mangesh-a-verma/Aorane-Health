@@ -78,7 +78,7 @@ export default function VerifyOtpScreen() {
       await loginWithToken(res.accessToken, res.refreshToken, res.user, res.isNewUser);
 
       if (res.isNewUser) {
-        router.replace("/(onboarding)/");
+        router.replace("/(onboarding)/" as never);
       } else {
         const pinSetAlready = await storage.isPinSet();
         if (pinSetAlready) {
