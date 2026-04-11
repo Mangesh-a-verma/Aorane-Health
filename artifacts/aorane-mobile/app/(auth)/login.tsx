@@ -11,6 +11,8 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { LANGUAGE_NAMES, type LangCode } from "@/lib/translations";
 
 const { width: W } = Dimensions.get("window");
 
@@ -25,35 +27,23 @@ const C = {
   muted: "#7A90A4",
   border: "#E2EFF5",
   inputBg: "#F5FBFD",
-  green: "#00B896",
 };
 
-const LANGUAGES = [
-  { code: "hi", label: "हिंदी" },
-  { code: "en", label: "English" },
-  { code: "bn", label: "বাংলা" },
-  { code: "mr", label: "मराठी" },
-  { code: "te", label: "తెలుగు" },
-  { code: "ta", label: "தமிழ்" },
-  { code: "gu", label: "ગુજરાતી" },
-  { code: "kn", label: "ಕನ್ನಡ" },
-  { code: "ml", label: "മലയാളം" },
-  { code: "pa", label: "ਪੰਜਾਬੀ" },
-];
+const LANG_CODES = Object.keys(LANGUAGE_NAMES) as LangCode[];
 
 const FEATURES = [
-  { icon: "nutrition-outline", label: "AI Food Scan", color: "#00B896" },
-  { icon: "fitness-outline", label: "Exercise Tracker", color: "#0077B6" },
-  { icon: "heart-outline", label: "Health Score", color: "#EF4444" },
-  { icon: "medkit-outline", label: "Medicine Remind", color: "#F59E0B" },
+  { icon: "nutrition-outline" as const, label: "AI Food Scan", color: "#00B896" },
+  { icon: "fitness-outline" as const, label: "Exercise Tracker", color: "#0077B6" },
+  { icon: "heart-outline" as const, label: "Health Score", color: "#EF4444" },
+  { icon: "medkit-outline" as const, label: "Medicine Remind", color: "#F59E0B" },
 ];
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { loginWithToken } = useAuth();
+  const { lang, setLang, t } = useLanguage();
 
   const [phone, setPhone] = useState("");
-  const [selectedLang, setSelectedLang] = useState("hi");
   const [isLoading, setIsLoading] = useState(false);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -79,45 +69,43 @@ export default function LoginScreen() {
   }, []);
 
   const handleSendOtp = async () => {
-    if (phone.length !== 10) { Alert.alert("Invalid Number", "10-digit mobile number daalo"); return; }
+    if (phone.length !== 10) { Alert.alert(t("invalidNumber"), t("invalidNumberMsg")); return; }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsLoading(true);
     try {
       await api.sendOtp(phone);
-      router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang: selectedLang } });
+      router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } });
     } catch (err: unknown) {
-      Alert.alert("Error", err instanceof Error ? err.message : "OTP bhejne mein error");
+      Alert.alert(t("otpError"), err instanceof Error ? err.message : t("otpError"));
     } finally { setIsLoading(false); }
   };
 
   const handleWhatsappOtp = async () => {
-    if (phone.length !== 10) { Alert.alert("Invalid Number", "10-digit mobile number daalo"); return; }
+    if (phone.length !== 10) { Alert.alert(t("invalidNumber"), t("invalidNumberMsg")); return; }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setWhatsappLoading(true);
     try {
       const res = await api.sendWhatsappOtp(phone);
-      const channelMsg = res.channel === "whatsapp"
-        ? "OTP aapke WhatsApp pe bheja gaya ✅"
-        : "OTP SMS pe bheja gaya";
-      Alert.alert("OTP Bheja!", channelMsg, [{ text: "OK" }]);
-      router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang: selectedLang } });
+      const msg = res.channel === "whatsapp" ? t("otpSentWhatsapp") : t("otpSentSms");
+      Alert.alert(t("otpSent"), msg, [{ text: t("ok") }]);
+      router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } });
     } catch (err: unknown) {
-      Alert.alert("Error", err instanceof Error ? err.message : "WhatsApp OTP mein error");
+      Alert.alert(t("otpError"), err instanceof Error ? err.message : t("otpError"));
     } finally { setWhatsappLoading(false); }
   };
 
   const handlePinLogin = async () => {
-    if (phone.length !== 10) { Alert.alert("Phone Chahiye", "10-digit phone number daalo"); return; }
-    if (pin.length < 4) { Alert.alert("PIN Chahiye", "4-6 digit PIN daalo"); return; }
+    if (phone.length !== 10) { Alert.alert(t("phoneRequired"), t("invalidNumberMsg")); return; }
+    if (pin.length < 4) { Alert.alert(t("pinRequired"), t("pinRequiredMsg")); return; }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsLoading(true);
     try {
       const result = await api.loginWithPIN(phone, pin);
       const userData = result.user as { id: string; phone?: string; plan: string };
-      await loginWithToken(result.accessToken, result.refreshToken, { id: userData.id, phone: userData.phone || phone, plan: userData.plan || "free", languageCode: selectedLang }, false);
+      await loginWithToken(result.accessToken, result.refreshToken, { id: userData.id, phone: userData.phone || phone, plan: userData.plan || "free", languageCode: lang }, false);
       router.replace("/(tabs)/" as never);
     } catch (err: unknown) {
-      Alert.alert("Login Failed", err instanceof Error ? err.message : "Galat phone ya PIN");
+      Alert.alert(t("loginFailed"), err instanceof Error ? err.message : t("loginFailed"));
     } finally { setIsLoading(false); }
   };
 
@@ -146,12 +134,12 @@ export default function LoginScreen() {
               </Animated.View>
               <View style={s.taglineRow}>
                 <View style={s.taglineDot} />
-                <Text style={s.tagline}>Aapki health, aapke haath mein 🇮🇳</Text>
+                <Text style={s.tagline}>{t("loginTagline")}</Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.featRow}>
                 {FEATURES.map(f => (
                   <View key={f.label} style={s.featChip}>
-                    <Ionicons name={f.icon as keyof typeof Ionicons.glyphMap} size={13} color={f.color} />
+                    <Ionicons name={f.icon} size={13} color={f.color} />
                     <Text style={[s.featLabel, { color: f.color }]}>{f.label}</Text>
                   </View>
                 ))}
@@ -161,17 +149,21 @@ export default function LoginScreen() {
 
           {/* ── LANGUAGE PICKER ── */}
           <Animated.View style={{ opacity: fadeAnim }}>
-            <Text style={s.langHeading}>APNI BHASHA CHUNEIN</Text>
+            <Text style={s.langHeading}>{t("selectLanguage")}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
-              {LANGUAGES.map(l => (
-                <TouchableOpacity key={l.code} onPress={() => { Haptics.selectionAsync(); setSelectedLang(l.code); }} activeOpacity={0.7}>
-                  {selectedLang === l.code ? (
+              {LANG_CODES.map(code => (
+                <TouchableOpacity
+                  key={code}
+                  onPress={() => { Haptics.selectionAsync(); setLang(code); }}
+                  activeOpacity={0.7}
+                >
+                  {lang === code ? (
                     <LinearGradient colors={C.gradient} style={s.langActive}>
-                      <Text style={[s.langText, { color: "#FFF" }]}>{l.label}</Text>
+                      <Text style={[s.langText, { color: "#FFF" }]}>{LANGUAGE_NAMES[code]}</Text>
                     </LinearGradient>
                   ) : (
                     <View style={s.langInactive}>
-                      <Text style={[s.langText, { color: C.muted }]}>{l.label}</Text>
+                      <Text style={[s.langText, { color: C.muted }]}>{LANGUAGE_NAMES[code]}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -186,8 +178,8 @@ export default function LoginScreen() {
                 <Ionicons name={loginMode === "pin" ? "keypad-outline" : "phone-portrait-outline"} size={18} color="#FFF" />
               </LinearGradient>
               <View>
-                <Text style={s.cardTitle}>Login Karo</Text>
-                <Text style={s.cardSub}>{loginMode === "pin" ? "PIN se quick login" : "OTP aapke number pe aayega"}</Text>
+                <Text style={s.cardTitle}>{t("loginTitle")}</Text>
+                <Text style={s.cardSub}>{loginMode === "pin" ? t("loginSubPin") : t("loginSubOtp")}</Text>
               </View>
             </View>
 
@@ -196,7 +188,7 @@ export default function LoginScreen() {
               {(["otp", "pin"] as const).map(mode => (
                 <TouchableOpacity key={mode} onPress={() => { setLoginMode(mode); Haptics.selectionAsync(); }} style={[s.toggleBtn, loginMode === mode && s.toggleBtnActive]}>
                   <Text style={[s.toggleText, loginMode === mode && s.toggleTextActive]}>
-                    {mode === "otp" ? "📱 OTP" : "🔐 PIN"}
+                    {mode === "otp" ? t("otpTab") : t("pinTab")}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -210,7 +202,7 @@ export default function LoginScreen() {
               </View>
               <TextInput
                 style={s.input}
-                placeholder="10-digit mobile number"
+                placeholder={t("phonePlaceholder")}
                 placeholderTextColor={C.muted}
                 keyboardType="numeric"
                 maxLength={10}
@@ -231,11 +223,11 @@ export default function LoginScreen() {
             {loginMode === "pin" && (
               <View style={[s.inputRow, { marginTop: 0 }, pinFocused && { borderColor: "#7C3AED", borderWidth: 2 }]}>
                 <View style={s.ccBox}>
-                  <Text style={{ fontSize: 16 }}>🔐</Text>
+                  <Ionicons name="keypad-outline" size={18} color="#7C3AED" />
                 </View>
                 <TextInput
                   style={s.input}
-                  placeholder="4-6 digit PIN"
+                  placeholder={t("pinPlaceholder")}
                   placeholderTextColor={C.muted}
                   keyboardType="numeric"
                   maxLength={6}
@@ -255,7 +247,7 @@ export default function LoginScreen() {
               activeOpacity={0.85}
               style={{ marginTop: 8 }}
             >
-              {(isActive && (loginMode === "otp" || pin.length >= 4)) ? (
+              {isActive && (loginMode === "otp" || pin.length >= 4) ? (
                 <LinearGradient
                   colors={loginMode === "pin" ? ["#7C3AED", "#0077B6"] : C.gradientBtn}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -263,7 +255,7 @@ export default function LoginScreen() {
                 >
                   {isLoading ? <ActivityIndicator color="#FFF" /> : (
                     <>
-                      <Text style={s.ctaText}>{loginMode === "pin" ? "PIN se Login" : "📱 SMS OTP Bhejein"}</Text>
+                      <Text style={s.ctaText}>{loginMode === "pin" ? t("pinLogin") : t("sendSmsOtp")}</Text>
                       <View style={s.ctaArrow}>
                         <Ionicons name="arrow-forward" size={16} color={loginMode === "pin" ? "#7C3AED" : C.primary} />
                       </View>
@@ -272,7 +264,7 @@ export default function LoginScreen() {
                 </LinearGradient>
               ) : (
                 <View style={s.ctaBtnDisabled}>
-                  <Text style={s.ctaTextDisabled}>{loginMode === "pin" ? "PIN se Login" : "📱 SMS OTP Bhejein"}</Text>
+                  <Text style={s.ctaTextDisabled}>{loginMode === "pin" ? t("pinLogin") : t("sendSmsOtp")}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -290,37 +282,37 @@ export default function LoginScreen() {
                 ) : (
                   <>
                     <View style={s.waIconWrap}>
-                      <Text style={{ fontSize: 16 }}>💬</Text>
+                      <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
                     </View>
-                    <Text style={[s.waBtnText, !isActive && { color: "#A0B4BF" }]}>WhatsApp pe OTP Mangaayein</Text>
+                    <Text style={[s.waBtnText, !isActive && { color: "#A0B4BF" }]}>{t("sendWhatsappOtp")}</Text>
                   </>
                 )}
               </TouchableOpacity>
             )}
 
             {loginMode === "pin" && (
-              <Text style={s.pinHint}>PIN set karne ke liye OTP se login karein → Profile → Set PIN</Text>
+              <Text style={s.pinHint}>{t("pinHint")}</Text>
             )}
 
             {/* Divider */}
             <View style={s.divRow}>
               <View style={s.divLine} />
-              <Text style={s.divText}>ya</Text>
+              <Text style={s.divText}>{t("orText")}</Text>
               <View style={s.divLine} />
             </View>
 
             {/* X (Twitter) — Coming Soon */}
             <TouchableOpacity
-              onPress={() => Alert.alert("Jald Aayega! 🚀", "X (Twitter) se login jald available hoga.")}
+              onPress={() => Alert.alert("🚀", t("comingSoonMsg"))}
               activeOpacity={0.75}
               style={s.xBtn}
             >
               <View style={s.xIconWrap}>
-                <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 13 }}>✕</Text>
+                <Ionicons name="logo-x" size={16} color="#FFF" />
               </View>
-              <Text style={s.xBtnText}>X (Twitter) se Login</Text>
+              <Text style={s.xBtnText}>{t("xLogin")}</Text>
               <View style={s.comingSoonBadge}>
-                <Text style={s.comingSoonText}>Jald</Text>
+                <Text style={s.comingSoonText}>{t("comingSoon")}</Text>
               </View>
             </TouchableOpacity>
           </Animated.View>
@@ -328,12 +320,12 @@ export default function LoginScreen() {
           {/* Trust Badges */}
           <Animated.View style={[s.badgeRow, { opacity: fadeAnim }]}>
             {[
-              { icon: "lock-closed-outline", text: "256-bit Encrypted", color: C.primary },
-              { icon: "shield-checkmark-outline", text: "DPDP Compliant", color: C.accent },
-              { icon: "heart-outline", text: "Made in India", color: "#EF4444" },
+              { icon: "lock-closed-outline" as const, text: t("encrypted"), color: C.primary },
+              { icon: "shield-checkmark-outline" as const, text: t("dpdpCompliant"), color: C.accent },
+              { icon: "heart-outline" as const, text: t("madeInIndia"), color: "#EF4444" },
             ].map(b => (
               <View key={b.text} style={s.badge}>
-                <Ionicons name={b.icon as keyof typeof Ionicons.glyphMap} size={11} color={b.color} />
+                <Ionicons name={b.icon} size={11} color={b.color} />
                 <Text style={s.badgeText}>{b.text}</Text>
               </View>
             ))}
@@ -347,7 +339,6 @@ export default function LoginScreen() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#F0FAFB" },
   scroll: { paddingHorizontal: 18 },
-
   blob1: { position: "absolute", width: 300, height: 300, borderRadius: 150, backgroundColor: "#BAE6FD", opacity: 0.35, top: -100, right: -100 },
   blob2: { position: "absolute", width: 250, height: 250, borderRadius: 125, backgroundColor: "#A7F3D0", opacity: 0.3, bottom: 100, left: -80 },
 
@@ -394,7 +385,7 @@ const s = StyleSheet.create({
 
   waBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, height: 50, borderRadius: 14, backgroundColor: "#F0FFF4", borderWidth: 1.5, borderColor: "#25D366", marginTop: 10 },
   waBtnDisabled: { borderColor: "#D1FAE5", backgroundColor: "#F8FFF9" },
-  waIconWrap: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#25D366", alignItems: "center", justifyContent: "center" },
+  waIconWrap: { width: 32, height: 32, borderRadius: 16, backgroundColor: "#25D366", alignItems: "center", justifyContent: "center" },
   waBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#128C7E" },
 
   divRow: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 16 },
@@ -402,7 +393,7 @@ const s = StyleSheet.create({
   divText: { fontSize: 13, color: "#A0B4BF", fontFamily: "Inter_400Regular" },
 
   xBtn: { flexDirection: "row", alignItems: "center", gap: 10, height: 50, borderRadius: 14, backgroundColor: "#F8F8F8", borderWidth: 1.5, borderColor: "#E5E7EB", paddingHorizontal: 16 },
-  xIconWrap: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
+  xIconWrap: { width: 32, height: 32, borderRadius: 16, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
   xBtnText: { flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#1A1A1A" },
   comingSoonBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#E5E7EB" },
   comingSoonText: { fontSize: 10, fontFamily: "Inter_500Medium", color: "#6B7280" },

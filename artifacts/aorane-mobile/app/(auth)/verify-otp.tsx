@@ -10,7 +10,9 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { storage } from "@/lib/storage";
+import type { LangCode } from "@/lib/translations";
 
 const { width: W } = Dimensions.get("window");
 
@@ -29,7 +31,8 @@ const C = {
 export default function VerifyOtpScreen() {
   const insets = useSafeAreaInsets();
   const { loginWithToken } = useAuth();
-  const { phone, lang = "hi" } = useLocalSearchParams<{ phone: string; lang: string }>();
+  const { t } = useLanguage();
+  const { phone, lang: langParam = "en" } = useLocalSearchParams<{ phone: string; lang: string }>();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,7 +77,7 @@ export default function VerifyOtpScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsLoading(true);
     try {
-      const res = await api.verifyOtp(phone || "", otpValue, lang as string);
+      const res = await api.verifyOtp(phone || "", otpValue, langParam as string);
       await loginWithToken(res.accessToken, res.refreshToken, res.user, res.isNewUser);
 
       if (res.isNewUser) {
@@ -88,8 +91,8 @@ export default function VerifyOtpScreen() {
         }
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Invalid OTP";
-      Alert.alert("Galat OTP", msg);
+      const msg = err instanceof Error ? err.message : t("wrongOtp");
+      Alert.alert(t("wrongOtp"), msg);
       setOtp(["", "", "", "", "", ""]);
       inputs.current[0]?.focus();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -131,8 +134,8 @@ export default function VerifyOtpScreen() {
             <View style={s.iconGlowRing} />
           </Animated.View>
 
-          <Text style={s.title}>OTP Enter Karein</Text>
-          <Text style={s.subtitle}>+91 {phone} pe 6-digit code bheja gaya</Text>
+          <Text style={s.title}>{t("enterOtp")}</Text>
+          <Text style={s.subtitle}>{t("otpSentTo")} {phone}</Text>
 
           <View style={s.card}>
             <View style={s.progressTrack}>
@@ -161,14 +164,14 @@ export default function VerifyOtpScreen() {
             </View>
 
             <Text style={s.countText}>
-              {filled === 0 ? "6 digits enter karein" : filled < 6 ? `${filled}/6 entered` : "Verifying..."}
+              {filled === 0 ? t("enterOtp") : filled < 6 ? `${filled}/6` : t("verifying")}
             </Text>
           </View>
 
           {isLoading && (
             <View style={s.loadingWrap}>
               <ActivityIndicator color={C.primary} size="small" />
-              <Text style={s.loadingText}>Verify ho raha hai...</Text>
+              <Text style={s.loadingText}>{t("verifying")}</Text>
             </View>
           )}
 
@@ -176,14 +179,14 @@ export default function VerifyOtpScreen() {
             <View style={[s.resendPill, resendTimer === 0 && { borderColor: C.primary, backgroundColor: "#EBF5FF" }]}>
               <Ionicons name="refresh-outline" size={14} color={resendTimer > 0 ? C.muted : C.primary} />
               <Text style={[s.resendText, { color: resendTimer > 0 ? C.muted : C.primary }]}>
-                {resendTimer > 0 ? `Resend in ${resendTimer}s` : "OTP Dobara Bhejein"}
+                {resendTimer > 0 ? `${t("resendIn")} ${resendTimer}s` : t("resendOtp")}
               </Text>
             </View>
           </TouchableOpacity>
 
           <View style={s.secNote}>
             <Ionicons name="lock-closed" size={12} color={C.primary} />
-            <Text style={s.secText}>OTP sirf ek baar kaam karta hai • End-to-end encrypted</Text>
+            <Text style={s.secText}>{t("secureNote")}</Text>
           </View>
         </Animated.View>
       </View>
