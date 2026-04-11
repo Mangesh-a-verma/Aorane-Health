@@ -101,6 +101,64 @@ export const bloodEmergencyResponsesTable = pgTable("blood_emergency_responses",
   respondedAt: timestamp("responded_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ════════════════════════════════════════════════════════════════════════════
+// ACCIDENT EMERGENCY — Structure ready, full implementation pending
+// Requires: Hospital API partnerships + Police emergency API approvals
+// Plan: 2-3 taps → GPS sent to nearest hospital + police → auto-call
+// ════════════════════════════════════════════════════════════════════════════
+
+export const accidentEmergencyStatusEnum = pgEnum("accident_emergency_status", [
+  "triggered",   // User pressed SOS
+  "locating",    // GPS being captured
+  "notified",    // Hospitals/police notified
+  "responded",   // Help confirmed coming
+  "cancelled",   // User cancelled
+  "resolved",    // Emergency resolved
+]);
+
+export const accidentEmergencyLogsTable = pgTable("accident_emergency_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+
+  // GPS at time of emergency
+  lat: text("lat").notNull(),
+  lng: text("lng").notNull(),
+  accuracyMeters: text("accuracy_meters"),
+  address: text("address"),              // reverse-geocoded address
+
+  // Status
+  status: accidentEmergencyStatusEnum("status").notNull().default("triggered"),
+
+  // Who was notified (future: linked to hospital/police APIs)
+  hospitalsNotified: integer("hospitals_notified").notNull().default(0),
+  policeNotified: boolean("police_notified").notNull().default(false),
+  nearbyHospitalsJson: text("nearby_hospitals_json"),  // JSON of nearest hospitals sent
+  respondedAt: timestamp("responded_at", { withTimezone: true }),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  cancelReason: text("cancel_reason"),
+
+  // Emergency contacts notified (from user's profile)
+  emergencyContactsNotified: integer("emergency_contacts_notified").notNull().default(0),
+
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+// Pre-configured emergency contacts (user sets these in profile)
+export const emergencyContactsTable = pgTable("emergency_contacts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  phone: text("phone").notNull(),
+  relation: text("relation"),            // e.g. "Wife", "Son", "Friend"
+  isPrimary: boolean("is_primary").notNull().default(false),
+  notifyOnAccident: boolean("notify_on_accident").notNull().default(true),
+  notifyOnBloodEmergency: boolean("notify_on_blood_emergency").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const insertBloodDonorSchema = createInsertSchema(bloodDonorsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertBloodEmergencyRequestSchema = createInsertSchema(bloodEmergencyRequestsTable).omit({ id: true, createdAt: true, updatedAt: true });
 
