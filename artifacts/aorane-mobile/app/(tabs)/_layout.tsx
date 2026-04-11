@@ -2,7 +2,7 @@ import { Tabs } from "expo-router";
 import React, { useRef, useEffect } from "react";
 import {
   Platform, StyleSheet, View, Text,
-  TouchableOpacity, Animated, Pressable, Dimensions,
+  TouchableOpacity, Animated, Pressable,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
@@ -11,71 +11,42 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Home, Dumbbell, ScanLine, Pill, User } from "lucide-react-native";
 import { DS } from "@/lib/theme";
 
-const { width: W } = Dimensions.get("window");
+const INACTIVE  = DS.color.muted;
+const BAR_H     = 64;
+const SCAN_D    = 54;
 
-const INACTIVE = DS.color.muted;
-const BAR_H    = 68;
-const SCAN_D   = 52;
-const SCAN_LIFT = -6;
-const PILL_H   = 52;
-const SIDE_PAD = 16;
-
-// ── Animated Tab Icon ─────────────────────────────────────────────────────────
-function TabIcon({
-  Icon, focused, label,
-}: {
+// ── Tab Icon ──────────────────────────────────────────────────────────────────
+function TabIcon({ Icon, focused, label }: {
   Icon: React.FC<{ size?: number; color?: string; strokeWidth?: number }>;
-  focused: boolean;
-  label: string;
+  focused: boolean; label: string;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
-  const bgOp  = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, { toValue: focused ? 1.08 : 1, useNativeDriver: true, damping: 12 }),
-      Animated.timing(bgOp,  { toValue: focused ? 1 : 0, duration: 180, useNativeDriver: true }),
-    ]).start();
+    Animated.spring(scale, { toValue: focused ? 1.1 : 1, useNativeDriver: true, damping: 14 }).start();
   }, [focused]);
 
   return (
     <View style={ti.wrap}>
-      <Animated.View style={[ti.iconWrap, { transform: [{ scale }] }]}>
-        <Animated.View style={[StyleSheet.absoluteFill, ti.activeBg, { opacity: bgOp }]} />
+      <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
         <Icon
-          size={22}
+          size={23}
           color={focused ? DS.color.primary : INACTIVE}
           strokeWidth={focused ? 2.2 : 1.7}
         />
       </Animated.View>
-      {focused && (
-        <Text style={ti.label} numberOfLines={1}>{label}</Text>
-      )}
+      {focused ? (
+        <Text style={ti.label}>{label}</Text>
+      ) : null}
     </View>
   );
 }
 
 const ti = StyleSheet.create({
-  wrap:     { alignItems: "center", justifyContent: "center" },
-  iconWrap: {
-    width: 40, height: 40, borderRadius: 20,
-    alignItems: "center", justifyContent: "center",
-    overflow: "hidden",
-  },
-  activeBg: {
-    backgroundColor: DS.color.primarySoft,
-    borderRadius: 20,
-  },
-  label: {
-    fontSize: 10.5,
-    fontFamily: "Inter_600SemiBold",
-    color: DS.color.primary,
-    marginTop: 2,
-    letterSpacing: 0.2,
-  },
+  wrap:  { alignItems: "center", justifyContent: "center", gap: 3 },
+  label: { fontSize: 10.5, fontFamily: "Inter_600SemiBold", color: DS.color.primary, letterSpacing: 0.2 },
 });
 
-// ── Floating SCAN Button ──────────────────────────────────────────────────────
+// ── SCAN Button ───────────────────────────────────────────────────────────────
 function ScanButton({ onPress }: { onPress: () => void }) {
   const scale = useRef(new Animated.Value(1)).current;
   const pulse = useRef(new Animated.Value(1)).current;
@@ -83,27 +54,27 @@ function ScanButton({ onPress }: { onPress: () => void }) {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.12, duration: 1200, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1.00, duration: 1200, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1.14, duration: 1300, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1.00, duration: 1300, useNativeDriver: true }),
       ])
     ).start();
   }, []);
 
   return (
     <Pressable
-      onPressIn ={() => Animated.spring(scale, { toValue: 0.90, useNativeDriver: true, damping: 10 }).start()}
+      onPressIn ={() => Animated.spring(scale, { toValue: 0.88, useNativeDriver: true, damping: 10 }).start()}
       onPressOut={() => Animated.spring(scale, { toValue: 1.00, useNativeDriver: true, damping: 8  }).start()}
       onPress={onPress}
       hitSlop={14}
     >
       <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
-        <Animated.View style={[sb.pulseRing, { transform: [{ scale: pulse }] }]} />
+        <Animated.View style={[sb.pulse, { transform: [{ scale: pulse }] }]} />
         <LinearGradient
-          colors={[DS.color.headerStart, DS.color.headerEnd]}
+          colors={["#E8622A", "#F5A623"]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={sb.circle}
         >
-          <ScanLine size={24} color="#FFF" strokeWidth={2.2} />
+          <ScanLine size={25} color="#FFF" strokeWidth={2.2} />
         </LinearGradient>
       </Animated.View>
     </Pressable>
@@ -111,12 +82,12 @@ function ScanButton({ onPress }: { onPress: () => void }) {
 }
 
 const sb = StyleSheet.create({
-  pulseRing: {
+  pulse: {
     position: "absolute",
-    width: SCAN_D + 14, height: SCAN_D + 14,
-    borderRadius: (SCAN_D + 14) / 2,
+    width: SCAN_D + 16, height: SCAN_D + 16,
+    borderRadius: (SCAN_D + 16) / 2,
     backgroundColor: DS.color.primarySoft,
-    top: -7, left: -7,
+    top: -8, left: -8,
   },
   circle: {
     width: SCAN_D, height: SCAN_D,
@@ -124,8 +95,8 @@ const sb = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
     borderWidth: 3, borderColor: "#FFF",
     shadowColor: DS.color.primary,
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.35, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4, shadowRadius: 10,
     elevation: 14,
   },
 });
@@ -138,65 +109,51 @@ const TABS = [
   { name: "profile",   Icon: User,     label: "Profile" },
 ] as const;
 
+const SLOTS: Array<"dashboard" | "exercise" | "scan" | "medicine" | "profile"> =
+  ["dashboard", "exercise", "scan", "medicine", "profile"];
+
 // ── Custom Tab Bar ────────────────────────────────────────────────────────────
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
-  const insets      = useSafeAreaInsets();
-  const safeBottom  = insets.bottom;
-  const wrapperH    = BAR_H + safeBottom + Math.abs(SCAN_LIFT) + SCAN_D / 2;
-  const activeRoute = state.routes[state.index]?.name ?? "";
-
-  const slots: Array<"dashboard" | "exercise" | "scan" | "medicine" | "profile"> =
-    ["dashboard", "exercise", "scan", "medicine", "profile"];
+  const insets     = useSafeAreaInsets();
+  const safeBottom = insets.bottom;
+  const totalH     = BAR_H + safeBottom;
+  const active     = state.routes[state.index]?.name ?? "";
 
   return (
-    <View
-      style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: wrapperH, overflow: "visible" }}
-      pointerEvents="box-none"
-    >
-      {/* Pill bar background */}
-      <View style={[bar.bg, { height: BAR_H + safeBottom, paddingBottom: safeBottom }]}>
+    <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: totalH + SCAN_D / 2 }} pointerEvents="box-none">
+
+      {/* Background bar */}
+      <View style={[bar.bg, { height: totalH }]}>
         {Platform.OS === "ios" ? (
           <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill} />
         ) : null}
-        <View style={[StyleSheet.absoluteFill, {
-          backgroundColor: Platform.OS === "ios"
-            ? "rgba(255,252,248,0.72)"
-            : "rgba(255,252,248,0.97)",
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-        }]} />
-        <View style={bar.topBorder} />
+        <View style={[StyleSheet.absoluteFill, bar.fill]} />
+        <View style={bar.topLine} />
       </View>
 
-      {/* Pill row */}
-      <View style={[bar.pillRow, { bottom: safeBottom + (BAR_H - PILL_H) / 2 }]}>
-        <View style={bar.pill}>
-          {slots.map((slot) => {
-            if (slot === "scan") {
-              return <View key="scan-gap" style={{ width: SCAN_D + 16 }} />;
-            }
-            const cfg     = TABS.find((t) => t.name === slot)!;
-            const focused = activeRoute === slot;
+      {/* Tab row */}
+      <View style={[bar.row, { height: BAR_H, bottom: safeBottom }]}>
+        {SLOTS.map((slot) => {
+          if (slot === "scan") {
             return (
-              <TouchableOpacity
-                key={slot}
-                style={bar.tabBtn}
-                onPress={() => navigation.navigate(slot)}
-                activeOpacity={0.8}
-              >
-                <TabIcon Icon={cfg.Icon} focused={focused} label={cfg.label} />
-              </TouchableOpacity>
+              <View key="scan" style={bar.scanSlot}>
+                <ScanButton onPress={() => navigation.navigate("scan")} />
+              </View>
             );
-          })}
-        </View>
-      </View>
-
-      {/* Floating SCAN button */}
-      <View
-        style={[bar.scanWrap, { bottom: safeBottom + BAR_H - SCAN_D / 2 + SCAN_LIFT }]}
-        pointerEvents="box-none"
-      >
-        <ScanButton onPress={() => navigation.navigate("scan")} />
+          }
+          const cfg     = TABS.find((t) => t.name === slot)!;
+          const focused = active === slot;
+          return (
+            <TouchableOpacity
+              key={slot}
+              style={bar.tabBtn}
+              onPress={() => navigation.navigate(slot)}
+              activeOpacity={0.8}
+            >
+              <TabIcon Icon={cfg.Icon} focused={focused} label={cfg.label} />
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -205,44 +162,35 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 const bar = StyleSheet.create({
   bg: {
     position: "absolute", left: 0, right: 0, bottom: 0,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopLeftRadius: 22, borderTopRightRadius: 22,
     overflow: "hidden",
-    shadowColor: "#E8622A",
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 16,
+    shadowColor: "#594139",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06, shadowRadius: 14,
+    elevation: 14,
   },
-  topBorder: {
-    position: "absolute", top: 0, left: 24, right: 24,
+  fill: {
+    backgroundColor: Platform.OS === "ios" ? "rgba(255,252,249,0.85)" : "#FFFCF9",
+    borderTopLeftRadius: 22, borderTopRightRadius: 22,
+  },
+  topLine: {
+    position: "absolute", top: 0, left: 0, right: 0,
     height: 1, backgroundColor: "rgba(232,98,42,0.10)",
   },
-  pillRow: {
-    position: "absolute", left: SIDE_PAD, right: SIDE_PAD,
-    height: PILL_H,
-  },
-  pill: {
-    flex: 1, height: PILL_H,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.90)",
-    borderRadius: PILL_H / 2,
-    borderWidth: 1,
-    borderColor: "rgba(232,98,42,0.10)",
-    paddingHorizontal: 8,
-    shadowColor: "#E8622A",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 8,
-    elevation: 4,
+  row: {
+    position: "absolute", left: 0, right: 0,
+    flexDirection: "row", alignItems: "center",
   },
   tabBtn: {
-    flex: 1, height: PILL_H,
+    flex: 1, height: BAR_H,
     alignItems: "center", justifyContent: "center",
   },
-  scanWrap: {
-    position: "absolute", left: 0, right: 0,
+  scanSlot: {
+    width: SCAN_D + 32,
     alignItems: "center",
+    justifyContent: "flex-start",
+    paddingTop: 4,
+    marginTop: -(SCAN_D / 2),
   },
 });
 
