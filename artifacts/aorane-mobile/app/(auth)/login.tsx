@@ -445,25 +445,17 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Other social buttons (coming soon) */}
-            <View style={s.socialRow}>
-              {[
-                { label: "Facebook", icon: "f", bg: "#EEF4FF", border: "#DBEAFE", iconBg: "#1877F2", iconColor: "#FFF", textColor: "#1877F2" },
-                { label: "X (Twitter)", icon: "✕", bg: "#F8F8F8", border: "#E5E7EB", iconBg: "#000", iconColor: "#FFF", textColor: "#1A1A1A" },
-              ].map(btn => (
-                <TouchableOpacity
-                  key={btn.label}
-                  onPress={() => Alert.alert("Jald Aayega", `${btn.label} login jald aayega!`)}
-                  style={[s.socialBtn, { backgroundColor: btn.bg, borderColor: btn.border }]}
-                  activeOpacity={0.75}
-                >
-                  <View style={[s.socialIcon, { backgroundColor: btn.iconBg }]}>
-                    <Text style={{ color: btn.iconColor, fontWeight: "bold", fontSize: 11 }}>{btn.icon}</Text>
-                  </View>
-                  <Text style={[s.socialLabel, { color: btn.textColor }]}>{btn.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {/* X (Twitter) — coming soon */}
+            <TouchableOpacity
+              onPress={() => Alert.alert("Jald Aayega", "X (Twitter) login jald aayega!")}
+              style={[s.socialBtn, { backgroundColor: "#F8F8F8", borderColor: "#E5E7EB", flexDirection: "row", gap: 10, paddingHorizontal: 16 }]}
+              activeOpacity={0.75}
+            >
+              <View style={[s.socialIcon, { backgroundColor: "#000" }]}>
+                <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 11 }}>✕</Text>
+              </View>
+              <Text style={[s.socialLabel, { color: "#1A1A1A", fontSize: 13 }]}>X (Twitter) se Login</Text>
+            </TouchableOpacity>
           </Animated.View>
 
           {/* Trust Badges */}
