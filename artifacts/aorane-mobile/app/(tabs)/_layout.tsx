@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import React, { useRef, useEffect } from "react";
 import {
-  Platform, StyleSheet, View, Text,
+  Platform, StyleSheet, View,
   TouchableOpacity, Animated, Pressable,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -51,7 +51,6 @@ function TabIcon({
           strokeWidth={focused ? 2.2 : 1.8}
         />
       </Animated.View>
-      <Text style={[ti.label, { color: focused ? P : INACTIVE }]}>{label}</Text>
       <Animated.View style={[ti.dot, { opacity: dot, backgroundColor: P }]} />
     </View>
   );
@@ -60,7 +59,7 @@ function TabIcon({
 const ti = StyleSheet.create({
   wrap:     { alignItems: "center", gap: 2 },
   iconBox:  {
-    width: 44, height: 30, borderRadius: 14,
+    width: 44, height: 36, borderRadius: 14,
     alignItems: "center", justifyContent: "center",
     overflow: "hidden",
   },
@@ -68,7 +67,6 @@ const ti = StyleSheet.create({
     backgroundColor: DS.color.primarySoft,
     borderRadius: 14,
   },
-  label:    { fontSize: DS.font.xs, fontFamily: "Inter_600SemiBold", letterSpacing: 0.2 },
   dot:      { width: 4, height: 4, borderRadius: 2, marginTop: 1 },
 });
 
@@ -104,7 +102,6 @@ function ScanButton({ onPress }: { onPress: () => void }) {
         >
           <ScanLine size={26} color="#FFF" strokeWidth={2} />
         </LinearGradient>
-        <Text style={sb.label}>SCAN</Text>
       </Animated.View>
     </Pressable>
   );
@@ -127,10 +124,6 @@ const sb = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4, shadowRadius: 14,
     elevation: 16,
-  },
-  label: {
-    fontSize: 9, fontFamily: "Inter_700Bold",
-    color: DS.color.primary, letterSpacing: 1.2, marginTop: 3,
   },
 });
 
@@ -205,15 +198,10 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 const bar = StyleSheet.create({
   bg: {
     position: "absolute", left: 0, right: 0, bottom: 0,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 14,
   },
   topLine: {
     position: "absolute", top: 0, left: 0, right: 0,
-    height: 0.5, backgroundColor: "rgba(0,0,0,0.08)",
+    height: 0.5, backgroundColor: "rgba(0,0,0,0.06)",
   },
   row: {
     position: "absolute", left: 0, right: 0,
