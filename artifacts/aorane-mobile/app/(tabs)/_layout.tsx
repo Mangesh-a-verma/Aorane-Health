@@ -16,7 +16,7 @@ const { width: W } = Dimensions.get("window");
 const INACTIVE = DS.color.muted;
 const BAR_H    = 68;
 const SCAN_D   = 52;
-const SCAN_LIFT = -16;
+const SCAN_LIFT = -6;
 const PILL_H   = 52;
 const SIDE_PAD = 16;
 
