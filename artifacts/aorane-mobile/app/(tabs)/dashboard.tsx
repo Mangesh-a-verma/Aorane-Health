@@ -225,6 +225,7 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [greeting, setGreeting] = useState("Good Morning");
   const [userName, setUserName] = useState("");
+  const [aoraneId, setAoraneId] = useState("");
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerOpacity = scrollY.interpolate({ inputRange: [0, 60], outputRange: [0, 1], extrapolate: "clamp" });
@@ -280,6 +281,12 @@ export default function DashboardScreen() {
       if (profileRes.status === "fulfilled") {
         const p = profileRes.value.profile as Record<string, string>;
         setUserName(p?.fullName?.split(" ")?.[0] || "");
+        // Use stored aoraneId or format from user id as fallback
+        if (p?.aoraneId) {
+          setAoraneId(p.aoraneId);
+        } else if (user?.id) {
+          setAoraneId("AOR-" + user.id.slice(-6).toUpperCase());
+        }
       }
     } catch { }
     setIsLoading(false);
@@ -352,9 +359,17 @@ export default function DashboardScreen() {
       >
         {/* ── HEADER ── */}
         <Animated.View style={[s.header, { opacity: fadeAnim }]}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={s.greet}>{greeting}{userName ? `, ${userName}` : ""}</Text>
-            <Text style={s.dateText}>{today}</Text>
+            <View style={s.headerBottomRow}>
+              <Text style={s.dateText}>{today}</Text>
+              {aoraneId ? (
+                <TouchableOpacity style={s.aoraneIdChip} onPress={() => router.push("/profile/scorecard" as never)}>
+                  <Ionicons name="id-card-outline" size={11} color={C.primary} />
+                  <Text style={s.aoraneIdText}>{aoraneId}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </View>
           <View style={s.headerRight}>
             <TouchableOpacity style={s.notifBtn} onPress={() => router.push("/notification-settings" as never)}>
@@ -365,7 +380,7 @@ export default function DashboardScreen() {
         </Animated.View>
 
         {/* ── HERO SCORE CARD ── */}
-        <Animated.View style={{ opacity: fadeAnim, marginBottom: 14 }}>
+        <Animated.View style={{ opacity: fadeAnim, marginBottom: 14, overflow: "hidden", borderRadius: 22, marginHorizontal: 4 }}>
           <LinearGradient
             colors={["#005EA3", "#0077B6", "#0EA5E9", "#00B896"]}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -648,7 +663,15 @@ const s = StyleSheet.create({
 
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16, paddingTop: 4 },
   greet: { fontSize: 20, fontFamily: "Inter_700Bold", color: C.text },
-  dateText: { fontSize: 12.5, fontFamily: "Inter_400Regular", color: C.muted, marginTop: 2 },
+  headerBottomRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
+  dateText: { fontSize: 12.5, fontFamily: "Inter_400Regular", color: C.muted },
+  aoraneIdChip: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(0,119,182,0.08)",
+    borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3,
+    borderWidth: 1, borderColor: "rgba(0,119,182,0.15)",
+  },
+  aoraneIdText: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: C.primary },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
   notifBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: C.glass, borderWidth: 1.2, borderColor: C.glassBorder, alignItems: "center", justifyContent: "center" },
   notifDot: { position: "absolute", top: 6, right: 6, width: 7, height: 7, borderRadius: 3.5, backgroundColor: C.red, borderWidth: 1.5, borderColor: "#FFF" },

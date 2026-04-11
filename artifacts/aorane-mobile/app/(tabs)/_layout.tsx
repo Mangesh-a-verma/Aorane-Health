@@ -16,7 +16,7 @@ const ACCENT   = "#00B896";
 const INACTIVE = "rgba(13,31,51,0.30)";
 const BAR_H    = 64;   // visible tab bar height
 const SCAN_D   = 56;   // scan button diameter
-const SCAN_LIFT = 4;   // pixels the button floats above bar top
+const SCAN_LIFT = -14;  // negative = button sits INSIDE bar (lower position)
 
 // ── Animated tab icon ────────────────────────────────────────────────────────
 function TabIcon({ name, focused, label }: {
@@ -202,10 +202,16 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 const bar = StyleSheet.create({
   bg: {
     position: "absolute", left: 0, right: 0, bottom: 0,
-    overflow: "hidden",
+    // no overflow:hidden here — it was clipping the shadow
+    shadowColor: "#0077B6",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
+    elevation: 14,
   },
   solid: {
     borderTopWidth: 0.8, borderTopColor: "rgba(0,119,182,0.12)",
+    overflow: "hidden",  // moved here so shadow isn't clipped
   },
   topLine: {
     position: "absolute", top: 0, left: 32, right: 32,
