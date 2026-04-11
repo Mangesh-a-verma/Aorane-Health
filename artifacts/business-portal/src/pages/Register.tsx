@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
-import { Building2, AlertCircle, ChevronRight, ChevronLeft } from "lucide-react";
+import { Building2, AlertCircle, ChevronRight, ChevronLeft, Heart, CheckCircle2 } from "lucide-react";
 
 const ORG_TYPES = [
   { value: "corporate", label: "Corporate", icon: "🏢" },
@@ -14,6 +14,8 @@ const ORG_TYPES = [
   { value: "school", label: "School / College", icon: "📚" },
   { value: "other", label: "Other", icon: "✨" },
 ];
+
+const STEP_LABELS = ["Organization Type", "Org Details", "Admin Account"];
 
 export default function Register() {
   const [, navigate] = useLocation();
@@ -39,7 +41,7 @@ export default function Register() {
 
   const handleSubmit = async () => {
     if (form.adminPassword !== form.confirmPassword) {
-      setError("Passwords match nahi kar rahe");
+      setError("Passwords do not match");
       return;
     }
     setIsLoading(true);
@@ -60,41 +62,82 @@ export default function Register() {
       login(res.token, admin, res.org);
       navigate("/dashboard");
     } catch (err) {
-      setError((err as Error).message || "Registration failed. Try again.");
+      setError((err as Error).message || "Registration failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const inputStyle = {
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.10)",
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#040D1C] via-[#0A1628] to-[#0D2035] flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#0077B6]/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-[#1B998B]/15 rounded-full blur-3xl" />
+    <div className="min-h-screen flex items-center justify-center p-4 overflow-hidden"
+      style={{ fontFamily: "'Inter', sans-serif", background: "linear-gradient(135deg, #020B18 0%, #051B2C 40%, #081F30 70%, #04141F 100%)" }}>
+
+      {/* Background orbs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-48 -right-48 w-[500px] h-[500px] rounded-full opacity-20"
+          style={{ background: "radial-gradient(circle, #0EA5E9 0%, transparent 70%)", filter: "blur(40px)" }} />
+        <div className="absolute -bottom-48 -left-48 w-[500px] h-[500px] rounded-full opacity-15"
+          style={{ background: "radial-gradient(circle, #10B981 0%, transparent 70%)", filter: "blur(40px)" }} />
+        <div className="absolute inset-0 opacity-[0.03]"
+          style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
       </div>
 
-      <div className="relative w-full max-w-lg">
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-[#0077B6] to-[#1B998B] mb-3">
-            <Building2 size={24} className="text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">
-            <span className="bg-gradient-to-r from-[#38BDF8] to-[#2DD4BF] bg-clip-text text-transparent">AORANE</span> Business
-          </h1>
-          <p className="text-white/50 text-xs mt-1">Apni organization register karein</p>
+      <div className="relative w-full max-w-lg z-10">
+
+        {/* Logo */}
+        <div className="text-center mb-7">
+          <a href="/" className="inline-flex flex-col items-center gap-2 group">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110"
+              style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 0 28px rgba(14,165,233,0.45)" }}>
+              <Heart size={22} className="text-white" />
+            </div>
+            <div>
+              <span className="text-xl font-bold" style={{ background: "linear-gradient(90deg, #38BDF8, #34D399)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                AORANE
+              </span>
+              <span className="text-white/40 text-sm font-normal ml-1.5">Business</span>
+            </div>
+          </a>
         </div>
 
-        {/* Progress */}
-        <div className="flex gap-2 mb-6">
-          {[1, 2, 3].map((s) => (
-            <div key={s} className={`h-1 flex-1 rounded-full transition-all ${s <= step ? "bg-gradient-to-r from-[#0077B6] to-[#1B998B]" : "bg-white/10"}`} />
+        {/* Step progress */}
+        <div className="flex items-center gap-2 mb-6">
+          {STEP_LABELS.map((label, i) => (
+            <React.Fragment key={label}>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
+                  i + 1 < step ? "text-white" : i + 1 === step ? "text-white" : "text-white/30"
+                }`}
+                  style={{
+                    background: i + 1 < step ? "linear-gradient(135deg, #0EA5E9, #10B981)" :
+                      i + 1 === step ? "rgba(14,165,233,0.3)" : "rgba(255,255,255,0.06)",
+                    border: i + 1 === step ? "1px solid rgba(14,165,233,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                    boxShadow: i + 1 === step ? "0 0 14px rgba(14,165,233,0.3)" : "none"
+                  }}>
+                  {i + 1 < step ? <CheckCircle2 size={14} /> : i + 1}
+                </div>
+                <span className={`text-xs hidden sm:block truncate transition-colors ${i + 1 === step ? "text-white/70" : "text-white/25"}`}>
+                  {label}
+                </span>
+              </div>
+              {i < 2 && <div className="w-6 shrink-0 h-px" style={{ background: i + 1 < step ? "rgba(14,165,233,0.5)" : "rgba(255,255,255,0.1)" }} />}
+            </React.Fragment>
           ))}
         </div>
 
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-7 shadow-2xl">
+        {/* Glass Card */}
+        <div className="rounded-3xl p-8 border"
+          style={{ background: "rgba(255,255,255,0.04)", backdropFilter: "blur(24px)", borderColor: "rgba(255,255,255,0.10)", boxShadow: "0 32px 64px rgba(0,0,0,0.4)" }}>
+
           {error && (
-            <div className="mb-4 flex items-start gap-2.5 text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
-              <AlertCircle size={16} className="shrink-0 mt-0.5" />
+            <div className="mb-5 flex items-start gap-2.5 rounded-xl px-4 py-3 border"
+              style={{ background: "rgba(239,68,68,0.1)", borderColor: "rgba(239,68,68,0.2)", color: "#FCA5A5" }}>
+              <AlertCircle size={15} className="shrink-0 mt-0.5" />
               <span className="text-sm">{error}</span>
             </div>
           )}
@@ -102,40 +145,38 @@ export default function Register() {
           {/* Step 1: Org Type */}
           {step === 1 && (
             <div>
-              <h2 className="text-lg font-semibold text-white mb-1">Organization Type</h2>
-              <p className="text-white/45 text-sm mb-5">Aapka organization kaisa hai?</p>
+              <h2 className="text-xl font-bold text-white mb-1">Organization Type</h2>
+              <p className="text-white/40 text-sm mb-6">What type of organization are you?</p>
               <div className="grid grid-cols-2 gap-2.5">
                 {ORG_TYPES.map((t) => (
-                  <button
-                    key={t.value}
-                    onClick={() => set("orgType", t.value)}
-                    className={`flex items-center gap-2.5 p-3.5 rounded-xl border text-left transition-all
-                      ${form.orgType === t.value
-                        ? "bg-[#0077B6]/20 border-[#0077B6] text-white"
-                        : "bg-white/4 border-white/10 text-white/60 hover:bg-white/7 hover:text-white"
-                      }`}
-                  >
+                  <button key={t.value} onClick={() => set("orgType", t.value)}
+                    className="flex items-center gap-2.5 p-3.5 rounded-xl border text-left transition-all hover:scale-[1.02]"
+                    style={{
+                      background: form.orgType === t.value ? "rgba(14,165,233,0.15)" : "rgba(255,255,255,0.04)",
+                      borderColor: form.orgType === t.value ? "rgba(14,165,233,0.5)" : "rgba(255,255,255,0.09)",
+                      color: form.orgType === t.value ? "#fff" : "rgba(255,255,255,0.50)",
+                      boxShadow: form.orgType === t.value ? "0 0 16px rgba(14,165,233,0.2)" : "none",
+                    }}>
                     <span className="text-xl">{t.icon}</span>
                     <span className="text-sm font-medium">{t.label}</span>
                   </button>
                 ))}
               </div>
-              <button
-                onClick={() => form.orgType && setStep(2)}
-                disabled={!form.orgType}
-                className="w-full mt-5 bg-gradient-to-r from-[#0077B6] to-[#1B998B] text-white font-semibold py-3 rounded-xl disabled:opacity-40 flex items-center justify-center gap-2"
-              >
-                Aage <ChevronRight size={16} />
+              <button onClick={() => form.orgType && setStep(2)} disabled={!form.orgType}
+                className="w-full mt-6 font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 hover:scale-[1.02] disabled:opacity-40 disabled:scale-100"
+                style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 8px 24px rgba(14,165,233,0.3)" }}>
+                Continue <ChevronRight size={16} />
               </button>
             </div>
           )}
 
           {/* Step 2: Org Details */}
           {step === 2 && (
-            <div className="space-y-3">
-              <h2 className="text-lg font-semibold text-white mb-1">Organization Details</h2>
-              <p className="text-white/45 text-sm mb-4">Basic information fill karein</p>
-
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-bold text-white mb-1">Organization Details</h2>
+                <p className="text-white/40 text-sm">Fill in your basic information</p>
+              </div>
               {[
                 { label: "Organization Name *", key: "name", placeholder: "e.g., Sunrise Health Clinic" },
                 { label: "Email Address *", key: "contactEmail", placeholder: "admin@yourorg.com", type: "email" },
@@ -145,27 +186,30 @@ export default function Register() {
                 { label: "Total Seats (Members)", key: "totalSeats", placeholder: "50", type: "number" },
               ].map((f) => (
                 <div key={f.key}>
-                  <label className="block text-white/60 text-xs font-medium mb-1.5">{f.label}</label>
+                  <label className="block text-white/50 text-xs font-medium mb-1.5">{f.label}</label>
                   <input
                     type={f.type || "text"}
                     value={form[f.key as keyof typeof form]}
                     onChange={(e) => set(f.key, e.target.value)}
                     placeholder={f.placeholder}
-                    className="w-full bg-white/6 border border-white/12 rounded-xl px-3.5 py-2.5 text-white placeholder-white/25 focus:outline-none focus:border-[#0077B6] transition-all text-sm"
+                    className="w-full rounded-xl px-3.5 py-2.5 text-white placeholder-white/20 focus:outline-none transition-all text-sm"
+                    style={inputStyle}
+                    onFocus={e => { e.target.style.borderColor = "rgba(14,165,233,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.1)"; }}
+                    onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.10)"; e.target.style.boxShadow = "none"; }}
                   />
                 </div>
               ))}
-
               <div className="flex gap-2 pt-1">
-                <button onClick={() => setStep(1)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-white/15 text-white/50 hover:text-white text-sm">
+                <button onClick={() => setStep(1)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-white/50 hover:text-white text-sm transition-all"
+                  style={{ borderColor: "rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.03)" }}>
                   <ChevronLeft size={14} /> Back
                 </button>
-                <button
-                  onClick={() => form.name && form.contactEmail && setStep(3)}
+                <button onClick={() => form.name && form.contactEmail && setStep(3)}
                   disabled={!form.name || !form.contactEmail}
-                  className="flex-1 bg-gradient-to-r from-[#0077B6] to-[#1B998B] text-white font-semibold py-2.5 rounded-xl disabled:opacity-40 flex items-center justify-center gap-2 text-sm"
-                >
-                  Aage <ChevronRight size={15} />
+                  className="flex-1 font-semibold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm hover:scale-[1.01] disabled:opacity-40"
+                  style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 4px 16px rgba(14,165,233,0.25)" }}>
+                  Continue <ChevronRight size={15} />
                 </button>
               </div>
             </div>
@@ -173,37 +217,43 @@ export default function Register() {
 
           {/* Step 3: Admin Setup */}
           {step === 3 && (
-            <div className="space-y-3">
-              <h2 className="text-lg font-semibold text-white mb-1">Admin Account</h2>
-              <p className="text-white/45 text-sm mb-4">Portal access ke liye credentials set karein</p>
-
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-bold text-white mb-1">Admin Account</h2>
+                <p className="text-white/40 text-sm">Set up your portal credentials</p>
+              </div>
               {[
                 { label: "Full Name *", key: "adminName", placeholder: "Dr. Rajesh Kumar" },
                 { label: "Password *", key: "adminPassword", placeholder: "••••••••", type: "password" },
                 { label: "Confirm Password *", key: "confirmPassword", placeholder: "••••••••", type: "password" },
               ].map((f) => (
                 <div key={f.key}>
-                  <label className="block text-white/60 text-xs font-medium mb-1.5">{f.label}</label>
+                  <label className="block text-white/50 text-xs font-medium mb-1.5">{f.label}</label>
                   <input
                     type={f.type || "text"}
                     value={form[f.key as keyof typeof form]}
                     onChange={(e) => set(f.key, e.target.value)}
                     placeholder={f.placeholder}
-                    className="w-full bg-white/6 border border-white/12 rounded-xl px-3.5 py-2.5 text-white placeholder-white/25 focus:outline-none focus:border-[#0077B6] transition-all text-sm"
+                    className="w-full rounded-xl px-3.5 py-2.5 text-white placeholder-white/20 focus:outline-none transition-all text-sm"
+                    style={inputStyle}
+                    onFocus={e => { e.target.style.borderColor = "rgba(14,165,233,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.1)"; }}
+                    onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.10)"; e.target.style.boxShadow = "none"; }}
                   />
                 </div>
               ))}
-
               <div className="flex gap-2 pt-1">
-                <button onClick={() => setStep(2)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-white/15 text-white/50 hover:text-white text-sm">
+                <button onClick={() => setStep(2)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-white/50 hover:text-white text-sm transition-all"
+                  style={{ borderColor: "rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.03)" }}>
                   <ChevronLeft size={14} /> Back
                 </button>
-                <button
-                  onClick={handleSubmit}
+                <button onClick={handleSubmit}
                   disabled={isLoading || !form.adminName || !form.adminPassword || !form.confirmPassword}
-                  className="flex-1 bg-gradient-to-r from-[#0077B6] to-[#1B998B] text-white font-semibold py-2.5 rounded-xl disabled:opacity-40 flex items-center justify-center gap-2 text-sm"
-                >
-                  {isLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Register"}
+                  className="flex-1 font-semibold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm hover:scale-[1.01] disabled:opacity-40"
+                  style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 4px 16px rgba(14,165,233,0.25)" }}>
+                  {isLoading
+                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : "Create Account"}
                 </button>
               </div>
             </div>
@@ -212,7 +262,9 @@ export default function Register() {
 
         <p className="text-center text-white/30 text-xs mt-5">
           Already registered?{" "}
-          <a href="/business-portal/" className="text-[#38BDF8] hover:underline">Login karein</a>
+          <a href="/business-portal/" className="font-medium transition-colors hover:text-white" style={{ color: "#38BDF8" }}>
+            Login here
+          </a>
         </p>
       </div>
     </div>
