@@ -68,13 +68,25 @@ export default function LoginScreen() {
     ).start();
   }, []);
 
+  const goToOtpScreen = (devOtp?: string) => {
+    if (devOtp) {
+      Alert.alert(
+        "🔧 Dev OTP",
+        `Your OTP is: ${devOtp}\n\n(Only visible in development mode)`,
+        [{ text: "Copy & Continue", onPress: () => router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } }) }]
+      );
+    } else {
+      router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } });
+    }
+  };
+
   const handleSendOtp = async () => {
     if (phone.length !== 10) { Alert.alert(t("invalidNumber"), t("invalidNumberMsg")); return; }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsLoading(true);
     try {
-      await api.sendOtp(phone);
-      router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } });
+      const res = await api.sendOtp(phone) as { success: boolean; devOtp?: string };
+      goToOtpScreen(res?.devOtp);
     } catch (err: unknown) {
       Alert.alert(t("otpError"), err instanceof Error ? err.message : t("otpError"));
     } finally { setIsLoading(false); }
@@ -85,10 +97,13 @@ export default function LoginScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setWhatsappLoading(true);
     try {
-      const res = await api.sendWhatsappOtp(phone);
-      const msg = res.channel === "whatsapp" ? t("otpSentWhatsapp") : t("otpSentSms");
-      Alert.alert(t("otpSent"), msg, [{ text: t("ok") }]);
-      router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } });
+      const res = await api.sendWhatsappOtp(phone) as { channel?: string; devOtp?: string };
+      if (res?.devOtp) {
+        goToOtpScreen(res.devOtp);
+      } else {
+        const msg = res?.channel === "whatsapp" ? t("otpSentWhatsapp") : t("otpSentSms");
+        Alert.alert(t("otpSent"), msg, [{ text: t("ok"), onPress: () => router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } }) }]);
+      }
     } catch (err: unknown) {
       Alert.alert(t("otpError"), err instanceof Error ? err.message : t("otpError"));
     } finally { setWhatsappLoading(false); }
@@ -269,52 +284,50 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
-            {/* WhatsApp OTP Button */}
+            {/* WhatsApp + X — side by side */}
             {loginMode === "otp" && (
-              <TouchableOpacity
-                onPress={handleWhatsappOtp}
-                disabled={anyLoading || !isActive}
-                activeOpacity={0.82}
-                style={[s.waBtn, (!isActive || anyLoading) && s.waBtnDisabled]}
-              >
-                {whatsappLoading ? (
-                  <ActivityIndicator color="#25D366" size="small" />
-                ) : (
-                  <>
-                    <View style={s.waIconWrap}>
-                      <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
-                    </View>
-                    <Text style={[s.waBtnText, !isActive && { color: "#A0B4BF" }]}>{t("sendWhatsappOtp")}</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+              <View style={s.socialRow}>
+                {/* WhatsApp */}
+                <TouchableOpacity
+                  onPress={handleWhatsappOtp}
+                  disabled={anyLoading || !isActive}
+                  activeOpacity={0.82}
+                  style={[s.socialBtn, s.waSocialBtn, (!isActive || anyLoading) && s.socialBtnDisabled]}
+                >
+                  {whatsappLoading ? (
+                    <ActivityIndicator color="#25D366" size="small" />
+                  ) : (
+                    <>
+                      <View style={s.socialIconCircle}>
+                        <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
+                      </View>
+                      <Text style={[s.socialBtnText, { color: isActive ? "#128C7E" : "#A0B4BF" }]} numberOfLines={1}>
+                        WhatsApp
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {/* X (Twitter) */}
+                <TouchableOpacity
+                  onPress={() => Alert.alert("🚀", t("comingSoonMsg"))}
+                  activeOpacity={0.75}
+                  style={[s.socialBtn, s.xSocialBtn]}
+                >
+                  <View style={s.xSocialIconCircle}>
+                    <Ionicons name="logo-x" size={16} color="#FFF" />
+                  </View>
+                  <Text style={s.socialBtnText} numberOfLines={1}>X (Twitter)</Text>
+                  <View style={s.comingSoonBadge}>
+                    <Text style={s.comingSoonText}>{t("comingSoon")}</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
             )}
 
             {loginMode === "pin" && (
               <Text style={s.pinHint}>{t("pinHint")}</Text>
             )}
-
-            {/* Divider */}
-            <View style={s.divRow}>
-              <View style={s.divLine} />
-              <Text style={s.divText}>{t("orText")}</Text>
-              <View style={s.divLine} />
-            </View>
-
-            {/* X (Twitter) — Coming Soon */}
-            <TouchableOpacity
-              onPress={() => Alert.alert("🚀", t("comingSoonMsg"))}
-              activeOpacity={0.75}
-              style={s.xBtn}
-            >
-              <View style={s.xIconWrap}>
-                <Ionicons name="logo-x" size={16} color="#FFF" />
-              </View>
-              <Text style={s.xBtnText}>{t("xLogin")}</Text>
-              <View style={s.comingSoonBadge}>
-                <Text style={s.comingSoonText}>{t("comingSoon")}</Text>
-              </View>
-            </TouchableOpacity>
           </Animated.View>
 
           {/* Trust Badges */}
@@ -383,20 +396,17 @@ const s = StyleSheet.create({
   ctaTextDisabled: { color: "#A0B4BF", fontSize: 16, fontFamily: "Inter_700Bold" },
   pinHint: { textAlign: "center", color: "#7A90A4", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 8 },
 
-  waBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, height: 50, borderRadius: 14, backgroundColor: "#F0FFF4", borderWidth: 1.5, borderColor: "#25D366", marginTop: 10 },
-  waBtnDisabled: { borderColor: "#D1FAE5", backgroundColor: "#F8FFF9" },
-  waIconWrap: { width: 32, height: 32, borderRadius: 16, backgroundColor: "#25D366", alignItems: "center", justifyContent: "center" },
-  waBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#128C7E" },
+  socialRow: { flexDirection: "row", gap: 10, marginTop: 10 },
+  socialBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, height: 50, borderRadius: 14, paddingHorizontal: 10, borderWidth: 1.5 },
+  waSocialBtn: { backgroundColor: "#F0FFF4", borderColor: "#25D366" },
+  xSocialBtn: { backgroundColor: "#F8F8F8", borderColor: "#E5E7EB" },
+  socialBtnDisabled: { borderColor: "#D1FAE5", backgroundColor: "#F8FFF9" },
+  socialIconCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#25D366", alignItems: "center", justifyContent: "center" },
+  xSocialIconCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
+  socialBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#1A1A1A", flexShrink: 1 },
 
-  divRow: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 16 },
-  divLine: { flex: 1, height: 1, backgroundColor: "#EDF2F7" },
-  divText: { fontSize: 13, color: "#A0B4BF", fontFamily: "Inter_400Regular" },
-
-  xBtn: { flexDirection: "row", alignItems: "center", gap: 10, height: 50, borderRadius: 14, backgroundColor: "#F8F8F8", borderWidth: 1.5, borderColor: "#E5E7EB", paddingHorizontal: 16 },
-  xIconWrap: { width: 32, height: 32, borderRadius: 16, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
-  xBtnText: { flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#1A1A1A" },
-  comingSoonBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#E5E7EB" },
-  comingSoonText: { fontSize: 10, fontFamily: "Inter_500Medium", color: "#6B7280" },
+  comingSoonBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#E5E7EB" },
+  comingSoonText: { fontSize: 9, fontFamily: "Inter_500Medium", color: "#6B7280" },
 
   badgeRow: { flexDirection: "row", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 10 },
   badge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 6, borderRadius: 12, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E8F2F7" },

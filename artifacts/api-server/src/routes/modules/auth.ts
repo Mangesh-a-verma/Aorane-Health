@@ -28,9 +28,16 @@ router.post("/auth/send-otp", async (req, res) => {
     const hashed = hashOtp(otp);
     cache.setOtp(phone, hashed);
 
-    await sendSmsOtp(phone, otp);
+    const smsSent = await sendSmsOtp(phone, otp);
+    const isDev = process.env.NODE_ENV !== "production";
 
-    res.json({ success: true, message: "OTP sent successfully" });
+    console.log(`[OTP] ${phone} → ${otp} | SMS sent: ${smsSent}`);
+
+    res.json({
+      success: true,
+      message: "OTP sent successfully",
+      ...(isDev && { devOtp: otp }),
+    });
   } catch (err) {
     res.status(500).json({ error: "Failed to send OTP" });
   }
@@ -53,10 +60,12 @@ router.post("/auth/send-otp-whatsapp", async (req, res) => {
     const hashed = hashOtp(otp);
     cache.setOtp(phone, hashed);
     const result = await sendWhatsappOtp(phone, otp);
+    const isDev = process.env.NODE_ENV !== "production";
+    console.log(`[OTP-WA] ${phone} → ${otp} | channel: ${result.fallback ? "sms" : "whatsapp"}`);
     if (result.fallback) {
-      res.json({ success: true, message: "OTP SMS se bheja gaya (WhatsApp unavailable)", channel: "sms" });
+      res.json({ success: true, message: "OTP SMS se bheja gaya (WhatsApp unavailable)", channel: "sms", ...(isDev && { devOtp: otp }) });
     } else {
-      res.json({ success: true, message: "OTP WhatsApp pe bheja gaya", channel: "whatsapp" });
+      res.json({ success: true, message: "OTP WhatsApp pe bheja gaya", channel: "whatsapp", ...(isDev && { devOtp: otp }) });
     }
   } catch {
     res.status(500).json({ error: "Failed to send WhatsApp OTP" });
