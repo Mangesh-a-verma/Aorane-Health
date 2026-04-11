@@ -60,6 +60,8 @@
     "expo-local-authentication": "^17.0.8",
     "expo-notifications": "^55.0.18",
     "expo-print": "^55.0.13",
-    "expo-sharing": "^55.0.18"
+    "expo-sharing": "^55.0.18",
+    "html2canvas": "^1.4.1",
+    "react-native-qrcode-svg": "^6.3.21"
   }
 }
