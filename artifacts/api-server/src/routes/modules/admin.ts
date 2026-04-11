@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, adminUsersTable, usersTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable } from "@workspace/db";
-import { eq, desc, ilike, count, or, sql } from "drizzle-orm";
+import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable } from "@workspace/db";
+import { eq, desc, ilike, count, or, sql, and } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import { signAdminToken } from "../../lib/jwt";
 import type { AdminRequest } from "../../middlewares/admin-auth";
@@ -42,6 +42,44 @@ router.get("/admin/users", requireAdmin, async (req: AdminRequest, res) => {
     res.json({ users });
   } catch {
     res.status(500).json({ error: "Failed to fetch users" });
+  }
+});
+
+// ─── AORANE ID Search ─────────────────────────────────────────────────────────
+router.get("/admin/users/search", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const q = ((req.query.q as string) || "").trim();
+    if (!q || q.length < 4) { res.status(400).json({ error: "Minimum 4 characters required" }); return; }
+    const isAoraneId = /^\d{8,12}$/.test(q);
+    let profiles: typeof userProfilesTable.$inferSelect[] = [];
+    if (isAoraneId) {
+      profiles = await db.select().from(userProfilesTable).where(eq(userProfilesTable.aoraneId, q)).limit(10);
+    } else {
+      profiles = await db.select().from(userProfilesTable).where(ilike(userProfilesTable.fullName, `%${q}%`)).limit(10);
+    }
+    const results = await Promise.all(profiles.map(async (p) => {
+      const [user] = await db.select().from(usersTable).where(eq(usersTable.id, p.userId)).limit(1);
+      return {
+        userId: p.userId,
+        aoraneId: p.aoraneId,
+        name: p.fullName,
+        bloodGroup: p.bloodGroup,
+        gender: p.gender,
+        age: p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (86400000 * 365.25)) : null,
+        city: (p as Record<string, unknown>).city,
+        state: (p as Record<string, unknown>).state,
+        bmi: p.bmi,
+        plan: user?.plan,
+        phone: user?.phone,
+        isActive: user?.isActive,
+        isBanned: user?.isBanned,
+        createdAt: user?.createdAt,
+      };
+    }));
+    res.json({ results, count: results.length });
+  } catch (err) {
+    console.error("Admin search error:", err);
+    res.status(500).json({ error: "Search failed" });
   }
 });
 

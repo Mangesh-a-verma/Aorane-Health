@@ -299,7 +299,16 @@ export const api = {
 
   // ── Scorecard ──────────────────────────────────────────────
   getScorecard: () =>
-    request<{ aoraneId: string; name: string; bloodGroup: string; bmi: string; bmiCategory: string; plan: string; gender: string; age: number | null; memberSince: string; qrData: string }>("GET", "/users/scorecard"),
+    request<{
+      aoraneId: string; name: string; bloodGroup: string; bmi: string; bmiCategory: string;
+      plan: string; gender: string; age: number | null; memberSince: string; qrData: string;
+      city: string | null; state: string | null; workProfile: string | null;
+      activePercent: { overall: number; foodPct: number; waterPct: number; exercisePct: number; medicinePct: number; breakdown: { food: number; water: number; exercise: number; medicine: number } };
+    }>("GET", "/users/scorecard"),
+
+  // ── Active Percentage ───────────────────────────────────────
+  getActivityScore: (date?: string) =>
+    request<{ date: string; overall: number; foodPct: number; waterPct: number; exercisePct: number; medicinePct: number; label: string; breakdown: { food: number; water: number; exercise: number; medicine: number } }>("GET", `/users/activity-score${date ? `?date=${date}` : ""}`),
 
   // ── Water ─────────────────────────────────────────────────
   logWater: (data: { glassesCount: number; drinkType?: string }) =>

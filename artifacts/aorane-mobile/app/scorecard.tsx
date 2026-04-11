@@ -19,9 +19,12 @@ const PLAN_LABELS: Record<string, string> = {
   free: "Free", pro: "Pro", max: "Max", family: "Family",
 };
 
+type ActivePercent = { overall: number; foodPct: number; waterPct: number; exercisePct: number; medicinePct: number };
 type Scorecard = {
   aoraneId: string; name: string; bloodGroup: string; bmi: string;
   bmiCategory: string; plan: string; gender: string; age: number | null; memberSince: string; qrData: string;
+  city: string | null; state: string | null; workProfile: string | null;
+  activePercent: ActivePercent;
 };
 
 export default function ScorecardScreen() {
@@ -136,6 +139,46 @@ export default function ScorecardScreen() {
                 </LinearGradient>
               ))}
             </View>
+
+            {/* Active Percentage Section */}
+            {card.activePercent && (
+              <LinearGradient
+                colors={card.activePercent.overall >= 70 ? ["#0D9488","#0077B6"] : card.activePercent.overall >= 40 ? ["#F59E0B","#EF4444"] : ["#6B7280","#374151"]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{ borderRadius: 18, padding: 18, marginBottom: 10 }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <View>
+                    <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 10, fontFamily: "Inter_500Medium" }}>DATA RELIABILITY</Text>
+                    <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14, marginTop: 2 }}>
+                      {card.activePercent.overall >= 70 ? "AI Suggestions Accurate Honge ✅" : card.activePercent.overall >= 40 ? "Thoda aur log karo 📊" : "Kuch bhi log nahi kiya 😴"}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: "center" }}>
+                    <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 36 }}>{card.activePercent.overall}</Text>
+                    <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 10, fontFamily: "Inter_500Medium" }}>% Active</Text>
+                  </View>
+                </View>
+                <View style={{ gap: 6 }}>
+                  {[
+                    { label: "🍛 Khana", pct: card.activePercent.foodPct },
+                    { label: "💧 Paani", pct: card.activePercent.waterPct },
+                    { label: "🏃 Exercise", pct: card.activePercent.exercisePct },
+                    { label: "💊 Medicine", pct: card.activePercent.medicinePct },
+                  ].map((item) => (
+                    <View key={item.label}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
+                        <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 10, fontFamily: "Inter_400Regular" }}>{item.label}</Text>
+                        <Text style={{ color: "#FFF", fontSize: 10, fontFamily: "Inter_700Bold" }}>{item.pct}%</Text>
+                      </View>
+                      <View style={{ height: 4, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 2, overflow: "hidden" }}>
+                        <View style={{ height: 4, width: `${item.pct}%`, backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 2 }} />
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </LinearGradient>
+            )}
 
             <View style={{ gap: 10 }}>
               <TouchableOpacity onPress={copyId} style={{ backgroundColor: "#0077B6", borderRadius: 14, padding: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>

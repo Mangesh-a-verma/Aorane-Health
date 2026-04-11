@@ -28,13 +28,17 @@ Admin Panel      ──┘         ↑ Redis Cache (Upstash)
 - **Cache**: In-memory (production: Upstash Redis)
 
 ## Completed Features (Latest Session)
+- **AORANE 12-Digit ID**: Unique immutable ID stored in DB, format `[G][AA][CCC][RRRRRR]` (gender+age+cityHash+random), generated once at scorecard call, shown on health card with copy/share
+- **Active Percentage System**: Daily tracking score — food (35%), water (30%), exercise (25%), medicine (10%); `GET /users/activity-score`; dashboard widget with progress bars; scorecard "Data Reliability" section
+- **AORANE ID Search (Admin Panel)**: Full search by 12-digit AORANE ID or name, with result cards showing blood group, age, city, BMI, plan, active status
+- **AORANE ID Search (Business Portal)**: Same search but filtered to org members only
+- **Backend Search Endpoints**: `GET /admin/users/search?q=` (admin auth), `GET /business/members/search?q=` (business auth), `GET /users/search?q=` (user auth)
+- **Schema Updates**: `aoraneId TEXT UNIQUE`, `city TEXT`, `state TEXT` added to `userProfilesTable` — pushed to Supabase
 - **Daily AI Suggestions System**: Gemini-powered Hinglish daily coach — food suggestions, exercise plan, water tracking, medical warnings, target progress, motivation message — cached per user per day
 - **Notification Settings**: Full UI + backend — medicine, water, food, period, AI suggestion toggles; calorie + water goals; wake up / bed time settings
 - **Dashboard AI Coach Widget**: Gradient banner card → links to full suggestions screen
-- **Profile → Notifications**: Updated to link to notification-settings screen (was "Coming Soon")
-- **New Screens**: `suggestions.tsx` (full Daily AI Coach), `notification-settings.tsx` (all reminder toggles)
-- **New API Routes**: `GET/POST /suggestions/daily|refresh`, `GET/PUT /notifications/settings`
-- **Schema Additions**: `dailySuggestionsTable` (daily AI cache), 8 new columns in `userPreferencesTable` — pushed to Supabase
+- **Work Profile System**: 22 professions, TDEE multipliers 1.2×–1.9× BMR, shown on profile
+- **New API Routes**: `GET /users/scorecard` (now stores AORANE ID), `GET /users/activity-score`, `GET /admin/users/search`, `GET /business/members/search`
 
 ## Current Status
 

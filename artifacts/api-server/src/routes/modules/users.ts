@@ -1,8 +1,78 @@
 import { Router } from "express";
-import { db, usersTable, userProfilesTable, userPreferencesTable, userPrivacySettingsTable, userMedicalConditionsTable, userHealthGoalsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import {
+  db, usersTable, userProfilesTable, userPreferencesTable, userPrivacySettingsTable,
+  userMedicalConditionsTable, userHealthGoalsTable,
+  foodLogsTable, waterLogsTable, exerciseLogsTable, medicineSchedulesTable, medicineLogsTable,
+} from "@workspace/db";
+import { eq, and, gte, lte, ilike, or } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+
+// ── AORANE ID Generation (12 digits, immutable) ───────────────────────────────
+// Format: [G][AA][CCC][RRRRRR]
+//   G   = Gender code (1=Male, 2=Female, 3=Other/Prefer-not)
+//   AA  = Age at registration (00-99)
+//   CCC = City hash (100-999, derived from city name)
+//   RRRRRR = 6 random digits (100000-999999)
+function generateAoraneId(gender: string | null, dateOfBirth: string | null, city: string | null): string {
+  const gCode = gender === "male" ? "1" : gender === "female" ? "2" : "3";
+  const age = dateOfBirth
+    ? Math.min(99, Math.floor((Date.now() - new Date(dateOfBirth).getTime()) / (86400000 * 365.25)))
+    : 0;
+  const ageCode = String(age).padStart(2, "0");
+  const cityName = (city || "other").toLowerCase().replace(/[^a-z]/g, "");
+  const s = (cityName + "xxx").slice(0, 4);
+  const cityHash = ((s.charCodeAt(0) * 97 + s.charCodeAt(1) * 53 + s.charCodeAt(2) * 31 + s.charCodeAt(3) * 7) % 900) + 100;
+  const cityCode = String(cityHash).padStart(3, "0");
+  const random = String(Math.floor(Math.random() * 900000) + 100000);
+  return `${gCode}${ageCode}${cityCode}${random}`; // Total: 1+2+3+6 = 12 digits
+}
+
+// ── Daily Active Percentage Calculation ───────────────────────────────────────
+async function calculateActivePercent(userId: string, date?: string): Promise<{
+  overall: number; foodPct: number; waterPct: number; exercisePct: number; medicinePct: number;
+  breakdown: { food: number; water: number; exercise: number; medicine: number };
+}> {
+  const today = date || new Date().toISOString().slice(0, 10);
+  const dayStart = new Date(today); dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(today); dayEnd.setHours(23, 59, 59, 999);
+
+  const [foodLogs, waterLogs, exerciseLogs, medSchedules, medLogs] = await Promise.allSettled([
+    db.select().from(foodLogsTable).where(and(eq(foodLogsTable.userId, userId), gte(foodLogsTable.loggedAt, dayStart), lte(foodLogsTable.loggedAt, dayEnd))),
+    db.select().from(waterLogsTable).where(and(eq(waterLogsTable.userId, userId), gte(waterLogsTable.loggedAt, dayStart), lte(waterLogsTable.loggedAt, dayEnd))),
+    db.select().from(exerciseLogsTable).where(and(eq(exerciseLogsTable.userId, userId), gte(exerciseLogsTable.loggedAt, dayStart), lte(exerciseLogsTable.loggedAt, dayEnd))),
+    db.select().from(medicineSchedulesTable).where(and(eq(medicineSchedulesTable.userId, userId), eq(medicineSchedulesTable.isActive, true))),
+    db.select().from(medicineLogsTable).where(and(eq(medicineLogsTable.userId, userId), gte(medicineLogsTable.takenAt, dayStart), lte(medicineLogsTable.takenAt, dayEnd))),
+  ]);
+
+  // Food: 3 meals expected = max 3 entries, each = 33.3%
+  const foodCount = foodLogs.status === "fulfilled" ? foodLogs.value.length : 0;
+  const foodPct = Math.min(100, Math.round((foodCount / 3) * 100));
+
+  // Water: 8 glasses expected, each glass logged = 12.5%
+  const totalWaterGlasses = waterLogs.status === "fulfilled"
+    ? waterLogs.value.reduce((s, l) => s + (l.glassesCount || 0), 0) : 0;
+  const [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId)).limit(1).catch(() => [null]);
+  const waterGoal = (prefs as Record<string, unknown>)?.waterGoalGlasses as number || 8;
+  const waterPct = Math.min(100, Math.round((totalWaterGlasses / waterGoal) * 100));
+
+  // Exercise: any exercise logged = 100%, nothing = 0%
+  const exerciseCount = exerciseLogs.status === "fulfilled" ? exerciseLogs.value.length : 0;
+  const exercisePct = exerciseCount > 0 ? 100 : 0;
+
+  // Medicine: (taken today / scheduled today) × 100
+  const scheduleCount = medSchedules.status === "fulfilled" ? medSchedules.value.length : 0;
+  const takenCount = medLogs.status === "fulfilled" ? medLogs.value.length : 0;
+  const medicinePct = scheduleCount > 0 ? Math.min(100, Math.round((takenCount / scheduleCount) * 100)) : 100;
+
+  // Overall weighted average: food 35%, water 30%, exercise 25%, medicine 10%
+  const overall = Math.round(foodPct * 0.35 + waterPct * 0.30 + exercisePct * 0.25 + medicinePct * 0.10);
+
+  return {
+    overall, foodPct, waterPct, exercisePct, medicinePct,
+    breakdown: { food: foodCount, water: totalWaterGlasses, exercise: exerciseCount, medicine: takenCount },
+  };
+}
 
 const router = Router();
 
@@ -26,7 +96,7 @@ router.patch("/users/profile", requireAuth, async (req: AuthRequest, res) => {
       fullName, dateOfBirth, gender, heightCm, weightKg, bloodGroup,
       foodPreference, foodAllergies, workProfile, activityLevel,
       exerciseFrequency, exerciseTypes, sleepHoursAvg, wakeTime,
-      sleepTime, stressLevelSelf, profilePhotoUrl,
+      sleepTime, stressLevelSelf, profilePhotoUrl, city, state,
     } = req.body as Record<string, unknown>;
 
     const bmi = heightCm && weightKg
@@ -52,6 +122,8 @@ router.patch("/users/profile", requireAuth, async (req: AuthRequest, res) => {
     if (sleepTime !== undefined) updateData.sleepTime = sleepTime;
     if (stressLevelSelf !== undefined) updateData.stressLevelSelf = stressLevelSelf;
     if (profilePhotoUrl !== undefined) updateData.profilePhotoUrl = profilePhotoUrl;
+    if (city !== undefined) updateData.city = city;
+    if (state !== undefined) updateData.state = state;
 
     const [updated] = await db
       .update(userProfilesTable)
@@ -176,18 +248,35 @@ router.patch("/users/privacy", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
-// ─── Health Scorecard / Aorane ID ────────────────────────────────────────────
+// ─── Health Scorecard — stores AORANE ID on first generation (immutable) ─────
 router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
   try {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!));
     const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, req.userId!));
-    const phone = user?.phone || "";
-    const gender = profile?.gender || "other";
-    const genderCode = gender === "male" ? "M" : gender === "female" ? "F" : "X";
-    const stateMap: Record<string, string> = { "IN": "MH" };
-    const stateCode = stateMap[user?.countryCode || "IN"] || "IN";
-    const phoneDigits = phone.replace(/\D/g, "").slice(-9) || "000000000";
-    const aoraneId = `${stateCode}-${genderCode}-${phoneDigits}`;
+
+    // Generate and SAVE AORANE ID only if not already stored
+    let aoraneId = profile?.aoraneId;
+    if (!aoraneId) {
+      // Try up to 5 times for uniqueness
+      let generated = "";
+      for (let attempt = 0; attempt < 5; attempt++) {
+        generated = generateAoraneId(
+          profile?.gender || null,
+          profile?.dateOfBirth || null,
+          (profile as Record<string, unknown>)?.city as string || null
+        );
+        // Save immediately — unique constraint will reject duplicates
+        try {
+          await db.update(userProfilesTable)
+            .set({ aoraneId: generated })
+            .where(eq(userProfilesTable.userId, req.userId!));
+          aoraneId = generated;
+          break;
+        } catch { /* try again with different random */ }
+      }
+      if (!aoraneId) aoraneId = generated; // fallback, show but not saved
+    }
+
     const bmi = profile?.bmi || null;
     let bmiCategory = "Normal";
     if (bmi) {
@@ -197,6 +286,14 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
       else if (b < 30) bmiCategory = "Overweight";
       else bmiCategory = "Obese";
     }
+
+    const age = profile?.dateOfBirth
+      ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / (86400000 * 365.25))
+      : null;
+
+    // Active percentage for today
+    const activeData = await calculateActivePercent(req.userId!).catch(() => ({ overall: 0, foodPct: 0, waterPct: 0, exercisePct: 0, medicinePct: 0, breakdown: { food: 0, water: 0, exercise: 0, medicine: 0 } }));
+
     res.json({
       aoraneId,
       name: profile?.fullName || "AORANE User",
@@ -205,12 +302,78 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
       bmiCategory,
       plan: user?.plan || "free",
       gender: profile?.gender || "other",
-      age: profile?.dateOfBirth ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / (86400000 * 365)) : null,
+      age,
+      city: (profile as Record<string, unknown>)?.city || null,
+      state: (profile as Record<string, unknown>)?.state || null,
+      workProfile: profile?.workProfile || null,
       memberSince: user?.createdAt,
       qrData: JSON.stringify({ aoraneId, name: profile?.fullName, bloodGroup: profile?.bloodGroup }),
+      activePercent: activeData,
     });
   } catch {
     res.status(500).json({ error: "Failed to fetch scorecard" });
+  }
+});
+
+// ─── Daily Active Percentage ──────────────────────────────────────────────────
+router.get("/users/activity-score", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const date = (req.query.date as string) || new Date().toISOString().slice(0, 10);
+    const result = await calculateActivePercent(req.userId!, date);
+    res.json({ date, ...result, label: getActiveLabel(result.overall) });
+  } catch {
+    res.status(500).json({ error: "Failed to calculate activity score" });
+  }
+});
+
+function getActiveLabel(pct: number): string {
+  if (pct >= 90) return "Excellent 🌟";
+  if (pct >= 70) return "Good 👍";
+  if (pct >= 50) return "Average 📊";
+  if (pct >= 30) return "Low ⚡";
+  return "Inactive 😴";
+}
+
+// ─── Search user by AORANE ID (for Admin + Business Portal) ──────────────────
+// Also supports search by name/phone for admin
+router.get("/users/search", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const q = (req.query.q as string || "").trim();
+    if (!q || q.length < 4) return res.status(400).json({ error: "Minimum 4 characters required" });
+
+    const isAoraneId = /^\d{12}$/.test(q);
+
+    let profiles: typeof import("@workspace/db").userProfilesTable.$inferSelect[] = [];
+
+    if (isAoraneId) {
+      profiles = await db.select().from(userProfilesTable).where(eq(userProfilesTable.aoraneId, q)).limit(5);
+    } else {
+      profiles = await db.select().from(userProfilesTable).where(ilike(userProfilesTable.fullName, `%${q}%`)).limit(10);
+    }
+
+    const results = await Promise.all(profiles.map(async (p) => {
+      const [user] = await db.select().from(usersTable).where(eq(usersTable.id, p.userId)).limit(1);
+      const activeData = await calculateActivePercent(p.userId).catch(() => ({ overall: 0 }));
+      return {
+        userId: p.userId,
+        aoraneId: p.aoraneId,
+        name: p.fullName,
+        bloodGroup: p.bloodGroup,
+        gender: p.gender,
+        age: p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (86400000 * 365.25)) : null,
+        city: (p as Record<string, unknown>).city,
+        state: (p as Record<string, unknown>).state,
+        bmi: p.bmi,
+        plan: user?.plan,
+        phone: user?.phone,
+        activePercent: activeData.overall,
+      };
+    }));
+
+    res.json({ results, count: results.length, query: q });
+  } catch (err) {
+    console.error("Search error:", err);
+    res.status(500).json({ error: "Search failed" });
   }
 });
 

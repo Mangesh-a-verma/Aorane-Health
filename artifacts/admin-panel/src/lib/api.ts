@@ -43,6 +43,11 @@ export type BloodRequest = {
   id: string; requesterId: string; bloodGroup: string; unitsNeeded: number;
   hospitalName: string; city: string; state: string; status: string; isFlagged: boolean; createdAt: string;
 };
+export type SearchResult = {
+  userId: string; aoraneId: string | null; name: string | null; bloodGroup: string | null;
+  gender: string | null; age: number | null; city: string | null; state: string | null;
+  bmi: string | null; plan: string; phone: string; isActive: boolean; isBanned: boolean; createdAt: string;
+};
 export type Language = {
   id: string; code: string; nameEn: string; nameLocal: string;
   direction: string; isActive: boolean; completionPct: number;
@@ -85,6 +90,8 @@ export const api = {
     req<{ users: User[] }>(`/admin/users?limit=${params?.limit || 50}&offset=${params?.offset || 0}`),
   updateUser: (id: string, data: Partial<{ plan: string; isActive: boolean; isBanned: boolean }>) =>
     req<{ user: User }>(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  searchUsers: (q: string) =>
+    req<{ results: SearchResult[]; count: number }>(`/admin/users/search?q=${encodeURIComponent(q)}`),
 
   organizations: () => req<{ organizations: Org[] }>("/admin/organizations"),
   flags: () => req<{ flags: Flag[] }>("/admin/feature-flags"),

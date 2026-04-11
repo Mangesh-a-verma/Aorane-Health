@@ -49,10 +49,13 @@ export const userAuthProvidersTable = pgTable("user_auth_providers", {
 export const userProfilesTable = pgTable("user_profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").notNull().unique().references(() => usersTable.id, { onDelete: "cascade" }),
+  aoraneId: text("aorane_id").unique(),
   fullName: text("full_name"),
   dateOfBirth: text("date_of_birth"),
   gender: genderEnum("gender"),
   profilePhotoUrl: text("profile_photo_url"),
+  city: text("city"),
+  state: text("state"),
   heightCm: decimal("height_cm", { precision: 5, scale: 2 }),
   weightKg: decimal("weight_kg", { precision: 5, scale: 2 }),
   bmi: decimal("bmi", { precision: 5, scale: 2 }),

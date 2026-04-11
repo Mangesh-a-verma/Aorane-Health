@@ -48,6 +48,18 @@ export interface Member {
   bloodGroup: string | null;
 }
 
+export interface MemberSearchResult {
+  userId: string;
+  aoraneId: string | null;
+  name: string | null;
+  bloodGroup: string | null;
+  gender: string | null;
+  age: number | null;
+  city: string | null;
+  bmi: string | null;
+  plan: string;
+}
+
 export interface EnrollmentCode {
   id: string;
   code: string;
@@ -84,6 +96,9 @@ export const api = {
 
   members: () =>
     request<{ members: Member[] }>("/business/members"),
+
+  searchMembers: (q: string) =>
+    request<{ results: MemberSearchResult[]; count: number }>(`/business/members/search?q=${encodeURIComponent(q)}`),
 
   getCodes: () =>
     request<{ codes: EnrollmentCode[] }>("/business/enrollment-codes"),

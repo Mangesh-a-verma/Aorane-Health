@@ -112,6 +112,7 @@ export default function DashboardScreen() {
   const [water, setWater] = useState({ current: 0, goal: 8 });
   const [calories, setCalories] = useState({ eaten: 0, goal: 2000, burned: 0 });
   const [exerciseMin, setExerciseMin] = useState(0);
+  const [activeScore, setActiveScore] = useState<{ overall: number; foodPct: number; waterPct: number; exercisePct: number; label: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [greeting, setGreeting] = useState("Namaste");
@@ -132,8 +133,8 @@ export default function DashboardScreen() {
   const loadData = useCallback(async () => {
     try {
       const date = todayDate();
-      const [scoreRes, waterRes, foodRes, exerciseRes] = await Promise.allSettled([
-        api.getHealthScore(date), api.getWaterLog(date), api.getFoodSummary(date), api.getExerciseLogs(date),
+      const [scoreRes, waterRes, foodRes, exerciseRes, activityRes] = await Promise.allSettled([
+        api.getHealthScore(date), api.getWaterLog(date), api.getFoodSummary(date), api.getExerciseLogs(date), api.getActivityScore(date),
       ]);
       if (scoreRes.status === "fulfilled") {
         const s = scoreRes.value.score as Record<string, number>;
@@ -149,6 +150,9 @@ export default function DashboardScreen() {
         const logs = exerciseRes.value.logs as Array<{ durationMinutes: number; caloriesBurned?: string }>;
         setExerciseMin(logs.reduce((s, l) => s + l.durationMinutes, 0));
         setCalories((c) => ({ ...c, burned: Math.round(logs.reduce((s, l) => s + Number(l.caloriesBurned || 0), 0)) }));
+      }
+      if (activityRes.status === "fulfilled") {
+        setActiveScore({ overall: activityRes.value.overall, foodPct: activityRes.value.foodPct, waterPct: activityRes.value.waterPct, exercisePct: activityRes.value.exercisePct, label: activityRes.value.label });
       }
     } catch { }
     setIsLoading(false);
@@ -284,6 +288,49 @@ export default function DashboardScreen() {
             <MetricCard icon="flame-outline" label="Calories Jalaaye" value={calories.burned} unit="kcal" color={C.red} bgColors={["#DC2626", "#F87171"]} />
           </View>
         </Animated.View>
+
+        {/* ── ACTIVE PERCENTAGE WIDGET ── */}
+        {activeScore !== null && (
+          <Animated.View style={{ opacity: fadeAnim, marginBottom: 4 }}>
+            <LinearGradient
+              colors={activeScore.overall >= 70 ? ["#0D9488","#0077B6"] : activeScore.overall >= 40 ? ["#F59E0B","#EF4444"] : ["#6B7280","#374151"]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={{ borderRadius: 20, padding: 18 }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <View>
+                  <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_500Medium" }}>AJ KI ACTIVITY</Text>
+                  <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16, marginTop: 2 }}>{activeScore.label}</Text>
+                </View>
+                <View style={{ alignItems: "center" }}>
+                  <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 38, lineHeight: 44 }}>{activeScore.overall}</Text>
+                  <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_500Medium" }}>% Active</Text>
+                </View>
+              </View>
+              {/* Progress bars */}
+              <View style={{ gap: 8 }}>
+                {[
+                  { label: "Khana", pct: activeScore.foodPct, icon: "🍛" },
+                  { label: "Paani", pct: activeScore.waterPct, icon: "💧" },
+                  { label: "Exercise", pct: activeScore.exercisePct, icon: "🏃" },
+                ].map((item) => (
+                  <View key={item.label}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+                      <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, fontFamily: "Inter_500Medium" }}>{item.icon} {item.label}</Text>
+                      <Text style={{ color: "#FFF", fontSize: 11, fontFamily: "Inter_700Bold" }}>{item.pct}%</Text>
+                    </View>
+                    <View style={{ height: 5, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 3, overflow: "hidden" }}>
+                      <View style={{ height: 5, width: `${item.pct}%`, backgroundColor: "rgba(255,255,255,0.85)", borderRadius: 3 }} />
+                    </View>
+                  </View>
+                ))}
+              </View>
+              <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 12, textAlign: "center" }}>
+                Zyada active raha = AI suggestions zyada accurate honge
+              </Text>
+            </LinearGradient>
+          </Animated.View>
+        )}
 
         {/* ── WATER TRACKER ── */}
         <Animated.View style={[s.sectionCard, { opacity: fadeAnim }]}>
