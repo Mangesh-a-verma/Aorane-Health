@@ -1,8 +1,13 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "LdSxjwX-l_1-bC4JqjtGK"
 uri = "file://artifacts/aorane-mobile/assets/images/icon.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "ksxMjiURDkTDzXKMEQGdN"
+uri = "file://AORANE_UI_DESIGN_PROMPT.md"
+type = "text"
+title = "AORANE — Complete UI Design Prompt (Figma / Flutter)"
