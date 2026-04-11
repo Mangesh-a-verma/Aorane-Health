@@ -140,6 +140,48 @@ export default function ProfileScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
+        {/* Work & Lifestyle Section */}
+        <GlassCard style={[styles.section, { marginBottom: 14 }]}>
+          <View style={styles.sectionHeaderRow}>
+            <LinearGradient colors={["#F59E0B","#EF4444"]} style={styles.sectionIconBg}>
+              <Ionicons name="briefcase-outline" size={16} color="#FFF" />
+            </LinearGradient>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.sectionTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>Work & Lifestyle</Text>
+              <Text style={[styles.sectionSub, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>
+                Calorie aur health calculation ke liye
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => router.push("/edit-work-profile" as never)} style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.08)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 }}>
+              <Text style={{ color: isDark ? "#38BDF8" : "#0077B6", fontFamily: "Inter_600SemiBold", fontSize: 12 }}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: "row", gap: 10, paddingVertical: 10, flexWrap: "wrap" }}>
+            {profile.workProfile ? (
+              <View style={{ backgroundColor: isDark ? "rgba(245,158,11,0.15)" : "rgba(245,158,11,0.1)", borderRadius: 10, borderWidth: 1, borderColor: isDark ? "rgba(245,158,11,0.3)" : "rgba(245,158,11,0.25)", paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Ionicons name="briefcase-outline" size={14} color="#F59E0B" />
+                <Text style={{ color: isDark ? "#FDE68A" : "#92400E", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{profile.workProfile as string}</Text>
+              </View>
+            ) : (
+              <TouchableOpacity onPress={() => router.push("/edit-work-profile" as never)} style={{ backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,119,182,0.06)", borderRadius: 10, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.15)", paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Ionicons name="add-circle-outline" size={14} color={isDark ? "rgba(255,255,255,0.4)" : "#0077B6"} />
+                <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#0077B6", fontFamily: "Inter_500Medium", fontSize: 13 }}>Work Profile add karo</Text>
+              </TouchableOpacity>
+            )}
+            {profile.activityLevel ? (
+              <View style={{ backgroundColor: isDark ? "rgba(16,185,129,0.15)" : "rgba(16,185,129,0.1)", borderRadius: 10, borderWidth: 1, borderColor: isDark ? "rgba(16,185,129,0.3)" : "rgba(16,185,129,0.25)", paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Ionicons name="fitness-outline" size={14} color="#10B981" />
+                <Text style={{ color: isDark ? "#6EE7B7" : "#065F46", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                  {({ sedentary: "Sedentary", light: "Light Active", moderate: "Moderate", very: "Very Active", athlete: "Athlete" } as Record<string, string>)[profile.activityLevel as string] || profile.activityLevel as string}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)", fontFamily: "Inter_400Regular", fontSize: 11, lineHeight: 16 }}>
+            💡 Work profile se AI aapki calorie needs better calculate karta hai — Army/Police ke liye zyada, Office job ke liye kam
+          </Text>
+        </GlassCard>
+
         {/* Health Tools Section */}
         <GlassCard style={[styles.section, { marginBottom: 14 }]}>
           <View style={styles.sectionHeaderRow}>

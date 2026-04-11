@@ -10,23 +10,33 @@ import { GradientBackground } from "@/components/GradientBackground";
 import { api } from "@/lib/api";
 
 const WORK_PROFILES = [
-  { value: "Office/Desk", icon: "💼" },
-  { value: "Field/Sales", icon: "🚗" },
-  { value: "Healthcare", icon: "🏥" },
-  { value: "Teacher", icon: "📚" },
-  { value: "IT/Engineer", icon: "💻" },
-  { value: "Business Owner", icon: "🏢" },
-  { value: "Driver/Delivery", icon: "🚚" },
-  { value: "Factory Worker", icon: "🔧" },
-  { value: "Housewife", icon: "🏠" },
-  { value: "House Husband", icon: "🏠" },
-  { value: "Student (School)", icon: "🎒" },
-  { value: "Student (College)", icon: "🎓" },
-  { value: "Retired", icon: "🌅" },
-  { value: "Freelancer/WFH", icon: "🏡" },
-  { value: "Artist/Creative", icon: "🎨" },
-  { value: "Athlete", icon: "🏃" },
-  { value: "Other", icon: "✨" },
+  // Sedentary / Desk
+  { value: "Office/Desk Job",    icon: "💼", activityHint: "sedentary", label: "Office/Desk Job" },
+  { value: "IT/Software",        icon: "💻", activityHint: "sedentary", label: "IT / Software" },
+  { value: "Call Center/BPO",    icon: "📞", activityHint: "sedentary", label: "Call Center / BPO" },
+  { value: "Freelancer/WFH",     icon: "🏡", activityHint: "sedentary", label: "Freelancer / WFH" },
+  // Light Active
+  { value: "Teacher/Professor",  icon: "📚", activityHint: "light",     label: "Teacher / Professor" },
+  { value: "Doctor/Healthcare",  icon: "🏥", activityHint: "light",     label: "Doctor / Healthcare" },
+  { value: "Business Owner",     icon: "🏢", activityHint: "light",     label: "Business Owner" },
+  { value: "Housewife",          icon: "🏠", activityHint: "light",     label: "Housewife" },
+  { value: "House Husband",      icon: "🏠", activityHint: "light",     label: "House Husband" },
+  { value: "Retired",            icon: "🌅", activityHint: "light",     label: "Retired" },
+  { value: "Artist/Creative",    icon: "🎨", activityHint: "light",     label: "Artist / Creative" },
+  // Moderate Active
+  { value: "Field/Sales",        icon: "🚗", activityHint: "moderate",  label: "Field / Sales" },
+  { value: "Driver/Delivery",    icon: "🚚", activityHint: "moderate",  label: "Driver / Delivery" },
+  { value: "Factory Worker",     icon: "🔧", activityHint: "moderate",  label: "Factory Worker" },
+  { value: "ASHA/ANM Worker",    icon: "👩‍⚕️", activityHint: "moderate", label: "ASHA / ANM Worker" },
+  { value: "Student (College)",  icon: "🎓", activityHint: "moderate",  label: "Student (College)" },
+  { value: "Student (School)",   icon: "🎒", activityHint: "light",     label: "Student (School)" },
+  // Very Active
+  { value: "Police/CRPF",        icon: "👮", activityHint: "very",      label: "Police / CRPF" },
+  { value: "Army/Defence",       icon: "🪖", activityHint: "very",      label: "Army / Defence" },
+  { value: "Farmer/Agriculture", icon: "🌾", activityHint: "very",      label: "Farmer / Agriculture" },
+  { value: "Construction Worker",icon: "🏗️", activityHint: "very",      label: "Construction Worker" },
+  { value: "Athlete/Sports",     icon: "🏃", activityHint: "athlete",   label: "Athlete / Sports" },
+  { value: "Other",              icon: "✨", activityHint: "moderate",  label: "Other" },
 ];
 
 const ACTIVITY_LEVELS = [
@@ -107,14 +117,22 @@ export default function OnboardingLifestyle() {
                 {WORK_PROFILES.map((w) => {
                   const sel = workProfile === w.value;
                   return (
-                    <TouchableOpacity key={w.value} onPress={() => { setWorkProfile(w.value); Haptics.selectionAsync(); }} activeOpacity={0.8}>
+                    <TouchableOpacity
+                      key={w.value}
+                      onPress={() => {
+                        setWorkProfile(w.value);
+                        if (!activityLevel) setActivityLevel(w.activityHint);
+                        Haptics.selectionAsync();
+                      }}
+                      activeOpacity={0.8}
+                    >
                       {sel ? (
                         <LinearGradient colors={["#0077B6", "#1B998B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.chipActive}>
-                          <Text style={styles.chipActiveText}>{w.icon} {w.value}</Text>
+                          <Text style={styles.chipActiveText}>{w.icon} {w.label}</Text>
                         </LinearGradient>
                       ) : (
                         <View style={[styles.chip, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,119,182,0.05)", borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.15)" }]}>
-                          <Text style={[styles.chipText, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_500Medium" }]}>{w.icon} {w.value}</Text>
+                          <Text style={[styles.chipText, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_500Medium" }]}>{w.icon} {w.label}</Text>
                         </View>
                       )}
                     </TouchableOpacity>

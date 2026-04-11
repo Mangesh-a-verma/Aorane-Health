@@ -48,41 +48,112 @@ function getIndianSeason(): string {
   return "Autumn (Sharad) — Seasonal foods: Pomegranate, Guava, Apple, Light dal";
 }
 
-// ── BMR / TDEE calculation ────────────────────────────────────────────────────
-function calculateTDEE(weightKg: number, heightCm: number, age: number, gender: string, activityLevel: string): number {
+// ── Work profile → activity multiplier mapping ───────────────────────────────
+const WORK_PROFILE_MULTIPLIERS: Record<string, number> = {
+  "Office/Desk Job":     1.2,
+  "IT/Software":         1.2,
+  "Call Center/BPO":     1.2,
+  "Freelancer/WFH":      1.2,
+  "Teacher/Professor":   1.375,
+  "Doctor/Healthcare":   1.375,
+  "Business Owner":      1.375,
+  "Housewife":           1.375,
+  "House Husband":       1.375,
+  "Retired":             1.375,
+  "Artist/Creative":     1.375,
+  "Student (School)":    1.375,
+  "Field/Sales":         1.55,
+  "Driver/Delivery":     1.55,
+  "Factory Worker":      1.55,
+  "ASHA/ANM Worker":     1.55,
+  "Student (College)":   1.55,
+  "Police/CRPF":         1.725,
+  "Army/Defence":        1.725,
+  "Farmer/Agriculture":  1.725,
+  "Construction Worker": 1.725,
+  "Athlete/Sports":      1.9,
+};
+
+// Maps work profile → activity level label (for display + prompt)
+const WORK_PROFILE_ACTIVITY: Record<string, string> = {
+  "Office/Desk Job":     "sedentary",
+  "IT/Software":         "sedentary",
+  "Call Center/BPO":     "sedentary",
+  "Freelancer/WFH":      "sedentary",
+  "Teacher/Professor":   "light",
+  "Doctor/Healthcare":   "light",
+  "Business Owner":      "light",
+  "Housewife":           "light",
+  "House Husband":       "light",
+  "Retired":             "light",
+  "Artist/Creative":     "light",
+  "Student (School)":    "light",
+  "Field/Sales":         "moderate",
+  "Driver/Delivery":     "moderate",
+  "Factory Worker":      "moderate",
+  "ASHA/ANM Worker":     "moderate",
+  "Student (College)":   "moderate",
+  "Police/CRPF":         "very",
+  "Army/Defence":        "very",
+  "Farmer/Agriculture":  "very",
+  "Construction Worker": "very",
+  "Athlete/Sports":      "athlete",
+};
+
+// ── BMR / TDEE calculation — uses BOTH workProfile + activityLevel ────────────
+function calculateTDEE(
+  weightKg: number, heightCm: number, age: number, gender: string,
+  activityLevel: string, workProfile?: string
+): number {
   const bmr = gender === "female"
     ? 655 + 9.6 * weightKg + 1.8 * heightCm - 4.7 * age
     : 66 + 13.7 * weightKg + 5 * heightCm - 6.8 * age;
-  const multipliers: Record<string, number> = {
-    sedentary: 1.2, light: 1.375, moderate: 1.55, very: 1.725, athlete: 1.9,
+
+  // Work profile multiplier (based on job physical demand)
+  const workMultiplier = workProfile ? (WORK_PROFILE_MULTIPLIERS[workProfile] || 1.4) : 1.4;
+
+  // Exercise/lifestyle multiplier (additional to work)
+  const exerciseMultipliers: Record<string, number> = {
+    sedentary: 0, light: 0.05, moderate: 0.1, very: 0.175, athlete: 0.25,
   };
-  return Math.round(bmr * (multipliers[activityLevel] || 1.55));
+  const exerciseAdd = exerciseMultipliers[activityLevel] || 0;
+
+  // Effective multiplier: work base + exercise addition, capped at 2.0
+  const effectiveMultiplier = Math.min(2.0, workMultiplier + exerciseAdd);
+
+  return Math.round(bmr * effectiveMultiplier);
 }
 
 // ── Build full suggestion prompt ──────────────────────────────────────────────
 function buildPrompt(data: {
   age: number | null; gender: string; weightKg: number | null; heightCm: number | null;
-  bmi: number | null; activityLevel: string; primaryGoal: string; targetWeightKg: number | null;
+  bmi: number | null; activityLevel: string; workProfile: string | null;
+  primaryGoal: string; targetWeightKg: number | null;
   foodPreference: string; foodAllergies: string[]; medicalConditions: string[];
   caloriesToday: number; waterToday: number; waterGoal: number; exerciseMinToday: number;
-  calorieGoal: number; season: string;
+  calorieGoal: number; season: string; effectiveTDEE: number;
 }): string {
-  const { age, gender, weightKg, heightCm, bmi, activityLevel, primaryGoal, targetWeightKg,
+  const { age, gender, weightKg, heightCm, bmi, activityLevel, workProfile, primaryGoal, targetWeightKg,
     foodPreference, foodAllergies, medicalConditions, caloriesToday, waterToday, waterGoal,
-    exerciseMinToday, calorieGoal, season } = data;
+    exerciseMinToday, calorieGoal, season, effectiveTDEE } = data;
 
   const remainingCalories = Math.max(0, calorieGoal - caloriesToday);
   const hour = new Date().getHours();
   const timeOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
   const allergyStr = foodAllergies.length > 0 && !foodAllergies.includes("None") ? foodAllergies.join(", ") : "none";
   const conditionStr = medicalConditions.length > 0 ? medicalConditions.join(", ") : "none";
+  const workProfileDesc = workProfile
+    ? `${workProfile} (${WORK_PROFILE_ACTIVITY[workProfile] || "moderate"} activity job)`
+    : "unknown";
 
   return `You are AORANE, a certified Indian health coach and nutritionist. Give personalized daily health suggestions in HINDI + English mix (Hinglish).
 
 USER PROFILE:
 - Age: ${age || "unknown"}, Gender: ${gender}
 - Weight: ${weightKg ? weightKg + " kg" : "unknown"}, Height: ${heightCm ? heightCm + " cm" : "unknown"}, BMI: ${bmi ? Number(bmi).toFixed(1) : "unknown"}
-- Activity Level: ${activityLevel}
+- Work Profile: ${workProfileDesc}
+- Exercise Activity Level: ${activityLevel}
+- Calculated TDEE: ${effectiveTDEE} kcal/day (based on work + exercise)
 - Primary Goal: ${primaryGoal}
 - Target Weight: ${targetWeightKg ? targetWeightKg + " kg" : "not set"}
 - Food Preference: ${foodPreference}
@@ -96,6 +167,17 @@ TODAY'S PROGRESS (${timeOfDay}):
 
 Current Season: ${season}
 
+WORK PROFILE CONTEXT:
+${workProfile === "Army/Defence" ? "- Army/Defence person needs high protein (1.8g/kg), high carbs for energy, adequate hydration" : ""}
+${workProfile === "Police/CRPF" ? "- Police person: physically demanding, suggest foods for stamina and joint health" : ""}
+${workProfile === "Farmer/Agriculture" ? "- Farmer: very physically active, needs high calorie, traditional desi foods preferred" : ""}
+${workProfile === "Call Center/BPO" ? "- Call center worker: sedentary + night shift possible, stress eating risk, suggest anti-fatigue foods" : ""}
+${workProfile === "Housewife" || workProfile === "House Husband" ? "- Homemaker: moderate activity, suggest quick healthy home-cooked meals" : ""}
+${workProfile === "Driver/Delivery" ? "- Driver: sedentary in vehicle but stressed, suggest foods that maintain alertness, avoid heavy meals" : ""}
+${workProfile === "Doctor/Healthcare" ? "- Healthcare worker: on feet all day, stress high, needs quick healthy meals between shifts" : ""}
+${workProfile === "Factory Worker" ? "- Factory worker: physical labor, high protein and carbs needed for recovery" : ""}
+${workProfile === "Construction Worker" ? "- Construction worker: heavy physical labor, very high calorie needs, protein for muscle" : ""}
+
 RULES:
 1. All food suggestions must be AUTHENTIC INDIAN foods
 2. Respect dietary preference: ${foodPreference} (no items that violate this)
@@ -106,6 +188,7 @@ RULES:
 7. If diabetes: avoid high-GI foods, suggest low-GI options
 8. If high BP: suggest low-sodium options, avoid pickles/papad
 9. Language: Mix Hindi and English naturally (Hinglish)
+10. Work profile se related specific advice do (e.g. Army ke liye stamina foods, Office ke liye screen fatigue tips)
 
 Return ONLY valid JSON (no markdown):
 {
@@ -202,19 +285,21 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
     const heightCm = profile?.heightCm ? Number(profile.heightCm) : null;
     const bmi = profile?.bmi ? Number(profile.bmi) : null;
     const activityLevel = (profile?.activityLevel as string) || "moderate";
+    const workProfile = (profile?.workProfile as string) || null;
     const gender = (profile?.gender as string) || "other";
     const foodPreference = (profile?.foodPreference as string) || "veg";
     const foodAllergies = (profile?.foodAllergies as string[]) || [];
     const medicalConditions = conditions.map((c) => c.condition);
 
-    // 4. Calculate calorie goal
+    // 4. Calculate calorie goal — now uses BOTH workProfile + activityLevel
     let calorieGoal = prefs?.calorieGoal || 2000;
+    let effectiveTDEE = 2000;
     if (weightKg && heightCm && age) {
-      const tdee = calculateTDEE(weightKg, heightCm, age, gender, activityLevel);
+      effectiveTDEE = calculateTDEE(weightKg, heightCm, age, gender, activityLevel, workProfile || undefined);
       const primaryGoal = goals?.primaryGoal || "maintain";
-      if (primaryGoal === "lose_weight" || primaryGoal === "weight_loss") calorieGoal = Math.round(tdee * 0.82);
-      else if (primaryGoal === "gain_weight" || primaryGoal === "gain_muscle" || primaryGoal === "athletic") calorieGoal = Math.round(tdee * 1.12);
-      else calorieGoal = tdee;
+      if (primaryGoal === "lose_weight" || primaryGoal === "weight_loss") calorieGoal = Math.round(effectiveTDEE * 0.82);
+      else if (primaryGoal === "gain_weight" || primaryGoal === "gain_muscle" || primaryGoal === "athletic") calorieGoal = Math.round(effectiveTDEE * 1.12);
+      else calorieGoal = effectiveTDEE;
     }
 
     // 5. Get today's activity (best-effort)
@@ -236,12 +321,13 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
 
     // 6. Generate AI suggestions
     const prompt = buildPrompt({
-      age, gender, weightKg, heightCm, bmi, activityLevel,
+      age, gender, weightKg, heightCm, bmi, activityLevel, workProfile,
       primaryGoal: goals?.primaryGoal || "maintain",
       targetWeightKg: goals?.targetWeightKg ? Number(goals.targetWeightKg) : null,
       foodPreference, foodAllergies, medicalConditions,
       caloriesToday, waterToday, waterGoal: prefs?.waterGoalGlasses || 8,
       exerciseMinToday, calorieGoal, season: getIndianSeason(),
+      effectiveTDEE,
     });
 
     let suggestions: unknown;

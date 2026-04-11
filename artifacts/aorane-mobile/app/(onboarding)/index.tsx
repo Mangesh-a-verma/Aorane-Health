@@ -23,12 +23,22 @@ const GENDERS = [
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-", "Pata nahi"];
 
 const WORK_PROFILES = [
-  { value: "office", label: "Office", icon: "business-outline" as const },
-  { value: "field", label: "Field", icon: "walk-outline" as const },
-  { value: "student", label: "Student", icon: "school-outline" as const },
-  { value: "homemaker", label: "Ghar", icon: "home-outline" as const },
-  { value: "healthcare", label: "Doctor", icon: "medical-outline" as const },
-  { value: "other", label: "Anya", icon: "ellipsis-horizontal-outline" as const },
+  { value: "Office/Desk Job",     label: "Office/Desk",        icon: "business-outline" as const },
+  { value: "IT/Software",         label: "IT/Software",        icon: "laptop-outline" as const },
+  { value: "Call Center/BPO",     label: "Call Center",        icon: "call-outline" as const },
+  { value: "Field/Sales",         label: "Field/Sales",        icon: "walk-outline" as const },
+  { value: "Doctor/Healthcare",   label: "Doctor/Healthcare",  icon: "medical-outline" as const },
+  { value: "Teacher/Professor",   label: "Teacher",            icon: "school-outline" as const },
+  { value: "Army/Defence",        label: "Army/Defence",       icon: "shield-outline" as const },
+  { value: "Police/CRPF",         label: "Police/CRPF",        icon: "shield-half-outline" as const },
+  { value: "Farmer/Agriculture",  label: "Farmer",             icon: "leaf-outline" as const },
+  { value: "Housewife",           label: "Housewife",          icon: "home-outline" as const },
+  { value: "Student (College)",   label: "Student",            icon: "school-outline" as const },
+  { value: "Business Owner",      label: "Business Owner",     icon: "briefcase-outline" as const },
+  { value: "Driver/Delivery",     label: "Driver/Delivery",    icon: "car-outline" as const },
+  { value: "Factory Worker",      label: "Factory Worker",     icon: "construct-outline" as const },
+  { value: "Athlete/Sports",      label: "Athlete",            icon: "fitness-outline" as const },
+  { value: "Other",               label: "Anya",               icon: "ellipsis-horizontal-outline" as const },
 ];
 
 export default function ProfileSetupScreen() {
