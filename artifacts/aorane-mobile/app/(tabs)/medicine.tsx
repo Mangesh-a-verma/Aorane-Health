@@ -533,7 +533,7 @@ export default function MedicineScreen() {
               placeholder="e.g. 500mg, 1 tablet" placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.35)"}
               value={dosage} onChangeText={setDosage} />
 
-            <Text style={[styles.modalLabel, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Kab lena hai</Text>
+            <Text style={[styles.modalLabel, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>When to take</Text>
             <View style={styles.timingGrid}>
               {Object.entries(MEAL_TIMING).map(([k, v]) => (
                 <TouchableOpacity key={k} onPress={() => setMealTiming(k)} activeOpacity={0.8} style={{ borderRadius: 14, overflow: "hidden" }}>

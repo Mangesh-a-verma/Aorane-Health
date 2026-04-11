@@ -48,7 +48,7 @@ export default function Languages() {
         ) : langs.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-center">
             <LangIcon size={36} className="text-muted-foreground/30 mb-3" />
-            <p className="text-muted-foreground">Koi language configure nahi ki gayi</p>
+            <p className="text-muted-foreground">No languages configured yet</p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 gap-3">

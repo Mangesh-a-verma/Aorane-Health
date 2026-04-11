@@ -153,7 +153,7 @@ export default function Users() {
             <h2 className="text-base font-bold text-foreground">AORANE ID Search</h2>
             <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">12-digit</span>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">AORANE ID (12 digits) ya naam se user dhundho</p>
+          <p className="text-xs text-muted-foreground mb-3">Search by AORANE ID (12 digits) or user name</p>
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -237,7 +237,7 @@ export default function Users() {
                       </tr>
                     ))
                   ) : filtered.length === 0 ? (
-                    <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground text-sm">Koi user nahi mila</td></tr>
+                    <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground text-sm">No users found</td></tr>
                   ) : (
                     filtered.map((u) => <UserRow key={u.id} user={u} onUpdate={updateUser} />)
                   )}

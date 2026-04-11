@@ -585,10 +585,10 @@ export default function BloodEmergencyScreen() {
                 {gpsLoading ? <ActivityIndicator size="small" color={C.primary} /> : <Ionicons name={donorLat ? "navigate-circle" : "navigate-circle-outline"} size={22} color={donorLat ? C.green : C.primary} />}
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: donorLat ? C.green : C.primary, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
-                    {gpsLoading ? "Location le raha hai..." : donorLat ? "✅ Location save ho gayi" : "📍 GPS se Auto-fill Karein"}
+                    {gpsLoading ? "Getting location..." : donorLat ? "✅ Location saved" : "📍 Auto-fill via GPS"}
                   </Text>
                   <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>
-                    {donorLat ? `${donorLat.toFixed(4)}, ${donorLng?.toFixed(4)} — nearby donors aapko pehle dikhenge` : "City/State automatic fill ho jaayega + proximity search enable hoga"}
+                    {donorLat ? `${donorLat.toFixed(4)}, ${donorLng?.toFixed(4)} — nearby donors will appear first` : "City/State will auto-fill + proximity search will be enabled"}
                   </Text>
                 </View>
                 {donorLat && <TouchableOpacity onPress={() => { setDonorLat(undefined); setDonorLng(undefined); }} style={{ padding: 4 }}>
@@ -634,7 +634,7 @@ export default function BloodEmergencyScreen() {
             <View>
               <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 20 }}>🆘 Blood Emergency</Text>
               <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontFamily: "Inter_400Regular" }}>
-                {formStep === "form" ? "Hospital info bharein — donors directly aayenge" : "Confirm karein aur post karein"}
+                {formStep === "form" ? "Fill hospital info — donors will contact directly" : "Review and post your request"}
               </Text>
             </View>
             <TouchableOpacity onPress={() => { setShowModal(false); resetModal(); }} style={{ backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 20, padding: 8 }}>

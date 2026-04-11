@@ -20,7 +20,7 @@ type CompanySettings = {
 };
 
 const DEFAULTS: CompanySettings = {
-  companyName: "AORANE Health", companyLogoUrl: null, tagline: "Aapki health, aapke haath mein",
+  companyName: "AORANE Health", companyLogoUrl: null, tagline: "Your Health, In Your Hands",
   website: "aorane.com", supportPhone: null, supportEmail: null, address: null,
   primaryColor: "#0077B6", accentColor: "#00B896",
   scorecardShowQr: true, scorecardShowBloodGroup: true, scorecardShowBmi: true,
@@ -144,7 +144,7 @@ export default function BrandingPage() {
                 <Input value={settings.companyName} onChange={(v) => set("companyName", v)} placeholder="e.g. AORANE Health Pvt. Ltd." />
               </Field>
               <Field label="Tagline">
-                <Input value={settings.tagline || ""} onChange={(v) => set("tagline", v)} placeholder="e.g. Aapki health, aapke haath mein" />
+                <Input value={settings.tagline || ""} onChange={(v) => set("tagline", v)} placeholder="e.g. Your Health, In Your Hands" />
               </Field>
               <Field label="Company Logo URL">
                 <Input value={settings.companyLogoUrl || ""} onChange={(v) => set("companyLogoUrl", v || null)} placeholder="https://yourcompany.com/logo.png" />

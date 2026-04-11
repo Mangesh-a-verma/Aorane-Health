@@ -77,10 +77,10 @@ function SuccessOverlay({ plan, onDone }: { plan: string; onDone: () => void }) 
           <Ionicons name="checkmark-circle" size={56} color="#FFF" />
         </View>
         <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 26, textAlign: "center", marginBottom: 8 }}>🎉 Congratulations!</Text>
-        <Text style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter_500Medium", fontSize: 16, textAlign: "center", marginBottom: 6 }}>{plan.toUpperCase()} Plan Active Hai!</Text>
-        <Text style={{ color: "rgba(255,255,255,0.65)", fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center", marginBottom: 28 }}>Aapke saare premium features unlock ho gaye</Text>
+        <Text style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter_500Medium", fontSize: 16, textAlign: "center", marginBottom: 6 }}>{plan.toUpperCase()} Plan is Active!</Text>
+        <Text style={{ color: "rgba(255,255,255,0.65)", fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center", marginBottom: 28 }}>All your premium features are now unlocked</Text>
         <TouchableOpacity onPress={onDone} style={{ backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14, width: "100%", alignItems: "center" }}>
-          <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>Dashboard Par Jao</Text>
+          <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>Go to Dashboard</Text>
         </TouchableOpacity>
       </LinearGradient>
     </View>

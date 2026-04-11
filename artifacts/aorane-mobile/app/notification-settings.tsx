@@ -184,7 +184,7 @@ export default function NotificationSettingsScreen() {
           <SettingRow
             icon="💊" iconBg="#FEF3F2"
             title="Medicine Reminders"
-            subtitle="Dawai lene ki yaad dilaata hai"
+            subtitle="Reminds you to take your medicines on time"
             value={settings.medicineReminders}
             onToggle={(v) => update("medicineReminders", v)}
             disabled={!settings.notificationsEnabled}

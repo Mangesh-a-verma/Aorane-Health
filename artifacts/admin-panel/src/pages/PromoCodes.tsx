@@ -58,7 +58,7 @@ export default function PromoCodes() {
         ) : codes.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-center">
             <Tag size={36} className="text-muted-foreground/30 mb-3" />
-            <p className="text-muted-foreground">Koi promo code nahi mila</p>
+            <p className="text-muted-foreground">No promo codes found</p>
           </div>
         ) : (
           <div className="bg-card border border-border rounded-xl overflow-hidden">

@@ -49,8 +49,8 @@ function NotFound() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center">
         <div className="text-6xl font-bold text-primary mb-4">404</div>
-        <p className="text-muted-foreground mb-4">Page nahi mila</p>
-        <a href="/admin-panel/dashboard" className="text-primary hover:underline text-sm">Dashboard pe jao</a>
+        <p className="text-muted-foreground mb-4">Page not found</p>
+        <a href="/admin-panel/dashboard" className="text-primary hover:underline text-sm">Go to Dashboard</a>
       </div>
     </div>
   );

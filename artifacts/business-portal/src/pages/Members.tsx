@@ -70,7 +70,7 @@ export default function Members() {
     setError("");
     api.members()
       .then((res) => setMembers(res.members))
-      .catch(() => setError("Members load karne mein error"))
+      .catch(() => setError("Failed to load members"))
       .finally(() => setLoading(false));
   };
 
@@ -107,14 +107,14 @@ export default function Members() {
             <h2 className="text-base font-bold text-foreground">AORANE ID Search</h2>
             <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Members only</span>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">Apne members ko AORANE ID ya naam se dhundho</p>
+          <p className="text-xs text-muted-foreground mb-3">Search your members by AORANE ID or name</p>
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="search"
               value={aoraneQuery}
               onChange={(e) => handleAoraneSearch(e.target.value)}
-              placeholder="AORANE ID (12 digits) ya member naam type karein..."
+              placeholder="AORANE ID (12 digits) or member name..."
               className="w-full bg-card border border-border rounded-xl pl-9 pr-10 py-2.5 text-sm focus:outline-none focus:border-primary transition-all font-mono"
             />
             {aoraneQuery && (
@@ -139,11 +139,11 @@ export default function Members() {
             <div className="mt-4">
               {searchResults.length === 0 ? (
                 <div className="text-center text-muted-foreground text-sm py-5 bg-muted/30 rounded-xl">
-                  Koi member nahi mila
+                  No members found
                 </div>
               ) : (
                 <div>
-                  <div className="text-xs text-muted-foreground mb-3">{searchResults.length} member{searchResults.length !== 1 ? "s" : ""} mila</div>
+                  <div className="text-xs text-muted-foreground mb-3">{searchResults.length} member{searchResults.length !== 1 ? "s" : ""} found</div>
                   <div className="grid md:grid-cols-2 gap-3">
                     {searchResults.map((r) => <SearchResultCard key={r.userId} r={r} />)}
                   </div>
@@ -200,8 +200,8 @@ export default function Members() {
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Users size={40} className="text-muted-foreground/40 mb-3" />
-              <p className="text-muted-foreground font-medium">{search ? "Koi member nahi mila" : "Abhi tak koi member join nahi kiya"}</p>
-              <p className="text-muted-foreground/60 text-sm mt-1">Organization code share karein to invite members</p>
+              <p className="text-muted-foreground font-medium">{search ? "No members found" : "No members have joined yet"}</p>
+              <p className="text-muted-foreground/60 text-sm mt-1">Share your organization code to invite members</p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">

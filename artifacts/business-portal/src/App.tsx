@@ -20,8 +20,8 @@ function NotFound() {
     <div className="min-h-screen flex items-center justify-center bg-[#F0FAFB]">
       <div className="text-center">
         <h1 className="text-4xl font-bold text-[#0D1F33] mb-2">404</h1>
-        <p className="text-[#7A90A4] mb-4">Page nahi mila</p>
-        <a href="/" className="text-[#0077B6] hover:underline text-sm">Home pe jao</a>
+        <p className="text-[#7A90A4] mb-4">Page not found</p>
+        <a href="/" className="text-[#0077B6] hover:underline text-sm">Go to Home</a>
       </div>
     </div>
   );

@@ -66,7 +66,7 @@ export default function MedicalEmergencyScreen() {
         <View style={{ backgroundColor: "rgba(220,38,38,0.07)", borderRadius: 14, padding: 14, flexDirection: "row", gap: 10, alignItems: "flex-start", borderWidth: 1, borderColor: C.border }}>
           <Text style={{ fontSize: 20 }}>ℹ️</Text>
           <Text style={{ color: C.text, fontSize: 13, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 19 }}>
-            Yahan par saari medical emergencies ek jagah milenge. Jaise jaise features launch hote jayenge, yahan add hote jaayenge.
+            All medical emergency tools in one place. More features will be added as they launch.
           </Text>
         </View>
 
@@ -103,8 +103,8 @@ export default function MedicalEmergencyScreen() {
 
             {/* Features list */}
             {([
-              { icon: "🔍", label: "Donor Search — City ya GPS se 50km radius" },
-              { icon: "📍", label: "Nearby Donors — Distance ke saath sorted" },
+              { icon: "🔍", label: "Donor Search — City or GPS within 50km radius" },
+              { icon: "📍", label: "Nearby Donors — Sorted by distance" },
               { icon: "❤️", label: "Donor Registration — OTP verified + GPS location" },
               { icon: "🆘", label: "Emergency Request — Hospital + Doctor info verified" },
               { icon: "🛡️", label: "Safety System — OTP + Flag/Report + Rate Limit" },

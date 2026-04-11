@@ -63,7 +63,7 @@ export default function FoodItems() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-center">
             <UtensilsCrossed size={36} className="text-muted-foreground/30 mb-3" />
-            <p className="text-muted-foreground">Koi food item nahi mila</p>
+            <p className="text-muted-foreground">No food items found</p>
           </div>
         ) : (
           <div className="bg-card border border-border rounded-xl overflow-hidden">

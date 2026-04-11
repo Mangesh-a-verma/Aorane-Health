@@ -324,7 +324,7 @@ export default function SuggestionsScreen() {
         {/* ── MEDICAL WARNINGS ── */}
         {medicalWarnings.length > 0 && (
           <Animated.View style={{ opacity: fadeAnim, gap: 8 }}>
-            <SectionHeader icon="⚕️" title="Medical Conditions ke liye" subtitle="Aapki health ke liye khaas sujhav" color={C.red} />
+            <SectionHeader icon="⚕️" title="For Medical Conditions" subtitle="Special health recommendations for you" color={C.red} />
             {medicalWarnings.map((w, i) => (
               <View key={i} style={[styles.card, { borderColor: "#FECACA" }]}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -368,7 +368,7 @@ export default function SuggestionsScreen() {
               </View>
               <View style={{ flex: 1, alignItems: "flex-end", justifyContent: "center" }}>
                 <Text style={{ color: C.yellow, fontFamily: "Inter_700Bold", fontSize: 17 }}>{targetProgress.weightGap} kg</Text>
-                <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>baaki hai</Text>
+                <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>remaining</Text>
               </View>
             </View>
             <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 }}>{targetProgress.weeklyMessage}</Text>

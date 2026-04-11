@@ -401,7 +401,7 @@ export default function StressScreen() {
             <View style={{ padding: 18 }}>
               <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 4 }}>5-Pillar Stress Analysis</Text>
               <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 16 }}>
-                Aaj ka paani, exercise aur neend dekh ke automatic stress calculate karega
+                Automatically calculates stress based on today's water, exercise and sleep data
               </Text>
               <View style={{ gap: 10, marginBottom: 20 }}>
                 {PILLARS.map(p => (

@@ -14,11 +14,11 @@ const { width: W } = Dimensions.get("window");
 const GOAL = 8;
 
 const DRINK_TYPES = [
-  { key: "water",   label: "Paani",    emoji: "💧", color: "#0077B6" },
-  { key: "chai",    label: "Chai",     emoji: "☕", color: "#A16207" },
-  { key: "juice",   label: "Juice",    emoji: "🧃", color: "#F59E0B" },
-  { key: "milk",    label: "Doodh",    emoji: "🥛", color: "#6B7280" },
-  { key: "coconut", label: "Naariyal", emoji: "🥥", color: "#10B981" },
+  { key: "water",   label: "Water",   emoji: "💧", color: "#0077B6" },
+  { key: "chai",    label: "Chai",    emoji: "☕", color: "#A16207" },
+  { key: "juice",   label: "Juice",   emoji: "🧃", color: "#F59E0B" },
+  { key: "milk",    label: "Milk",    emoji: "🥛", color: "#6B7280" },
+  { key: "coconut", label: "Coconut", emoji: "🥥", color: "#10B981" },
 ];
 
 function GlassIcon({ filled, partial }: { filled: boolean; partial?: boolean }) {
@@ -71,11 +71,11 @@ export default function WaterScreen() {
 
   const getMsgColor = () => pct >= 100 ? "#10B981" : pct >= 60 ? "#F59E0B" : "#DC2626";
   const getMessage = () => {
-    if (pct >= 100) return "🎉 Shabash! Goal complete!";
-    if (pct >= 75) return "💪 Bahut achha! Almost done!";
-    if (pct >= 50) return "👍 Aadha ho gaya! Keep going!";
-    if (pct >= 25) return "⚠️ Thoda aur piyo!";
-    return "🚨 Paani bahut kam hai aaj!";
+    if (pct >= 100) return "🎉 Goal complete! Great job!";
+    if (pct >= 75) return "💪 Almost there! Keep going!";
+    if (pct >= 50) return "👍 Halfway done! Keep going!";
+    if (pct >= 25) return "⚠️ Drink a bit more!";
+    return "🚨 Very low water intake today!";
   };
 
   return (
@@ -89,13 +89,13 @@ export default function WaterScreen() {
           </TouchableOpacity>
           <View>
             <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>Water Tracker 💧</Text>
-            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Roz 8 glass pani zaroor piyo</Text>
+            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Stay hydrated — drink 8 glasses daily</Text>
           </View>
         </View>
 
         {/* Progress Card */}
         <LinearGradient colors={["#0077B6","#1B998B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 22, padding: 24, marginBottom: 16, alignItems: "center" }}>
-          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 8 }}>Aaj ka paani</Text>
+          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 8 }}>Today's Water</Text>
           <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 56 }}>{glasses}</Text>
           <Text style={{ color: "rgba(255,255,255,0.7)", fontFamily: "Inter_500Medium", fontSize: 16 }}>/ {GOAL} glasses ({glasses * 250} ml)</Text>
           <View style={{ width: "100%", height: 10, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 5, marginTop: 16, overflow: "hidden" }}>
