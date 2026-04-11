@@ -1,0 +1,248 @@
+Build a full-stack AI-powered Health Assistant system using modern scalable architecture.
+
+🎯 Objective
+
+Create an intelligent system that:
+
+1. Predicts future health risks
+2. Generates personalized diet plans
+3. Continuously adapts recommendations based on user data
+
+---
+
+🧱 Tech Stack
+
+- Frontend: React / Next.js (mobile-first UI)
+- Backend: Node.js (Express)
+- Database: Supabase (PostgreSQL)
+- AI: DeepSeek API (for reasoning & generation)
+
+---
+
+📊 Data Model (Supabase Tables)
+
+users
+
+- id
+- name
+- age
+- gender
+- height
+- weight
+- goal (fat loss / muscle gain / maintain)
+
+daily_logs
+
+- id
+- user_id
+- calories
+- protein
+- carbs
+- fats
+- steps
+- exercise_type
+- sleep_hours
+- water_intake
+
+health_metrics
+
+- id
+- user_id
+- bmi
+- body_fat
+- sugar_level
+- bp
+
+environment_data
+
+- id
+- user_id
+- weather (hot/cold/humid)
+- work_type (sedentary/active)
+
+---
+
+⚙️ Backend Architecture
+
+Create modular structure:
+
+/controllers
+/services
+/routes
+/utils
+/config
+
+---
+
+🔗 Core API Endpoints
+
+1. POST /analyze-health
+
+Input:
+
+- user profile
+- latest logs
+- health metrics
+- environment data
+
+Process:
+
+- preprocess data (BMI, calorie balance, trends)
+- send structured prompt to DeepSeek API
+
+Output:
+
+- health risk prediction (30 days, 6 months)
+- risk scores
+- explanation
+
+---
+
+2. POST /generate-diet
+
+Input:
+
+- user profile
+- goals
+- food habits
+- weather
+
+Process:
+
+- call DeepSeek API
+
+Output:
+
+- breakfast, lunch, dinner, snacks
+- calories breakdown
+- hydration advice
+
+---
+
+3. POST /daily-update
+
+- update logs
+- trigger re-analysis
+- update recommendations
+
+---
+
+🧠 DeepSeek API Integration
+
+Create a service file:
+
+/services/aiService.js
+
+Function:
+
+- send prompt to DeepSeek API
+- handle response
+- return structured JSON
+
+---
+
+🧾 Prompt Engineering (IMPORTANT)
+
+Always send structured prompt like:
+
+User Data:
+
+- Age
+- Weight
+- Height
+- Goal
+- Activity Level
+- Food Pattern
+- Weather
+- Health Metrics
+
+Tasks:
+
+1. Predict health risks (short-term & long-term)
+2. Generate personalized diet plan
+3. Suggest improvements
+
+Return ONLY JSON:
+{
+"risk_prediction": {...},
+"diet_plan": {...},
+"recommendations": [...]
+}
+
+---
+
+🧮 Preprocessing Logic (VERY IMPORTANT)
+
+Before sending to AI:
+
+- calculate BMI
+- calorie surplus/deficit
+- activity score
+- sleep score
+
+Store this in utils/healthCalculator.js
+
+---
+
+🔄 Smart Flow
+
+1. User enters data
+2. Data stored in Supabase
+3. Backend processes data
+4. DeepSeek API called
+5. Response formatted
+6. UI shows:
+   - risk level
+   - diet chart
+   - suggestions
+
+---
+
+🎨 UI Requirements
+
+- Glassmorphism design
+- Soft gradients (like fintech apps)
+- Dashboard with:
+  - Health Score
+  - Risk Indicator
+  - Daily Diet Plan
+- Tabs like Paytm-style navigation
+
+---
+
+🔐 Admin Panel (IMPORTANT)
+
+Create admin system where:
+
+- API keys can be changed (DeepSeek, SMS, etc.)
+- No code change required
+- Feature toggles (enable/disable AI modules)
+
+---
+
+⚡ Performance
+
+- Use caching for repeated requests
+- Optimize API calls
+- Error handling for AI failures
+
+---
+
+⚠️ Safety
+
+- Add disclaimer: Not medical advice
+- Avoid critical diagnosis claims
+
+---
+
+🎯 Final Output Expectation
+
+Working system with:
+
+- API endpoints functional
+- AI integration working
+- Clean UI
+- Scalable structure
+- Ready for deployment (Vercel + Supabase)
+
+---
