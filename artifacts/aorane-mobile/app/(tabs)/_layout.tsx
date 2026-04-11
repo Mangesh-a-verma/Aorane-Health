@@ -15,8 +15,8 @@ const SKY      = "#0EA5E9";
 const ACCENT   = "#00B896";
 const INACTIVE = "rgba(13,31,51,0.30)";
 const BAR_H    = 64;   // visible tab bar height
-const SCAN_D   = 60;   // scan button diameter
-const SCAN_LIFT = 18;  // pixels the button floats above bar top
+const SCAN_D   = 56;   // scan button diameter
+const SCAN_LIFT = 4;   // pixels the button floats above bar top
 
 // ── Animated tab icon ────────────────────────────────────────────────────────
 function TabIcon({ name, focused, label }: {
