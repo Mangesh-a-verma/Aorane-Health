@@ -1,14 +1,12 @@
 import { Redirect } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
-import { View, Image, StyleSheet, Dimensions, Animated, useColorScheme } from "react-native";
+import { View, Image, StyleSheet, Dimensions, Animated } from "react-native";
 import { useEffect, useRef } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 
-const { width: W, height: H } = Dimensions.get("window");
+const { width: W } = Dimensions.get("window");
 
 function SplashScreen() {
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
   const logoAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
 
@@ -23,12 +21,9 @@ function SplashScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={isDark ? ["#010610", "#03101E", "#041420"] : ["#E0F2FE", "#EFF9FF", "#ECFDF5"]}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={[styles.orb1, { backgroundColor: isDark ? "#0369A1" : "#BAE6FD" }]} />
-      <View style={[styles.orb2, { backgroundColor: isDark ? "#065F46" : "#A7F3D0" }]} />
+      <LinearGradient colors={["#E0F2FE", "#EFF9FF", "#ECFDF5"]} style={StyleSheet.absoluteFill} />
+      <View style={styles.orb1} />
+      <View style={styles.orb2} />
 
       <Animated.View style={[styles.center, {
         opacity: logoAnim,
@@ -61,10 +56,10 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: "#F0FAFB" },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  orb1: { position: "absolute", width: 400, height: 400, borderRadius: 200, top: -150, right: -130, opacity: 0.25 },
-  orb2: { position: "absolute", width: 300, height: 300, borderRadius: 150, bottom: 40, left: -100, opacity: 0.2 },
+  orb1: { position: "absolute", width: 400, height: 400, borderRadius: 200, top: -150, right: -130, opacity: 0.25, backgroundColor: "#BAE6FD" },
+  orb2: { position: "absolute", width: 300, height: 300, borderRadius: 150, bottom: 40, left: -100, opacity: 0.2, backgroundColor: "#A7F3D0" },
   glowBehind: { position: "absolute", alignSelf: "center" },
   glowCircle: { width: W * 1.1, height: 400, borderRadius: 200 },
   logo: { width: W - 10, height: 250 },

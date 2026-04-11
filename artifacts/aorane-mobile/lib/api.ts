@@ -114,9 +114,6 @@ export const api = {
   getWaterLog: (date: string) =>
     request<{ logs: Array<Record<string, unknown>>; totalGlasses: number; goal: number }>("GET", `/health/water/${date}`),
 
-  logWater: (glasses = 1) =>
-    request<{ log: Record<string, unknown> }>("POST", "/health/water", { glassesCount: glasses }),
-
   // ── Medicine ───────────────────────────────────────────
   getMedicineSchedules: () =>
     request<{ schedules: Array<Record<string, unknown>> }>("GET", "/medicine/schedules"),
