@@ -37,6 +37,12 @@ export default function SetupPinScreen() {
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [phase, setPhase] = useState<"set" | "confirm">("set");
+  const [loading, setLoading] = useState(false);
+
+  // useRef to avoid stale closure bugs — always holds latest values
+  const pinRef = useRef("");
+  const confirmPinRef = useRef("");
+  const phaseRef = useRef<"set" | "confirm">("set");
 
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
@@ -80,7 +86,6 @@ export default function SetupPinScreen() {
   };
 
   const currentPin = phase === "set" ? pin : confirmPin;
-  const setCurrentPin = phase === "set" ? setPin : setConfirmPin;
 
   const triggerShake = () => {
     Animated.sequence([
@@ -99,30 +104,63 @@ export default function SetupPinScreen() {
     ]).start();
   };
 
-  const handleKey = async (key: string) => {
-    if (key === "") return;
+  const handleConfirmSubmit = async () => {
+    const savedPin = pinRef.current;
+    const enteredConfirm = confirmPinRef.current;
+    if (enteredConfirm.length !== 4) return;
+    setLoading(true);
+    if (enteredConfirm === savedPin) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await storage.setPin(savedPin);
+      if (biometricEnabled) await storage.setBiometricEnabled(true);
+      try { await api.setPIN(savedPin); } catch { }
+      await setPinComplete();
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      triggerShake();
+      setTimeout(() => {
+        Alert.alert(t("pinMismatch"), t("tryAgain"));
+        pinRef.current = ""; confirmPinRef.current = ""; phaseRef.current = "set";
+        setPin(""); setConfirmPin(""); setPhase("set"); switchPhase();
+        setLoading(false);
+      }, 400);
+    }
+  };
+
+  const handleKey = (key: string) => {
+    if (key === "" || loading) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (key === "⌫") { setCurrentPin((p) => p.slice(0, -1)); return; }
-    const next = currentPin + key;
-    setCurrentPin(next);
-    if (next.length === 4) {
-      if (phase === "set") {
-        setTimeout(() => { setPhase("confirm"); switchPhase(); }, 300);
+    const curPhase = phaseRef.current;
+
+    if (key === "⌫") {
+      if (curPhase === "set") {
+        pinRef.current = pinRef.current.slice(0, -1);
+        setPin(pinRef.current);
       } else {
-        if (next === pin) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          await storage.setPin(pin);
-          if (biometricEnabled) await storage.setBiometricEnabled(true);
-          try { await api.setPIN(pin); } catch { }
-          await setPinComplete();
-        } else {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          triggerShake();
-          setTimeout(() => {
-            Alert.alert(t("pinMismatch"), t("tryAgain"));
-            setPin(""); setConfirmPin(""); setPhase("set"); switchPhase();
-          }, 400);
-        }
+        confirmPinRef.current = confirmPinRef.current.slice(0, -1);
+        setConfirmPin(confirmPinRef.current);
+      }
+      return;
+    }
+
+    if (curPhase === "set") {
+      if (pinRef.current.length >= 4) return;
+      pinRef.current = pinRef.current + key;
+      setPin(pinRef.current);
+      if (pinRef.current.length === 4) {
+        setTimeout(() => {
+          phaseRef.current = "confirm";
+          setPhase("confirm");
+          switchPhase();
+        }, 300);
+      }
+    } else {
+      if (confirmPinRef.current.length >= 4) return;
+      confirmPinRef.current = confirmPinRef.current + key;
+      setConfirmPin(confirmPinRef.current);
+      if (confirmPinRef.current.length === 4) {
+        // Auto-submit after short delay for visual feedback
+        setTimeout(() => handleConfirmSubmit(), 300);
       }
     }
   };
@@ -255,6 +293,20 @@ export default function SetupPinScreen() {
           </View>
         </View>
 
+        {phase === "confirm" && confirmPin.length === 4 && (
+          <TouchableOpacity
+            onPress={handleConfirmSubmit}
+            disabled={loading}
+            activeOpacity={0.85}
+            style={[s.confirmBtn, loading && { opacity: 0.6 }]}
+          >
+            <LinearGradient colors={C.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.confirmBtnGrad}>
+              <Ionicons name="checkmark-circle" size={20} color="#FFF" />
+              <Text style={s.confirmBtnTxt}>{loading ? "Setting up…" : "Confirm PIN ✓"}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity onPress={handleSkip} activeOpacity={0.7} style={s.skipWrap}>
           <Text style={s.skipTxt}>{biometricEnabled ? t("useBiometricOnly") : t("skipPinSetup")}</Text>
         </TouchableOpacity>
@@ -307,6 +359,10 @@ const s = StyleSheet.create({
   key: { width: 76, height: 76, borderRadius: 38, alignItems: "center", justifyContent: "center", borderWidth: 1, backgroundColor: C.bg, borderColor: C.border },
   keyDelete: { width: 76, height: 76, borderRadius: 38, alignItems: "center", justifyContent: "center", borderWidth: 1, backgroundColor: "#FEF2F2", borderColor: "rgba(239,68,68,0.2)" },
   keyText: { fontSize: 25, fontFamily: "Inter_600SemiBold", color: C.text },
+
+  confirmBtn: { width: W - 44, borderRadius: 18, overflow: "hidden", marginBottom: 12 },
+  confirmBtnGrad: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16 },
+  confirmBtnTxt: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFF" },
 
   skipWrap: { marginBottom: 16 },
   skipTxt: { fontSize: 13, textDecorationLine: "underline", fontFamily: "Inter_400Regular", color: C.muted },
