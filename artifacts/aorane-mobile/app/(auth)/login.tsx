@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -75,7 +75,14 @@ export default function LoginScreen() {
   const [pin, setPin] = useState("");
   const [pinFocused, setPinFocused] = useState(false);
 
-  const redirectUri = AuthSession.makeRedirectUri({ scheme: "aorane" });
+  // Web: fixed redirect URI (Google requires https://) — Google Console mein yahi add karo
+  // Native: deep link scheme
+  const redirectUri = useMemo(() => {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      return `${window.location.origin}/aorane-mobile/`;
+    }
+    return AuthSession.makeRedirectUri({ scheme: "aorane" });
+  }, []);
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
@@ -165,7 +172,10 @@ export default function LoginScreen() {
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setGoogleLoading(true);
-    await promptAsync();
+    const result = await promptAsync();
+    if (!result || result.type === "dismiss") {
+      setGoogleLoading(false);
+    }
   };
 
   const handleSendOtp = async () => {
