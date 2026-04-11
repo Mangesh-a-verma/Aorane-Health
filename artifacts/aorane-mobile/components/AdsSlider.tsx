@@ -1,7 +1,7 @@
 /**
- * AdsSlider — Paytm-style horizontal banner slider
- * Compact landscape size, auto-scroll every 4s, manual swipe, dot indicators
- * Admin controls which ads appear here via Admin Panel
+ * AdsSlider — 5-slide horizontal banner slider with peek effect
+ * Narrow cards so next slide peeks in (like Paytm/PhonePe)
+ * Auto-scroll every 4s, manual swipe, dot indicators
  */
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
@@ -9,14 +9,16 @@ import {
   View, Text, FlatList, Image, TouchableOpacity,
   Dimensions, StyleSheet, Linking, ActivityIndicator,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 const { width: W } = Dimensions.get("window");
-const SLIDER_H = 154;
+const SLIDER_H = 118;
 const SIDE_PAD = 18;
-const SLIDE_W = W - SIDE_PAD * 2;
-const AUTO_SCROLL_MS = 4000;
+const PEEK = 28;
+const SLIDE_W = W - SIDE_PAD * 2 - PEEK;
+const AUTO_SCROLL_MS = 3500;
 
 type Ad = {
   id: string;
@@ -28,68 +30,61 @@ type Ad = {
 };
 
 const PLACEHOLDER_ADS: Ad[] = [
-  {
-    id: "ph1",
-    title: "AORANE Premium — 3 Mahine Free!",
-    bannerUrl: null,
-    linkUrl: null,
-    adType: "direct",
-    slidePosition: 1,
-  },
-  {
-    id: "ph2",
-    title: "Family Health Plan — Poore ghar ke liye",
-    bannerUrl: null,
-    linkUrl: null,
-    adType: "direct",
-    slidePosition: 2,
-  },
+  { id: "ph1", title: "AORANE Premium — 3 Mahine Free! 🏆", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 1 },
+  { id: "ph2", title: "Family Health Plan — Poore ghar ke liye 👨‍👩‍👧‍👦", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 2 },
+  { id: "ph3", title: "AI Food Scan — Khane ki calories AI se jaano 🥗", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 3 },
+  { id: "ph4", title: "Medicine Reminder — Dawai kabhi mat bhulo 💊", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 4 },
+  { id: "ph5", title: "Health Score — 100% banao, fit raho ❤️", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 5 },
 ];
 
-const PLACEHOLDER_GRADIENTS = [
+const PLACEHOLDER_GRADIENTS: [string, string][] = [
   ["#0077B6", "#00B896"],
-  ["#7C3AED", "#A855F7"],
-  ["#DC2626", "#F87171"],
-  ["#D97706", "#FBBF24"],
+  ["#0EA5E9", "#38BDF8"],
   ["#059669", "#10B981"],
+  ["#0369A1", "#0284C7"],
+  ["#00B896", "#34D399"],
 ];
 
-const PLACEHOLDER_EMOJIS = ["🏆", "👨‍👩‍👧‍👦", "💊", "🥗", "❤️"];
+const PLACEHOLDER_EMOJIS = ["🏆", "👨‍👩‍👧‍👦", "🥗", "💊", "❤️"];
+const PLACEHOLDER_SUBS = [
+  "Upgrade now →",
+  "Add family members →",
+  "Try AI scan today →",
+  "Set reminders →",
+  "See your score →",
+];
 
 function PlaceholderSlide({ ad, index }: { ad: Ad; index: number }) {
-  const grad = PLACEHOLDER_GRADIENTS[index % PLACEHOLDER_GRADIENTS.length];
+  const [c1, c2] = PLACEHOLDER_GRADIENTS[index % PLACEHOLDER_GRADIENTS.length];
   const emoji = PLACEHOLDER_EMOJIS[index % PLACEHOLDER_EMOJIS.length];
+  const sub = PLACEHOLDER_SUBS[index % PLACEHOLDER_SUBS.length];
   return (
-    <View style={[slides.placeholder, { width: SLIDE_W, backgroundColor: grad[0] }]}>
-      <View style={[slides.placeholderOverlay, { backgroundColor: grad[1] + "55" }]} />
+    <LinearGradient colors={[c1, c2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[slides.placeholder, { width: SLIDE_W }]}>
+      <View style={slides.glassOverlay} />
       <View style={slides.placeholderContent}>
-        <Text style={slides.placeholderEmoji}>{emoji}</Text>
+        <View style={slides.emojiBox}>
+          <Text style={slides.placeholderEmoji}>{emoji}</Text>
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={slides.placeholderTitle} numberOfLines={2}>{ad.title}</Text>
-          <Text style={slides.placeholderSub}>Tap to know more →</Text>
+          <View style={slides.subRow}>
+            <Text style={slides.placeholderSub}>{sub}</Text>
+          </View>
         </View>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 function AdSlide({ ad, index, onImpression }: { ad: Ad; index: number; onImpression: (id: string) => void }) {
   useEffect(() => { onImpression(ad.id); }, []);
-
   const handlePress = async () => {
-    if (ad.linkUrl) {
-      try { await Linking.openURL(ad.linkUrl); } catch { }
-    }
+    if (ad.linkUrl) { try { await Linking.openURL(ad.linkUrl); } catch { } }
   };
-
   return (
     <TouchableOpacity onPress={handlePress} activeOpacity={ad.linkUrl ? 0.9 : 1} style={{ width: SLIDE_W }}>
       {ad.bannerUrl ? (
-        <Image
-          source={{ uri: ad.bannerUrl }}
-          style={slides.image}
-          resizeMode="cover"
-        />
+        <Image source={{ uri: ad.bannerUrl }} style={slides.image} resizeMode="cover" />
       ) : (
         <PlaceholderSlide ad={ad} index={index} />
       )}
@@ -98,13 +93,15 @@ function AdSlide({ ad, index, onImpression }: { ad: Ad; index: number; onImpress
 }
 
 const slides = StyleSheet.create({
-  image: { width: SLIDE_W, height: SLIDER_H, borderRadius: 14 },
-  placeholder: { width: SLIDE_W, height: SLIDER_H, borderRadius: 14, overflow: "hidden", justifyContent: "center", padding: 20 },
-  placeholderOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: 14 },
-  placeholderContent: { flexDirection: "row", alignItems: "center", gap: 16 },
-  placeholderEmoji: { fontSize: 42 },
-  placeholderTitle: { color: "#FFF", fontSize: 16, fontFamily: "Inter_700Bold", lineHeight: 22 },
-  placeholderSub: { color: "rgba(255,255,255,0.75)", fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 6 },
+  image: { width: SLIDE_W, height: SLIDER_H, borderRadius: 16 },
+  placeholder: { width: SLIDE_W, height: SLIDER_H, borderRadius: 16, overflow: "hidden", justifyContent: "center", padding: 16 },
+  glassOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 16 },
+  placeholderContent: { flexDirection: "row", alignItems: "center", gap: 14 },
+  emojiBox: { width: 52, height: 52, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
+  placeholderEmoji: { fontSize: 28 },
+  placeholderTitle: { color: "#FFF", fontSize: 14, fontFamily: "Inter_700Bold", lineHeight: 20, flex: 1 },
+  subRow: { marginTop: 6, flexDirection: "row" },
+  placeholderSub: { color: "rgba(255,255,255,0.82)", fontSize: 11, fontFamily: "Inter_500Medium", backgroundColor: "rgba(255,255,255,0.18)", paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20 },
 });
 
 export function AdsSlider() {
@@ -117,14 +114,12 @@ export function AdsSlider() {
   const impressionsSent = useRef<Set<string>>(new Set());
 
   const loadAds = useCallback(async () => {
-    if (!token) return;
+    if (!token) { setAds(PLACEHOLDER_ADS); setLoading(false); return; }
     try {
       const res = await api.getActiveAds("dashboard");
       const fetched = (res.ads as Ad[]) || [];
-      setAds(fetched.length > 0 ? fetched : PLACEHOLDER_ADS);
-    } catch {
-      setAds(PLACEHOLDER_ADS);
-    }
+      setAds(fetched.length >= 2 ? fetched : PLACEHOLDER_ADS);
+    } catch { setAds(PLACEHOLDER_ADS); }
     setLoading(false);
   }, [token]);
 
@@ -174,36 +169,30 @@ export function AdsSlider() {
         data={ads}
         keyExtractor={(item) => item.id}
         horizontal
-        pagingEnabled
+        pagingEnabled={false}
         showsHorizontalScrollIndicator={false}
-        snapToInterval={SLIDE_W}
+        snapToInterval={SLIDE_W + 10}
         decelerationRate="fast"
-        snapToAlignment="center"
+        snapToAlignment="start"
         onMomentumScrollEnd={handleMomentumEnd}
         renderItem={({ item, index }) => (
-          <AdSlide ad={item} index={index} onImpression={handleImpression} />
+          <View style={{ paddingRight: 10 }}>
+            <AdSlide ad={item} index={index} onImpression={handleImpression} />
+          </View>
         )}
         style={st.list}
-        contentContainerStyle={{ gap: 0 }}
-        getItemLayout={(_, i) => ({ length: SLIDE_W, offset: SLIDE_W * i, index: i })}
+        contentContainerStyle={{ paddingRight: PEEK }}
+        getItemLayout={(_, i) => ({ length: SLIDE_W + 10, offset: (SLIDE_W + 10) * i, index: i })}
       />
 
-      {/* Dot indicators — Paytm style */}
       {ads.length > 1 && (
         <View style={st.dots}>
           {ads.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                st.dot,
-                i === activeIndex ? st.dotActive : st.dotInactive,
-              ]}
-            />
+            <View key={i} style={[st.dot, i === activeIndex ? st.dotActive : st.dotInactive]} />
           ))}
         </View>
       )}
 
-      {/* "Ad" label — subtle, like Paytm */}
       <View style={st.adLabel}>
         <Text style={st.adLabelText}>Ad</Text>
       </View>
@@ -212,27 +201,13 @@ export function AdsSlider() {
 }
 
 const st = StyleSheet.create({
-  wrapper: { width: SLIDE_W, position: "relative" },
-  container: { width: SLIDE_W, height: SLIDER_H, borderRadius: 14, backgroundColor: "#EEF3F7" },
-  list: { borderRadius: 14, overflow: "hidden" },
-  dots: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 5,
-    marginTop: 8,
-  },
+  wrapper: { position: "relative", marginHorizontal: -18, paddingHorizontal: 18, overflow: "hidden" },
+  container: { height: SLIDER_H, borderRadius: 16, backgroundColor: "#EEF3F7" },
+  list: { overflow: "visible" },
+  dots: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 4, marginTop: 8 },
   dot: { borderRadius: 4, height: 4 },
-  dotActive: { width: 20, backgroundColor: "#0077B6" },
-  dotInactive: { width: 6, backgroundColor: "#C9D8E5" },
-  adLabel: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: "rgba(0,0,0,0.28)",
-    borderRadius: 5,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
+  dotActive: { width: 18, backgroundColor: "#0077B6" },
+  dotInactive: { width: 5, backgroundColor: "#C9D8E5" },
+  adLabel: { position: "absolute", top: 8, right: 26, backgroundColor: "rgba(0,0,0,0.25)", borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 },
   adLabelText: { color: "#FFF", fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 },
 });

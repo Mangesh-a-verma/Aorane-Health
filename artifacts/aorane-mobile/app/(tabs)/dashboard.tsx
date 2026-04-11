@@ -18,20 +18,24 @@ import * as Haptics from "expo-haptics";
 const { width: W } = Dimensions.get("window");
 
 const C = {
-  bg: "#F0FAFB",
+  bg: "#E8F6FF",
   primary: "#0077B6",
+  skyBlue: "#0EA5E9",
   accent: "#00B896",
-  card: "#FFFFFF",
+  green: "#10B981",
+  card: "rgba(255,255,255,0.82)",
+  cardBorder: "rgba(255,255,255,0.9)",
   text: "#0D1F33",
-  muted: "#7A90A4",
-  border: "#E2EFF5",
-  orange: "#FF8C00",
+  muted: "#5B7A8E",
+  border: "#C8E8F5",
+  orange: "#F97316",
   red: "#EF4444",
   yellow: "#F59E0B",
 };
 
 function todayDate() { return new Date().toISOString().slice(0, 10); }
 
+// ── SMALL METRIC CARD (glass style) ─────────────────────────────────────────
 function MetricCard({ icon, label, value, unit, color, bgColors, pct }: {
   icon: string; label: string; value: string | number; unit: string;
   color: string; bgColors: [string, string]; pct?: number;
@@ -39,7 +43,7 @@ function MetricCard({ icon, label, value, unit, color, bgColors, pct }: {
   const barAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (pct !== undefined) {
-      Animated.timing(barAnim, { toValue: pct / 100, duration: 1000, useNativeDriver: false }).start();
+      Animated.timing(barAnim, { toValue: pct / 100, duration: 900, useNativeDriver: false }).start();
     }
   }, [pct]);
   const barWidth = barAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
@@ -47,7 +51,7 @@ function MetricCard({ icon, label, value, unit, color, bgColors, pct }: {
   return (
     <View style={mc.card}>
       <LinearGradient colors={bgColors} style={mc.iconBox}>
-        <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={17} color="#FFF" />
+        <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={14} color="#FFF" />
       </LinearGradient>
       <Text style={mc.val}>
         {value}<Text style={mc.unit}> {unit}</Text>
@@ -63,13 +67,19 @@ function MetricCard({ icon, label, value, unit, color, bgColors, pct }: {
 }
 
 const mc = StyleSheet.create({
-  card: { flex: 1, borderRadius: 18, padding: 14, gap: 6, minHeight: 110, backgroundColor: C.card, shadowColor: C.primary, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4, borderWidth: 1, borderColor: C.border },
-  iconBox: { width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  val: { fontSize: 22, fontFamily: "Inter_700Bold", color: C.text },
-  unit: { fontSize: 13, fontFamily: "Inter_400Regular", color: C.muted },
-  label: { fontSize: 12, fontFamily: "Inter_400Regular", color: C.muted },
-  barTrack: { height: 4, borderRadius: 2, overflow: "hidden", marginTop: 2, backgroundColor: "#EEF3F7" },
-  barFill: { height: 4, borderRadius: 2 },
+  card: {
+    flex: 1, borderRadius: 16, padding: 11, gap: 4, minHeight: 90,
+    backgroundColor: C.card,
+    borderWidth: 1.2, borderColor: C.cardBorder,
+    shadowColor: "#0077B6", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.10, shadowRadius: 12, elevation: 5,
+  },
+  iconBox: { width: 30, height: 30, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  val: { fontSize: 18, fontFamily: "Inter_700Bold", color: C.text, marginTop: 2 },
+  unit: { fontSize: 11, fontFamily: "Inter_400Regular", color: C.muted },
+  label: { fontSize: 10.5, fontFamily: "Inter_400Regular", color: C.muted },
+  barTrack: { height: 3, borderRadius: 2, overflow: "hidden", marginTop: 4, backgroundColor: "#E2EFF5" },
+  barFill: { height: 3, borderRadius: 2 },
 });
 
 function StatRow({ icon, label, value, color, pct }: {
@@ -77,8 +87,8 @@ function StatRow({ icon, label, value, color, pct }: {
 }) {
   return (
     <View style={sr.row}>
-      <View style={[sr.iconBox, { backgroundColor: color + "18" }]}>
-        <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={15} color={color} />
+      <View style={[sr.iconBox, { backgroundColor: color + "20" }]}>
+        <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={14} color={color} />
       </View>
       <View style={{ flex: 1 }}>
         <View style={sr.labelRow}>
@@ -94,13 +104,13 @@ function StatRow({ icon, label, value, color, pct }: {
 }
 
 const sr = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#F0F5F8" },
-  iconBox: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  labelRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
-  label: { fontSize: 13, color: C.muted, fontFamily: "Inter_400Regular" },
-  val: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  barTrack: { height: 4, backgroundColor: "#EEF3F7", borderRadius: 2, overflow: "hidden" },
-  barFill: { height: 4, borderRadius: 2 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: "#F0F6FA" },
+  iconBox: { width: 30, height: 30, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  labelRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 5 },
+  label: { fontSize: 12.5, color: C.muted, fontFamily: "Inter_400Regular" },
+  val: { fontSize: 12.5, fontFamily: "Inter_600SemiBold" },
+  barTrack: { height: 3.5, backgroundColor: "#E4F0F8", borderRadius: 2, overflow: "hidden" },
+  barFill: { height: 3.5, borderRadius: 2 },
 });
 
 export default function DashboardScreen() {
@@ -112,10 +122,12 @@ export default function DashboardScreen() {
   const [water, setWater] = useState({ current: 0, goal: 8 });
   const [calories, setCalories] = useState({ eaten: 0, goal: 2000, burned: 0 });
   const [exerciseMin, setExerciseMin] = useState(0);
-  const [activeScore, setActiveScore] = useState<{ overall: number; foodPct: number; waterPct: number; exercisePct: number; label: string } | null>(null);
+  const [activeScore, setActiveScore] = useState<{
+    overall: number; foodPct: number; waterPct: number; exercisePct: number; label: string;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [greeting, setGreeting] = useState("Namaste");
+  const [greeting, setGreeting] = useState("Good Morning");
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerOpacity = scrollY.interpolate({ inputRange: [0, 60], outputRange: [0, 1], extrapolate: "clamp" });
@@ -123,10 +135,10 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     const h = new Date().getHours();
-    if (h < 5) setGreeting("Shubh Ratri 🌙");
-    else if (h < 12) setGreeting("Suprabhat ☀️");
-    else if (h < 17) setGreeting("Namaskar 🌤️");
-    else setGreeting("Shubh Sham 🌆");
+    if (h < 5) setGreeting("Good Night 🌙");
+    else if (h < 12) setGreeting("Good Morning ☀️");
+    else if (h < 17) setGreeting("Good Afternoon 🌤️");
+    else setGreeting("Good Evening 🌆");
     loadData();
   }, []);
 
@@ -134,7 +146,8 @@ export default function DashboardScreen() {
     try {
       const date = todayDate();
       const [scoreRes, waterRes, foodRes, exerciseRes, activityRes] = await Promise.allSettled([
-        api.getHealthScore(date), api.getWaterLog(date), api.getFoodSummary(date), api.getExerciseLogs(date), api.getActivityScore(date),
+        api.getHealthScore(date), api.getWaterLog(date), api.getFoodSummary(date),
+        api.getExerciseLogs(date), api.getActivityScore(date),
       ]);
       if (scoreRes.status === "fulfilled") {
         const s = scoreRes.value.score as Record<string, number>;
@@ -152,7 +165,13 @@ export default function DashboardScreen() {
         setCalories((c) => ({ ...c, burned: Math.round(logs.reduce((s, l) => s + Number(l.caloriesBurned || 0), 0)) }));
       }
       if (activityRes.status === "fulfilled") {
-        setActiveScore({ overall: activityRes.value.overall, foodPct: activityRes.value.foodPct, waterPct: activityRes.value.waterPct, exercisePct: activityRes.value.exercisePct, label: activityRes.value.label });
+        setActiveScore({
+          overall: activityRes.value.overall,
+          foodPct: activityRes.value.foodPct,
+          waterPct: activityRes.value.waterPct,
+          exercisePct: activityRes.value.exercisePct,
+          label: activityRes.value.label,
+        });
       }
     } catch { }
     setIsLoading(false);
@@ -174,20 +193,27 @@ export default function DashboardScreen() {
   if (isLoading) {
     return (
       <View style={[s.root, { alignItems: "center", justifyContent: "center", gap: 14 }]}>
-        <LinearGradient colors={["#E8F7FB", "#F0FAF6", "#FFFFFF"]} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={["#BAE6FD", "#D1FAE5", "#F0FAFB"]} style={StyleSheet.absoluteFill} />
         <View style={s.loadingRing}>
           <ActivityIndicator size="large" color={C.primary} />
         </View>
-        <Text style={s.loadText}>Aapka health data load ho raha hai...</Text>
+        <Text style={s.loadText}>Loading your health data...</Text>
       </View>
     );
   }
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={["#E8F7FB", "#F0FAF6", "#FFFFFF"]} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
+      {/* Rich sky-blue + white + green gradient background */}
+      <LinearGradient
+        colors={["#BAE6FD", "#E0F7F4", "#F0FAFB", "#FFFFFF"]}
+        locations={[0, 0.3, 0.65, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Decorative blobs */}
       <View style={s.blob1} />
       <View style={s.blob2} />
+      <View style={s.blob3} />
 
       {/* Sticky header */}
       <Animated.View style={[s.stickyHeader, { opacity: headerOpacity, top: topPad }]}>
@@ -205,29 +231,36 @@ export default function DashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} tintColor={C.primary} colors={[C.primary]} />}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── TOP BAR ── */}
+        {/* ── TOP BAR with BIG LOGO ── */}
         <Animated.View style={[s.topBar, { opacity: fadeAnim }]}>
-          <View>
+          <View style={s.logoBlock}>
+            {/* LARGE LOGO */}
             <Image source={require("../../assets/images/aorane-logo.png")} style={s.headerLogo} resizeMode="contain" />
             <Text style={s.greeting}>{greeting}</Text>
           </View>
           <TouchableOpacity style={s.notifBtn}>
-            <Ionicons name="notifications-outline" size={18} color={C.primary} />
+            <Ionicons name="notifications-outline" size={20} color={C.primary} />
             <View style={s.notifDot} />
           </TouchableOpacity>
         </Animated.View>
 
-        {/* ── HERO HEALTH SCORE CARD ── */}
+        {/* ── HERO HEALTH SCORE CARD (glass 3D) ── */}
         <Animated.View style={[s.heroCard, { opacity: fadeAnim }]}>
-          <LinearGradient colors={["#0077B6", "#00B896"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.heroGrad}>
+          <LinearGradient
+            colors={["#0077B6", "#0EA5E9", "#00B896"]}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={s.heroGrad}
+          >
+            {/* Glass shine overlay */}
+            <View style={s.heroShine} />
             <View style={s.heroTop}>
               <View>
-                <Text style={s.heroSup}>Aaj ka Health Score</Text>
+                <Text style={s.heroSup}>Today's Health Score</Text>
                 <Text style={s.heroDate}>
-                  {new Date().toLocaleDateString("hi-IN", { weekday: "long", day: "numeric", month: "short" })}
+                  {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}
                 </Text>
               </View>
-              <View style={[s.heroBadge, { backgroundColor: healthScore >= 70 ? "rgba(255,255,255,0.25)" : "rgba(255,200,0,0.3)" }]}>
+              <View style={[s.heroBadge, { backgroundColor: healthScore >= 70 ? "rgba(255,255,255,0.22)" : "rgba(255,200,0,0.28)" }]}>
                 <Ionicons name={healthScore >= 70 ? "trending-up" : "trending-down"} size={13} color="#FFF" />
                 <Text style={s.heroBadgeText}>{healthScore >= 70 ? "Good" : "Improve"}</Text>
               </View>
@@ -238,11 +271,11 @@ export default function DashboardScreen() {
               <View style={s.heroStats}>
                 {[
                   { icon: "flame", label: "Calories", val: `${calories.eaten}`, color: "#FFD166" },
-                  { icon: "barbell-outline", label: "Exercise", val: `${exerciseMin}m`, color: "#A0F0E0" },
-                  { icon: "water-outline", label: "Paani", val: `${water.current}/${water.goal}`, color: "#BAE6FD" },
+                  { icon: "barbell-outline", label: "Exercise", val: `${exerciseMin}m`, color: "#A7F3D0" },
+                  { icon: "water-outline", label: "Water", val: `${water.current}/${water.goal}`, color: "#BAE6FD" },
                 ].map(st => (
                   <View key={st.label} style={s.heroStatRow}>
-                    <View style={[s.heroStatIcon, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+                    <View style={[s.heroStatIcon, { backgroundColor: "rgba(255,255,255,0.18)" }]}>
                       <Ionicons name={st.icon as keyof typeof Ionicons.glyphMap} size={14} color={st.color} />
                     </View>
                     <View>
@@ -256,67 +289,67 @@ export default function DashboardScreen() {
           </LinearGradient>
         </Animated.View>
 
-        {/* ── REMAINING CALORIES BANNER ── */}
+        {/* ── REMAINING CALORIES BANNER (glass) ── */}
         <Animated.View style={[s.remainCard, { opacity: fadeAnim }]}>
-          <LinearGradient colors={["#FFF7ED", "#FFF"]} style={s.remainInner}>
+          <View style={s.remainInner}>
             <View style={s.remainLeft}>
-              <View style={[s.remainIcon, { backgroundColor: "#FF8C0018" }]}>
-                <Ionicons name="flame" size={18} color={C.orange} />
+              <View style={[s.remainIcon, { backgroundColor: "#FF8C0015" }]}>
+                <Ionicons name="flame" size={16} color={C.orange} />
               </View>
               <View>
-                <Text style={s.remainLabel}>Baaki Calories</Text>
+                <Text style={s.remainLabel}>Remaining Calories</Text>
                 <Text style={[s.remainVal, { color: C.orange }]}>{remaining} kcal</Text>
               </View>
             </View>
             <View style={s.remainDivider} />
             <View style={s.remainRight}>
               <Text style={s.remainSmall}>Goal: {calories.goal}</Text>
-              <Text style={s.remainSmall}>Khaaye: {calories.eaten}</Text>
-              <Text style={s.remainSmall}>Jalaaye: {calories.burned}</Text>
+              <Text style={s.remainSmall}>Eaten: {calories.eaten}</Text>
+              <Text style={s.remainSmall}>Burned: {calories.burned}</Text>
             </View>
-          </LinearGradient>
+          </View>
         </Animated.View>
 
-        {/* ── 2x2 METRIC CARDS ── */}
+        {/* ── 2x2 SMALLER METRIC CARDS ── */}
         <Animated.View style={[s.metricsGrid, { opacity: fadeAnim }]}>
-          <View style={{ flex: 1, gap: 12 }}>
-            <MetricCard icon="restaurant-outline" label="Calories Khaaye" value={calories.eaten} unit="kcal" color={C.yellow} bgColors={["#F59E0B", "#EF4444"]} pct={calPct} />
-            <MetricCard icon="barbell-outline" label="Exercise" value={exerciseMin} unit="min" color={C.accent} bgColors={["#0D9488", "#00B896"]} pct={exPct} />
+          <View style={{ flex: 1, gap: 10 }}>
+            <MetricCard icon="restaurant-outline" label="Calories Eaten" value={calories.eaten} unit="kcal" color={C.yellow} bgColors={["#F59E0B", "#EF4444"]} pct={calPct} />
+            <MetricCard icon="barbell-outline" label="Exercise" value={exerciseMin} unit="min" color={C.green} bgColors={["#059669", "#10B981"]} pct={exPct} />
           </View>
-          <View style={{ flex: 1, gap: 12 }}>
-            <MetricCard icon="water-outline" label="Paani" value={water.current} unit="glass" color={C.primary} bgColors={["#0369A1", "#0077B6"]} pct={waterPct} />
-            <MetricCard icon="flame-outline" label="Calories Jalaaye" value={calories.burned} unit="kcal" color={C.red} bgColors={["#DC2626", "#F87171"]} />
+          <View style={{ flex: 1, gap: 10 }}>
+            <MetricCard icon="water-outline" label="Water" value={water.current} unit="glass" color={C.skyBlue} bgColors={["#0369A1", "#0EA5E9"]} pct={waterPct} />
+            <MetricCard icon="flame-outline" label="Calories Burned" value={calories.burned} unit="kcal" color={C.red} bgColors={["#DC2626", "#F87171"]} />
           </View>
         </Animated.View>
 
-        {/* ── ACTIVE PERCENTAGE WIDGET ── */}
+        {/* ── ACTIVITY SCORE WIDGET (glass 3D) ── */}
         {activeScore !== null && (
-          <Animated.View style={{ opacity: fadeAnim, marginBottom: 4 }}>
+          <Animated.View style={{ opacity: fadeAnim, marginBottom: 14 }}>
             <LinearGradient
-              colors={activeScore.overall >= 70 ? ["#0D9488","#0077B6"] : activeScore.overall >= 40 ? ["#F59E0B","#EF4444"] : ["#6B7280","#374151"]}
+              colors={activeScore.overall >= 70 ? ["#0D9488", "#0EA5E9"] : activeScore.overall >= 40 ? ["#F59E0B", "#EF4444"] : ["#6B7280", "#374151"]}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ borderRadius: 20, padding: 18 }}
+              style={s.activityCard}
             >
+              <View style={s.activityShine} />
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <View>
-                  <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_500Medium" }}>AJ KI ACTIVITY</Text>
-                  <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16, marginTop: 2 }}>{activeScore.label}</Text>
+                  <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 1 }}>TODAY'S ACTIVITY</Text>
+                  <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16, marginTop: 3 }}>{activeScore.label}</Text>
                 </View>
-                <View style={{ alignItems: "center" }}>
-                  <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 38, lineHeight: 44 }}>{activeScore.overall}</Text>
-                  <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_500Medium" }}>% Active</Text>
+                <View style={s.activityScoreCircle}>
+                  <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 32, lineHeight: 38 }}>{activeScore.overall}</Text>
+                  <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 10, fontFamily: "Inter_500Medium" }}>% Active</Text>
                 </View>
               </View>
-              {/* Progress bars */}
               <View style={{ gap: 8 }}>
                 {[
-                  { label: "Khana", pct: activeScore.foodPct, icon: "🍛" },
-                  { label: "Paani", pct: activeScore.waterPct, icon: "💧" },
+                  { label: "Food", pct: activeScore.foodPct, icon: "🍛" },
+                  { label: "Water", pct: activeScore.waterPct, icon: "💧" },
                   { label: "Exercise", pct: activeScore.exercisePct, icon: "🏃" },
                 ].map((item) => (
                   <View key={item.label}>
                     <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-                      <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, fontFamily: "Inter_500Medium" }}>{item.icon} {item.label}</Text>
+                      <Text style={{ color: "rgba(255,255,255,0.82)", fontSize: 11, fontFamily: "Inter_500Medium" }}>{item.icon} {item.label}</Text>
                       <Text style={{ color: "#FFF", fontSize: 11, fontFamily: "Inter_700Bold" }}>{item.pct}%</Text>
                     </View>
                     <View style={{ height: 5, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 3, overflow: "hidden" }}>
@@ -325,76 +358,76 @@ export default function DashboardScreen() {
                   </View>
                 ))}
               </View>
-              <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 12, textAlign: "center" }}>
-                Zyada active raha = AI suggestions zyada accurate honge
-              </Text>
             </LinearGradient>
           </Animated.View>
         )}
 
-        {/* ── WATER TRACKER ── */}
-        <Animated.View style={[s.sectionCard, { opacity: fadeAnim }]}>
+        {/* ── WATER TRACKER (glass card) ── */}
+        <Animated.View style={[s.glassCard, { opacity: fadeAnim }]}>
           <WaterTracker current={water.current} goal={water.goal} onAdd={handleAddWater} />
         </Animated.View>
 
-        {/* ── ADS SLIDER — Paytm style, mid-dashboard ── */}
-        <Animated.View style={{ opacity: fadeAnim }}>
+        {/* ── ADS SLIDER ── */}
+        <Animated.View style={{ opacity: fadeAnim, marginBottom: 14 }}>
           <AdsSlider />
         </Animated.View>
 
-        {/* ── AI COACH WIDGET ── */}
-        <Animated.View style={{ opacity: fadeAnim }}>
+        {/* ── AI COACH WIDGET (glass 3D) ── */}
+        <Animated.View style={{ opacity: fadeAnim, marginBottom: 14 }}>
           <TouchableOpacity onPress={() => router.push("/suggestions" as never)} activeOpacity={0.88}>
-            <LinearGradient colors={["#0077B6", "#00B896"]} style={{ borderRadius: 20, padding: 18, flexDirection: "row", alignItems: "center", gap: 14 }}>
-              <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" }}>
-                <Text style={{ fontSize: 28 }}>🤖</Text>
+            <LinearGradient colors={["#0077B6", "#0EA5E9", "#00B896"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.aiCard}>
+              <View style={s.aiShine} />
+              <View style={s.aiIconBox}>
+                <Text style={{ fontSize: 26 }}>🤖</Text>
               </View>
               <View style={{ flex: 1, gap: 3 }}>
                 <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 17 }}>Daily AI Coach</Text>
-                <Text style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", fontSize: 13 }}>Aaj ke liye personalized food, exercise aur health suggestions</Text>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
-                  <View style={{ backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                    <Text style={{ color: "#FFF", fontSize: 10, fontFamily: "Inter_700Bold" }}>✨ Hinglish AI • Personalized</Text>
+                <Text style={{ color: "rgba(255,255,255,0.82)", fontFamily: "Inter_400Regular", fontSize: 12.5 }}>
+                  Personalized food, exercise & health tips for today
+                </Text>
+                <View style={{ flexDirection: "row", marginTop: 5 }}>
+                  <View style={s.aiBadge}>
+                    <Text style={{ color: "#FFF", fontSize: 10, fontFamily: "Inter_700Bold" }}>✨ AI Powered</Text>
                   </View>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+              <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
 
-        {/* ── DAILY TIP ── */}
+        {/* ── DAILY TIP (glass) ── */}
         <Animated.View style={[s.tipCard, { opacity: fadeAnim }]}>
-          <LinearGradient colors={["#E8F7FB", "#F0FAF2"]} style={s.tipInner}>
+          <LinearGradient colors={["#E0F7FA", "#E8F7FB"]} style={s.tipInner}>
             <LinearGradient colors={["#0077B6", "#00B896"]} style={s.tipIcon}>
-              <Ionicons name="bulb" size={15} color="#FFF" />
+              <Ionicons name="bulb" size={14} color="#FFF" />
             </LinearGradient>
             <View style={{ flex: 1 }}>
-              <Text style={s.tipHeading}>AAJ KA TIP</Text>
-              <Text style={s.tipText}>Subah 2 glass paani pine se metabolism 24% badhta hai. Try karein! 💧</Text>
+              <Text style={s.tipHeading}>TODAY'S TIP</Text>
+              <Text style={s.tipText}>Drinking 2 glasses of water every morning boosts metabolism by 24%. Try it! 💧</Text>
             </View>
           </LinearGradient>
         </Animated.View>
 
-        {/* ── SUMMARY CARD ── */}
-        <Animated.View style={[s.sectionCard, { opacity: fadeAnim }]}>
+        {/* ── SUMMARY CARD (glass) ── */}
+        <Animated.View style={[s.glassCard, { opacity: fadeAnim }]}>
           <View style={s.summHeader}>
-            <Text style={s.summTitle}>Aaj ka Summary</Text>
+            <Text style={s.summTitle}>Today's Summary</Text>
             <View style={s.summBadge}>
               <Ionicons name="bar-chart-outline" size={12} color={C.primary} />
-              <Text style={s.summBadgeText}>Aaj</Text>
+              <Text style={s.summBadgeText}>Today</Text>
             </View>
           </View>
-          <StatRow icon="restaurant-outline" label="Calories Khaaye" value={`${calories.eaten} kcal`} color={C.yellow} pct={calPct} />
-          <StatRow icon="water-outline" label="Paani Piya" value={`${water.current}/${water.goal} glass`} color={C.primary} pct={waterPct} />
-          <StatRow icon="barbell-outline" label="Exercise" value={`${exerciseMin} min`} color={C.accent} pct={exPct} />
+          <StatRow icon="restaurant-outline" label="Calories Eaten" value={`${calories.eaten} kcal`} color={C.yellow} pct={calPct} />
+          <StatRow icon="water-outline" label="Water Drank" value={`${water.current}/${water.goal} glass`} color={C.skyBlue} pct={waterPct} />
+          <StatRow icon="barbell-outline" label="Exercise" value={`${exerciseMin} min`} color={C.green} pct={exPct} />
           <View style={[sr.row, { borderBottomWidth: 0 }]}>
-            <View style={[sr.iconBox, { backgroundColor: C.red + "18" }]}>
-              <Ionicons name="flame-outline" size={15} color={C.red} />
+            <View style={[sr.iconBox, { backgroundColor: C.red + "20" }]}>
+              <Ionicons name="flame-outline" size={14} color={C.red} />
             </View>
             <View style={{ flex: 1 }}>
               <View style={sr.labelRow}>
-                <Text style={sr.label}>Calories Jalaaye</Text>
+                <Text style={sr.label}>Calories Burned</Text>
                 <Text style={[sr.val, { color: C.red }]}>{calories.burned} kcal</Text>
               </View>
               <View style={sr.barTrack}>
@@ -409,28 +442,36 @@ export default function DashboardScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#F0FAFB" },
+  root: { flex: 1, backgroundColor: "#E8F6FF" },
   loadText: { fontSize: 14, color: C.muted, fontFamily: "Inter_400Regular" },
-  loadingRing: { width: 60, height: 60, borderRadius: 30, backgroundColor: "#FFF", alignItems: "center", justifyContent: "center", shadowColor: C.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6 },
+  loadingRing: { width: 60, height: 60, borderRadius: 30, backgroundColor: "rgba(255,255,255,0.9)", alignItems: "center", justifyContent: "center", shadowColor: C.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6 },
 
-  blob1: { position: "absolute", width: 300, height: 300, borderRadius: 150, backgroundColor: "#BAE6FD", opacity: 0.25, top: -80, right: -100 },
-  blob2: { position: "absolute", width: 250, height: 250, borderRadius: 125, backgroundColor: "#A7F3D0", opacity: 0.2, bottom: 200, left: -80 },
+  // Decorative blobs
+  blob1: { position: "absolute", width: 320, height: 320, borderRadius: 160, backgroundColor: "#7DD3FC", opacity: 0.22, top: -100, right: -120 },
+  blob2: { position: "absolute", width: 260, height: 260, borderRadius: 130, backgroundColor: "#6EE7B7", opacity: 0.18, bottom: 180, left: -90 },
+  blob3: { position: "absolute", width: 180, height: 180, borderRadius: 90, backgroundColor: "#BAE6FD", opacity: 0.15, top: 280, left: 60 },
 
-  stickyHeader: { position: "absolute", left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 18, paddingVertical: 8, zIndex: 100, backgroundColor: "rgba(240,250,251,0.96)", borderBottomWidth: 1, borderBottomColor: "#E2EFF5" },
-  stickyLogo: { width: 120, height: 36 },
-  stickyScoreBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, backgroundColor: "#E8F7F4", borderWidth: 1, borderColor: "#C0EDE5" },
+  // Sticky header
+  stickyHeader: { position: "absolute", left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 18, paddingVertical: 8, zIndex: 100, backgroundColor: "rgba(232,246,255,0.94)", borderBottomWidth: 1, borderBottomColor: "rgba(200,232,245,0.8)" },
+  stickyLogo: { width: 130, height: 40 },
+  stickyScoreBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, backgroundColor: "#E0F7F0", borderWidth: 1, borderColor: "#A7F3D0" },
   stickyScoreText: { fontSize: 14, fontFamily: "Inter_700Bold", color: C.accent },
 
-  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 },
-  headerLogo: { width: 160, height: 50 },
-  greeting: { fontSize: 12, color: C.muted, fontFamily: "Inter_400Regular", marginTop: 2 },
-  notifBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#FFF", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: C.border, shadowColor: C.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 },
-  notifDot: { position: "absolute", top: 9, right: 9, width: 7, height: 7, borderRadius: 3.5, backgroundColor: C.red },
+  // Top bar
+  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 },
+  logoBlock: { flex: 1 },
+  // ── BIG LOGO ──
+  headerLogo: { width: 220, height: 70, marginBottom: 4 },
+  greeting: { fontSize: 12.5, color: C.muted, fontFamily: "Inter_400Regular" },
+  notifBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(255,255,255,0.88)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: C.border, shadowColor: C.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3, marginTop: 4 },
+  notifDot: { position: "absolute", top: 10, right: 10, width: 7, height: 7, borderRadius: 3.5, backgroundColor: C.red },
 
-  heroCard: { borderRadius: 24, marginBottom: 14, shadowColor: C.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 8 },
-  heroGrad: { borderRadius: 24, padding: 18 },
-  heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
-  heroSup: { fontSize: 13, color: "rgba(255,255,255,0.8)", fontFamily: "Inter_500Medium" },
+  // Hero card
+  heroCard: { borderRadius: 26, marginBottom: 12, shadowColor: "#0077B6", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 20, elevation: 10 },
+  heroGrad: { borderRadius: 26, padding: 18, overflow: "hidden" },
+  heroShine: { position: "absolute", top: 0, left: 0, right: 0, height: "50%", backgroundColor: "rgba(255,255,255,0.08)", borderTopLeftRadius: 26, borderTopRightRadius: 26 },
+  heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+  heroSup: { fontSize: 13, color: "rgba(255,255,255,0.85)", fontFamily: "Inter_600SemiBold" },
   heroDate: { fontSize: 11, color: "rgba(255,255,255,0.6)", fontFamily: "Inter_400Regular", marginTop: 2 },
   heroBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
   heroBadgeText: { color: "#FFF", fontSize: 12, fontFamily: "Inter_600SemiBold" },
@@ -441,28 +482,48 @@ const s = StyleSheet.create({
   heroStatVal: { fontSize: 14, color: "#FFF", fontFamily: "Inter_700Bold" },
   heroStatLabel: { fontSize: 10, color: "rgba(255,255,255,0.65)", fontFamily: "Inter_400Regular" },
 
-  remainCard: { marginBottom: 14, borderRadius: 18, shadowColor: C.orange, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 4 },
-  remainInner: { borderRadius: 18, flexDirection: "row", alignItems: "center", padding: 16, borderWidth: 1, borderColor: "#FFE8CC" },
-  remainLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12 },
-  remainIcon: { width: 40, height: 40, borderRadius: 13, alignItems: "center", justifyContent: "center" },
-  remainLabel: { fontSize: 12, color: C.muted, fontFamily: "Inter_400Regular" },
-  remainVal: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  remainDivider: { width: 1, height: 40, backgroundColor: "#FFE0CC", marginHorizontal: 14 },
+  // Remaining calories
+  remainCard: { marginBottom: 12, borderRadius: 18, shadowColor: C.orange, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.09, shadowRadius: 10, elevation: 4 },
+  remainInner: { borderRadius: 18, flexDirection: "row", alignItems: "center", padding: 14, backgroundColor: C.card, borderWidth: 1.2, borderColor: C.cardBorder },
+  remainLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
+  remainIcon: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  remainLabel: { fontSize: 11, color: C.muted, fontFamily: "Inter_400Regular" },
+  remainVal: { fontSize: 19, fontFamily: "Inter_700Bold" },
+  remainDivider: { width: 1, height: 36, backgroundColor: "#FFE0CC", marginHorizontal: 12 },
   remainRight: { gap: 2 },
-  remainSmall: { fontSize: 11, color: C.muted, fontFamily: "Inter_400Regular" },
+  remainSmall: { fontSize: 10.5, color: C.muted, fontFamily: "Inter_400Regular" },
 
-  metricsGrid: { flexDirection: "row", gap: 12, marginBottom: 14 },
+  // Metric grid
+  metricsGrid: { flexDirection: "row", gap: 10, marginBottom: 12 },
 
-  sectionCard: { backgroundColor: C.card, borderRadius: 20, padding: 18, marginBottom: 14, shadowColor: C.primary, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.07, shadowRadius: 12, elevation: 4, borderWidth: 1, borderColor: C.border },
+  // Glass card (reusable)
+  glassCard: {
+    backgroundColor: C.card, borderRadius: 20, padding: 16, marginBottom: 12,
+    borderWidth: 1.2, borderColor: C.cardBorder,
+    shadowColor: "#0077B6", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 14, elevation: 5,
+  },
 
-  tipCard: { borderRadius: 18, marginBottom: 14, shadowColor: C.accent, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 },
-  tipInner: { borderRadius: 18, flexDirection: "row", alignItems: "flex-start", gap: 14, padding: 16, borderWidth: 1, borderColor: "#C0EDE5" },
-  tipIcon: { width: 36, height: 36, borderRadius: 11, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  tipHeading: { fontSize: 10, letterSpacing: 1.2, color: C.accent, fontFamily: "Inter_600SemiBold", marginBottom: 5 },
-  tipText: { fontSize: 13, color: C.text, fontFamily: "Inter_400Regular", lineHeight: 19 },
+  // Activity card
+  activityCard: { borderRadius: 22, padding: 18, overflow: "hidden", shadowColor: "#0077B6", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 16, elevation: 8 },
+  activityShine: { position: "absolute", top: 0, left: 0, right: 0, height: "40%", backgroundColor: "rgba(255,255,255,0.1)", borderTopLeftRadius: 22, borderTopRightRadius: 22 },
+  activityScoreCircle: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 50, padding: 12, minWidth: 72 },
 
+  // AI coach card
+  aiCard: { borderRadius: 22, padding: 16, flexDirection: "row", alignItems: "center", gap: 14, overflow: "hidden", shadowColor: "#0077B6", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 16, elevation: 8 },
+  aiShine: { position: "absolute", top: 0, left: 0, right: 0, height: "45%", backgroundColor: "rgba(255,255,255,0.08)" },
+  aiIconBox: { width: 50, height: 50, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
+  aiBadge: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+
+  // Tip card
+  tipCard: { borderRadius: 18, marginBottom: 12, shadowColor: C.accent, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.09, shadowRadius: 8, elevation: 3 },
+  tipInner: { borderRadius: 18, flexDirection: "row", alignItems: "flex-start", gap: 14, padding: 14, borderWidth: 1, borderColor: "#B2EBF2" },
+  tipIcon: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  tipHeading: { fontSize: 9.5, letterSpacing: 1.2, color: C.accent, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  tipText: { fontSize: 12.5, color: C.text, fontFamily: "Inter_400Regular", lineHeight: 18 },
+
+  // Summary
   summHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
-  summTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: C.text },
+  summTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: C.text },
   summBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: "#EEF5FB" },
   summBadgeText: { fontSize: 11, color: C.primary, fontFamily: "Inter_500Medium" },
 });

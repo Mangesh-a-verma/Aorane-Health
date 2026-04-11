@@ -342,9 +342,9 @@ const s = StyleSheet.create({
   blob2: { position: "absolute", width: 250, height: 250, borderRadius: 125, backgroundColor: "#A7F3D0", opacity: 0.3, bottom: 100, left: -80 },
 
   heroSection: { alignItems: "center", paddingTop: 10, marginBottom: 20 },
-  logoRing: { width: 110, height: 110, borderRadius: 55, padding: 3, marginBottom: 14, shadowColor: "#0077B6", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 10 },
-  logoRingInner: { flex: 1, borderRadius: 52, alignItems: "center", justifyContent: "center" },
-  logo: { width: 80, height: 80 },
+  logoRing: { width: 150, height: 150, borderRadius: 75, padding: 4, marginBottom: 16, shadowColor: "#0077B6", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 24, elevation: 12 },
+  logoRingInner: { flex: 1, borderRadius: 71, alignItems: "center", justifyContent: "center" },
+  logo: { width: 112, height: 112 },
   taglineRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
   taglineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#00B896" },
   tagline: { fontSize: 13.5, color: "#3D6070", fontFamily: "Inter_500Medium" },
