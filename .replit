@@ -75,3 +75,4 @@ channel = "stable-25_05"
 
 [userenv.shared]
 APP_URL = "https://aorane.onrender.com"
+EXPO_PUBLIC_GOOGLE_CLIENT_ID = "145783039315-m1vgfekobq5nkkf90rns4nb9khh6amcv.apps.googleusercontent.com"

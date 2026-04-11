@@ -9,8 +9,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import * as WebBrowser from "expo-web-browser";
+import * as AuthSession from "expo-auth-session";
+import * as Crypto from "expo-crypto";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+
+WebBrowser.maybeCompleteAuthSession();
 
 const { width: W } = Dimensions.get("window");
 
@@ -49,6 +54,14 @@ const FEATURES = [
   { icon: "medkit-outline", label: "Medicine Remind", color: "#F59E0B" },
 ];
 
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || "";
+
+const discovery = {
+  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+  tokenEndpoint: "https://oauth2.googleapis.com/token",
+  revocationEndpoint: "https://oauth2.googleapis.com/revoke",
+};
+
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { loginWithToken } = useAuth();
@@ -56,10 +69,24 @@ export default function LoginScreen() {
   const [phone, setPhone] = useState("");
   const [selectedLang, setSelectedLang] = useState("hi");
   const [isLoading, setIsLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [loginMode, setLoginMode] = useState<"otp" | "pin">("otp");
   const [pin, setPin] = useState("");
   const [pinFocused, setPinFocused] = useState(false);
+
+  const redirectUri = AuthSession.makeRedirectUri({ scheme: "aorane" });
+
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: GOOGLE_CLIENT_ID,
+      redirectUri,
+      scopes: ["openid", "profile", "email"],
+      responseType: AuthSession.ResponseType.Code,
+      usePKCE: true,
+    },
+    discovery
+  );
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -77,6 +104,69 @@ export default function LoginScreen() {
       ])
     ).start();
   }, []);
+
+  // Handle Google OAuth response
+  useEffect(() => {
+    if (response?.type === "success") {
+      handleGoogleSuccess(response.params.code, request?.codeVerifier);
+    } else if (response?.type === "error") {
+      setGoogleLoading(false);
+      Alert.alert("Google Login Failed", response.error?.message || "Google se login nahi ho saka");
+    } else if (response?.type === "dismiss") {
+      setGoogleLoading(false);
+    }
+  }, [response]);
+
+  const handleGoogleSuccess = async (code: string, codeVerifier?: string) => {
+    try {
+      // Exchange code for tokens using Google's token endpoint
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code,
+          client_id: GOOGLE_CLIENT_ID,
+          redirect_uri: redirectUri,
+          grant_type: "authorization_code",
+          ...(codeVerifier ? { code_verifier: codeVerifier } : {}),
+        }).toString(),
+      });
+      const tokenData = await tokenRes.json() as { id_token?: string; access_token?: string; error?: string };
+
+      if (!tokenData.id_token) {
+        throw new Error(tokenData.error || "ID token nahi mila");
+      }
+
+      // Send id_token to our backend
+      const res = await api.googleLogin(tokenData.id_token);
+      await loginWithToken(
+        res.accessToken,
+        res.refreshToken,
+        { id: res.user.id, plan: res.user.plan, languageCode: selectedLang },
+        res.isNewUser
+      );
+
+      if (res.isNewUser) {
+        router.replace("/(onboarding)/" as never);
+      } else {
+        router.replace("/(tabs)/dashboard");
+      }
+    } catch (err: unknown) {
+      Alert.alert("Login Error", err instanceof Error ? err.message : "Google login mein kuch gadbad hui");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    if (!GOOGLE_CLIENT_ID) {
+      Alert.alert("Setup Incomplete", "Google login abhi configure nahi hua hai");
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setGoogleLoading(true);
+    await promptAsync();
+  };
 
   const handleSendOtp = async () => {
     if (phone.length !== 10) { Alert.alert("Invalid Number", "10-digit mobile number daalo"); return; }
@@ -289,16 +379,34 @@ export default function LoginScreen() {
               <View style={s.divLine} />
             </View>
 
-            {/* Social Buttons */}
+            {/* Google Sign-In Button */}
+            <TouchableOpacity
+              onPress={handleGoogleLogin}
+              disabled={googleLoading || !request}
+              activeOpacity={0.82}
+              style={s.googleBtn}
+            >
+              {googleLoading ? (
+                <ActivityIndicator color="#4285F4" size="small" />
+              ) : (
+                <>
+                  <View style={s.googleIconWrap}>
+                    <Text style={s.googleIconText}>G</Text>
+                  </View>
+                  <Text style={s.googleBtnText}>Google se Continue Karein</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* Other social buttons (coming soon) */}
             <View style={s.socialRow}>
               {[
-                { label: "Google", icon: "G", bg: "#FFF", border: "#E5E7EB", iconBg: "#4285F4", iconColor: "#FFF", textColor: "#1A1A1A" },
                 { label: "Facebook", icon: "f", bg: "#EEF4FF", border: "#DBEAFE", iconBg: "#1877F2", iconColor: "#FFF", textColor: "#1877F2" },
-                { label: "X", icon: "✕", bg: "#F8F8F8", border: "#E5E7EB", iconBg: "#000", iconColor: "#FFF", textColor: "#1A1A1A" },
+                { label: "X (Twitter)", icon: "✕", bg: "#F8F8F8", border: "#E5E7EB", iconBg: "#000", iconColor: "#FFF", textColor: "#1A1A1A" },
               ].map(btn => (
                 <TouchableOpacity
                   key={btn.label}
-                  onPress={() => Alert.alert("Coming Soon", `${btn.label} login jald aayega!`)}
+                  onPress={() => Alert.alert("Jald Aayega", `${btn.label} login jald aayega!`)}
                   style={[s.socialBtn, { backgroundColor: btn.bg, borderColor: btn.border }]}
                   activeOpacity={0.75}
                 >
@@ -381,6 +489,11 @@ const s = StyleSheet.create({
   divRow: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 16 },
   divLine: { flex: 1, height: 1, backgroundColor: "#EDF2F7" },
   divText: { fontSize: 13, color: "#A0B4BF", fontFamily: "Inter_400Regular" },
+
+  googleBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, height: 52, borderRadius: 14, backgroundColor: "#FFF", borderWidth: 1.5, borderColor: "#E5E7EB", marginBottom: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 },
+  googleIconWrap: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#4285F4", alignItems: "center", justifyContent: "center" },
+  googleIconText: { color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 },
+  googleBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#1A1A1A" },
 
   socialRow: { flexDirection: "row", gap: 10 },
   socialBtn: { flex: 1, flexDirection: "column", alignItems: "center", gap: 6, paddingVertical: 12, borderRadius: 14, borderWidth: 1 },
