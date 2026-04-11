@@ -255,7 +255,7 @@ export default function EditWorkProfileScreen() {
         <TouchableOpacity onPress={handleSave} disabled={saving} style={{ borderRadius: 16, overflow: "hidden", opacity: saving ? 0.7 : 1 }}>
           <LinearGradient colors={["#F59E0B", "#EF4444"]} style={{ padding: 16, alignItems: "center" }}>
             {saving ? <ActivityIndicator size="small" color="#FFF" /> : (
-              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>✅ Profile Save Karo</Text>
+              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>✅ Save Profile</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>

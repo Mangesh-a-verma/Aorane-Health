@@ -529,7 +529,7 @@ export default function BloodEmergencyScreen() {
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(220,38,38,0.08)", borderRadius: 12, padding: 10 }}>
                 <Ionicons name="navigate-circle" size={18} color={C.primary} />
                 <Text style={{ color: C.primary, fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>
-                  {donors.length} donor{donors.length > 1 ? "s" : ""} aapke 50km ke andar — distance ke hisaab se sorted
+                  {donors.length} donor{donors.length > 1 ? "s" : ""} within 50km — sorted by distance
                 </Text>
               </View>
             )}
@@ -569,8 +569,8 @@ export default function BloodEmergencyScreen() {
               <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
                 <Text style={{ fontSize: 28 }}>❤️</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 16 }}>Blood Donate karke 3 logon ki jaan bachayein</Text>
-                  <Text style={{ color: C.muted, fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 4, lineHeight: 19 }}>Aapka ek kadam kisi ke liye naya jeewan ban sakta hai. Har 3 mahine mein donate kar sakte hain.</Text>
+                  <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 16 }}>Donate Blood — Save up to 3 Lives</Text>
+                  <Text style={{ color: C.muted, fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 4, lineHeight: 19 }}>One donation can change someone's life. You can donate every 3 months.</Text>
                 </View>
               </View>
             </LinearGradient>
@@ -609,7 +609,7 @@ export default function BloodEmergencyScreen() {
               {/* OTP note */}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(16,185,129,0.08)", borderRadius: 10, padding: 10 }}>
                 <Ionicons name="shield-checkmark" size={16} color={C.green} />
-                <Text style={{ color: C.green, fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>OTP verification se aapki identity safe rahti hai</Text>
+                <Text style={{ color: C.green, fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>OTP verification keeps your identity secure</Text>
               </View>
             </Card>
 
@@ -667,7 +667,7 @@ export default function BloodEmergencyScreen() {
               {/* Patient */}
               <View style={{ height: 1, backgroundColor: C.border, marginVertical: 10 }} />
               <FieldLabel text="Patient Info" required />
-              <InputField value={reqPatientName} onChangeText={setReqPatientName} placeholder="Patient ka naam *" />
+              <InputField value={reqPatientName} onChangeText={setReqPatientName} placeholder="Patient name *" />
 
               {/* Hospital — COMPULSORY */}
               <View style={{ height: 1, backgroundColor: C.border, marginVertical: 10 }} />
@@ -691,7 +691,7 @@ export default function BloodEmergencyScreen() {
                 </View>
               </View>
               <InputField value={reqHospitalState} onChangeText={setReqHospitalState} placeholder="State (e.g. Delhi, Maharashtra)" />
-              <InputField value={reqHospitalPhone} onChangeText={setReqHospitalPhone} placeholder="Hospital ka phone number * (reception/ward)" keyboard="phone-pad" />
+              <InputField value={reqHospitalPhone} onChangeText={setReqHospitalPhone} placeholder="Hospital phone number * (reception/ward)" keyboard="phone-pad" />
 
               {/* Doctor — optional but encouraged */}
               <View style={{ height: 1, backgroundColor: C.border, marginVertical: 10 }} />
@@ -725,7 +725,7 @@ export default function BloodEmergencyScreen() {
               <TouchableOpacity onPress={goToDisclaimer} activeOpacity={0.85} style={{ marginTop: 14 }}>
                 <LinearGradient colors={["#DC2626", "#B91C1C"]} style={styles.actionBtn}>
                   <Ionicons name="arrow-forward" size={18} color="#FFF" />
-                  <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>Next: Confirm Karein</Text>
+                  <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>Next: Confirm →</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </ScrollView>
@@ -786,7 +786,7 @@ export default function BloodEmergencyScreen() {
 
               <View style={{ flexDirection: "row", gap: 10 }}>
                 <TouchableOpacity onPress={() => setFormStep("form")} style={{ flex: 1, height: 50, borderRadius: 14, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ color: C.muted, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>← Edit Karein</Text>
+                  <Text style={{ color: C.muted, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>← Edit</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={submitEmergency} disabled={reqSubmitting} style={{ flex: 2 }} activeOpacity={0.85}>
                   <LinearGradient colors={["#DC2626", "#B91C1C"]} style={styles.actionBtn}>

@@ -269,7 +269,7 @@ export default function SuggestionsScreen() {
         {/* ── FOOD SUGGESTIONS ── */}
         {foodSuggestions.length > 0 && (
           <Animated.View style={{ opacity: fadeAnim, gap: 8 }}>
-            <SectionHeader icon="🥗" title="Aaj ke Liye Khaana" subtitle="Tap karke nutrients dekhein" color={C.green} />
+            <SectionHeader icon="🥗" title="Today's Meal Plan" subtitle="Tap to see nutrition details" color={C.green} />
             {foodSuggestions.map((food, i) => (
               <FoodCard key={i} food={food} index={i} />
             ))}
@@ -331,7 +331,7 @@ export default function SuggestionsScreen() {
                 <Text style={{ fontSize: 32 }}>{healthTip.emoji}</Text>
                 <View style={{ flex: 1, gap: 4 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Text style={{ color: C.accent, fontFamily: "Inter_700Bold", fontSize: 12, textTransform: "uppercase" }}>Aaj Ka Health Tip</Text>
+                    <Text style={{ color: C.accent, fontFamily: "Inter_700Bold", fontSize: 12, textTransform: "uppercase" }}>Today's Health Tip</Text>
                     <View style={{ backgroundColor: C.accent + "20", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
                       <Text style={{ color: C.accent, fontSize: 9, fontFamily: "Inter_700Bold" }}>{healthTip.category}</Text>
                     </View>

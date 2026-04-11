@@ -180,7 +180,7 @@ export default function LoginScreen() {
                 onPress={() => { setDevOtp(null); router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } }); }}
                 style={s.devOtpBtn}
               >
-                <Text style={s.devOtpBtnText}>OTP Enter Karne Jao →</Text>
+                <Text style={s.devOtpBtnText}>Enter OTP →</Text>
               </TouchableOpacity>
             </View>
           )}

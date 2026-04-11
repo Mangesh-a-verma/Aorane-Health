@@ -118,7 +118,7 @@ export default function MedicalEmergencyScreen() {
 
             <LinearGradient colors={["#DC2626", "#B91C1C"]} style={[styles.actionBtn, { marginTop: 12 }]}>
               <Ionicons name="arrow-forward-circle" size={20} color="#FFF" />
-              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>Blood Emergency Kholein →</Text>
+              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>Open Blood Emergency →</Text>
             </LinearGradient>
           </View>
         </TouchableOpacity>
@@ -168,7 +168,7 @@ export default function MedicalEmergencyScreen() {
 
           {/* What's pending */}
           <View style={{ gap: 6 }}>
-            <Text style={{ color: C.muted, fontFamily: "Inter_600SemiBold", fontSize: 11, textTransform: "uppercase" }}>Launch ke liye required:</Text>
+            <Text style={{ color: C.muted, fontFamily: "Inter_600SemiBold", fontSize: 11, textTransform: "uppercase" }}>Required to launch:</Text>
             {[
               { icon: "business-outline" as const, text: "Hospital API partnerships (Apollo, Fortis, AIIMS etc.)", done: false },
               { icon: "shield-checkmark-outline" as const, text: "Government 112-India Emergency API approval", done: false },
@@ -209,7 +209,7 @@ export default function MedicalEmergencyScreen() {
         <View style={[styles.card, { borderColor: "#FECACA" }]}>
           <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 14, marginBottom: 10 }}>📞 India Emergency Numbers (Always Available)</Text>
           {[
-            { number: "112", label: "National Emergency", sub: "Ambulance + Police + Fire — ek number sab ke liye", grad: ["#DC2626", "#B91C1C"] as [string, string] },
+            { number: "112", label: "National Emergency", sub: "Ambulance + Police + Fire — one number for all", grad: ["#DC2626", "#B91C1C"] as [string, string] },
             { number: "108", label: "Ambulance",          sub: "Medical emergency",       grad: ["#EF4444", "#DC2626"] as [string, string] },
             { number: "100", label: "Police",             sub: "Law & order",             grad: ["#1D4ED8", "#1E40AF"] as [string, string] },
             { number: "101", label: "Fire",               sub: "Fire brigade",            grad: ["#EA580C", "#C2410C"] as [string, string] },

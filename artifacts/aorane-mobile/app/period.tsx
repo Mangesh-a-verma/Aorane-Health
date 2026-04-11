@@ -138,7 +138,7 @@ export default function PeriodScreen() {
         {tab === "log" && (
           <GlassCard>
             <View style={{ padding: 18 }}>
-              <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 16 }}>Period Log Karo 🌸</Text>
+              <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 16 }}>Log Period 🌸</Text>
 
               <Text style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(10,22,40,0.6)", fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 8 }}>Start Date</Text>
               <TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.3)"} style={{ backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(236,72,153,0.06)", borderRadius: 12, padding: 14, color: isDark ? "#FFF" : "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 14, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(236,72,153,0.2)", marginBottom: 14 }} />
@@ -165,7 +165,7 @@ export default function PeriodScreen() {
               </View>
 
               <TouchableOpacity onPress={saveLog} disabled={saving} style={{ backgroundColor: "#EC4899", borderRadius: 14, padding: 15, alignItems: "center" }}>
-                <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>{saving ? "Saving..." : "Period Log Save Karo"}</Text>
+                <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>{saving ? "Saving..." : "Save Period Log"}</Text>
               </TouchableOpacity>
             </View>
           </GlassCard>

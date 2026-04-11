@@ -134,7 +134,7 @@ export default function WaterScreen() {
             </ScrollView>
             <TouchableOpacity onPress={addGlass} disabled={loading} style={{ marginTop: 16, backgroundColor: "#0077B6", borderRadius: 14, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
               <Ionicons name="add-circle" size={22} color="#FFF" />
-              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>{loading ? "Logging..." : "+ 1 Glass Log Karo"}</Text>
+              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>{loading ? "Logging..." : "+ Log 1 Glass"}</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -144,7 +144,7 @@ export default function WaterScreen() {
           <LinearGradient colors={isDark ? ["rgba(56,189,248,0.18)","rgba(45,212,191,0.08)"] : ["rgba(255,255,255,0.9)","rgba(186,230,253,0.45)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 20, padding: 1.5 }}>
             <View style={{ borderRadius: 19, overflow: "hidden", backgroundColor: isDark ? "rgba(4,20,40,0.5)" : "rgba(255,255,255,0.5)", padding: 18 }}>
               {Platform.OS === "ios" ? <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(4,16,32,0.45)" : "rgba(255,255,255,0.45)" }]} />}
-              <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 12 }}>Aaj ka log</Text>
+              <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 12 }}>Today's log</Text>
               <View style={{ gap: 8 }}>
                 {logs.slice(0, 8).map((l, i) => {
                   const dt = DRINK_TYPES.find(d => d.key === l.drinkType) || DRINK_TYPES[0];

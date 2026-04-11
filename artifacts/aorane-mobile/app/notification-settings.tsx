@@ -202,7 +202,7 @@ export default function NotificationSettingsScreen() {
           <SettingRow
             icon="🍽️" iconBg="#F0FFF4"
             title="Food / Meal Reminders"
-            subtitle="Khaana khane ki reminder"
+            subtitle="Meal reminder notification"
             value={settings.foodReminders}
             onToggle={(v) => update("foodReminders", v)}
             disabled={!settings.notificationsEnabled}
@@ -259,7 +259,7 @@ export default function NotificationSettingsScreen() {
           <SettingRow
             icon="📧" iconBg="#EFF6FF"
             title="Weekly Email Report"
-            subtitle="Har hafte health summary email pe"
+            subtitle="Weekly health summary via email"
             value={settings.weeklyReportEmail}
             onToggle={(v) => update("weeklyReportEmail", v)}
           />
@@ -282,7 +282,7 @@ export default function NotificationSettingsScreen() {
               {saving ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
-                <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>✅ Settings Save Karo</Text>
+                <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>✅ Save Settings</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>

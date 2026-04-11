@@ -154,7 +154,7 @@ function BreathingCircle() {
           </Animated.View>
           <Text style={{ color: phaseColor, fontFamily: "Inter_700Bold", fontSize: 15, marginTop: 14 }}>{phaseText}</Text>
           <TouchableOpacity onPress={stop} style={{ marginTop: 16, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 12, backgroundColor: C.red + "15" }}>
-            <Text style={{ color: C.red, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Rokna hai</Text>
+            <Text style={{ color: C.red, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Stop it</Text>
           </TouchableOpacity>
         </>
       ) : (
@@ -254,7 +254,7 @@ export default function StressScreen() {
         {/* Today Summary Row */}
         <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
           <Card style={{ flex: 1, padding: 14 }}>
-            <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_500Medium" }}>Aaj ka avg</Text>
+            <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_500Medium" }}>Today's avg</Text>
             <Text style={{ color: todayAvg > 0 ? scoreColor(todayAvg) : C.muted, fontFamily: "Inter_700Bold", fontSize: 26, marginTop: 2 }}>
               {todayAvg > 0 ? todayAvg : "—"}
             </Text>
@@ -267,7 +267,7 @@ export default function StressScreen() {
               {weekAvg > 0 ? weekAvg : "—"}
             </Text>
             {weekAvg > 0 && <Text style={{ color: scoreColor(weekAvg), fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{scoreLabel(weekAvg)}</Text>}
-            <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 }}>7-din ka trend</Text>
+            <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 }}>7-day trend</Text>
           </Card>
         </View>
 
@@ -364,7 +364,7 @@ export default function StressScreen() {
             {todayLogs.length > 0 && (
               <Card>
                 <View style={{ padding: 14 }}>
-                  <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13, marginBottom: 10 }}>Aaj ke {todayLogs.length} logs</Text>
+                  <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13, marginBottom: 10 }}>Today's {todayLogs.length} logs</Text>
                   {todayLogs.slice(0, 5).map((l, i) => {
                     const t = new Date(l.loggedAt);
                     const hhmm = t.toLocaleTimeString("hi-IN", { hour: "2-digit", minute: "2-digit" });
@@ -412,7 +412,7 @@ export default function StressScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{p.label}</Text>
                       <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>
-                        {p.key === "sleep" ? "Profile se avg neend" : p.key === "water" ? "Aaj ke water logs" : p.key === "exercise" ? "Aaj ke exercise logs" : "Estimated score"}
+                        {p.key === "sleep" ? "Avg sleep from profile" : p.key === "water" ? "Today's water logs" : p.key === "exercise" ? "Today's exercise logs" : "Estimated score"}
                       </Text>
                     </View>
                     <Ionicons name="checkmark-circle" size={22} color={p.color} />
@@ -439,7 +439,7 @@ export default function StressScreen() {
             {weekly.some(d => d.count > 0) && (
               <Card>
                 <View style={{ padding: 14 }}>
-                  <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 14, marginBottom: 12 }}>Har din ka avg stress</Text>
+                  <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 14, marginBottom: 12 }}>Daily avg stress</Text>
                   {[...weekly].reverse().filter(d => d.count > 0).map(d => (
                     <View key={d.date} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: C.border }}>
                       <View style={{ width: 36, alignItems: "center" }}>

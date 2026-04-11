@@ -96,7 +96,7 @@ export default function FamilyScreen() {
           </TouchableOpacity>
           <View>
             <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>Family Health 👨‍👩‍👧‍👦</Text>
-            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Pariwar ki health ek jagah</Text>
+            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Family health in one place</Text>
           </View>
         </View>
 
@@ -107,7 +107,7 @@ export default function FamilyScreen() {
             {/* Group Info */}
             <LinearGradient colors={["#0077B6","#1B998B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 20, padding: 20, marginBottom: 16 }}>
               <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, fontFamily: "Inter_500Medium", marginBottom: 4 }}>Family Group</Text>
-              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 20, marginBottom: 12 }}>Hamaara Pariwar 🏠</Text>
+              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 20, marginBottom: 12 }}>Our Family 🏠</Text>
               <View style={{ backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <View>
                   <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_500Medium" }}>Invite Code</Text>
@@ -145,7 +145,7 @@ export default function FamilyScreen() {
 
             <TouchableOpacity onPress={leaveGroup} style={{ backgroundColor: isDark ? "rgba(220,38,38,0.15)" : "#FEF2F2", borderRadius: 14, padding: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1, borderColor: isDark ? "rgba(220,38,38,0.3)" : "#FECACA" }}>
               <Ionicons name="exit-outline" size={18} color="#DC2626" />
-              <Text style={{ color: "#DC2626", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Group Leave Karo</Text>
+              <Text style={{ color: "#DC2626", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Leave Group</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -164,7 +164,7 @@ export default function FamilyScreen() {
 
             <GlassCard>
               <View style={{ padding: 18 }}>
-                <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 15, marginBottom: 12 }}>Invite Code se Join Karo</Text>
+                <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 15, marginBottom: 12 }}>Join with Invite Code</Text>
                 <TextInput
                   value={joinCode} onChangeText={setJoinCode}
                   placeholder="FAM123456 (code daalo)" placeholderTextColor={isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.35)"}
@@ -172,7 +172,7 @@ export default function FamilyScreen() {
                   autoCapitalize="characters" maxLength={9}
                 />
                 <TouchableOpacity onPress={joinGroup} disabled={joining || !joinCode.trim()} style={{ backgroundColor: "#1B998B", borderRadius: 12, padding: 14, alignItems: "center" }}>
-                  <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>{joining ? "Joining..." : "Group Join Karo"}</Text>
+                  <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>{joining ? "Joining..." : "Join Group"}</Text>
                 </TouchableOpacity>
               </View>
             </GlassCard>

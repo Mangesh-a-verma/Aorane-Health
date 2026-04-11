@@ -260,7 +260,7 @@ export default function MedicineScreen() {
           <View style={s.modalHeader}>
             <View>
               <Text style={s.modalTitle}>Medical Report Scan 🔬</Text>
-              <Text style={s.modalSub}>AI se instant analysis</Text>
+              <Text style={s.modalSub}>AI instant analysis</Text>
             </View>
             <TouchableOpacity onPress={() => { setShowScanModal(false); setSelectedImage(null); setScanResult(null); }} style={s.closeBtn}>
               <X size={20} color={DS.color.text} strokeWidth={2} />
@@ -348,7 +348,7 @@ export default function MedicineScreen() {
                   <View style={[s.resultCard, { borderLeftWidth: 4, borderLeftColor: DS.color.red }]}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
                       <AlertTriangle size={18} color={DS.color.red} strokeWidth={2} />
-                      <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: DS.color.red }}>Critical Values — Doctor se Milein</Text>
+                      <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: DS.color.red }}>Critical Values — Consult a Doctor</Text>
                     </View>
                     {scanResult.criticalValues.map((cv, i) => (
                       <View key={i} style={{ backgroundColor: DS.color.redSoft, borderRadius: 10, padding: 10, marginTop: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
