@@ -10,7 +10,6 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { api } from "@/lib/api";
-import { storage } from "@/lib/storage";
 import {
   scheduleMedicineReminders,
   requestNotificationPermissions,
@@ -94,13 +93,14 @@ export default function MedicineScreen() {
     setIsSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const token = await storage.getToken();
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || "http://localhost:8080/api"}/medicine/schedule`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ medicineName: medicineName.trim(), dosage, mealTiming, reminderTimes: [reminderTime], startDate: new Date().toISOString().slice(0, 10) }),
+      await api.createMedicineSchedule({
+        medicineName: medicineName.trim(),
+        dosage,
+        mealTiming,
+        reminderTimes: [reminderTime],
+        startDate: new Date().toISOString().slice(0, 10),
+        frequency: "daily",
       });
-      if (!res.ok) throw new Error("Failed");
       setShowModal(false); setMedicineName(""); setDosage("");
       await loadSchedules();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

@@ -118,8 +118,20 @@ export const api = {
   getMedicineSchedules: () =>
     request<{ schedules: Array<Record<string, unknown>> }>("GET", "/medicine/schedules"),
 
+  createMedicineSchedule: (data: { medicineName: string; dosage?: string; mealTiming: string; reminderTimes: string[]; startDate: string; frequency?: string; doseCount?: number; notes?: string }) =>
+    request<{ schedule: Record<string, unknown> }>("POST", "/medicine/schedule", data as Record<string, unknown>),
+
+  updateMedicineSchedule: (id: string, data: Record<string, unknown>) =>
+    request<{ schedule: Record<string, unknown> }>("PATCH", `/medicine/schedule/${id}`, data),
+
+  deleteMedicineSchedule: (id: string) =>
+    request<{ success: boolean }>("DELETE", `/medicine/schedule/${id}`),
+
   logMedicine: (data: Record<string, unknown>) =>
     request<{ log: Record<string, unknown> }>("POST", "/medicine/log", data),
+
+  getMedicineLogs: (date?: string) =>
+    request<{ logs: Array<Record<string, unknown>> }>("GET", `/medicine/logs${date ? `?date=${date}` : ""}`),
 
   // ── Medical Reports (AI scan) ──────────────────────────
   getMedicalReports: () =>
