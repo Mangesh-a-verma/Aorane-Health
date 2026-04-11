@@ -59,12 +59,26 @@ export const bloodEmergencyRequestsTable = pgTable("blood_emergency_requests", {
   requesterId: uuid("requester_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   patientName: text("patient_name").notNull(),
   bloodGroupNeeded: bloodGroupEnum("blood_group_needed").notNull(),
+  unitsNeeded: integer("units_needed").notNull().default(1),
+
+  // ── Hospital info (compulsory for donor safety) ─────────────────────────────
   hospitalName: text("hospital_name").notNull(),
+  hospitalAddress: text("hospital_address"),           // full address for donors
   hospitalCity: text("hospital_city").notNull(),
   hospitalState: text("hospital_state").notNull(),
-  unitsNeeded: integer("units_needed").notNull().default(1),
+  hospitalPincode: text("hospital_pincode"),
+  hospitalPhone: text("hospital_phone"),               // hospital's official number
+
+  // ── Doctor info (optional — strongly encouraged for donor safety) ───────────
+  doctorName: text("doctor_name"),
+  doctorPhone: text("doctor_phone"),
+
+  // ── Contact person (requester / family member) ──────────────────────────────
   contactPhone: text("contact_phone").notNull(),
   contactName: text("contact_name"),
+
+  // ── Request meta ────────────────────────────────────────────────────────────
+  urgency: text("urgency").notNull().default("urgent"),  // critical | urgent | routine
   status: bloodRequestStatusEnum("status").notNull().default("active"),
   donorsNotified: integer("donors_notified").notNull().default(0),
   donorsResponded: integer("donors_responded").notNull().default(0),

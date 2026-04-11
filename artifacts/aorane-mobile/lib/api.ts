@@ -224,14 +224,36 @@ export const api = {
       "GET", `/blood/donors?bloodGroup=${encodeURIComponent(bloodGroup)}&city=${encodeURIComponent(city)}`
     ),
 
-  createBloodEmergency: (data: { bloodGroup: string; unitsNeeded: number; hospitalName: string; city: string; state: string; contactPhone: string; urgency?: string; notes?: string }) =>
-    request<{ success: boolean; request: Record<string, unknown> }>("POST", "/blood/emergency/direct", data),
+  createBloodEmergency: (data: {
+    patientName: string;
+    bloodGroup: string;
+    unitsNeeded: number;
+    hospitalName: string;
+    hospitalAddress: string;
+    hospitalCity: string;
+    hospitalState: string;
+    hospitalPincode?: string;
+    hospitalPhone: string;
+    doctorName?: string;
+    doctorPhone?: string;
+    contactPhone: string;
+    contactName?: string;
+    urgency?: string;
+    notes?: string;
+  }) =>
+    request<{ success: boolean; request: Record<string, unknown> }>("POST", "/blood/emergency/direct", data as Record<string, unknown>),
 
   getBloodEmergencies: () =>
     request<{ requests: Array<Record<string, unknown>> }>("GET", "/blood/requests/active"),
 
   respondToBloodEmergency: (requestId: string, response: "can_help" | "later" | "unavailable") =>
     request<{ success: boolean }>("POST", `/blood/request/${requestId}/respond`, { response }),
+
+  flagBloodRequest: (requestId: string) =>
+    request<{ success: boolean }>("POST", `/blood/request/${requestId}/flag`, {}),
+
+  markBloodFulfilled: (requestId: string) =>
+    request<{ success: boolean }>("PATCH", `/blood/request/${requestId}/fulfil`, {}),
 
   // ── Stress Tracking ────────────────────────────────────────
   logStress: (data: { stressType: string; mood?: string; stressScore?: number; pillars?: Record<string, number> }) =>
