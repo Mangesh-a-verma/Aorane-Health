@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   RefreshControl, Platform, ActivityIndicator,
-  Animated, Dimensions,
+  Animated, Dimensions, FlatList,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -108,6 +108,55 @@ const mb = StyleSheet.create({
   goal: { color: C.muted, fontFamily: "Inter_400Regular" },
   track: { height: 6, borderRadius: 3, backgroundColor: "#E4EFFE", overflow: "hidden" },
   fill: { height: 6, borderRadius: 3 },
+});
+
+// ─── NUTRITION CAROUSEL ───────────────────────────────────────────────────────
+type NutritionTile = { key: string; icon: string; value: string; label: string; color: string };
+
+function NutritionCarousel({ items }: { items: NutritionTile[] }) {
+  const flatRef = useRef<FlatList<NutritionTile>>(null);
+  const idxRef = useRef(0);
+
+  useEffect(() => {
+    if (items.length <= 1) return;
+    const timer = setInterval(() => {
+      const next = (idxRef.current + 1) % items.length;
+      idxRef.current = next;
+      flatRef.current?.scrollToIndex({ index: next, animated: true, viewPosition: 0 });
+    }, 2200);
+    return () => clearInterval(timer);
+  }, [items.length]);
+
+  const TILE_W = 64;
+
+  return (
+    <FlatList
+      ref={flatRef}
+      data={items}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      keyExtractor={(item) => item.key}
+      contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 6 }}
+      ItemSeparatorComponent={() => <View style={{ width: 6 }} />}
+      getItemLayout={(_, index) => ({ length: TILE_W, offset: (TILE_W + 6) * index, index })}
+      onScrollToIndexFailed={() => {}}
+      renderItem={({ item }) => (
+        <View style={nc.tile}>
+          <Text style={nc.icon}>{item.icon}</Text>
+          <Text style={[nc.val, { color: item.color }]}>{item.value}</Text>
+          <Text style={nc.label}>{item.label}</Text>
+        </View>
+      )}
+    />
+  );
+}
+const nc = StyleSheet.create({
+  tile: {
+    width: 64, alignItems: "center", gap: 3, paddingVertical: 10, paddingHorizontal: 4,
+  },
+  icon: { fontSize: 24 },
+  val: { fontSize: 13, fontFamily: "Inter_700Bold", textAlign: "center" },
+  label: { fontSize: 9, fontFamily: "Inter_400Regular", color: C.muted, textAlign: "center" },
 });
 
 // ─── QUICK ACTION BUTTON (compact icon tile) ──────────────────────────────────
@@ -523,39 +572,29 @@ export default function DashboardScreen() {
           )}
         </Animated.View>
 
-        {/* ── NUTRITION CARD ── */}
-        <Animated.View style={{ opacity: fadeAnim }}>
-          <Text style={s.sectionTitle}>Today's Nutrition</Text>
-          <Glass>
-            <View style={s.nutritionHeader}>
-              <View>
-                <Text style={s.nutritionTitle}>Macro Breakdown</Text>
-                <Text style={s.nutritionSub}>Daily targets</Text>
-              </View>
-              <LinearGradient colors={[C.primary, C.sky]} style={s.nutritionBadge}>
-                <Ionicons name="nutrition-outline" size={14} color="#FFF" />
-              </LinearGradient>
-            </View>
-            <MacroBar label="Carbohydrates" value={macros.carbs} goal={macros.carbsGoal} color={C.amber} icon="🍞" />
-            <MacroBar label="Healthy Fats" value={macros.fat} goal={macros.fatGoal} color={C.purple} icon="🥑" />
-            <MacroBar label="Dietary Fiber" value={macros.fiber} goal={macros.fiberGoal} color={C.accent} icon="🥦" />
-            <TouchableOpacity
-              onPress={() => router.push("/(tabs)/food" as never)}
-              style={s.nutritionLink}
-            >
-              <Text style={s.nutritionLinkText}>View detailed food log</Text>
-              <Ionicons name="chevron-forward" size={14} color={C.primary} />
+        {/* ── NUTRITION CAROUSEL ── */}
+        <Animated.View style={{ opacity: fadeAnim, marginBottom: 14 }}>
+          <View style={s.sectionRow}>
+            <Text style={[s.sectionTitle, { marginBottom: 0 }]}>Today's Nutrition</Text>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/food" as never)}>
+              <Text style={s.sectionLink}>View All</Text>
             </TouchableOpacity>
-          </Glass>
-        </Animated.View>
-
-        {/* ── METRICS ROW ── */}
-        <Animated.View style={{ opacity: fadeAnim }}>
-          <Text style={s.sectionTitle}>At a Glance</Text>
-          <View style={s.pillsRow}>
-            <MetricPill icon="flame" value={calories.eaten} unit="kcal" color={C.orange} bgColors={["#F97316", "#FB923C"]} />
-            <MetricPill icon="water-outline" value={water.current} unit="glasses" color={C.sky} bgColors={["#0369A1", "#0EA5E9"]} />
-            <MetricPill icon="barbell-outline" value={exerciseMin} unit="minutes" color={C.accent} bgColors={["#059669", "#10B981"]} />
+          </View>
+          <View style={s.nutritionCarouselWrap}>
+            <NutritionCarousel items={[
+              { key: "cal",   icon: "🔥", value: `${calories.eaten}`,           label: "kcal\nearned",   color: C.orange  },
+              { key: "goal",  icon: "🎯", value: `${remaining}`,                 label: "kcal\nleft",     color: C.red     },
+              { key: "burn",  icon: "⚡", value: `${calories.burned}`,           label: "kcal\nburned",   color: C.amber   },
+              { key: "carb",  icon: "🍞", value: `${macros.carbs}g`,             label: "Carbs",          color: "#D97706" },
+              { key: "fat",   icon: "🥑", value: `${macros.fat}g`,               label: "Fat",            color: C.purple  },
+              { key: "fiber", icon: "🥦", value: `${macros.fiber}g`,             label: "Fiber",          color: C.accent  },
+              { key: "water", icon: "💧", value: `${water.current}/${water.goal}`,label: "Water",         color: C.sky     },
+              { key: "ex",    icon: "🏃", value: `${exerciseMin}m`,              label: "Active",         color: C.green   },
+              { key: "vC",    icon: "🍊", value: "—",                            label: "Vit C",          color: "#F97316" },
+              { key: "vD",    icon: "☀️", value: "—",                            label: "Vit D",          color: C.amber   },
+              { key: "ca",    icon: "🥛", value: "—",                            label: "Calcium",        color: C.sky     },
+              { key: "fe",    icon: "🥩", value: "—",                            label: "Iron",           color: "#EF4444" },
+            ]} />
           </View>
         </Animated.View>
 
@@ -770,6 +809,11 @@ const s = StyleSheet.create({
   medMoreText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: C.primary },
 
   qaRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
+
+  nutritionCarouselWrap: {
+    marginHorizontal: -16,
+    backgroundColor: "transparent",
+  },
 
   hydrationCard: {
     height: 118,
