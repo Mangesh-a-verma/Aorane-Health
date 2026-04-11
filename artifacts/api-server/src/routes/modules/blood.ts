@@ -63,18 +63,49 @@ router.post("/blood/donor/verify-otp", requireAuth, async (req: AuthRequest, res
   }
 });
 
-// ── Blood Donors Search ───────────────────────────────────────────────────────
+// ── Haversine distance (km) ───────────────────────────────────────────────────
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ── Blood Donors Search (supports city OR lat/lng proximity) ──────────────────
 router.get("/blood/donors", async (req, res) => {
   try {
-    const { bloodGroup, city } = req.query as Record<string, string>;
+    const { bloodGroup, city, lat, lng, radiusKm = "50" } = req.query as Record<string, string>;
     const conditions = [eq(bloodDonorsTable.isAvailable, true), eq(bloodDonorsTable.otpVerified, true)];
     if (bloodGroup) {
       const compatible = COMPATIBLE_DONORS[bloodGroup] || [bloodGroup];
       conditions.push(or(...compatible.map((g) => eq(bloodDonorsTable.bloodGroup, g as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-")))!);
     }
     if (city) conditions.push(ilike(bloodDonorsTable.city, `%${city}%`));
-    const donors = await db.select().from(bloodDonorsTable).where(and(...conditions)).limit(20);
-    res.json({ donors });
+
+    const donors = await db.select().from(bloodDonorsTable).where(and(...conditions)).limit(50);
+
+    // If GPS provided — filter by radius and sort by distance
+    if (lat && lng) {
+      const userLat = parseFloat(lat);
+      const userLng = parseFloat(lng);
+      const radius = parseFloat(radiusKm);
+      const withDist = donors
+        .map(d => ({
+          ...d,
+          distanceKm: d.lat && d.lng
+            ? haversineKm(userLat, userLng, parseFloat(d.lat), parseFloat(d.lng))
+            : null,
+        }))
+        .filter(d => d.distanceKm === null || d.distanceKm <= radius)
+        .sort((a, b) => (a.distanceKm ?? 9999) - (b.distanceKm ?? 9999))
+        .slice(0, 20);
+      res.json({ donors: withDist, nearbySearch: true });
+      return;
+    }
+
+    res.json({ donors: donors.slice(0, 20), nearbySearch: false });
   } catch {
     res.status(500).json({ error: "Failed to fetch donors" });
   }

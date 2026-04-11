@@ -219,10 +219,18 @@ export const api = {
   registerBloodDonor: (data: { bloodGroup: string; city: string; state: string; phone?: string; lat?: number; lng?: number }) =>
     request<{ success: boolean; requiresOtp: boolean; message: string }>("POST", "/blood/donor/register", data),
 
-  getBloodDonors: (bloodGroup: string, city: string) =>
-    request<{ donors: Array<{ id: string; bloodGroup: string; city: string; state: string; isAvailable: boolean }> }>(
-      "GET", `/blood/donors?bloodGroup=${encodeURIComponent(bloodGroup)}&city=${encodeURIComponent(city)}`
-    ),
+  getBloodDonors: (bloodGroup: string, city?: string, coords?: { lat: number; lng: number; radiusKm?: number }) => {
+    const params = new URLSearchParams({ bloodGroup });
+    if (city) params.set("city", city);
+    if (coords) {
+      params.set("lat", String(coords.lat));
+      params.set("lng", String(coords.lng));
+      params.set("radiusKm", String(coords.radiusKm ?? 50));
+    }
+    return request<{ donors: Array<{ id: string; bloodGroup: string; city: string; state: string; isAvailable: boolean; distanceKm?: number | null }>; nearbySearch: boolean }>(
+      "GET", `/blood/donors?${params.toString()}`
+    );
+  },
 
   createBloodEmergency: (data: {
     patientName: string;

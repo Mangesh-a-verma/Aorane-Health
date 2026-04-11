@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import { api } from "@/lib/api";
 
 // ── Design ────────────────────────────────────────────────────────────────────
@@ -101,10 +102,15 @@ export default function BloodEmergencyScreen() {
   const [emergencies, setEmergencies] = useState<EmergencyRequest[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // GPS
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [nearbySearch, setNearbySearch] = useState(false);
+
   // Find donors
   const [searchBloodGroup, setSearchBloodGroup] = useState<BloodGroup>("O+");
   const [searchCity, setSearchCity] = useState("");
-  const [donors, setDonors] = useState<Array<{ id: string; bloodGroup: string; city: string; state: string; isAvailable: boolean }>>([]);
+  const [donors, setDonors] = useState<Array<{ id: string; bloodGroup: string; city: string; state: string; isAvailable: boolean; distanceKm?: number | null }>>([]);
   const [searching, setSearching] = useState(false);
 
   // Donate
@@ -112,6 +118,8 @@ export default function BloodEmergencyScreen() {
   const [donorCity, setDonorCity] = useState("");
   const [donorState, setDonorState] = useState("");
   const [donorPhone, setDonorPhone] = useState("");
+  const [donorLat, setDonorLat] = useState<number | undefined>();
+  const [donorLng, setDonorLng] = useState<number | undefined>();
   const [donorSubmitting, setDonorSubmitting] = useState(false);
 
   // Emergency request modal
@@ -150,9 +158,64 @@ export default function BloodEmergencyScreen() {
     setLoading(false);
   }, []);
 
-  const searchDonors = async () => {
-    if (!searchCity.trim()) { Alert.alert("Required", "City naam enter karein"); return; }
+  // ── GPS helpers ──────────────────────────────────────────────────────────────
+  const getGPSCoords = async (): Promise<{ lat: number; lng: number } | null> => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission needed", "Location permission do toh nearby donors dhundh sakte hain");
+        return null;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      return { lat: loc.coords.latitude, lng: loc.coords.longitude };
+    } catch {
+      Alert.alert("GPS Error", "Location nahi mil saki. Check karo ki GPS on hai.");
+      return null;
+    }
+  };
+
+  // Auto-fill city/state from GPS for donor registration
+  const autofillFromGPS = async () => {
+    setGpsLoading(true);
+    const coords = await getGPSCoords();
+    if (!coords) { setGpsLoading(false); return; }
+    try {
+      const [place] = await Location.reverseGeocodeAsync({ latitude: coords.lat, longitude: coords.lng });
+      if (place) {
+        setDonorCity(place.city || place.district || place.subregion || "");
+        setDonorState(place.region || place.subregion || "");
+      }
+      setDonorLat(coords.lat);
+      setDonorLng(coords.lng);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Alert.alert("✅ Location mili!", `City: ${place?.city || "—"}\nState: ${place?.region || "—"}\n\nAap iske saath edit bhi kar sakte hain.`);
+    } catch {
+      Alert.alert("Reverse geocode fail", "City/State auto-fill nahi hua, manually bharein");
+    }
+    setGpsLoading(false);
+  };
+
+  // GPS-based nearby donor search
+  const searchNearbyDonors = async () => {
     setSearching(true);
+    setNearbySearch(true);
+    const coords = await getGPSCoords();
+    if (!coords) { setSearching(false); setNearbySearch(false); return; }
+    setUserCoords(coords);
+    try {
+      const res = await api.getBloodDonors(searchBloodGroup, undefined, { lat: coords.lat, lng: coords.lng, radiusKm: 50 });
+      setDonors(res.donors);
+      if (!res.donors.length) {
+        Alert.alert("Koi donor nahi mila", `50km ke andar ${searchBloodGroup} donors nahi mile.\n\nRadius badhake ya city search karke try karein.`);
+      }
+    } catch { Alert.alert("Error", "Nearby donors nahi mile"); }
+    setSearching(false);
+  };
+
+  const searchDonors = async () => {
+    if (!searchCity.trim()) { Alert.alert("Required", "City naam enter karein ya 'Mere Paas' button use karein"); return; }
+    setSearching(true);
+    setNearbySearch(false);
     try {
       const res = await api.getBloodDonors(searchBloodGroup, searchCity.trim());
       setDonors(res.donors);
@@ -166,7 +229,7 @@ export default function BloodEmergencyScreen() {
     setDonorSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     try {
-      await api.registerBloodDonor({ bloodGroup: donorBloodGroup, city: donorCity.trim(), state: donorState.trim(), phone: donorPhone.trim() });
+      await api.registerBloodDonor({ bloodGroup: donorBloodGroup, city: donorCity.trim(), state: donorState.trim(), phone: donorPhone.trim(), lat: donorLat, lng: donorLng });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       Alert.alert("✅ Registered!", "Aap blood donor ke roop mein register ho gaye hain!\n\nOTP verification phone par aayega. Thank you! 🙏\n\nEk donation se 3 lives bachte hain ❤️");
       setDonorCity(""); setDonorState(""); setDonorPhone("");
@@ -434,15 +497,42 @@ export default function BloodEmergencyScreen() {
             <Card>
               <Text style={styles.cardTitle}>Blood Group Chunein</Text>
               <BloodGroupGrid selected={searchBloodGroup} onSelect={setSearchBloodGroup} />
-              <InputField value={searchCity} onChangeText={setSearchCity} placeholder="City enter karein (e.g. Mumbai, Delhi)" />
-              <TouchableOpacity onPress={searchDonors} disabled={searching} activeOpacity={0.85}>
+
+              {/* GPS nearby search */}
+              <TouchableOpacity onPress={searchNearbyDonors} disabled={searching || gpsLoading} activeOpacity={0.85}>
                 <LinearGradient colors={["#DC2626", "#B91C1C"]} style={styles.actionBtn}>
-                  {searching ? <ActivityIndicator color="#FFF" size="small" /> : <Ionicons name="search" size={18} color="#FFF" />}
-                  <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 15 }}>{searching ? "Dhundh rahe hain..." : "Donors Dhundein"}</Text>
+                  {searching && nearbySearch ? <ActivityIndicator color="#FFF" size="small" /> : <Ionicons name="navigate" size={18} color="#FFF" />}
+                  <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>
+                    {searching && nearbySearch ? "GPS se dhundh raha hai..." : "📍 Mere Paas ke Donors (50 km)"}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
-              <Text style={{ color: C.muted, fontSize: 11, textAlign: "center" }}>Compatible blood groups bhi search hote hain</Text>
+
+              {/* Divider */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
+                <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>ya city se search karein</Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
+              </View>
+
+              <InputField value={searchCity} onChangeText={setSearchCity} placeholder="City enter karein (e.g. Mumbai, Delhi)" />
+              <TouchableOpacity onPress={searchDonors} disabled={searching} activeOpacity={0.85}
+                style={{ borderWidth: 1.5, borderColor: C.primary, borderRadius: 14, height: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                {searching && !nearbySearch ? <ActivityIndicator color={C.primary} size="small" /> : <Ionicons name="search" size={18} color={C.primary} />}
+                <Text style={{ color: C.primary, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{searching && !nearbySearch ? "Dhundh rahe hain..." : "City se Donors Dhundein"}</Text>
+              </TouchableOpacity>
+
+              <Text style={{ color: C.muted, fontSize: 11, textAlign: "center" }}>Compatible blood groups bhi automatically check hote hain</Text>
             </Card>
+
+            {nearbySearch && userCoords && donors.length > 0 && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(220,38,38,0.08)", borderRadius: 12, padding: 10 }}>
+                <Ionicons name="navigate-circle" size={18} color={C.primary} />
+                <Text style={{ color: C.primary, fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>
+                  {donors.length} donor{donors.length > 1 ? "s" : ""} aapke 50km ke andar — distance ke hisaab se sorted
+                </Text>
+              </View>
+            )}
 
             {donors.map((d, i) => (
               <Card key={i}>
@@ -452,13 +542,19 @@ export default function BloodEmergencyScreen() {
                   </LinearGradient>
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 15 }}>{d.bloodGroup} Donor</Text>
-                    <Text style={{ color: C.muted, fontSize: 13, fontFamily: "Inter_400Regular" }}>{d.city}, {d.state}</Text>
+                    <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular" }}>{d.city}, {d.state}</Text>
+                    {d.distanceKm != null && (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+                        <Ionicons name="navigate" size={11} color={C.green} />
+                        <Text style={{ color: C.green, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>
+                          {d.distanceKm < 1 ? "<1 km" : `~${Math.round(d.distanceKm)} km`} aapse
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                  <View style={{ alignItems: "flex-end", gap: 6 }}>
-                    <View style={[styles.availBadge, { backgroundColor: d.isAvailable ? "rgba(16,185,129,0.15)" : "rgba(156,163,175,0.15)" }]}>
-                      <View style={[styles.availDot, { backgroundColor: d.isAvailable ? C.green : "#9CA3AF" }]} />
-                      <Text style={{ color: d.isAvailable ? C.green : "#9CA3AF", fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{d.isAvailable ? "Available" : "Busy"}</Text>
-                    </View>
+                  <View style={[styles.availBadge, { backgroundColor: d.isAvailable ? "rgba(16,185,129,0.15)" : "rgba(156,163,175,0.15)" }]}>
+                    <View style={[styles.availDot, { backgroundColor: d.isAvailable ? C.green : "#9CA3AF" }]} />
+                    <Text style={{ color: d.isAvailable ? C.green : "#9CA3AF", fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{d.isAvailable ? "Available" : "Busy"}</Text>
                   </View>
                 </View>
               </Card>
@@ -482,8 +578,26 @@ export default function BloodEmergencyScreen() {
             <Card>
               <Text style={styles.cardTitle}>Apna Blood Group</Text>
               <BloodGroupGrid selected={donorBloodGroup} onSelect={setDonorBloodGroup} />
-              <InputField value={donorCity} onChangeText={setDonorCity} placeholder="Aapka shehar (e.g. Delhi, Mumbai)" />
-              <InputField value={donorState} onChangeText={setDonorState} placeholder="State (e.g. Maharashtra, UP)" />
+
+              {/* GPS auto-fill */}
+              <TouchableOpacity onPress={autofillFromGPS} disabled={gpsLoading} activeOpacity={0.85}
+                style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: donorLat ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.06)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: donorLat ? C.green : C.border }}>
+                {gpsLoading ? <ActivityIndicator size="small" color={C.primary} /> : <Ionicons name={donorLat ? "navigate-circle" : "navigate-circle-outline"} size={22} color={donorLat ? C.green : C.primary} />}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: donorLat ? C.green : C.primary, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                    {gpsLoading ? "Location le raha hai..." : donorLat ? "✅ Location save ho gayi" : "📍 GPS se Auto-fill Karein"}
+                  </Text>
+                  <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>
+                    {donorLat ? `${donorLat.toFixed(4)}, ${donorLng?.toFixed(4)} — nearby donors aapko pehle dikhenge` : "City/State automatic fill ho jaayega + proximity search enable hoga"}
+                  </Text>
+                </View>
+                {donorLat && <TouchableOpacity onPress={() => { setDonorLat(undefined); setDonorLng(undefined); }} style={{ padding: 4 }}>
+                  <Ionicons name="close-circle" size={18} color={C.muted} />
+                </TouchableOpacity>}
+              </TouchableOpacity>
+
+              <InputField value={donorCity} onChangeText={setDonorCity} placeholder="Aapka shehar * (e.g. Delhi, Mumbai)" />
+              <InputField value={donorState} onChangeText={setDonorState} placeholder="State * (e.g. Maharashtra, UP)" />
               <InputField value={donorPhone} onChangeText={setDonorPhone} placeholder="Mobile number (OTP verification ke liye)" keyboard="phone-pad" />
               <TouchableOpacity onPress={registerDonor} disabled={donorSubmitting} activeOpacity={0.85}>
                 <LinearGradient colors={["#DC2626", "#B91C1C"]} style={styles.actionBtn}>
