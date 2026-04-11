@@ -242,23 +242,35 @@ For medicine:
 For unknown:
 { "type": "unknown", "message": "Could not identify health-related content in this image." }`;
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: prompt },
-              { inline_data: { mime_type: mimeType, data: imageBase64 } }
-            ]
-          }],
-          generationConfig: { temperature: 0.2 }
-        }),
+    const geminiBody = JSON.stringify({
+      contents: [{
+        parts: [
+          { text: prompt },
+          { inline_data: { mime_type: mimeType, data: imageBase64 } }
+        ]
+      }],
+      generationConfig: { temperature: 0.2 }
+    });
+
+    let geminiRes: Response | null = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: geminiBody }
+      );
+      if (geminiRes.status === 429 && attempt < 3) {
+        await new Promise(r => setTimeout(r, attempt * 2000));
+        continue;
       }
-    );
-    if (!geminiRes.ok) throw new Error(`Gemini error: ${geminiRes.status}`);
+      break;
+    }
+
+    if (!geminiRes || !geminiRes.ok) {
+      const status = geminiRes?.status;
+      if (status === 429) return res.status(429).json({ error: "AI is busy right now. Please try again in a moment." });
+      throw new Error(`Gemini error: ${status}`);
+    }
+
     const data = await geminiRes.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
@@ -267,7 +279,7 @@ For unknown:
     res.json(result);
   } catch (err) {
     console.error("smart-scan error:", err);
-    res.status(500).json({ error: "Smart scan failed. Please try again." });
+    res.status(500).json({ error: "Smart scan failed. Please try again with a clearer image." });
   }
 });
 

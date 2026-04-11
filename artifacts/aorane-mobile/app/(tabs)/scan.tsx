@@ -8,7 +8,6 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
-  Platform,
   Dimensions,
   Image,
 } from "react-native";
@@ -16,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
-import { useApiClient } from "../../lib/api";
+import { api } from "../../lib/api";
 
 const { width } = Dimensions.get("window");
 const PRIMARY = "#0077B6";
@@ -33,7 +32,6 @@ const URGENCY_COLOR = { normal: "#00B896", attention: "#F59E0B", urgent: "#EF444
 const STATUS_COLOR = { normal: "#00B896", high: "#EF4444", low: "#F59E0B" };
 
 export default function SmartScanScreen() {
-  const { apiFetch } = useApiClient();
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -84,15 +82,12 @@ export default function SmartScanScreen() {
       const ext = asset.uri.split(".").pop()?.toLowerCase() || "jpg";
       const mimeType = ext === "png" ? "image/png" : "image/jpeg";
 
-      const data = await apiFetch("/api/ai/smart-scan", {
-        method: "POST",
-        body: JSON.stringify({ imageBase64: asset.base64, mimeType }),
-      });
+      const data = await api.smartScan({ imageBase64: asset.base64, mimeType });
 
       setScanning(false);
       pulseAnim.stopAnimation();
       pulseAnim.setValue(1);
-      setResult(data as ScanResult);
+      setResult(data as unknown as ScanResult);
       showResult();
     } catch {
       setScanning(false);

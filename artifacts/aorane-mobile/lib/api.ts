@@ -359,6 +359,22 @@ export const api = {
   disconnectWearable: (provider: string) =>
     request<{ success: boolean }>("DELETE", `/wearable/connections/${provider}`),
 
+  // ── AI Smart Scan ────────────────────────────────────────
+  smartScan: (data: { imageBase64: string; mimeType?: string }) =>
+    request<{
+      type: "food" | "medical_report" | "medicine" | "unknown";
+      foodName?: string; confidence?: number; calories?: number; proteinG?: number;
+      carbsG?: number; fatG?: number; fiberG?: number; servingSize?: string;
+      healthScore?: number; tags?: string[]; tip?: string; ingredients?: string[];
+      reportType?: string; patientName?: string | null; date?: string | null;
+      summary?: string; urgencyLevel?: "normal" | "attention" | "urgent";
+      keyFindings?: { parameter: string; value: string; normalRange: string; status: "normal" | "high" | "low" }[];
+      recommendations?: string[]; disclaimer?: string;
+      medicineName?: string; genericName?: string; uses?: string;
+      commonDosage?: string; sideEffects?: string[]; warnings?: string[];
+      message?: string;
+    }>("POST", "/ai/smart-scan", data as Record<string, unknown>),
+
   // ── Company Settings (public) ──────────────────────────────
   getCompanySettings: () =>
     request<{ settings: {
