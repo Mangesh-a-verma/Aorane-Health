@@ -36,13 +36,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#090e1c" }}>
-      {/* ── VERIFICATION BANNER — remove after user confirms ── */}
-      <div className="w-full text-center py-2 text-xs font-mono font-bold z-50"
-           style={{ background: "#16a34a", color: "white", letterSpacing: "0.1em" }}>
-        ✅ ADMIN PANEL v2.0 — NEW DESIGN LOADED
-      </div>
-      <div className="flex flex-1">
+    <div className="min-h-screen flex" style={{ background: "#090e1c" }}>
 
       {/* ── Left Panel ── */}
       <div className="hidden lg:flex flex-col justify-between w-[52%] p-14 relative overflow-hidden"
@@ -283,7 +277,6 @@ export default function Login() {
             </div>
           </div>
         </div>
-      </div>
       </div>
     </div>
   );
