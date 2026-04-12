@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env.VITE_API_URL ?? "") + "/api";
+const API_BASE = "/api";
 
 export function getToken(): string | null { return localStorage.getItem("ap_token"); }
 
@@ -9,9 +9,16 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(opts?.headers as Record<string, string>),
   };
-  const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Request failed");
+  const url = `${API_BASE}${path}`;
+  const res = await fetch(url, { ...opts, headers });
+  const text = await res.text();
+  if (!text || text.trim() === "") {
+    throw new Error(`Empty response from server (${res.status}) at ${url}`);
+  }
+  let data: unknown;
+  try { data = JSON.parse(text); }
+  catch { throw new Error(`Server returned non-JSON response (${res.status}): ${text.slice(0, 120)}`); }
+  if (!res.ok) throw new Error((data as { error?: string }).error || `Request failed (${res.status})`);
   return data as T;
 }
 
