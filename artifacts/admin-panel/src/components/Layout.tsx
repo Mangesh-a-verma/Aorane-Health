@@ -6,7 +6,7 @@ import {
   Tag, Megaphone, Droplet, Languages, ClipboardList, LogOut,
   Menu, X, ShieldAlert, ChevronRight, CreditCard, BarChart3,
   DollarSign, MonitorPlay, Paintbrush2, Brain, Bell, Search,
-  Sun, Moon, IndianRupee, Sliders,
+  Sun, Moon, IndianRupee, Sliders, Rocket,
 } from "lucide-react";
 
 type NavItem = { path: string; icon: React.ElementType; label: string; color: string };
@@ -51,8 +51,9 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "System",
     items: [
-      { path: "/languages",  icon: Languages,     label: "Languages",  color: "#7C3AED" },
-      { path: "/audit-logs", icon: ClipboardList, label: "Audit Logs", color: "#6B7280" },
+      { path: "/languages",          icon: Languages,     label: "Languages",         color: "#7C3AED" },
+      { path: "/audit-logs",         icon: ClipboardList, label: "Audit Logs",        color: "#6B7280" },
+      { path: "/upcoming-features",  icon: Rocket,        label: "Upcoming Features", color: "#25D366" },
     ],
   },
 ];

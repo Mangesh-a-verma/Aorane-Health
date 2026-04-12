@@ -6,3 +6,4 @@ export * from "./business";
 export * from "./platform";
 export * from "./revenue";
 export * from "./wearable";
+export * from "./whatsapp";

@@ -23,6 +23,7 @@ import Revenue from "@/pages/Revenue";
 import PlanPricing from "@/pages/PlanPricing";
 import AdsManager from "@/pages/AdsManager";
 import AIConfig from "@/pages/AIConfig";
+import UpcomingFeatures from "@/pages/UpcomingFeatures";
 import Branding from "@/pages/Branding";
 
 const queryClient = new QueryClient();
@@ -81,6 +82,7 @@ function Router() {
       <Route path="/ads" component={() => <Protected component={AdsManager} />} />
       <Route path="/ai-config" component={() => <Protected component={AIConfig} />} />
       <Route path="/branding" component={() => <Protected component={Branding} />} />
+      <Route path="/upcoming-features" component={() => <Protected component={UpcomingFeatures} />} />
       <Route component={NotFound} />
     </Switch>
   );

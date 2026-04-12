@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Scan, Brain, Dumbbell, Users, Building2, Lock, Camera, Sparkles, Shield, Activity, Heart, Bell } from "lucide-react";
+import { Scan, Brain, Dumbbell, Users, Building2, Lock, Camera, Sparkles, Shield, Activity, Heart, Bell, MessageSquare, Zap } from "lucide-react";
 
 const b2cFeatures = [
   {
@@ -43,6 +43,14 @@ const b2cFeatures = [
     desc: "8 granular privacy toggles. Stress, Sleep & Medicine logs default to private. Your data, your control.",
     color: "#6B7280",
     bg: "#F9FAFB",
+  },
+  {
+    icon: MessageSquare,
+    title: "WhatsApp Health Bot",
+    desc: "Log meals, exercise & water directly on WhatsApp. Bot reminds you like a friend — medicine alerts, meal nudges, weekly reports. Coming to Pro plan!",
+    color: "#25D366",
+    bg: "#F0FFF4",
+    comingSoon: true,
   },
 ];
 
@@ -89,6 +97,14 @@ const b2bFeatures = [
     color: "#F59E0B",
     bg: "#FFFBEB",
   },
+  {
+    icon: MessageSquare,
+    title: "WhatsApp Employee Engagement",
+    desc: "Employees log health data and receive wellness nudges directly on WhatsApp — no app open required. Highest engagement rate in India.",
+    color: "#25D366",
+    bg: "#F0FFF4",
+    comingSoon: true,
+  },
 ];
 
 interface FeaturesSectionProps {
@@ -132,8 +148,18 @@ export default function FeaturesSection({ audience }: FeaturesSectionProps) {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.07 }}
-              className="group bg-white rounded-3xl border border-gray-100 p-6 card-hover cursor-default"
+              className="group bg-white rounded-3xl border p-6 card-hover cursor-default relative overflow-hidden"
+              style={{
+                borderColor: (f as { comingSoon?: boolean }).comingSoon ? "#25D36633" : "rgb(243,244,246)",
+              }}
             >
+              {(f as { comingSoon?: boolean }).comingSoon && (
+                <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                  style={{ background: "#25D36618", color: "#16a34a", border: "1px solid #25D36630" }}>
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                  Coming Soon
+                </div>
+              )}
               <div
                 className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110"
                 style={{ background: f.bg }}
@@ -145,6 +171,43 @@ export default function FeaturesSection({ audience }: FeaturesSectionProps) {
             </motion.div>
           ))}
         </div>
+
+        {/* WhatsApp Coming Soon banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.3 }}
+          className="mt-10 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-5"
+          style={{
+            background: "linear-gradient(135deg, #F0FFF4 0%, #DCFCE7 100%)",
+            border: "1.5px solid #86EFAC",
+          }}
+        >
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+            style={{ background: "#25D366" }}>
+            <MessageSquare className="w-7 h-7 text-white" />
+          </div>
+          <div className="flex-1 text-center sm:text-left">
+            <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                style={{ background: "#25D36618", color: "#15803d" }}>
+                🚀 Coming Next Month — Pro Plan
+              </span>
+            </div>
+            <h3 className="text-lg font-extrabold text-gray-900">
+              WhatsApp Health Bot
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              India mein sabse easy health tracking — sirf WhatsApp pe message karo.
+              Khana, exercise, paani — sab kuch log ho jaayega. Bot yaad bhi dilaayega!
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Zap className="w-4 h-4" style={{ color: "#25D366" }} />
+            <span className="text-sm font-bold" style={{ color: "#15803d" }}>Notify me</span>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
