@@ -2,6 +2,9 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -30,7 +33,7 @@ export default defineConfig({
             ? [
                 await import("@replit/vite-plugin-cartographer").then((m) =>
                   m.cartographer({
-                    root: path.resolve(import.meta.dirname, ".."),
+                    root: path.resolve(__dirname, ".."),
                   }),
                 ),
                 await import("@replit/vite-plugin-dev-banner").then((m) =>
@@ -42,14 +45,14 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, "src"),
-      "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
+      "@": path.resolve(__dirname, "src"),
+      "@assets": path.resolve(__dirname, "..", "..", "attached_assets"),
     },
     dedupe: ["react", "react-dom"],
   },
-  root: path.resolve(import.meta.dirname),
+  root: path.resolve(__dirname),
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
     sourcemap: false,
   },

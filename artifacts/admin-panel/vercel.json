@@ -1,13 +1,8 @@
 {
-  "installCommand": "npx --yes pnpm@10 install --no-frozen-lockfile --ignore-scripts",
-  "buildCommand": "npx pnpm@10 --filter @workspace/admin-panel build",
+  "installCommand": "npx --yes pnpm@10 install --no-frozen-lockfile --ignore-scripts && npx --yes pnpm@10 rebuild esbuild",
+  "buildCommand": "NODE_ENV=production BASE_PATH=/ npx pnpm@10 --filter @workspace/admin-panel build",
   "outputDirectory": "dist/public",
   "framework": null,
-  "build": {
-    "env": {
-      "VITE_API_URL": "https://aorane.onrender.com"
-    }
-  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
