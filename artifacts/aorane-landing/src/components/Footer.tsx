@@ -1,0 +1,110 @@
+import { Activity, Mail, Phone, MapPin, Twitter, Linkedin, Instagram, Youtube } from "lucide-react";
+
+export default function Footer() {
+  const year = new Date().getFullYear();
+
+  const cols = [
+    {
+      title: "Product",
+      links: [
+        { label: "Features", href: "#features" },
+        { label: "Pricing", href: "#pricing" },
+        { label: "Dashboard", href: "#dashboard" },
+        { label: "Android App", href: "https://play.google.com/store" },
+        { label: "Business Portal", href: "/business" },
+      ],
+    },
+    {
+      title: "Company",
+      links: [
+        { label: "About AORANE", href: "#" },
+        { label: "Blog", href: "#" },
+        { label: "Careers", href: "#" },
+        { label: "Press Kit", href: "#" },
+        { label: "Contact Us", href: "mailto:hello@aorane.in" },
+      ],
+    },
+    {
+      title: "Legal",
+      links: [
+        { label: "Privacy Policy", href: "#" },
+        { label: "Terms of Service", href: "#" },
+        { label: "DPDPA Compliance", href: "#" },
+        { label: "Cookie Policy", href: "#" },
+        { label: "Data Deletion", href: "#" },
+      ],
+    },
+  ];
+
+  return (
+    <footer className="bg-gray-950 text-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-8">
+          <div className="lg:col-span-2">
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-9 h-9 blue-gradient rounded-xl flex items-center justify-center">
+                <Activity className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-bold">AORANE</span>
+            </div>
+            <p className="text-sm text-gray-400 leading-relaxed max-w-xs mb-6">
+              India's most comprehensive AI-powered health management platform. Built for Bharat.
+            </p>
+            <div className="space-y-2.5 text-sm text-gray-400">
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-[#10B981]" />
+                <a href="mailto:hello@aorane.in" className="hover:text-white transition-colors">hello@aorane.in</a>
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="w-4 h-4 text-[#10B981]" />
+                <a href="tel:+918800000000" className="hover:text-white transition-colors">+91 88000 00000</a>
+              </div>
+              <div className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-[#10B981] mt-0.5 shrink-0" />
+                <span>Bengaluru, Karnataka, India 560001</span>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              {[Twitter, Linkedin, Instagram, Youtube].map((Icon, i) => (
+                <a key={i} href="#"
+                  className="w-9 h-9 bg-white/8 rounded-xl flex items-center justify-center text-gray-400 hover:bg-[#0747A6] hover:text-white transition-all">
+                  <Icon className="w-4 h-4" />
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {cols.map((col) => (
+            <div key={col.title}>
+              <h4 className="text-sm font-semibold text-white mb-4">{col.title}</h4>
+              <ul className="space-y-2.5">
+                {col.links.map((l) => (
+                  <li key={l.label}>
+                    <a href={l.href} className="text-sm text-gray-400 hover:text-white transition-colors">
+                      {l.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="border-t border-white/10 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-gray-500">
+            © {year} AORANE Health Technologies Pvt. Ltd. All rights reserved. GST: 29XXXXX1234X1Z5
+          </p>
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-gray-500 flex items-center gap-1">
+              <span className="w-2 h-2 bg-[#10B981] rounded-full animate-pulse" />
+              All systems operational
+            </span>
+            <span className="text-xs font-bold text-[#0747A6] bg-[#0747A6]/15 px-2 py-0.5 rounded-full">
+              in.aorane.app
+            </span>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
