@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, useColorScheme } from "react-native";
+import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
@@ -59,8 +60,8 @@ export default function OnboardingGoals() {
     try {
       await api.saveHealthGoals({ primaryGoal: selectedGoal });
       await api.updateOnboardingStep(5);
-      await setOnboardingComplete();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.push("/(onboarding)/permissions");
     } catch {
       Alert.alert(t("error"), "Failed to save.");
     } finally {

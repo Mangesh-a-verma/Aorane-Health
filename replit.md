@@ -29,6 +29,26 @@ AORANE's architecture consists of three main components: a mobile app (built wit
 - **Global Readiness:** Tables are designed to support `country_code`, `language_code`, and RTL (Right-to-Left) for future internationalization.
 - **Data Entry Flexibility:** Supports Photo, Text, and Voice input for logging Food, Exercise, and Water.
 
+## Onboarding Flow Fix (April 2026)
+
+**Critical Bug Fixed:** Onboarding was skipping 4 screens entirely!
+
+**Before (Broken):**
+```
+OTP Verify → Profile Setup → Permissions → PIN Setup → Dashboard
+```
+
+**After (Fixed):**
+```
+OTP Verify → Profile (Step 1/5) → Physical/BMI (Step 2/5) → Health Conditions (Step 3/5) → Lifestyle (Step 4/5) → Health Goals (Step 5/5) → Permissions (Almost Done!) → PIN/Biometric Setup → Dashboard
+```
+
+**Files changed:**
+- `_layout.tsx`: Added physical, health, lifestyle, goals screens to Stack
+- `index.tsx`: Now navigates to `physical` instead of `permissions`; step bar updated to 5 steps
+- `goals.tsx`: Now navigates to `permissions` instead of calling `setOnboardingComplete()` prematurely; added `router` import
+- `permissions.tsx`: Step indicator updated to show all 5 filled (Almost Done!)
+
 ## Bug Audit & Fixes (April 2026)
 
 ### 🔴 Critical Security Fix

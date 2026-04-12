@@ -116,18 +116,15 @@ export default function PermissionsScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View style={styles.stepRow}>
-          {[1, 2, 3].map((s) => (
+          {[1, 2, 3, 4, 5].map((s) => (
             <View key={s} style={styles.stepTrack}>
-              {s <= 2
-                ? <LinearGradient colors={["#0077B6", "#1B998B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.stepFill} />
-                : <View style={[styles.stepFill, { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.12)" }]} />
-              }
+              <LinearGradient colors={["#0077B6", "#1B998B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.stepFill} />
             </View>
           ))}
         </View>
         <View style={styles.stepLabelRow}>
           <View style={[styles.stepPill, { backgroundColor: isDark ? "rgba(56,189,248,0.15)" : "rgba(0,119,182,0.1)", borderColor: isDark ? "rgba(56,189,248,0.3)" : "rgba(0,119,182,0.2)" }]}>
-            <Text style={[styles.stepPillTxt, { color: isDark ? "#38BDF8" : "#0077B6", fontFamily: "Inter_600SemiBold" }]}>Step 2 of 3</Text>
+            <Text style={[styles.stepPillTxt, { color: isDark ? "#38BDF8" : "#0077B6", fontFamily: "Inter_600SemiBold" }]}>Almost Done!</Text>
           </View>
           <Text style={[styles.stepName, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>Permissions</Text>
         </View>
