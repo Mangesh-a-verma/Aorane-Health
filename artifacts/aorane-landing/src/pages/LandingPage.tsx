@@ -4,7 +4,10 @@ import HeroSection from "@/components/HeroSection";
 import StatsBar from "@/components/StatsBar";
 import BentoSection from "@/components/BentoSection";
 import FeaturesSection from "@/components/FeaturesSection";
+import HowItWorks from "@/components/HowItWorks";
+import TestimonialsSlider from "@/components/TestimonialsSlider";
 import PricingSection from "@/components/PricingSection";
+import AppDownloadSection from "@/components/AppDownloadSection";
 import TrustSection from "@/components/TrustSection";
 import Footer from "@/components/Footer";
 
@@ -18,7 +21,10 @@ export default function LandingPage() {
       <StatsBar />
       <BentoSection />
       <FeaturesSection audience={audience} />
+      <HowItWorks />
+      <TestimonialsSlider />
       <PricingSection />
+      <AppDownloadSection />
       <TrustSection />
       <Footer />
     </div>
