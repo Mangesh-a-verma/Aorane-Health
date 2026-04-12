@@ -28,6 +28,10 @@ router.get("/food/logs", requireAuth, async (req: AuthRequest, res) => {
 router.post("/food/log", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { foodNameEn, mealType, quantityG, quantityDescription, calories, proteinG, carbsG, fatG, fiberG, inputMethod, foodItemId, loggedAt } = req.body as Record<string, unknown>;
+    if (!foodNameEn || !calories) {
+      res.status(400).json({ error: "foodNameEn and calories are required" });
+      return;
+    }
     const [log] = await db.insert(foodLogsTable).values({
       userId: req.userId!,
       foodNameEn: foodNameEn as string,
@@ -136,6 +140,11 @@ router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { foodName, imageBase64, mimeType } = req.body as { foodName?: string; imageBase64?: string; mimeType?: string };
     const searchTerm = foodName?.toLowerCase().trim();
+
+    if (!searchTerm && !imageBase64) {
+      res.status(400).json({ error: "foodName or imageBase64 is required" });
+      return;
+    }
 
     // ── Level 1: Personal History (ZERO AI cost — fastest) ──────────────────
     if (searchTerm) {

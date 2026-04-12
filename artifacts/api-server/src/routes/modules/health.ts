@@ -162,6 +162,10 @@ router.get("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
 router.post("/health/water", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { glassesCount = 1, mlAmount = 250, drinkType = "water", loggedAt } = req.body as Record<string, unknown>;
+    if (Number(mlAmount) <= 0) {
+      res.status(400).json({ error: "Water amount must be greater than 0ml" });
+      return;
+    }
     const [log] = await db.insert(waterLogsTable).values({
       userId: req.userId!,
       glassesCount: Number(glassesCount),
