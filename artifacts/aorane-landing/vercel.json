@@ -1,0 +1,16 @@
+{
+  "installCommand": "npx --yes pnpm@10 install --no-frozen-lockfile --ignore-scripts",
+  "buildCommand": "npx pnpm@10 --filter @workspace/aorane-landing build",
+  "outputDirectory": "dist/public",
+  "framework": null,
+  "build": {
+    "env": {
+      "BASE_PATH": "/",
+      "NODE_ENV": "production",
+      "VITE_API_URL": "https://aorane.onrender.com"
+    }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
