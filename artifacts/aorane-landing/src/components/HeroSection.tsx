@@ -157,9 +157,10 @@ function B2BDashboard() {
 
 interface HeroSectionProps {
   audience: "b2c" | "b2b";
+  onSignUp?: () => void;
 }
 
-export default function HeroSection({ audience }: HeroSectionProps) {
+export default function HeroSection({ audience, onSignUp }: HeroSectionProps) {
   const b2cContent = {
     badge: "Now on Play Store — in.aorane.app",
     headline: "Your Personal\nHealth Intelligence\nPlatform",
@@ -210,6 +211,18 @@ export default function HeroSection({ audience }: HeroSectionProps) {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3">
+              {audience === "b2b" ? (
+                <motion.button
+                  onClick={onSignUp}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center justify-center gap-2 px-6 py-3.5 blue-gradient text-white rounded-2xl font-semibold text-sm shadow-lg hover:opacity-90 transition-opacity"
+                >
+                  <Building2 className="w-4 h-4" />
+                  {c.cta1.label}
+                  <ArrowRight className="w-4 h-4" />
+                </motion.button>
+              ) : (
               <motion.a
                 href={c.cta1.href}
                 whileHover={{ scale: 1.02 }}
@@ -220,6 +233,7 @@ export default function HeroSection({ audience }: HeroSectionProps) {
                 {c.cta1.label}
                 <ArrowRight className="w-4 h-4" />
               </motion.a>
+              )}
               <motion.a
                 href={c.cta2.href}
                 whileHover={{ scale: 1.02 }}

@@ -40,7 +40,7 @@ const planIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   starter: Building2, growth: Star, enterprise: Rocket
 };
 
-function PlanCard({ plan, isYearly, highlight }: { plan: Plan; isYearly: boolean; highlight: boolean }) {
+function PlanCard({ plan, isYearly, highlight, onBusinessSignUp }: { plan: Plan; isYearly: boolean; highlight: boolean; onBusinessSignUp?: () => void }) {
   const Icon = planIcons[plan.planKey] || Sparkles;
   const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
   const isCustom = plan.planKey === "enterprise" || plan.monthlyPrice === "0" && plan.planKey !== "free";
@@ -116,27 +116,37 @@ function PlanCard({ plan, isYearly, highlight }: { plan: Plan; isYearly: boolean
         ))}
       </ul>
 
-      <motion.a
-        href={isCustom ? "mailto:business@aorane.in" : "#"}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        className={`w-full py-3 rounded-2xl text-sm font-bold text-center transition-all ${
-          highlight
-            ? "text-white shadow-md hover:opacity-90"
-            : "border-2 hover:bg-gray-50"
-        }`}
-        style={highlight
-          ? { background: plan.color }
-          : { borderColor: plan.color + "40", color: plan.color }
-        }
-      >
-        {isFree ? "Get Started Free" : isCustom ? "Contact Sales" : "Choose Plan"}
-      </motion.a>
+      {isCustom ? (
+        <motion.a
+          href="mailto:business@aorane.in"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="w-full py-3 rounded-2xl text-sm font-bold text-center transition-all border-2 hover:bg-gray-50"
+          style={{ borderColor: plan.color + "40", color: plan.color }}
+        >
+          Contact Sales
+        </motion.a>
+      ) : (
+        <motion.button
+          onClick={onBusinessSignUp}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className={`w-full py-3 rounded-2xl text-sm font-bold text-center transition-all ${
+            highlight ? "text-white shadow-md hover:opacity-90" : "border-2 hover:bg-gray-50"
+          }`}
+          style={highlight
+            ? { background: plan.color }
+            : { borderColor: plan.color + "40", color: plan.color }
+          }
+        >
+          {isFree ? "Get Started Free" : "Choose Plan"}
+        </motion.button>
+      )}
     </motion.div>
   );
 }
 
-export default function PricingSection() {
+export default function PricingSection({ onBusinessSignUp }: { onBusinessSignUp?: () => void } = {}) {
   const [tab, setTab] = useState<"individual" | "organization">("individual");
   const [isYearly, setIsYearly] = useState(false);
   const [indPlans, setIndPlans] = useState<Plan[]>(defaultIndividual);
@@ -236,6 +246,7 @@ export default function PricingSection() {
                 plan={plan}
                 isYearly={isYearly}
                 highlight={plan.planKey === highlightKey}
+                onBusinessSignUp={tab === "organization" ? onBusinessSignUp : undefined}
               />
             ))}
           </motion.div>

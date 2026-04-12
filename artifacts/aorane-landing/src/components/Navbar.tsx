@@ -5,9 +5,11 @@ import { Activity, Menu, X, ChevronDown } from "lucide-react";
 interface NavbarProps {
   audience: "b2c" | "b2b";
   onAudienceChange: (a: "b2c" | "b2b") => void;
+  onSignIn?: () => void;
+  onSignUp?: () => void;
 }
 
-export default function Navbar({ audience, onAudienceChange }: NavbarProps) {
+export default function Navbar({ audience, onAudienceChange, onSignIn, onSignUp }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -82,14 +84,14 @@ export default function Navbar({ audience, onAudienceChange }: NavbarProps) {
               </a>
             ) : (
               <div className="flex items-center gap-2">
-                <a href="https://business.aorane.com/login" target="_blank" rel="noopener noreferrer"
+                <button onClick={onSignIn}
                   className="px-4 py-2 border border-[#0747A6] text-[#0747A6] rounded-xl text-sm font-semibold hover:bg-[#0747A6]/8 transition-all">
                   Sign In
-                </a>
-                <a href="https://business.aorane.com/register" target="_blank" rel="noopener noreferrer"
+                </button>
+                <button onClick={onSignUp}
                   className="px-4 py-2 blue-gradient text-white rounded-xl text-sm font-semibold shadow hover:opacity-90 transition-opacity">
                   Get Started Free
-                </a>
+                </button>
               </div>
             )}
           </div>
@@ -135,14 +137,14 @@ export default function Navbar({ audience, onAudienceChange }: NavbarProps) {
                 </a>
               ) : (
                 <div className="mt-2 flex flex-col gap-2">
-                  <a href="https://business.aorane.com/login" target="_blank" rel="noopener noreferrer"
-                    className="w-full py-2.5 border border-[#0747A6] text-[#0747A6] rounded-xl text-sm font-semibold text-center">
+                  <button onClick={() => { setMobileOpen(false); onSignIn?.(); }}
+                    className="w-full py-2.5 border border-[#0747A6] text-[#0747A6] rounded-xl text-sm font-semibold">
                     Sign In to Business Portal
-                  </a>
-                  <a href="https://business.aorane.com/register" target="_blank" rel="noopener noreferrer"
-                    className="w-full py-2.5 blue-gradient text-white rounded-xl text-sm font-semibold text-center">
+                  </button>
+                  <button onClick={() => { setMobileOpen(false); onSignUp?.(); }}
+                    className="w-full py-2.5 blue-gradient text-white rounded-xl text-sm font-semibold">
                     Get Started Free
-                  </a>
+                  </button>
                 </div>
               )}
             </div>

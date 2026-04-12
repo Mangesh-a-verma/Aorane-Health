@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import AuthRedirect from "@/pages/AuthRedirect";
 import Dashboard from "@/pages/Dashboard";
 import Members from "@/pages/Members";
 import EnrollmentCodes from "@/pages/EnrollmentCodes";
@@ -81,6 +82,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={() => <PublicOnlyRoute component={Landing} />} />
+      <Route path="/auth" component={AuthRedirect} />
       <Route path="/login" component={() => <PublicOnlyRoute component={Login} />} />
       <Route path="/register" component={() => <PublicOnlyRoute component={Register} />} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
