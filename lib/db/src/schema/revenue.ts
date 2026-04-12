@@ -7,6 +7,7 @@ import {
   uuid,
   decimal,
   pgEnum,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -66,6 +67,24 @@ export const promoCodesTable = pgTable("promo_codes", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
+export const planPricingTable = pgTable("plan_pricing", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  planKey: text("plan_key").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  type: text("type").notNull().default("individual"),
+  monthlyPrice: decimal("monthly_price", { precision: 10, scale: 2 }).notNull().default("0"),
+  yearlyPrice: decimal("yearly_price", { precision: 10, scale: 2 }),
+  maxSeats: integer("max_seats"),
+  features: jsonb("features").$type<string[]>().notNull().default([]),
+  badgeText: text("badge_text"),
+  badgeColor: text("badge_color").default("#0077B6"),
+  gradientColors: jsonb("gradient_colors").$type<[string, string]>(),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
 export const referralsTable = pgTable("referrals", {
   id: uuid("id").primaryKey().defaultRandom(),
   referrerId: uuid("referrer_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
@@ -79,3 +98,4 @@ export const referralsTable = pgTable("referrals", {
 export type Subscription = typeof subscriptionsTable.$inferSelect;
 export type Payment = typeof paymentsTable.$inferSelect;
 export type PromoCode = typeof promoCodesTable.$inferSelect;
+export type PlanPricing = typeof planPricingTable.$inferSelect;

@@ -31,15 +31,20 @@ interface RazorpayOptions {
 }
 interface RazorpayInstance { open(): void; }
 
-const PLANS = [
+type PlanItem = {
+  key: string; label: string; price: number; badge: string;
+  color: string; gradient: [string, string]; features: string[];
+};
+
+const FALLBACK_PLANS: PlanItem[] = [
   {
     key: "pro", label: "Pro", price: 199, badge: "Popular",
-    color: "#0077B6", gradient: ["#0077B6","#023E8A"] as [string,string],
+    color: "#0077B6", gradient: ["#0077B6","#023E8A"],
     features: ["AI Food Scan", "Personalized Diet Plan", "Health Reports PDF", "Medicine Reminders", "Exercise Tracking", "Water Tracker"],
   },
   {
     key: "max", label: "Max", price: 249, badge: "Best Value",
-    color: "#8B5CF6", gradient: ["#8B5CF6","#6D28D9"] as [string,string],
+    color: "#8B5CF6", gradient: ["#8B5CF6","#6D28D9"],
     features: ["Sab Pro features +", "Medical Report AI Scanner", "Advanced Gemini AI", "Priority Support", "Family Add-on", "Unlimited History"],
   },
 ];
@@ -91,7 +96,8 @@ export default function UpgradeScreen() {
   const isDark = useColorScheme() === "dark";
   const insets = useSafeAreaInsets();
   const { user, refreshUser } = useAuth() as { user: Record<string, unknown>; refreshUser?: () => void };
-  const [selectedPlan, setSelectedPlan] = useState<"pro" | "max">("pro");
+  const [plans, setPlans] = useState<PlanItem[]>(FALLBACK_PLANS);
+  const [selectedPlan, setSelectedPlan] = useState<string>("pro");
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [promoMsg, setPromoMsg] = useState("");
@@ -102,10 +108,28 @@ export default function UpgradeScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bg = isDark ? "#010814" : "#F0F9FF";
 
-  const plan = PLANS.find(p => p.key === selectedPlan)!;
-  const finalPrice = Math.round(plan.price * (1 - discount / 100));
+  const plan = (plans.find(p => p.key === selectedPlan) ?? plans[0])!;
+  const finalPrice = Math.round((plan?.price ?? 0) * (1 - discount / 100));
 
   useEffect(() => {
+    api.getPlans("individual").then(res => {
+      const paidPlans = res.plans.filter(p => Number(p.monthlyPrice) > 0 && p.isActive);
+      if (paidPlans.length > 0) {
+        const mapped: PlanItem[] = paidPlans.map(p => ({
+          key: p.planKey,
+          label: p.displayName,
+          price: Number(p.monthlyPrice),
+          badge: p.badgeText ?? "",
+          color: p.badgeColor ?? "#0077B6",
+          gradient: p.gradientColors ?? [p.badgeColor ?? "#0077B6", "#023E8A"],
+          features: p.features ?? [],
+        }));
+        setPlans(mapped);
+        if (!mapped.find(p => p.key === selectedPlan)) {
+          setSelectedPlan(mapped[0].key);
+        }
+      }
+    }).catch(() => {}); // fallback to FALLBACK_PLANS
     if (Platform.OS === "web") {
       loadRazorpayScript().then(ok => setRzpReady(ok));
     }
@@ -243,8 +267,8 @@ export default function UpgradeScreen() {
 
         <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 12 }}>Plan Chunein</Text>
         <View style={{ gap: 12, marginBottom: 16 }}>
-          {PLANS.map(p => (
-            <TouchableOpacity key={p.key} onPress={() => { setSelectedPlan(p.key as "pro" | "max"); setDiscount(0); setPromoMsg(""); setPromoCode(""); }} activeOpacity={0.85}>
+          {plans.map(p => (
+            <TouchableOpacity key={p.key} onPress={() => { setSelectedPlan(p.key); setDiscount(0); setPromoMsg(""); setPromoCode(""); }} activeOpacity={0.85}>
               <LinearGradient
                 colors={selectedPlan === p.key ? p.gradient : (isDark ? ["rgba(255,255,255,0.04)","rgba(255,255,255,0.02)"] : ["rgba(255,255,255,0.8)","rgba(240,249,255,0.6)"] as [string,string])}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}

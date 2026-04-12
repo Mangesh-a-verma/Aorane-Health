@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, subscriptionsTable, paymentsTable, promoCodesTable } from "@workspace/db";
+import { db, usersTable, subscriptionsTable, paymentsTable, promoCodesTable, planPricingTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
@@ -7,16 +7,19 @@ import crypto from "crypto";
 
 const router = Router();
 
-const PLANS: Record<string, { price: number; label: string; durationDays: number }> = {
-  pro:    { price: 199, label: "Pro",    durationDays: 30  },
-  max:    { price: 249, label: "Max",    durationDays: 30  },
-  family: { price: 399, label: "Family", durationDays: 30  },
-};
+async function getPlanFromDB(planKey: string) {
+  const [plan] = await db.select().from(planPricingTable)
+    .where(eq(planPricingTable.planKey, planKey));
+  return plan;
+}
 
 router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { plan, promoCode } = req.body as { plan: string; promoCode?: string };
-    if (!PLANS[plan]) { res.status(400).json({ error: "Invalid plan" }); return; }
+    const planData = await getPlanFromDB(plan);
+    if (!planData || planData.type !== "individual" || planData.planKey === "free") {
+      res.status(400).json({ error: "Invalid plan" }); return;
+    }
     let discount = 0;
     let promoUsed: string | null = null;
     if (promoCode) {
@@ -26,7 +29,7 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
         promoUsed = promo.code;
       }
     }
-    const baseAmount = PLANS[plan].price;
+    const baseAmount = Number(planData.monthlyPrice);
     const finalAmount = Math.round(baseAmount * (1 - discount / 100));
     const razorpayKeyId = process.env["RAZORPAY_KEY_ID"];
     const razorpayKeySecret = process.env["RAZORPAY_KEY_SECRET"];
@@ -51,7 +54,7 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
       success: true, paymentId: payment.id,
       razorpayOrderId, razorpayKeyId: razorpayKeyId || null,
       amount: finalAmount, plan, discount, promoUsed,
-      planLabel: PLANS[plan].label,
+      planLabel: planData.displayName,
       isTestMode: !razorpayKeyId,
     });
   } catch {

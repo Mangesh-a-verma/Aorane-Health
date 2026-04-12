@@ -148,9 +148,23 @@ export const api = {
   getAiConfig: () => req<{ configs: AiConfig[] }>("/admin/ai-config"),
   updateAiConfig: (feature: string, data: Partial<AiConfig>) =>
     req<{ config: AiConfig; success: boolean }>(`/admin/ai-config/${feature}`, { method: "PUT", body: JSON.stringify(data) }),
+
+  getPlanPricing: () => req<{ plans: PlanPricingItem[] }>("/admin/plan-pricing"),
+  updatePlanPricing: (planKey: string, data: Partial<PlanPricingItem>) =>
+    req<{ success: boolean; plan: PlanPricingItem }>(`/admin/plan-pricing/${planKey}`, { method: "PUT", body: JSON.stringify(data) }),
+  resetPlanPricing: () =>
+    req<{ success: boolean; plans: PlanPricingItem[] }>("/admin/plan-pricing/reset", { method: "POST" }),
 };
 
 export type AiConfig = {
   id: string | null; feature: string; label: string; provider: string; model: string;
   apiKey: string | null; systemPrompt: string | null; isEnabled: boolean;
+};
+
+export type PlanPricingItem = {
+  id: string; planKey: string; displayName: string; type: string;
+  monthlyPrice: string; yearlyPrice: string | null; maxSeats: number | null;
+  features: string[]; badgeText: string | null; badgeColor: string | null;
+  gradientColors: [string, string] | null; isActive: boolean; sortOrder: number;
+  createdAt: string; updatedAt: string;
 };

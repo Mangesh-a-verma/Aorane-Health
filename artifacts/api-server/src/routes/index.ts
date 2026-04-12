@@ -19,6 +19,7 @@ import adsRouter from "./modules/ads";
 import suggestionsRouter from "./modules/suggestions";
 import wearableRouter from "./modules/wearable";
 import intelligenceRouter from "./modules/intelligence";
+import plansRouter from "./modules/plans";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(adsRouter);
 router.use(suggestionsRouter);
 router.use(wearableRouter);
 router.use(intelligenceRouter);
+router.use(plansRouter);
 
 export default router;

@@ -298,6 +298,10 @@ export const api = {
   logPeriod: (data: { startDate: string; endDate?: string; symptoms?: string[]; flow?: string; notes?: string }) =>
     request<{ success: boolean; log: Record<string, unknown>; prediction: Record<string, unknown> | null }>("POST", "/period/log", data),
 
+  // ── Plans / Pricing ────────────────────────────────────────
+  getPlans: (type?: string) =>
+    request<{ plans: Array<{ planKey: string; displayName: string; type: string; monthlyPrice: string; yearlyPrice: string | null; maxSeats: number | null; features: string[]; badgeText: string | null; badgeColor: string | null; gradientColors: [string,string] | null; isActive: boolean; sortOrder: number }> }>("GET", `/plans${type ? `?type=${type}` : ""}`),
+
   // ── Payment / Upgrade ──────────────────────────────────────
   createPaymentOrder: (plan: string, promoCode?: string) =>
     request<{ success: boolean; paymentId: string; razorpayOrderId: string | null; razorpayKeyId: string | null; amount: number; plan: string; discount: number; isTestMode: boolean }>("POST", "/payment/order", { plan, promoCode }),

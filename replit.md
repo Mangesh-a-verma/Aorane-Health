@@ -18,6 +18,7 @@ AORANE's architecture consists of three main components: a mobile app (built wit
 - **Authentication:** Utilizes JWT for sessions (30-day user, 12-hour admin), OTP via Fast2SMS, and Google OAuth.
 - **AI Integration:** Gemini 2.0 Flash is integrated for advanced features like food scanning, diet plans, health tips, and medical report analysis. The Admin Panel allows per-feature AI configuration.
 - **Payment Gateway:** Razorpay is integrated for handling subscriptions and payments.
+- **Dynamic Plan Pricing Engine:** Admin panel `/plan-pricing` page lets admin update plan prices and features. Changes auto-reflect in Mobile App upgrade screen and Business Portal billing — no code changes needed. DB table: `plan_pricing`. Public endpoint: `GET /api/plans?type=individual|organization`. Admin endpoints: `GET/PUT /api/admin/plan-pricing/:planKey`, `POST /api/admin/plan-pricing/reset`.
 - **Notifications:** Firebase FCM and Fast2SMS are used for notifications.
 - **Storage:** Supabase handles file storage.
 - **Database Schema:** A comprehensive PostgreSQL schema includes tables for users, health data (food, exercise, water, medicine, stress, period, medical reports), community features (family groups, blood donation), business entities (organizations, members, enrollment codes), revenue (subscriptions, payments, promo codes), and platform infrastructure.

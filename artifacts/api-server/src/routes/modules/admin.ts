@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable } from "@workspace/db";
+import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable, planPricingTable } from "@workspace/db";
 import { eq, desc, ilike, count, or, sql, and } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import { signAdminToken } from "../../lib/jwt";
@@ -382,10 +382,12 @@ router.get("/admin/revenue", requireAdmin, async (req: AdminRequest, res) => {
   try {
     const [totalUsers] = await db.select({ count: count() }).from(usersTable);
     const planBreakdown = await db.select({ plan: usersTable.plan, count: count() }).from(usersTable).groupBy(usersTable.plan);
-    const PAID_PLANS = ["pro", "max", "family"];
+    const pricingRows = await db.select().from(planPricingTable).where(eq(planPricingTable.type, "individual"));
+    const PLAN_RATE: Record<string, number> = {};
+    for (const r of pricingRows) { PLAN_RATE[r.planKey] = Number(r.monthlyPrice); }
+    const PAID_PLANS = pricingRows.filter(r => Number(r.monthlyPrice) > 0).map(r => r.planKey);
     const paidUsers  = planBreakdown.filter(p => PAID_PLANS.includes(p.plan)).reduce((a, b) => a + Number(b.count), 0);
-    const freeUsers  = Number(planBreakdown.find(p => p.plan === "free")?.count ?? 0);
-    const PLAN_RATE: Record<string, number> = { free: 0, pro: 199, max: 249, family: 299 };
+    const freeUsers  = planBreakdown.filter(p => !PAID_PLANS.includes(p.plan)).reduce((a, b) => a + Number(b.count), 0);
 
     const [totalRev] = await db.select({ total: sql<number>`COALESCE(SUM(CAST(amount AS NUMERIC)), 0)` }).from(paymentsTable).where(eq(paymentsTable.status, "success"));
     const planRevenue = await db

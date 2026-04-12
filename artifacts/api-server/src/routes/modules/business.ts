@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable } from "@workspace/db";
+import { db, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable } from "@workspace/db";
 import { eq, and, avg, desc, ilike, gte, sql } from "drizzle-orm";
 import { requireBusinessAuth } from "../../middlewares/business-auth";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -207,14 +207,28 @@ router.get("/business/enrollment-codes", requireBusinessAuth, async (req: Busine
 });
 
 // ─── BUSINESS BILLING ─────────────────────────────────────────────────────────
-const ORG_PLANS: Record<string, { label: string; seats: number; price: number; priceYearly: number; color: string }> = {
-  starter:    { label: "Starter",    seats: 50,   price: 999,  priceYearly: 9990,  color: "#0077B6" },
-  growth:     { label: "Growth",     seats: 200,  price: 2999, priceYearly: 29990, color: "#7C3AED" },
-  enterprise: { label: "Enterprise", seats: 500,  price: 6999, priceYearly: 69990, color: "#DC2626" },
-};
+async function getOrgPlansFromDB() {
+  const rows = await db.select().from(planPricingTable)
+    .where(eq(planPricingTable.type, "organization"))
+    .orderBy(planPricingTable.sortOrder);
+  const plans: Record<string, { label: string; seats: number; price: number; priceYearly: number; color: string; features: string[]; badgeText: string | null }> = {};
+  for (const r of rows) {
+    plans[r.planKey] = {
+      label: r.displayName,
+      seats: r.maxSeats ?? 0,
+      price: Number(r.monthlyPrice),
+      priceYearly: Number(r.yearlyPrice ?? r.monthlyPrice),
+      color: r.badgeColor ?? "#0077B6",
+      features: (r.features as string[]) ?? [],
+      badgeText: r.badgeText ?? null,
+    };
+  }
+  return plans;
+}
 
 router.get("/business/billing/plans", requireBusinessAuth, async (_req: BusinessRequest, res) => {
-  res.json({ plans: ORG_PLANS });
+  const plans = await getOrgPlansFromDB();
+  res.json({ plans });
 });
 
 router.get("/business/billing/subscription", requireBusinessAuth, async (req: BusinessRequest, res) => {
@@ -223,15 +237,17 @@ router.get("/business/billing/subscription", requireBusinessAuth, async (req: Bu
       .where(and(eq(orgPaymentsTable.orgId, req.orgId!), eq(orgPaymentsTable.status, "success")))
       .orderBy(desc(orgPaymentsTable.createdAt)).limit(1);
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
-    res.json({ payment: payment || null, org, plans: ORG_PLANS });
+    const plans = await getOrgPlansFromDB();
+    res.json({ payment: payment || null, org, plans });
   } catch { res.status(500).json({ error: "Failed to fetch subscription" }); }
 });
 
 router.post("/business/billing/order", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
     const { plan, billing = "monthly" } = req.body as { plan: string; billing?: string };
-    if (!ORG_PLANS[plan]) { res.status(400).json({ error: "Invalid plan" }); return; }
-    const planInfo = ORG_PLANS[plan];
+    const orgPlans = await getOrgPlansFromDB();
+    if (!orgPlans[plan]) { res.status(400).json({ error: "Invalid plan" }); return; }
+    const planInfo = orgPlans[plan];
     const amount = billing === "yearly" ? planInfo.priceYearly : planInfo.price;
     const razorpayKeyId = process.env["RAZORPAY_KEY_ID"];
     const razorpayKeySecret = process.env["RAZORPAY_KEY_SECRET"];
@@ -262,7 +278,8 @@ router.post("/business/billing/verify", requireBusinessAuth, async (req: Busines
       const expectedSig = crypto.createHmac("sha256", razorpayKeySecret).update(body).digest("hex");
       if (expectedSig !== razorpaySignature) { res.status(400).json({ error: "Payment signature invalid" }); return; }
     }
-    const planInfo = ORG_PLANS[plan as string];
+    const orgPlansVerify = await getOrgPlansFromDB();
+    const planInfo = orgPlansVerify[plan as string];
     if (!planInfo) { res.status(400).json({ error: "Invalid plan" }); return; }
     await db.update(orgPaymentsTable).set({ status: "success", razorpayPaymentId: razorpayPaymentId as string }).where(eq(orgPaymentsTable.id, paymentId as string));
     const expiresAt = new Date();

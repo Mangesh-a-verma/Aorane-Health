@@ -6,7 +6,7 @@ import {
   Tag, Megaphone, Droplet, Languages, ClipboardList, LogOut,
   Menu, X, ShieldAlert, ChevronRight, CreditCard, BarChart3,
   DollarSign, MonitorPlay, Paintbrush2, Brain, Bell, Search,
-  Sun, Moon, IndianRupee,
+  Sun, Moon, IndianRupee, Sliders,
 } from "lucide-react";
 
 type NavItem = { path: string; icon: React.ElementType; label: string; color: string };
@@ -24,9 +24,10 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Revenue",
     items: [
       { path: "/revenue",        icon: IndianRupee, label: "Revenue & Business", color: "#10B981" },
-      { path: "/subscriptions",  icon: CreditCard,  label: "Subscriptions",      color: "#0077B6" },
-      { path: "/analytics",      icon: BarChart3,   label: "Analytics",          color: "#8B5CF6" },
-      { path: "/platform-costs", icon: DollarSign,  label: "Platform Costs",     color: "#F59E0B" },
+      { path: "/plan-pricing",   icon: Sliders,     label: "Plan Pricing",       color: "#0077B6" },
+      { path: "/subscriptions",  icon: CreditCard,  label: "Subscriptions",      color: "#8B5CF6" },
+      { path: "/analytics",      icon: BarChart3,   label: "Analytics",          color: "#F59E0B" },
+      { path: "/platform-costs", icon: DollarSign,  label: "Platform Costs",     color: "#6B7280" },
     ],
   },
   {
