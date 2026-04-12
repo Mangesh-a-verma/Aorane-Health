@@ -11,3 +11,9 @@ id = "ksxMjiURDkTDzXKMEQGdN"
 uri = "file://AORANE_UI_DESIGN_PROMPT.md"
 type = "text"
 title = "AORANE — Complete UI Design Prompt (Figma / Flutter)"
+
+[[outputs]]
+id = "_X-uj7BC0v5-3NHmQ5v7j"
+uri = "file://admin-panel-dist.tar.gz"
+type = "unspecified"
+title = "Admin Panel — Production Build (284KB)"
