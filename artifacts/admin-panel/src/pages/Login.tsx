@@ -26,12 +26,20 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); setError("");
+    // Clear any stale session data before logging in
+    localStorage.removeItem("ap_token");
+    localStorage.removeItem("ap_admin");
     try {
       const res = await api.login(email, password);
       login(res.token, res.admin);
       navigate("/dashboard");
     } catch (err) {
-      setError((err as Error).message || "Authentication failed");
+      const msg = (err as Error).message || "Authentication failed";
+      if (msg.includes("JSON") || msg.includes("Unexpected") || msg.includes("empty") || msg.includes("non-JSON")) {
+        setError("Server response error — please hard refresh (Ctrl+Shift+R) and try again");
+      } else {
+        setError(msg);
+      }
     } finally { setLoading(false); }
   };
 

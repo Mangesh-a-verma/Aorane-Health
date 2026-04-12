@@ -10,14 +10,31 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
     ...(opts?.headers as Record<string, string>),
   };
   const url = `${API_BASE}${path}`;
-  const res = await fetch(url, { ...opts, headers });
-  const text = await res.text();
+  let res: Response;
+  try {
+    res = await fetch(url, { ...opts, headers });
+  } catch (networkErr) {
+    console.error("[API] Network error:", networkErr);
+    throw new Error("Network error — check your connection and try again");
+  }
+  let text = "";
+  try {
+    text = await res.text();
+  } catch (textErr) {
+    console.error("[API] Failed to read response body:", textErr);
+    throw new Error(`Failed to read server response (${res.status})`);
+  }
+  console.debug(`[API] ${opts?.method ?? "GET"} ${url} → ${res.status} | body: ${text.slice(0, 80)}`);
   if (!text || text.trim() === "") {
-    throw new Error(`Empty response from server (${res.status}) at ${url}`);
+    throw new Error(`Empty response from server (${res.status})`);
   }
   let data: unknown;
-  try { data = JSON.parse(text); }
-  catch { throw new Error(`Server returned non-JSON response (${res.status}): ${text.slice(0, 120)}`); }
+  try {
+    data = JSON.parse(text);
+  } catch {
+    console.error("[API] Non-JSON response:", text.slice(0, 200));
+    throw new Error(`Server error (${res.status}) — please try again`);
+  }
   if (!res.ok) throw new Error((data as { error?: string }).error || `Request failed (${res.status})`);
   return data as T;
 }
