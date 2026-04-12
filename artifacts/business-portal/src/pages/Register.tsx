@@ -262,7 +262,7 @@ export default function Register() {
 
         <p className="text-center text-white/30 text-xs mt-5">
           Already registered?{" "}
-          <a href="/business-portal/" className="font-medium transition-colors hover:text-white" style={{ color: "#38BDF8" }}>
+          <a href="/login" className="font-medium transition-colors hover:text-white" style={{ color: "#38BDF8" }}>
             Login here
           </a>
         </p>
