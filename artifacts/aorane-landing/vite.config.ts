@@ -52,9 +52,7 @@ export default defineConfig({
   },
   root: path.resolve(__dirname),
   build: {
-    outDir: isProduction
-      ? path.resolve(__dirname, "../../public")
-      : path.resolve(__dirname, "dist/public"),
+    outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
   },
   server: {
