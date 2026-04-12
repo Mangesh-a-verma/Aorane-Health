@@ -105,9 +105,98 @@
   body { @apply font-sans antialiased bg-background text-foreground; }
 }
 
+/* ── Clinical Sanctuary Design System ─────────────────────────── */
+
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* Stitch surface layers */
+.surface-base     { background: #090e1c; }
+.surface-1        { background: #111827; }
+.surface-2        { background: #1a1f2f; }
+.surface-3        { background: #1f2937; }
+.surface-high     { background: #25293a; }
+.surface-highest  { background: #2f3445; }
+
+/* Glassmorphism card */
+.glass-card {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+/* Light mode glass card */
+:root .glass-card {
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+/* Metric card hover */
+.metric-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.metric-card:hover {
+  transform: translateY(-2px) scale(1.012);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+/* Glow orbs */
+.glow-blue  { background: radial-gradient(circle, #0077B620 0%, transparent 70%); }
+.glow-teal  { background: radial-gradient(circle, #1B998B20 0%, transparent 70%); }
+.glow-amber { background: radial-gradient(circle, #F59E0B20 0%, transparent 70%); }
+.glow-green { background: radial-gradient(circle, #10B98120 0%, transparent 70%); }
+.glow-red   { background: radial-gradient(circle, #EF444420 0%, transparent 70%); }
+.glow-purple{ background: radial-gradient(circle, #6366F120 0%, transparent 70%); }
+
+/* Status badges — glass style */
+.badge-active   { background: rgba(16,185,129,0.12); color:#34d399; border:1px solid rgba(16,185,129,0.2); }
+.badge-inactive { background: rgba(107,114,128,0.12); color:#9ca3af; border:1px solid rgba(107,114,128,0.2); }
+.badge-critical { background: rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.2); animation: pulse 2s infinite; }
+.badge-pending  { background: rgba(245,158,11,0.12); color:#fbbf24; border:1px solid rgba(245,158,11,0.2); }
+.badge-pro      { background: rgba(0,119,182,0.15); color:#94ccff; border:1px solid rgba(0,119,182,0.25); }
+.badge-max      { background: rgba(245,158,11,0.15); color:#fcd34d; border:1px solid rgba(245,158,11,0.25); }
+.badge-family   { background: rgba(139,92,246,0.15); color:#c4b5fd; border:1px solid rgba(139,92,246,0.25); }
+
+/* Gradient text */
 .gradient-text {
   background: linear-gradient(135deg, #0077B6, #1B998B);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Scrollbar — ultra thin */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* AI insight chip */
+.ai-chip {
+  background: rgba(107,216,201,0.1);
+  color: #6bd8c9;
+  border: 1px solid rgba(107,216,201,0.2);
+  box-shadow: 0 0 12px rgba(107,216,201,0.1);
+}
+
+/* Button active feedback */
+button:active { transform: scale(0.97); }
+
+/* Page transition */
+.page-enter {
+  animation: fadeSlideIn 0.25s ease forwards;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }

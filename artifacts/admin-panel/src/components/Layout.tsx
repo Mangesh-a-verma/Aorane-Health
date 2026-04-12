@@ -1,44 +1,78 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useRoute } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard, Users, Building2, Flag, UtensilsCrossed,
   Tag, Megaphone, Droplet, Languages, ClipboardList, LogOut,
-  Menu, X, ShieldAlert, ChevronRight, CreditCard, BarChart3, DollarSign,
-  MonitorPlay, Paintbrush2, Brain,
+  Menu, X, ShieldAlert, ChevronRight, CreditCard, BarChart3,
+  DollarSign, MonitorPlay, Paintbrush2, Brain, Bell, Search,
+  Sun, Moon,
 } from "lucide-react";
 
-const NAV = [
-  { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "#0077B6" },
-  { path: "/users", icon: Users, label: "Users", color: "#1B998B" },
-  { path: "/organizations", icon: Building2, label: "Organizations", color: "#8B5CF6" },
-  { path: "/subscriptions", icon: CreditCard, label: "Subscriptions", color: "#10B981" },
-  { path: "/analytics", icon: BarChart3, label: "Analytics", color: "#0077B6" },
-  { path: "/platform-costs", icon: DollarSign, label: "Platform Costs", color: "#F59E0B" },
-  { path: "/ads", icon: MonitorPlay, label: "Ads Manager", color: "#EC4899" },
-  { path: "/ai-config", icon: Brain, label: "AI Configuration", color: "#6366F1" },
-  { path: "/branding", icon: Paintbrush2, label: "Branding & Templates", color: "#8B5CF6" },
-  { path: "/feature-flags", icon: Flag, label: "Feature Flags", color: "#F59E0B" },
-  { path: "/food-items", icon: UtensilsCrossed, label: "Food Database", color: "#10B981" },
-  { path: "/promo-codes", icon: Tag, label: "Promo Codes", color: "#EF4444" },
-  { path: "/announcements", icon: Megaphone, label: "Announcements", color: "#3B82F6" },
-  { path: "/blood-requests", icon: Droplet, label: "Blood Emergency", color: "#DC2626" },
-  { path: "/languages", icon: Languages, label: "Languages", color: "#7C3AED" },
-  { path: "/audit-logs", icon: ClipboardList, label: "Audit Logs", color: "#6B7280" },
+type NavItem = { path: string; icon: React.ElementType; label: string; color: string };
+
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Core",
+    items: [
+      { path: "/dashboard",     icon: LayoutDashboard, label: "Dashboard",     color: "#0077B6" },
+      { path: "/users",         icon: Users,           label: "Users",         color: "#1B998B" },
+      { path: "/organizations", icon: Building2,       label: "Organizations", color: "#8B5CF6" },
+    ],
+  },
+  {
+    label: "Revenue",
+    items: [
+      { path: "/subscriptions",  icon: CreditCard,  label: "Subscriptions",  color: "#10B981" },
+      { path: "/analytics",      icon: BarChart3,   label: "Analytics",      color: "#0077B6" },
+      { path: "/platform-costs", icon: DollarSign,  label: "Platform Costs", color: "#F59E0B" },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { path: "/ads",           icon: MonitorPlay,   label: "Ads Manager",   color: "#EC4899" },
+      { path: "/ai-config",     icon: Brain,         label: "AI Config",     color: "#6366F1" },
+      { path: "/branding",      icon: Paintbrush2,   label: "Branding",      color: "#8B5CF6" },
+      { path: "/feature-flags", icon: Flag,          label: "Feature Flags", color: "#F59E0B" },
+      { path: "/food-items",    icon: UtensilsCrossed, label: "Food Database", color: "#10B981" },
+      { path: "/promo-codes",   icon: Tag,           label: "Promo Codes",   color: "#EF4444" },
+      { path: "/announcements", icon: Megaphone,     label: "Announcements", color: "#3B82F6" },
+    ],
+  },
+  {
+    label: "Emergency",
+    items: [
+      { path: "/blood-requests", icon: Droplet, label: "Blood Emergency", color: "#DC2626" },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { path: "/languages",  icon: Languages,     label: "Languages",  color: "#7C3AED" },
+      { path: "/audit-logs", icon: ClipboardList, label: "Audit Logs", color: "#6B7280" },
+    ],
+  },
 ];
 
-function NavItem({ path, icon: Icon, label, color }: typeof NAV[0]) {
+function NavLink({ path, icon: Icon, label, color }: NavItem) {
   const [isActive] = useRoute(path);
   return (
     <Link href={path}>
-      <div className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-150 group
-        ${isActive ? "bg-white/10 text-white" : "text-white/50 hover:bg-white/6 hover:text-white/80"}`}>
-        <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-all
-          ${isActive ? "bg-white/15" : "bg-transparent group-hover:bg-white/8"}`}>
-          <Icon size={15} style={{ color: isActive ? color : undefined }} />
+      <div className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-200 group relative
+        ${isActive ? "text-white" : "text-white/40 hover:text-white/75"}`}
+        style={{ background: isActive ? "rgba(255,255,255,0.07)" : "transparent" }}
+      >
+        {isActive && (
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full"
+               style={{ backgroundColor: color }} />
+        )}
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200`}
+             style={{ background: isActive ? "rgba(255,255,255,0.09)" : "transparent" }}>
+          <Icon size={14} style={{ color: isActive ? color : undefined }} />
         </div>
-        <span className="text-sm flex-1">{label}</span>
-        {isActive && <ChevronRight size={13} style={{ color }} />}
+        <span className={`text-[13px] flex-1 ${isActive ? "font-medium" : "font-normal"}`}>{label}</span>
+        {isActive && <ChevronRight size={12} style={{ color }} className="opacity-50" />}
       </div>
     </Link>
   );
@@ -47,66 +81,176 @@ function NavItem({ path, icon: Icon, label, color }: typeof NAV[0]) {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { admin, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const [dark, setDark] = useState(true);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("aorane_theme");
+    const isDark = stored !== "light";
+    setDark(isDark);
+    document.documentElement.classList.toggle("dark", isDark);
+  }, []);
+
+  function toggleTheme() {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("aorane_theme", next ? "dark" : "light");
+  }
+
+  const initials = admin?.fullName?.charAt(0)?.toUpperCase() ?? "A";
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-56 bg-sidebar flex flex-col transition-transform duration-300
-        ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:flex`}>
+    <div className="flex h-screen overflow-hidden" style={{ background: "#090e1c" }}>
 
-        {/* Branding */}
-        <div className="px-4 py-5 border-b border-sidebar-border">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#0077B6] to-[#1B998B] flex items-center justify-center">
-              <ShieldAlert size={14} className="text-white" />
+      {/* Mobile overlay */}
+      {open && (
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+             onClick={() => setOpen(false)} />
+      )}
+
+      {/* ── Sidebar ──────────────────────────────────────────── */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-[224px] flex flex-col transition-transform duration-300
+          ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:flex`}
+        style={{ background: "#090e1c", borderRight: "1px solid rgba(255,255,255,0.05)" }}
+      >
+        {/* Logo */}
+        <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                 style={{ background: "linear-gradient(135deg,#0077B6,#1B998B)" }}>
+              <ShieldAlert size={15} className="text-white" />
             </div>
             <div>
-              <div className="text-white text-sm font-bold tracking-wide">AORANE</div>
-              <div className="text-white/35 text-[10px] font-medium">SUPER ADMIN</div>
+              <div className="font-black text-sm tracking-widest gradient-text">AORANE</div>
+              <div className="text-[9px] font-mono tracking-[0.25em] mt-0.5"
+                   style={{ color: "rgba(255,255,255,0.28)" }}>
+                SUPER ADMIN
+              </div>
             </div>
-          </div>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
-          {NAV.map((item) => <NavItem key={item.path} {...item} />)}
-        </nav>
-
-        {/* Admin footer */}
-        <div className="px-3 py-3 border-t border-sidebar-border">
-          <div className="flex items-center gap-2.5 px-2 py-1.5">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#0077B6] to-[#1B998B] flex items-center justify-center shrink-0">
-              <span className="text-white text-xs font-bold">{admin?.fullName?.charAt(0)?.toUpperCase()}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-white/80 text-xs font-medium truncate">{admin?.fullName}</div>
-              <div className="text-white/35 text-[10px] capitalize">{admin?.role}</div>
-            </div>
-            <button onClick={logout} title="Logout"
-              className="p-1 text-white/25 hover:text-destructive transition-colors rounded">
-              <LogOut size={14} />
+            <button className="lg:hidden ml-auto" style={{ color: "rgba(255,255,255,0.4)" }}
+                    onClick={() => setOpen(false)}>
+              <X size={16} />
             </button>
           </div>
         </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label}>
+              <div className="px-3 mb-1.5">
+                <span className="text-[9px] font-mono font-semibold tracking-[0.22em] uppercase"
+                      style={{ color: "rgba(255,255,255,0.2)" }}>
+                  {group.label}
+                </span>
+              </div>
+              <div className="space-y-0.5">
+                {group.items.map((item) => <NavLink key={item.path} {...item} />)}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {/* Admin footer */}
+        <div className="px-3 pb-4 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl mb-2.5"
+               style={{ background: "rgba(255,255,255,0.04)" }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold"
+                 style={{ background: "linear-gradient(135deg,#0077B6,#1B998B)" }}>
+              {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-white text-xs font-semibold truncate">{admin?.fullName ?? "Admin"}</div>
+              <div className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.32)" }}>
+                {admin?.role ?? "Super Admin"}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={logout}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-95"
+            style={{ background: "linear-gradient(135deg,#0077B6,#1B998B)", color: "white" }}
+          >
+            <LogOut size={12} />
+            Sign Out
+          </button>
+        </div>
       </aside>
 
-      {open && <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={() => setOpen(false)} />}
-
-      {/* Main */}
+      {/* ── Main Area ────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-12 bg-card border-b border-border flex items-center gap-3 px-4 shrink-0">
-          <button className="lg:hidden p-1.5 rounded-lg hover:bg-muted" onClick={() => setOpen(!open)}>
-            {open ? <X size={18} /> : <Menu size={18} />}
-          </button>
-          <span className="text-xs bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 px-2 py-0.5 rounded-full font-mono font-semibold">
-            ADMIN PANEL
-          </span>
-          <div className="flex-1" />
-          <span className="text-xs text-muted-foreground hidden sm:block">
-            {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}
-          </span>
+
+        {/* Topbar */}
+        <header
+          className="flex items-center justify-between px-5 h-[60px] shrink-0 z-30"
+          style={{
+            background: "rgba(9,14,28,0.85)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <button className="lg:hidden" style={{ color: "rgba(255,255,255,0.5)" }}
+                    onClick={() => setOpen(true)}>
+              <Menu size={18} />
+            </button>
+            <div className="relative hidden sm:block">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2"
+                      style={{ color: "rgba(255,255,255,0.28)" }} />
+              <input
+                placeholder="Search anything..."
+                className="pl-9 pr-4 py-1.5 text-xs rounded-xl outline-none transition-all w-52"
+                style={{
+                  background: "rgba(255,255,255,0.06)",
+                  color: "rgba(255,255,255,0.75)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono"
+                 style={{
+                   background: "rgba(16,185,129,0.09)",
+                   color: "#34d399",
+                   border: "1px solid rgba(16,185,129,0.14)",
+                 }}>
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              All Systems OK
+            </div>
+
+            <div className="w-px h-4" style={{ background: "rgba(255,255,255,0.08)" }} />
+
+            <button onClick={toggleTheme}
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+              style={{ color: "rgba(255,255,255,0.45)" }}
+            >
+              {dark ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
+
+            <button className="w-7 h-7 rounded-lg flex items-center justify-center relative"
+                    style={{ color: "rgba(255,255,255,0.45)" }}>
+              <Bell size={14} />
+              <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full text-[7px] font-bold flex items-center justify-center"
+                    style={{ background: "#0077B6", color: "white" }}>
+                3
+              </span>
+            </button>
+
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
+                 style={{ background: "linear-gradient(135deg,#0077B6,#1B998B)" }}>
+              {initials}
+            </div>
+          </div>
         </header>
-        <main className="flex-1 overflow-y-auto">{children}</main>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto page-enter">
+          {children}
+        </main>
       </div>
     </div>
   );
