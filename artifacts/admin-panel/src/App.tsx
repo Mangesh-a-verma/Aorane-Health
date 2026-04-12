@@ -19,6 +19,7 @@ import AuditLogs from "@/pages/AuditLogs";
 import Subscriptions from "@/pages/Subscriptions";
 import Analytics from "@/pages/Analytics";
 import PlatformCosts from "@/pages/PlatformCosts";
+import Revenue from "@/pages/Revenue";
 import AdsManager from "@/pages/AdsManager";
 import AIConfig from "@/pages/AIConfig";
 import Branding from "@/pages/Branding";
@@ -74,6 +75,7 @@ function Router() {
       <Route path="/subscriptions" component={() => <Protected component={Subscriptions} />} />
       <Route path="/analytics" component={() => <Protected component={Analytics} />} />
       <Route path="/platform-costs" component={() => <Protected component={PlatformCosts} />} />
+      <Route path="/revenue" component={() => <Protected component={Revenue} />} />
       <Route path="/ads" component={() => <Protected component={AdsManager} />} />
       <Route path="/ai-config" component={() => <Protected component={AIConfig} />} />
       <Route path="/branding" component={() => <Protected component={Branding} />} />

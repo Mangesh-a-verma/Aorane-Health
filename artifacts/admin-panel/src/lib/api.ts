@@ -135,6 +135,16 @@ export const api = {
   updateCompanySettings: (data: Record<string, unknown>) =>
     req<{ settings: Record<string, unknown>; success: boolean }>("/admin/settings/company", { method: "PUT", body: JSON.stringify(data) }),
 
+  revenue: () => req<{
+    summary: {
+      totalRevenue: number; totalUsers: number; paidUsers: number; freeUsers: number;
+      netRevenue: number; gatewayFees: number; monthlyCostINR: number; netProfit: number;
+      expectedMRR: number; conversionRate: string;
+    };
+    planBreakdown: Array<{ plan: string; users: number; monthlyRate: number; expectedMRR: number; actualRevenue: number; transactions: number }>;
+    recentPayments: Array<{ id: string; userId: string | null; plan: string; amount: number; currency: string; status: string; razorpayPaymentId: string | null; gatewayFee: number | null; createdAt: string }>;
+  }>("/admin/revenue"),
+
   getAiConfig: () => req<{ configs: AiConfig[] }>("/admin/ai-config"),
   updateAiConfig: (feature: string, data: Partial<AiConfig>) =>
     req<{ config: AiConfig; success: boolean }>(`/admin/ai-config/${feature}`, { method: "PUT", body: JSON.stringify(data) }),

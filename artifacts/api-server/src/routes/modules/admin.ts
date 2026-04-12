@@ -377,6 +377,68 @@ router.get("/settings/company", async (req, res) => {
   }
 });
 
+// ─── Revenue Dashboard ────────────────────────────────────────────────────────
+router.get("/admin/revenue", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const [totalUsers] = await db.select({ count: count() }).from(usersTable);
+    const planBreakdown = await db.select({ plan: usersTable.plan, count: count() }).from(usersTable).groupBy(usersTable.plan);
+    const PAID_PLANS = ["pro", "max", "family"];
+    const paidUsers  = planBreakdown.filter(p => PAID_PLANS.includes(p.plan)).reduce((a, b) => a + Number(b.count), 0);
+    const freeUsers  = Number(planBreakdown.find(p => p.plan === "free")?.count ?? 0);
+    const PLAN_RATE: Record<string, number> = { free: 0, pro: 199, max: 249, family: 299 };
+
+    const [totalRev] = await db.select({ total: sql<number>`COALESCE(SUM(CAST(amount AS NUMERIC)), 0)` }).from(paymentsTable).where(eq(paymentsTable.status, "success"));
+    const planRevenue = await db
+      .select({ plan: paymentsTable.plan, total: sql<number>`COALESCE(SUM(CAST(amount AS NUMERIC)), 0)`, txns: count() })
+      .from(paymentsTable).where(eq(paymentsTable.status, "success")).groupBy(paymentsTable.plan);
+    const recentPayments = await db.select().from(paymentsTable).orderBy(desc(paymentsTable.createdAt)).limit(50);
+
+    const [gatewayFees] = await db.select({ total: sql<number>`COALESCE(SUM(CAST(gateway_fee AS NUMERIC)), 0)` }).from(paymentsTable).where(eq(paymentsTable.status, "success"));
+
+    const MONTHLY_COST_INR = 87 * 84;
+    const totalRevNum = Number(totalRev.total || 0);
+
+    const expectedMRR = planBreakdown.reduce((sum, p) => sum + (PLAN_RATE[p.plan] || 0) * Number(p.count), 0);
+
+    res.json({
+      summary: {
+        totalRevenue:    totalRevNum,
+        totalUsers:      Number(totalUsers.count),
+        paidUsers,
+        freeUsers,
+        netRevenue:      totalRevNum - Number(gatewayFees.total || 0),
+        gatewayFees:     Number(gatewayFees.total || 0),
+        monthlyCostINR:  MONTHLY_COST_INR,
+        netProfit:       totalRevNum - MONTHLY_COST_INR,
+        expectedMRR,
+        conversionRate:  Number(totalUsers.count) > 0 ? ((paidUsers / Number(totalUsers.count)) * 100).toFixed(1) : "0.0",
+      },
+      planBreakdown: planBreakdown.map(p => ({
+        plan:         p.plan,
+        users:        Number(p.count),
+        monthlyRate:  PLAN_RATE[p.plan] || 0,
+        expectedMRR:  (PLAN_RATE[p.plan] || 0) * Number(p.count),
+        actualRevenue: Number(planRevenue.find(r => r.plan === p.plan)?.total || 0),
+        transactions:  Number(planRevenue.find(r => r.plan === p.plan)?.txns || 0),
+      })),
+      recentPayments: recentPayments.map(p => ({
+        id:                 p.id,
+        userId:             p.userId,
+        plan:               p.plan,
+        amount:             Number(p.amount),
+        currency:           p.currency,
+        status:             p.status,
+        razorpayPaymentId:  p.razorpayPaymentId,
+        gatewayFee:         p.gatewayFee ? Number(p.gatewayFee) : null,
+        createdAt:          p.createdAt,
+      })),
+    });
+  } catch (e) {
+    console.error("Revenue error:", e);
+    res.status(500).json({ error: "Failed to fetch revenue data" });
+  }
+});
+
 // ─── AI CONFIG ────────────────────────────────────────────────────────────────
 const DEFAULT_AI_FEATURES = [
   { feature: "food_scan",    label: "Food Scan & Nutrition AI",    provider: "gemini", model: "gemini-2.0-flash" },

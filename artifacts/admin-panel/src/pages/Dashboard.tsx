@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
-  Tooltip, ResponsiveContainer, CartesianGrid,
+  Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from "recharts";
 
 type Analytics = {
@@ -333,7 +333,7 @@ export default function Dashboard() {
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="users" radius={[6, 6, 0, 0]}>
                     {barData.map((entry, i) => (
-                      <rect key={i} fill={entry.color} />
+                      <Cell key={i} fill={entry.color} />
                     ))}
                   </Bar>
                 </BarChart>
