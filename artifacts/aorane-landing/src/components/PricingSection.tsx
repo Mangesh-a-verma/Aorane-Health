@@ -70,7 +70,7 @@ function PlanCard({ plan, isYearly, highlight }: { plan: Plan; isYearly: boolean
       )}
       <div className="mb-4">
         <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-3" style={{ background: plan.color + "15" }}>
-          <Icon className="w-5 h-5" style={{ color: plan.color }} />
+          <Icon className="w-5 h-5" color={plan.color} />
         </div>
         <h3 className="text-lg font-extrabold text-gray-900">{plan.displayName}</h3>
       </div>
