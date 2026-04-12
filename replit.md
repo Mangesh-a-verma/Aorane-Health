@@ -29,6 +29,28 @@ AORANE's architecture consists of three main components: a mobile app (built wit
 - **Global Readiness:** Tables are designed to support `country_code`, `language_code`, and RTL (Right-to-Left) for future internationalization.
 - **Data Entry Flexibility:** Supports Photo, Text, and Voice input for logging Food, Exercise, and Water.
 
+## Bug Audit & Fixes (April 2026)
+
+### 🔴 Critical Security Fix
+- **`api-server/src/routes/modules/auth.ts`**: `devOtp` was always returned in OTP response — now gated behind `NODE_ENV !== "production"`. In production (Render), OTP will NEVER be exposed in API response.
+
+### 🟠 High Priority Fixes
+- **`aorane-mobile/lib/api.ts`**: Replaced fragile `res.json()` with robust `res.text()` → `JSON.parse()` pattern. Handles sleeping Render server (empty body), non-JSON responses, and network errors gracefully.
+- **`aorane-mobile/eas.json`**: Added `EXPO_PUBLIC_API_URL=https://aorane.onrender.com/api` to ALL build profiles (development, preview, production). Without this, native builds would fall back to `localhost:8080` and fail.
+- **`admin-panel/src/lib/api.ts`** + **`Login.tsx`**: Already fixed in previous session — robust error handling + stale token clearing.
+- **`api-server/src/routes/modules/admin.ts`**: `/admin/users` endpoint had `search` query param extracted but never applied to the DB query. Now correctly filters by phone using `ilike`.
+
+### 🟡 Medium Priority Fixes
+- **`business-portal/src/pages/Login.tsx`**: Added localStorage token cleanup before login attempt (same pattern as admin panel).
+- **`aorane-landing/src/components/BusinessAuthModal.tsx`**: `apiPost` function used raw `res.json()` — now uses robust text-first pattern.
+- **`aorane-mobile/app.json`**: Added `privacyPolicyUrl: "https://aorane.in/privacy"` (required for Play Store) and Android deep link intent filter for `aorane.in`.
+- **`admin-panel/src/App.tsx`**: Fixed broken 404 page redirect link (`/admin-panel/dashboard` → `/dashboard`).
+
+### 🟢 Design Decisions Confirmed (Not Bugs)
+- **PIN storage in Redis**: PINs stored in Upstash Redis (365-day TTL), not in DB. Users must re-set PIN after server restart in early prod. Acceptable for v1.0.
+- **SMS fallback**: When Fast2SMS DLT not configured, `smsSent: false` returned. devOtp visible in dev only — users must enter OTP manually.
+- **WhatsApp OTP fallback**: Automatically falls back to SMS if WhatsApp delivery fails.
+
 ## External Dependencies
 - **Database:** PostgreSQL (managed by Supabase)
 - **Backend Framework:** Express.js (Node.js)

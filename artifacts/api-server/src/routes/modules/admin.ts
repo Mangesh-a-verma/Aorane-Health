@@ -37,8 +37,11 @@ router.get("/admin/overview", requireAdmin, async (req: AdminRequest, res) => {
 router.get("/admin/users", requireAdmin, async (req: AdminRequest, res) => {
   try {
     const { search, limit = "50", offset = "0" } = req.query as Record<string, string>;
-    let query = db.select().from(usersTable).orderBy(desc(usersTable.createdAt)).limit(parseInt(limit)).offset(parseInt(offset));
-    const users = await query;
+    const baseQuery = db.select().from(usersTable);
+    const filtered = search
+      ? baseQuery.where(ilike(usersTable.phone, `%${search}%`))
+      : baseQuery;
+    const users = await filtered.orderBy(desc(usersTable.createdAt)).limit(parseInt(limit)).offset(parseInt(offset));
     res.json({ users });
   } catch {
     res.status(500).json({ error: "Failed to fetch users" });

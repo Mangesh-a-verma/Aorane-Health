@@ -8,6 +8,7 @@
     "scheme": "aorane",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
+    "privacyPolicyUrl": "https://aorane.in/privacy",
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
@@ -33,6 +34,20 @@
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#010814"
       },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "aorane.in",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",

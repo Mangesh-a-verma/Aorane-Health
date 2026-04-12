@@ -18,6 +18,9 @@ export default function Login() {
     if (!email || !password) { setError("Email and password are required"); return; }
     setIsLoading(true);
     setError("");
+    localStorage.removeItem("bp_token");
+    localStorage.removeItem("bp_admin");
+    localStorage.removeItem("bp_org");
     try {
       const res = await api.login(email, password);
       login(res.token, res.admin, res.org);

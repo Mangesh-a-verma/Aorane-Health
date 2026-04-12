@@ -35,13 +35,24 @@ function redirectToBusiness(token: string, admin: object, org: object) {
 }
 
 async function apiPost<T>(path: string, body: object): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Request failed");
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("Network error — please check your connection");
+  }
+  const text = await res.text().catch(() => "");
+  if (!text || text.trim() === "") {
+    throw new Error(`Server error (${res.status}) — please try again`);
+  }
+  let data: unknown;
+  try { data = JSON.parse(text); }
+  catch { throw new Error(`Unexpected server response (${res.status})`); }
+  if (!res.ok) throw new Error((data as { error?: string }).error || "Request failed");
   return data as T;
 }
 

@@ -23,16 +23,34 @@ async function request<T>(
     const token = await getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Network error" }));
-    throw new Error((err as { error?: string }).error || `Request failed: ${res.status}`);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new Error("Network error — check your internet connection");
   }
-  return res.json() as Promise<T>;
+
+  let text = "";
+  try { text = await res.text(); } catch { text = ""; }
+
+  if (!text || text.trim() === "") {
+    if (!res.ok) throw new Error(`Server error (${res.status}) — please try again`);
+    return {} as T;
+  }
+
+  let data: unknown;
+  try { data = JSON.parse(text); }
+  catch { throw new Error(`Unexpected server response (${res.status})`); }
+
+  if (!res.ok) {
+    throw new Error((data as { error?: string }).error || `Request failed (${res.status})`);
+  }
+  return data as T;
 }
 
 export const api = {
