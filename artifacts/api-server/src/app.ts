@@ -59,4 +59,15 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+// 404 handler
+app.use((_req, res) => {
+  res.status(404).json({ error: "Route not found" });
+});
+
+// Global error handler — always returns JSON, never empty body
+app.use((err: Error, _req: import("express").Request, res: import("express").Response, _next: import("express").NextFunction) => {
+  logger.error({ err }, "Unhandled error");
+  res.status(500).json({ error: err.message || "Internal server error" });
+});
+
 export default app;
