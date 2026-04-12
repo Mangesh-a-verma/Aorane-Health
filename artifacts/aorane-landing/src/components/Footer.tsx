@@ -11,7 +11,7 @@ export default function Footer() {
         { label: "Pricing", href: "#pricing" },
         { label: "Dashboard", href: "#dashboard" },
         { label: "Android App", href: "https://play.google.com/store" },
-        { label: "Business Portal", href: "/business" },
+        { label: "Business Portal", href: "https://business.aorane.com" },
       ],
     },
     {
