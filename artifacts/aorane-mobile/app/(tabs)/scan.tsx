@@ -9,7 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
-import { api } from "../../lib/api";
+import { api } from "@/lib/api";
 
 const { width: W, height: H } = Dimensions.get("window");
 const PRIMARY = "#0077B6";

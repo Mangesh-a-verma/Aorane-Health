@@ -1,5 +1,5 @@
 {
-  "installCommand": "npx --yes pnpm@10.26.1 install --frozen-lockfile",
+  "installCommand": "npx --yes pnpm@10 install --no-frozen-lockfile",
   "buildCommand": "EXPO_PUBLIC_API_URL=https://aorane.onrender.com/api pnpm run web:export",
   "outputDirectory": "dist",
   "framework": null,

@@ -24,6 +24,8 @@
         "NSHealthShareUsageDescription": "AORANE reads your health data from HealthKit to provide personalised health insights.",
         "NSHealthUpdateUsageDescription": "AORANE writes workout and activity data to HealthKit to keep your health records in sync.",
         "NSCameraUsageDescription": "AORANE uses the camera to scan food items and analyse nutritional content.",
+        "NSPhotoLibraryUsageDescription": "AORANE accesses your photos to upload and analyse medical reports and food items.",
+        "NSPhotoLibraryAddUsageDescription": "AORANE saves health report snapshots to your photo library.",
         "NSUserNotificationsUsageDescription": "AORANE sends reminders for medicines, water intake and daily health tips."
       }
     },
@@ -77,7 +79,7 @@
       [
         "expo-router",
         {
-          "origin": "https://aorane.onrender.com"
+          "origin": "https://aorane.in"
         }
       ],
       [
@@ -98,6 +100,15 @@
       "expo-font",
       "expo-web-browser",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#E8622A",
+          "defaultChannel": "default",
+          "sounds": []
+        }
+      ],
+      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "AORANE uses your location to find nearby doctors, pharmacies and hospitals."
@@ -107,6 +118,13 @@
         "expo-local-authentication",
         {
           "faceIDPermission": "AORANE uses Face ID for quick and secure login."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "AORANE accesses your photos to upload and analyse medical reports.",
+          "cameraPermission": "AORANE uses the camera to scan food items and analyse nutritional content."
         }
       ]
     ],

@@ -7,8 +7,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { api } from "../lib/api";
-import { DS } from "../lib/theme";
+import { api } from "@/lib/api";
+import { DS } from "@/lib/theme";
 
 const PRIMARY = DS.color.primary;
 const ACCENT = DS.color.green;
