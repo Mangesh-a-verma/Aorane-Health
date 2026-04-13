@@ -1,5 +1,5 @@
 {
-  "installCommand": "npx --yes pnpm@10 install --no-frozen-lockfile --ignore-scripts",
+  "installCommand": "npx --yes pnpm@10 install --frozen-lockfile --ignore-scripts",
   "buildCommand": "EXPO_PUBLIC_API_URL=https://aorane.onrender.com/api npx pnpm@10 --filter @workspace/aorane-mobile exec npx expo export --platform web --output-dir dist",
   "outputDirectory": "dist",
   "framework": null,
