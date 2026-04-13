@@ -46,15 +46,23 @@ export default function ProfileScreen() {
     try { await api.updatePrivacy({ [key]: value }); } catch { }
   };
 
-  const handleLogout = () => Alert.alert("Logout", "Are you sure you want to log out?", [
-    { text: "Cancel", style: "cancel" },
-    {
-      text: "Logout", style: "destructive", onPress: async () => {
-        await logout();
-        router.replace("/(auth)/login");
-      },
-    },
-  ]);
+  const handleLogout = () => {
+    if (Platform.OS === "web") {
+      if (window.confirm("Are you sure you want to log out?")) {
+        logout().then(() => router.replace("/(auth)/login"));
+      }
+    } else {
+      Alert.alert("Logout", "Are you sure you want to log out?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout", style: "destructive", onPress: async () => {
+            await logout();
+            router.replace("/(auth)/login");
+          },
+        },
+      ]);
+    }
+  };
 
   const topPad  = Platform.OS === "web" ? 67 : insets.top;
   const bmi     = profile.heightCm && profile.weightKg
