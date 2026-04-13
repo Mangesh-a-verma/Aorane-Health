@@ -283,7 +283,7 @@ router.get("/wearable/oauth/google-fit/callback", async (req, res) => {
 
 // Sync latest data from a provider
 router.post("/wearable/sync/:provider", requireAuth, async (req: AuthRequest, res) => {
-  const { provider } = req.params;
+  const provider = String(req.params.provider);
   try {
     const [conn] = await db.select().from(wearableConnectionsTable)
       .where(and(eq(wearableConnectionsTable.userId, req.userId!), eq(wearableConnectionsTable.provider, provider)));
@@ -380,7 +380,7 @@ router.post("/wearable/data/manual", requireAuth, async (req: AuthRequest, res) 
 // Disconnect a wearable
 router.delete("/wearable/connections/:provider", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { provider } = req.params;
+    const provider = String(req.params.provider);
     await db.update(wearableConnectionsTable)
       .set({ isActive: false, accessToken: null, refreshToken: null, updatedAt: new Date() })
       .where(and(eq(wearableConnectionsTable.userId, req.userId!), eq(wearableConnectionsTable.provider, provider)));
