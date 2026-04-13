@@ -127,7 +127,7 @@ router.patch("/users/profile", requireAuth, async (req: AuthRequest, res) => {
 
     const [updated] = await db
       .update(userProfilesTable)
-      .set(updateData as Parameters<typeof db.update>[0] extends infer T ? T : never)
+      .set(updateData as Partial<typeof userProfilesTable.$inferInsert>)
       .where(eq(userProfilesTable.userId, req.userId!))
       .returning();
 
@@ -214,7 +214,7 @@ router.patch("/users/preferences", requireAuth, async (req: AuthRequest, res) =>
     for (const field of allowedFields) {
       if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field];
     }
-    const [updated] = await db.update(userPreferencesTable).set(updates as Parameters<typeof db.update>[0] extends infer T ? T : never).where(eq(userPreferencesTable.userId, req.userId!)).returning();
+    const [updated] = await db.update(userPreferencesTable).set(updates as Partial<typeof userPreferencesTable.$inferInsert>).where(eq(userPreferencesTable.userId, req.userId!)).returning();
     res.json({ preferences: updated });
   } catch {
     res.status(500).json({ error: "Failed to update preferences" });
@@ -241,7 +241,7 @@ router.patch("/users/privacy", requireAuth, async (req: AuthRequest, res) => {
     for (const field of allowedFields) {
       if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field];
     }
-    const [updated] = await db.update(userPrivacySettingsTable).set(updates as Parameters<typeof db.update>[0] extends infer T ? T : never).where(eq(userPrivacySettingsTable.userId, req.userId!)).returning();
+    const [updated] = await db.update(userPrivacySettingsTable).set(updates as Partial<typeof userPrivacySettingsTable.$inferInsert>).where(eq(userPrivacySettingsTable.userId, req.userId!)).returning();
     res.json({ privacy: updated });
   } catch {
     res.status(500).json({ error: "Failed to update privacy settings" });
@@ -352,7 +352,7 @@ function getActiveLabel(pct: number): string {
 router.get("/users/search", requireAuth, async (req: AuthRequest, res) => {
   try {
     const q = (req.query.q as string || "").trim();
-    if (!q || q.length < 4) return res.status(400).json({ error: "Minimum 4 characters required" });
+    if (!q || q.length < 4) { res.status(400).json({ error: "Minimum 4 characters required" }); return; }
 
     const isAoraneId = /^\d{12}$/.test(q);
 

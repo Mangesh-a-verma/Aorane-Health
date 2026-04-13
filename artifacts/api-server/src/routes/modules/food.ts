@@ -57,7 +57,7 @@ router.post("/food/log", requireAuth, async (req: AuthRequest, res) => {
 router.delete("/food/log/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     await db.delete(foodLogsTable)
-      .where(and(eq(foodLogsTable.id, req.params.id), eq(foodLogsTable.userId, req.userId!)));
+      .where(and(eq(foodLogsTable.id, String(req.params.id)), eq(foodLogsTable.userId, req.userId!)));
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Failed to delete food log" });
@@ -167,7 +167,7 @@ router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
         .limit(1);
 
       if (historyMatch) {
-        return res.json({
+        res.json({
           result: {
             foodNameEn: historyMatch.foodNameEn,
             calories: Math.round(Number(historyMatch.calories)),
@@ -186,7 +186,7 @@ router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
           fromDb: false,
           fromCache: false,
           historyCount: Number(historyMatch.count),
-        });
+        }); return;
       }
 
       // ── Level 2: Main Curated DB ─────────────────────────────────────────
@@ -195,7 +195,7 @@ router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
         .limit(1);
 
       if (dbItem) {
-        return res.json({
+        res.json({
           result: {
             foodNameEn: dbItem.foodNameEn,
             calories: Number(dbItem.calories),
@@ -212,7 +212,7 @@ router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
           fromDb: true,
           fromHistory: false,
           fromCache: false,
-        });
+        }); return;
       }
 
       // ── Level 3: AI-Discovered Foods Cache (saved from previous AI calls) ─
@@ -222,7 +222,7 @@ router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
         await db.update(foodScanCacheTable)
           .set({ hitCount: cached.hitCount + 1, lastUsedAt: new Date() })
           .where(eq(foodScanCacheTable.id, cached.id));
-        return res.json({ result: cached.aiResult, fromCache: true, fromDb: false, fromHistory: false, hitCount: cached.hitCount + 1 });
+        res.json({ result: cached.aiResult, fromCache: true, fromDb: false, fromHistory: false, hitCount: cached.hitCount + 1 }); return;
       }
     }
 
@@ -233,7 +233,7 @@ router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
 
     if (searchTerm) {
       const nvidiaKey = process.env["NVIDIA_API_KEY"];
-      if (!nvidiaKey) return res.status(503).json({ error: "AI service not configured" });
+      if (!nvidiaKey) { res.status(503).json({ error: "AI service not configured" }); return; }
 
       const prompt = `You are a certified Indian dietitian. The user typed "${searchTerm}" — this could be in Hindi, Hinglish, regional language or English. Identify the food and provide complete nutrition data.
 
@@ -271,7 +271,7 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
     } else if (imageBase64) {
       // Image-based food scan — Gemini only (NVIDIA LLaMA does not support vision)
       const geminiKey = process.env["GOOGLE_GEMINI_API_KEY"];
-      if (!geminiKey) return res.status(503).json({ error: "Image AI service not configured" });
+      if (!geminiKey) { res.status(503).json({ error: "Image AI service not configured" }); return; }
 
       const promptText = `You are a certified Indian dietitian. Identify this food from the image and provide complete nutrition data. Return ONLY valid JSON with: foodNameEn, calories (per 100g), proteinG, carbsG, fatG, fiberG, sodiumMg, sugarG, servingSizeG, servingDescription, category, dietaryTags (array), vitamins (object with vitaminA_mcg, vitaminC_mg, vitaminD_mcg, vitaminB12_mcg, iron_mg, calcium_mg, potassium_mg, zinc_mg), glycemicIndex, healthTip.`;
       const geminiBody = { contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: mimeType || "image/jpeg", data: imageBase64 } }] }] };
@@ -284,7 +284,7 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       result = jsonMatch ? JSON.parse(jsonMatch[0]) : { foodNameEn: "Unknown Food", calories: 100, proteinG: 0, carbsG: 25, fatG: 2, fiberG: 0, servingSizeG: 100, servingDescription: "100g", category: "food", dietaryTags: [], vitamins: {} };
     } else {
-      return res.status(400).json({ error: "searchTerm or imageBase64 required" });
+      res.status(400).json({ error: "searchTerm or imageBase64 required" }); return;
     }
 
     // Save to AI-discovered foods cache so it's NEVER called again for this food
@@ -295,7 +295,7 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
       }).onConflictDoNothing();
     }
 
-    return res.json({ result, fromCache: false, fromDb: false, fromHistory: false });
+    res.json({ result, fromCache: false, fromDb: false, fromHistory: false });
   } catch (err) {
     console.error("Food scan error:", err);
     res.status(500).json({ error: "Food scan failed" });

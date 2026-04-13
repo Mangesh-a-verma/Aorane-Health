@@ -35,7 +35,7 @@ const defaultOrg: Plan[] = [
     features: ["Unlimited employees", "All Growth features", "Custom integrations", "SLA guarantee", "On-premise option", "Compliance reports", "24/7 Priority support", "White-labeling"], badge: "Enterprise", color: "#7C3AED" },
 ];
 
-const planIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+const planIcons: Record<string, React.ComponentType<{ className?: string; color?: string }>> = {
   free: Sparkles, pro: Zap, max: Crown, family: Users,
   starter: Building2, growth: Star, enterprise: Rocket
 };

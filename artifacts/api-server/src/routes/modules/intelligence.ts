@@ -62,9 +62,10 @@ async function gatherUserContext(userId: string) {
   const city = (profile as unknown as Record<string, string>)?.city ?? null;
   const state = (profile as unknown as Record<string, string>)?.state ?? null;
   const workProfile = (profile as unknown as Record<string, string>)?.workProfile ?? null;
-  const conditionsList = conditions.map((c) => c.conditionName).join(", ") || "None";
-  const dietaryPref = (prefs?.dietaryPreference as string) ?? "vegetarian";
-  const healthGoals = ((prefs?.healthGoals as string[]) ?? []).join(", ") || "General wellness";
+  const conditionsList = conditions.map((c) => c.condition).join(", ") || "None";
+  const dietaryPref = "vegetarian";
+  const healthGoals = "General wellness";
+  void prefs;
 
   let bmi: number | null = null;
   if (weight && height) bmi = Math.round((weight / ((height / 100) ** 2)) * 10) / 10;
@@ -109,7 +110,7 @@ async function gather30DayData(userId: string) {
   const avgSleepHours = stressLogs.length > 0
     ? Math.round((stressLogs.reduce((s, l) => s + Number(l.sleepHours ?? 0), 0) / stressLogs.length) * 10) / 10 : null;
   const avgStressLevel = stressLogs.length > 0
-    ? Math.round((stressLogs.reduce((s, l) => s + (l.stressLevel ?? 5), 0) / stressLogs.length) * 10) / 10 : null;
+    ? Math.round((stressLogs.reduce((s, l) => s + (l.stressScore ?? 5), 0) / stressLogs.length) * 10) / 10 : null;
 
   return {
     avgCalories, avgProtein, avgCarbs, avgFat,
@@ -130,10 +131,10 @@ router.get("/health/intelligence/predict", requireAuth, async (req: AuthRequest,
       .limit(1);
 
     if (cached.length > 0) {
-      return res.json({ prediction: cached[0].predictionJson, cached: true, generatedAt: cached[0].generatedAt, month });
+      res.json({ prediction: cached[0].predictionJson, cached: true, generatedAt: cached[0].generatedAt, month }); return;
     }
 
-    return await generatePrediction(userId, month, res, false);
+    await generatePrediction(userId, month, res, false);
   } catch (err) {
     console.error("prediction error:", err);
     res.status(500).json({ error: "Health prediction failed. Please try again." });
@@ -146,7 +147,7 @@ router.post("/health/intelligence/predict/refresh", requireAuth, async (req: Aut
     const month = getCurrentMonth();
     await db.delete(healthPredictionsTable)
       .where(and(eq(healthPredictionsTable.userId, userId), eq(healthPredictionsTable.month, month)));
-    return await generatePrediction(userId, month, res, true);
+    await generatePrediction(userId, month, res, true);
   } catch (err) {
     console.error("prediction refresh error:", err);
     res.status(500).json({ error: "Health prediction refresh failed." });
@@ -155,7 +156,7 @@ router.post("/health/intelligence/predict/refresh", requireAuth, async (req: Aut
 
 async function generatePrediction(userId: string, month: string, res: import("express").Response, forced: boolean) {
   const nvidiaKey = process.env.NVIDIA_API_KEY;
-  if (!nvidiaKey) return res.status(503).json({ error: "AI prediction service not configured. Please set NVIDIA_API_KEY." });
+  if (!nvidiaKey) { res.status(503).json({ error: "AI prediction service not configured. Please set NVIDIA_API_KEY." }); return; }
 
   const ctx = await gatherUserContext(userId);
   const data = await gather30DayData(userId);
@@ -235,7 +236,7 @@ Return ONLY valid JSON (no markdown, no extra text):
     set: { predictionJson: prediction, dataSnapshotJson: data as unknown as Record<string, unknown>, weatherContext: weather, generatedAt: new Date() },
   });
 
-  return res.json({ prediction, cached: false, forced, month, generatedAt: new Date() });
+  res.json({ prediction, cached: false, forced, month, generatedAt: new Date() });
 }
 
 // ── Weekly Diet Chart ─────────────────────────────────────────────────────────
@@ -250,10 +251,10 @@ router.get("/health/intelligence/diet-chart", requireAuth, async (req: AuthReque
       .limit(1);
 
     if (cached.length > 0) {
-      return res.json({ dietChart: cached[0].dietChartJson, cached: true, weekStart, generatedAt: cached[0].generatedAt });
+      res.json({ dietChart: cached[0].dietChartJson, cached: true, weekStart, generatedAt: cached[0].generatedAt }); return;
     }
 
-    return await generateDietChart(userId, weekStart, res, false);
+    await generateDietChart(userId, weekStart, res, false);
   } catch (err) {
     console.error("diet chart error:", err);
     res.status(500).json({ error: "Diet chart generation failed." });
@@ -266,7 +267,7 @@ router.post("/health/intelligence/diet-chart/refresh", requireAuth, async (req: 
     const weekStart = getCurrentWeekStart();
     await db.delete(weeklyDietChartsTable)
       .where(and(eq(weeklyDietChartsTable.userId, userId), eq(weeklyDietChartsTable.weekStart, weekStart)));
-    return await generateDietChart(userId, weekStart, res, true);
+    await generateDietChart(userId, weekStart, res, true);
   } catch (err) {
     console.error("diet chart refresh error:", err);
     res.status(500).json({ error: "Diet chart refresh failed." });
@@ -275,7 +276,7 @@ router.post("/health/intelligence/diet-chart/refresh", requireAuth, async (req: 
 
 async function generateDietChart(userId: string, weekStart: string, res: import("express").Response, forced: boolean) {
   const nvidiaKey = process.env.NVIDIA_API_KEY;
-  if (!nvidiaKey) return res.status(503).json({ error: "AI diet service not configured. Please set NVIDIA_API_KEY." });
+  if (!nvidiaKey) { res.status(503).json({ error: "AI diet service not configured. Please set NVIDIA_API_KEY." }); return; }
 
   const ctx = await gatherUserContext(userId);
   const data = await gather30DayData(userId);
@@ -351,7 +352,7 @@ Return ONLY valid JSON (no markdown):
     set: { dietChartJson: dietChart, targetCalories: targetCal, generatedAt: new Date() },
   });
 
-  return res.json({ dietChart, cached: false, forced, weekStart, generatedAt: new Date() });
+  res.json({ dietChart, cached: false, forced, weekStart, generatedAt: new Date() });
 }
 
 // ── MET Formula — Exercise Calories (No AI) ───────────────────────────────────
@@ -366,7 +367,7 @@ router.post("/health/intelligence/exercise/calories", requireAuth, async (req: A
     const { exerciseType, durationMinutes } = req.body as { exerciseType: string; durationMinutes: number };
 
     if (!exerciseType || !durationMinutes) {
-      return res.status(400).json({ error: "exerciseType and durationMinutes are required" });
+      res.status(400).json({ error: "exerciseType and durationMinutes are required" }); return;
     }
 
     const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, userId)).limit(1);

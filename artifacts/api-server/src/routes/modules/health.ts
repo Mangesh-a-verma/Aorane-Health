@@ -199,7 +199,7 @@ router.get("/health/water/:date", requireAuth, async (req: AuthRequest, res) => 
 
 router.get("/health/score/:date", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { date } = req.params;
+    const date = String(req.params.date);
     const [existing] = await db.select().from(dailyHealthScoresTable).where(
       and(eq(dailyHealthScoresTable.userId, req.userId!), eq(dailyHealthScoresTable.scoreDate, date))
     );
@@ -213,7 +213,7 @@ router.get("/health/score/:date", requireAuth, async (req: AuthRequest, res) => 
 
 router.post("/health/score/:date/compute", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { date } = req.params;
+    const date = String(req.params.date);
     const score = await computeDailyScore(req.userId!, date);
     res.json({ score });
   } catch {

@@ -27,7 +27,7 @@ router.get("/medical/reports", requireAuth, async (req: AuthRequest, res) => {
 router.get("/medical/reports/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     const [report] = await db.select().from(medicalReportsTable)
-      .where(eq(medicalReportsTable.id, req.params.id));
+      .where(eq(medicalReportsTable.id, String(req.params.id)));
     if (!report) { res.status(404).json({ error: "Report not found" }); return; }
     res.json({ report });
   } catch {
@@ -47,12 +47,12 @@ router.post("/medical/scan", requireAuth, async (req: AuthRequest, res) => {
     };
 
     if (!imageBase64) {
-      return res.status(400).json({ error: "imageBase64 required" });
+      res.status(400).json({ error: "imageBase64 required" }); return;
     }
 
     const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
     if (!geminiKey) {
-      return res.status(503).json({ error: "AI service not configured" });
+      res.status(503).json({ error: "AI service not configured" }); return;
     }
 
     const prompt = `You are a senior Indian pathologist and healthcare expert. Analyze this medical report image carefully.
@@ -102,7 +102,7 @@ Be accurate with Indian medical reference ranges. Flag anything outside normal r
 
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
-      return res.status(502).json({ error: "AI analysis failed", detail: errText });
+      res.status(502).json({ error: "AI analysis failed", detail: errText }); return;
     }
 
     const geminiData = await geminiRes.json() as {
@@ -112,7 +112,7 @@ Be accurate with Indian medical reference ranges. Flag anything outside normal r
     const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      return res.status(502).json({ error: "Could not parse AI response", rawText: text.slice(0, 500) });
+      res.status(502).json({ error: "Could not parse AI response", rawText: text.slice(0, 500) }); return;
     }
 
     const analysisResult = JSON.parse(jsonMatch[0]) as {
@@ -139,7 +139,7 @@ Be accurate with Indian medical reference ranges. Flag anything outside normal r
       dietRecommendations: analysisResult.dietRecommendations || [],
     }).returning();
 
-    return res.status(201).json({
+    res.status(201).json({
       report: saved,
       analysis: analysisResult,
     });
@@ -154,7 +154,7 @@ Be accurate with Indian medical reference ranges. Flag anything outside normal r
 router.delete("/medical/reports/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     await db.delete(medicalReportsTable)
-      .where(eq(medicalReportsTable.id, req.params.id));
+      .where(eq(medicalReportsTable.id, String(req.params.id)));
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Failed to delete report" });

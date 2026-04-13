@@ -388,7 +388,7 @@ router.post("/business/announcements", requireBusinessAuth, async (req: Business
 // ─── MEMBER DETAIL ────────────────────────────────────────────────────────────
 router.get("/business/members/:userId/detail", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
-    const { userId } = req.params;
+    const userId = String(req.params.userId);
     const [member] = await db.select().from(orgMembersTable)
       .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId)));
     if (!member) { res.status(404).json({ error: "Member not in organization" }); return; }
@@ -431,7 +431,7 @@ router.patch("/business/admin/password", requireBusinessAuth, async (req: Busine
 
 router.post("/business/members/:userId/remove", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
-    const { userId } = req.params;
+    const userId = String(req.params.userId);
     await db.update(orgMembersTable).set({ isActive: false })
       .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId)));
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));

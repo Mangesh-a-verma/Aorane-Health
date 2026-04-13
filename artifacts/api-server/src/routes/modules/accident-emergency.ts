@@ -71,7 +71,7 @@ router.post("/emergency/contacts", requireAuth, async (req: AuthRequest, res) =>
 router.delete("/emergency/contacts/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     await db.delete(emergencyContactsTable)
-      .where(eq(emergencyContactsTable.id, req.params.id));
+      .where(eq(emergencyContactsTable.id, String(req.params.id)));
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Failed to delete emergency contact" });
@@ -167,7 +167,7 @@ router.patch("/emergency/accident/:id/cancel", requireAuth, async (req: AuthRequ
     const { reason } = req.body as { reason?: string };
     await db.update(accidentEmergencyLogsTable)
       .set({ status: "cancelled", cancelledAt: new Date(), cancelReason: reason || "User cancelled" })
-      .where(eq(accidentEmergencyLogsTable.id, req.params.id));
+      .where(eq(accidentEmergencyLogsTable.id, String(req.params.id)));
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Cancel failed" });
@@ -179,7 +179,7 @@ router.patch("/emergency/accident/:id/resolve", requireAuth, async (req: AuthReq
   try {
     await db.update(accidentEmergencyLogsTable)
       .set({ status: "resolved", resolvedAt: new Date() })
-      .where(eq(accidentEmergencyLogsTable.id, req.params.id));
+      .where(eq(accidentEmergencyLogsTable.id, String(req.params.id)));
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Resolve failed" });

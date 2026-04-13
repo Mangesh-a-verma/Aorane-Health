@@ -34,7 +34,7 @@ async function callGemini(prompt: string, geminiKey: string): Promise<string> {
 
 router.post("/ai/diet-plan", requireAuth, async (req: AuthRequest, res) => {
   try {
-    if (!process.env.NVIDIA_API_KEY) return res.status(503).json({ error: "AI service not configured" });
+    if (!process.env.NVIDIA_API_KEY) { res.status(503).json({ error: "AI service not configured" }); return; }
 
     const userId = req.userId!;
     const { days = 1, preferences = {} } = req.body as { days?: number; preferences?: Record<string, unknown> };
@@ -52,10 +52,11 @@ router.post("/ai/diet-plan", requireAuth, async (req: AuthRequest, res) => {
     const weightKg = profile?.weightKg ? Number(profile.weightKg) : null;
     const heightCm = profile?.heightCm ? Number(profile.heightCm) : null;
     const gender = profile?.gender || "other";
-    const conditionsList = conditions.map((c) => c.conditionName).join(", ") || "none";
-    const dietaryPref = (prefs?.dietaryPreference as string) || "vegetarian";
-    const activityLevel = (prefs?.activityLevel as string) || "moderate";
-    const goalsList = ((prefs?.healthGoals as string[]) || []).join(", ") || "general wellness";
+    const conditionsList = conditions.map((c) => c.condition).join(", ") || "none";
+    const dietaryPref = (preferences.dietaryPref as string) || "vegetarian";
+    const activityLevel = (preferences.activityLevel as string) || "moderate";
+    const goalsList = ((preferences.healthGoals as string[]) || []).join(", ") || "general wellness";
+    void prefs;
     const language = (preferences.language as string) || user?.languageCode || "en";
 
     let bmr = 0;
@@ -131,7 +132,7 @@ Return ONLY valid JSON (no markdown, no extra text):
 
 router.post("/ai/health-tip", requireAuth, async (req: AuthRequest, res) => {
   try {
-    if (!process.env.NVIDIA_API_KEY) return res.status(503).json({ error: "AI service not configured" });
+    if (!process.env.NVIDIA_API_KEY) { res.status(503).json({ error: "AI service not configured" }); return; }
 
     const { context = "" } = req.body as { context?: string };
 
@@ -155,10 +156,10 @@ Return ONLY valid JSON:
 
 router.post("/ai/meal-swap", requireAuth, async (req: AuthRequest, res) => {
   try {
-    if (!process.env.NVIDIA_API_KEY) return res.status(503).json({ error: "AI service not configured" });
+    if (!process.env.NVIDIA_API_KEY) { res.status(503).json({ error: "AI service not configured" }); return; }
 
     const { mealName, reason, dietaryPref = "vegetarian" } = req.body as { mealName: string; reason?: string; dietaryPref?: string };
-    if (!mealName) return res.status(400).json({ error: "mealName required" });
+    if (!mealName) { res.status(400).json({ error: "mealName required" }); return; }
 
     const prompt = `You are an Indian dietitian. Suggest 3 healthier Indian food swaps for "${mealName}"${reason ? ` because ${reason}` : ""}.
 Dietary preference: ${dietaryPref}.
@@ -182,10 +183,10 @@ Return ONLY valid JSON:
 router.post("/ai/smart-scan", requireAuth, async (req: AuthRequest, res) => {
   try {
     const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
-    if (!geminiKey) return res.status(503).json({ error: "AI service not configured" });
+    if (!geminiKey) { res.status(503).json({ error: "AI service not configured" }); return; }
 
     const { imageBase64, mimeType = "image/jpeg" } = req.body as { imageBase64?: string; mimeType?: string };
-    if (!imageBase64) return res.status(400).json({ error: "imageBase64 required" });
+    if (!imageBase64) { res.status(400).json({ error: "imageBase64 required" }); return; }
 
     const prompt = `You are an expert AI health assistant. Carefully analyze this image and determine what type of content it shows.
 
@@ -273,7 +274,7 @@ For unknown:
 
     if (!geminiRes || !geminiRes.ok) {
       const status = geminiRes?.status;
-      if (status === 429) return res.status(429).json({ error: "AI is busy right now. Please try again in a moment." });
+      if (status === 429) { res.status(429).json({ error: "AI is busy right now. Please try again in a moment." }); return; }
       throw new Error(`Gemini error: ${status}`);
     }
 

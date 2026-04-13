@@ -42,13 +42,13 @@ router.post("/medicine/schedule", requireAuth, async (req: AuthRequest, res) => 
 
 router.patch("/medicine/schedule/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const allowedFields = ["medicineName", "dosage", "doseCount", "mealTiming", "frequency", "customDays", "reminderTimes", "endDate", "isActive", "refillAlertDays", "notes"];
     const updates: Record<string, unknown> = {};
     for (const field of allowedFields) {
       if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field];
     }
-    const [updated] = await db.update(medicineSchedulesTable).set(updates as Parameters<typeof db.update>[0] extends infer T ? T : never)
+    const [updated] = await db.update(medicineSchedulesTable).set(updates as Partial<typeof medicineSchedulesTable.$inferInsert>)
       .where(and(eq(medicineSchedulesTable.id, id), eq(medicineSchedulesTable.userId, req.userId!)))
       .returning();
     res.json({ schedule: updated });
@@ -60,7 +60,7 @@ router.patch("/medicine/schedule/:id", requireAuth, async (req: AuthRequest, res
 router.delete("/medicine/schedule/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     await db.update(medicineSchedulesTable).set({ isActive: false })
-      .where(and(eq(medicineSchedulesTable.id, req.params.id), eq(medicineSchedulesTable.userId, req.userId!)));
+      .where(and(eq(medicineSchedulesTable.id, String(req.params.id)), eq(medicineSchedulesTable.userId, req.userId!)));
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Failed to delete schedule" });

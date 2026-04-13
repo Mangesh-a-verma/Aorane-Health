@@ -52,15 +52,16 @@ router.get("/ads/active", requireAuth, async (req: AuthRequest, res) => {
 router.post("/ads/:id/impression", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { platform } = req.body as { platform?: string };
+    const adId = String(req.params.id);
     await Promise.all([
       db.insert(adImpressionsTable).values({
-        campaignId: req.params.id,
+        campaignId: adId,
         userId: req.userId,
         platform: platform || "mobile",
       }),
       db.update(adCampaignsTable)
-        .set({ impressionCount: db.$count(adImpressionsTable, eq(adImpressionsTable.campaignId, req.params.id)) as unknown as number })
-        .where(eq(adCampaignsTable.id, req.params.id)),
+        .set({ impressionCount: db.$count(adImpressionsTable, eq(adImpressionsTable.campaignId, adId)) as unknown as number })
+        .where(eq(adCampaignsTable.id, adId)),
     ]);
     res.json({ success: true });
   } catch {
@@ -72,12 +73,13 @@ router.post("/ads/:id/impression", requireAuth, async (req: AuthRequest, res) =>
 
 router.post("/ads/:id/click", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const clickAdId = String(req.params.id);
     await db.insert(adClicksTable).values({
-      campaignId: req.params.id,
+      campaignId: clickAdId,
       userId: req.userId,
     });
     const ad = await db.select({ linkUrl: adCampaignsTable.linkUrl })
-      .from(adCampaignsTable).where(eq(adCampaignsTable.id, req.params.id)).limit(1);
+      .from(adCampaignsTable).where(eq(adCampaignsTable.id, clickAdId)).limit(1);
     res.json({ success: true, linkUrl: ad[0]?.linkUrl || null });
   } catch {
     res.json({ success: false, linkUrl: null });
@@ -168,7 +170,7 @@ router.put("/admin/ads/:id", requireAdmin, async (req: AdminRequest, res) => {
       ...(slidePosition !== undefined ? { slidePosition: Number(slidePosition) } : {}),
       ...(targetScreen !== undefined ? { targetScreen: String(targetScreen) } : {}),
       ...(googleAdCode !== undefined ? { googleAdCode: googleAdCode ? String(googleAdCode) : null } : {}),
-    }).where(eq(adCampaignsTable.id, req.params.id)).returning();
+    }).where(eq(adCampaignsTable.id, String(req.params.id))).returning();
 
     res.json({ ad });
   } catch (e) {
@@ -181,7 +183,7 @@ router.put("/admin/ads/:id", requireAdmin, async (req: AdminRequest, res) => {
 
 router.delete("/admin/ads/:id", requireAdmin, async (req: AdminRequest, res) => {
   try {
-    await db.delete(adCampaignsTable).where(eq(adCampaignsTable.id, req.params.id));
+    await db.delete(adCampaignsTable).where(eq(adCampaignsTable.id, String(req.params.id)));
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Failed to delete ad" });
@@ -192,10 +194,11 @@ router.delete("/admin/ads/:id", requireAdmin, async (req: AdminRequest, res) => 
 
 router.patch("/admin/ads/:id/toggle", requireAdmin, async (req: AdminRequest, res) => {
   try {
+    const adId = String(req.params.id);
     const current = await db.select({ status: adCampaignsTable.status })
-      .from(adCampaignsTable).where(eq(adCampaignsTable.id, req.params.id)).limit(1);
+      .from(adCampaignsTable).where(eq(adCampaignsTable.id, adId)).limit(1);
     const newStatus = current[0]?.status === "active" ? "paused" : "active";
-    await db.update(adCampaignsTable).set({ status: newStatus }).where(eq(adCampaignsTable.id, req.params.id));
+    await db.update(adCampaignsTable).set({ status: newStatus }).where(eq(adCampaignsTable.id, adId));
     res.json({ status: newStatus });
   } catch {
     res.status(500).json({ error: "Toggle failed" });

@@ -195,13 +195,14 @@ router.get("/blood/requests/active", async (req, res) => {
 router.post("/blood/request/:id/respond", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { response } = req.body as { response: "can_help" | "later" | "unavailable" };
+    const requestId = String(req.params.id);
     const [existing] = await db.select().from(bloodEmergencyResponsesTable)
-      .where(and(eq(bloodEmergencyResponsesTable.requestId, req.params.id), eq(bloodEmergencyResponsesTable.donorId, req.userId!)));
+      .where(and(eq(bloodEmergencyResponsesTable.requestId, requestId), eq(bloodEmergencyResponsesTable.donorId, req.userId!)));
     if (existing) {
       await db.update(bloodEmergencyResponsesTable).set({ response }).where(eq(bloodEmergencyResponsesTable.id, existing.id));
     } else {
       await db.insert(bloodEmergencyResponsesTable).values({
-        requestId: req.params.id, donorId: req.userId!, response,
+        requestId, donorId: req.userId!, response,
       });
     }
     res.json({ success: true });
@@ -213,13 +214,14 @@ router.post("/blood/request/:id/respond", requireAuth, async (req: AuthRequest, 
 // ── Flag Request ──────────────────────────────────────────────────────────────
 router.post("/blood/request/:id/flag", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const [request] = await db.select().from(bloodEmergencyRequestsTable).where(eq(bloodEmergencyRequestsTable.id, req.params.id));
+    const flagId = String(req.params.id);
+    const [request] = await db.select().from(bloodEmergencyRequestsTable).where(eq(bloodEmergencyRequestsTable.id, flagId));
     if (!request) { res.status(404).json({ error: "Request not found" }); return; }
     const newCount = request.flagCount + 1;
     await db.update(bloodEmergencyRequestsTable).set({
       flagCount: newCount,
       isFlagged: newCount >= 3,
-    }).where(eq(bloodEmergencyRequestsTable.id, req.params.id));
+    }).where(eq(bloodEmergencyRequestsTable.id, flagId));
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Failed to flag request" });
@@ -232,7 +234,7 @@ router.patch("/blood/request/:id/fulfil", requireAuth, async (req: AuthRequest, 
     await db.update(bloodEmergencyRequestsTable)
       .set({ status: "fulfilled", fulfilledAt: new Date() })
       .where(and(
-        eq(bloodEmergencyRequestsTable.id, req.params.id),
+        eq(bloodEmergencyRequestsTable.id, String(req.params.id)),
         eq(bloodEmergencyRequestsTable.requesterId, req.userId!),
       ));
     res.json({ success: true });

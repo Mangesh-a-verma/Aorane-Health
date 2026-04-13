@@ -250,12 +250,12 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       .limit(1);
 
     if (cached && cached.suggestionsJson) {
-      return res.json({
+      res.json({
         suggestions: cached.suggestionsJson,
         fromCache: true,
         generatedAt: cached.generatedAt,
         date: today,
-      });
+      }); return;
     }
 
     // 2. Load user data
@@ -353,7 +353,7 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       isAiGenerated: true,
     });
 
-    return res.json({ suggestions, fromCache: false, generatedAt, date: today });
+    res.json({ suggestions, fromCache: false, generatedAt, date: today });
   } catch (err) {
     console.error("Suggestions error:", err);
     res.status(500).json({ error: "Failed to generate suggestions" });

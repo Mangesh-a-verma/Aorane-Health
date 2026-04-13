@@ -71,7 +71,7 @@ router.post("/period/log", requireAuth, async (req: AuthRequest, res) => {
 
 router.patch("/period/log/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const { endDate, symptoms, flow, notes } = req.body as Record<string, unknown>;
     const [updated] = await db.update(periodLogsTable).set({ endDate: endDate as string, symptoms: symptoms as string[], flow: flow as string, notes: notes as string }).where(eq(periodLogsTable.id, id)).returning();
     res.json({ success: true, log: updated });

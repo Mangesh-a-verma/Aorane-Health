@@ -93,8 +93,9 @@ router.patch("/admin/users/:id", requireAdmin, async (req: AdminRequest, res) =>
     if (plan !== undefined) updates.plan = plan;
     if (isActive !== undefined) updates.isActive = isActive;
     if (isBanned !== undefined) updates.isBanned = isBanned;
-    const [updated] = await db.update(usersTable).set(updates as Parameters<typeof db.update>[0] extends infer T ? T : never).where(eq(usersTable.id, req.params.id)).returning();
-    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "update_user", targetType: "user", targetId: req.params.id, details: updates });
+    const userId = String(req.params.id);
+    const [updated] = await db.update(usersTable).set(updates as Partial<typeof usersTable.$inferInsert>).where(eq(usersTable.id, userId)).returning();
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "update_user", targetType: "user", targetId: userId, details: updates });
     res.json({ user: updated });
   } catch {
     res.status(500).json({ error: "Failed to update user" });
@@ -136,8 +137,9 @@ router.patch("/admin/feature-flags/:key", requireAdmin, async (req: AdminRequest
     if (isEnabled !== undefined) updates.isEnabled = isEnabled;
     if (enabledForPlans !== undefined) updates.enabledForPlans = enabledForPlans;
     if (config !== undefined) updates.config = config;
-    const [updated] = await db.update(featureFlagsTable).set(updates as Parameters<typeof db.update>[0] extends infer T ? T : never).where(eq(featureFlagsTable.key, req.params.key)).returning();
-    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "toggle_feature_flag", targetType: "feature_flag", targetId: req.params.key, details: { isEnabled } });
+    const flagKey = String(req.params.key);
+    const [updated] = await db.update(featureFlagsTable).set(updates as Partial<typeof featureFlagsTable.$inferInsert>).where(eq(featureFlagsTable.key, flagKey)).returning();
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "toggle_feature_flag", targetType: "feature_flag", targetId: flagKey, details: { isEnabled } });
     res.json({ flag: updated });
   } catch {
     res.status(500).json({ error: "Failed to update feature flag" });
@@ -156,8 +158,8 @@ router.get("/admin/food-items", requireAdmin, async (req: AdminRequest, res) => 
 
 router.post("/admin/food-items", requireAdmin, async (req: AdminRequest, res) => {
   try {
-    const body = req.body as Record<string, unknown>;
-    const [item] = await db.insert(foodItemsTable).values({ ...body as Parameters<typeof db.insert>[1], addedByAdmin: true, isVerified: true } as Parameters<typeof db.insert>[1]).returning();
+    const body = req.body as Partial<typeof foodItemsTable.$inferInsert>;
+    const [item] = await db.insert(foodItemsTable).values({ ...body, addedByAdmin: true, isVerified: true } as typeof foodItemsTable.$inferInsert).returning();
     res.status(201).json({ item });
   } catch {
     res.status(500).json({ error: "Failed to create food item" });
@@ -217,7 +219,7 @@ router.patch("/admin/blood-requests/:id", requireAdmin, async (req: AdminRequest
     const updates: Record<string, unknown> = {};
     if (status !== undefined) updates.status = status;
     if (isFlagged !== undefined) updates.isFlagged = isFlagged;
-    const [updated] = await db.update(bloodEmergencyRequestsTable).set(updates as Parameters<typeof db.update>[0] extends infer T ? T : never).where(eq(bloodEmergencyRequestsTable.id, req.params.id)).returning();
+    const [updated] = await db.update(bloodEmergencyRequestsTable).set(updates as Partial<typeof bloodEmergencyRequestsTable.$inferInsert>).where(eq(bloodEmergencyRequestsTable.id, String(req.params.id))).returning();
     res.json({ request: updated });
   } catch {
     res.status(500).json({ error: "Failed to update blood request" });
@@ -279,11 +281,12 @@ router.post("/admin/subscriptions/grant", requireAdmin, async (req: AdminRequest
 
 router.patch("/admin/subscriptions/:id/cancel", requireAdmin, async (req: AdminRequest, res) => {
   try {
-    const [sub] = await db.update(subscriptionsTable).set({ status: "cancelled", cancelledAt: new Date() }).where(eq(subscriptionsTable.id, req.params.id)).returning();
+    const subId = String(req.params.id);
+    const [sub] = await db.update(subscriptionsTable).set({ status: "cancelled", cancelledAt: new Date() }).where(eq(subscriptionsTable.id, subId)).returning();
     if (sub?.userId) {
       await db.update(usersTable).set({ plan: "free" }).where(eq(usersTable.id, sub.userId));
     }
-    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "cancel_subscription", targetType: "subscription", targetId: req.params.id, details: {} });
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "cancel_subscription", targetType: "subscription", targetId: subId, details: {} });
     res.json({ success: true, subscription: sub });
   } catch {
     res.status(500).json({ error: "Failed to cancel subscription" });
@@ -471,15 +474,19 @@ router.get("/admin/ai-config", requireAdmin, async (_req: AdminRequest, res) => 
 
 router.put("/admin/ai-config/:feature", requireAdmin, async (req: AdminRequest, res) => {
   try {
-    const { feature } = req.params;
+    const feature = String(req.params.feature);
     const { provider, model, apiKey, systemPrompt, isEnabled } = req.body as Record<string, unknown>;
+    const providerStr = (provider as string) || "gemini";
+    const modelStr = (model as string) || "gemini-2.0-flash";
+    const apiKeyStr = (apiKey as string) || null;
+    const systemPromptStr = (systemPrompt as string) || null;
     const label = DEFAULT_AI_FEATURES.find(f => f.feature === feature)?.label || feature;
     const existing = await db.select().from(aiConfigTable).where(eq(aiConfigTable.feature, feature)).limit(1);
     let result;
     if (existing.length === 0) {
-      [result] = await db.insert(aiConfigTable).values({ feature, label, provider: provider as string || "gemini", model: model as string || "gemini-2.0-flash", apiKey: apiKey as string || null, systemPrompt: systemPrompt as string || null, isEnabled: isEnabled !== false }).returning();
+      [result] = await db.insert(aiConfigTable).values({ feature, label, provider: providerStr, model: modelStr, apiKey: apiKeyStr, systemPrompt: systemPromptStr, isEnabled: isEnabled !== false }).returning();
     } else {
-      [result] = await db.update(aiConfigTable).set({ provider: provider as string, model: model as string, apiKey: apiKey as string || null, systemPrompt: systemPrompt as string || null, isEnabled: isEnabled as boolean, updatedAt: new Date() }).where(eq(aiConfigTable.feature, feature)).returning();
+      [result] = await db.update(aiConfigTable).set({ provider: providerStr, model: modelStr, apiKey: apiKeyStr, systemPrompt: systemPromptStr, isEnabled: Boolean(isEnabled), updatedAt: new Date() }).where(eq(aiConfigTable.feature, feature)).returning();
     }
     res.json({ config: result, success: true });
   } catch { res.status(500).json({ error: "Failed to update AI config" }); }
