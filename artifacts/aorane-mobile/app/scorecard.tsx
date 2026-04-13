@@ -13,7 +13,7 @@ import QRCode from "react-native-qrcode-svg";
 
 const { width: W } = Dimensions.get("window");
 const CARD_W = Math.min(W - 32, 400);
-const PLAYSTORE_URL = "https://play.google.com/store/apps/details?id=in.aorane.health";
+const PLAYSTORE_URL = "https://play.google.com/store/apps/details?id=in.aorane.app";
 
 // ─── Avatar options ───────────────────────────────────────────────────────────
 const AVATARS = [
