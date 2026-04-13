@@ -31,7 +31,8 @@
         "EXPO_PUBLIC_API_URL": "https://aorane.onrender.com/api"
       },
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "image": "latest"
       }
     }
   },
