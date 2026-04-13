@@ -1,6 +1,6 @@
 {
-  "installCommand": "npx --yes pnpm@10.26.1 install --frozen-lockfile --ignore-scripts && npx pnpm@10.26.1 rebuild esbuild",
-  "buildCommand": "NODE_ENV=production BASE_PATH=/ npx pnpm@10.26.1 --filter @workspace/aorane-landing build",
+  "installCommand": "npx --yes pnpm@10.26.1 install --frozen-lockfile",
+  "buildCommand": "NODE_ENV=production BASE_PATH=/ pnpm run build",
   "outputDirectory": "dist/public",
   "framework": null,
   "rewrites": [
