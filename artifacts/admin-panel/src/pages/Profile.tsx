@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Layout from "@/components/Layout";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { User, Lock, Shield, Calendar, Mail, Save, Eye, EyeOff } from "lucide-react";
+import { User, Lock, Shield, Calendar, Mail, Save, Eye, EyeOff, RefreshCw, AlertCircle } from "lucide-react";
 
 type AdminProfile = {
   id: string;
@@ -20,6 +20,7 @@ export default function Profile() {
 
   const [profile, setProfile] = useState<AdminProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const [fullName, setFullName] = useState("");
   const [savingName, setSavingName] = useState(false);
@@ -32,15 +33,22 @@ export default function Profile() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
 
-  useEffect(() => {
-    api.getMyProfile()
-      .then((r) => {
-        setProfile(r.admin);
-        setFullName(r.admin.fullName);
-      })
-      .catch(() => toast({ title: "Failed to load profile", variant: "destructive" }))
-      .finally(() => setLoading(false));
+  const loadProfile = useCallback(async () => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const r = await api.getMyProfile();
+      setProfile(r.admin);
+      setFullName(r.admin.fullName);
+    } catch (err: unknown) {
+      const msg = (err as Error).message || "Failed to load profile";
+      setLoadError(msg);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { loadProfile(); }, [loadProfile]);
 
   async function handleSaveName(e: React.FormEvent) {
     e.preventDefault();
@@ -89,8 +97,33 @@ export default function Profile() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-64">
+        <div className="flex flex-col items-center justify-center min-h-64 gap-3">
           <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-white/40 text-sm">Loading profile...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Layout>
+        <div className="max-w-2xl mx-auto">
+          <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-8 text-center space-y-4">
+            <AlertCircle className="w-10 h-10 text-red-400 mx-auto" />
+            <div>
+              <h2 className="text-white font-semibold mb-1">Failed to load profile</h2>
+              <p className="text-white/40 text-sm">{loadError}</p>
+              <p className="text-white/30 text-xs mt-2">Server may be starting up — try again in a moment</p>
+            </div>
+            <button
+              onClick={loadProfile}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/15 transition-colors"
+            >
+              <RefreshCw size={14} />
+              Try Again
+            </button>
+          </div>
         </div>
       </Layout>
     );
@@ -161,7 +194,7 @@ export default function Profile() {
             </div>
             <button
               type="submit"
-              disabled={savingName || fullName.trim() === profile?.fullName}
+              disabled={savingName || !fullName.trim() || fullName.trim() === profile?.fullName}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1B998B] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#1B998B]/80 transition-colors"
             >
               <Save size={14} />
