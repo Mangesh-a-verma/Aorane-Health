@@ -6,7 +6,7 @@ import {
   Tag, Megaphone, Droplet, Languages, ClipboardList, LogOut,
   Menu, X, ShieldAlert, ChevronRight, CreditCard, BarChart3,
   DollarSign, MonitorPlay, Paintbrush2, Brain, Bell, Search,
-  Sun, Moon, IndianRupee, Sliders, Rocket,
+  Sun, Moon, IndianRupee, Sliders, Rocket, UserCircle,
 } from "lucide-react";
 
 type NavItem = { path: string; icon: React.ElementType; label: string; color: string };
@@ -170,6 +170,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
+          <Link href="/profile">
+            <div className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-95 cursor-pointer mb-2"
+                 style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.65)" }}>
+              <UserCircle size={12} />
+              My Profile
+            </div>
+          </Link>
           <button
             onClick={logout}
             className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-95"

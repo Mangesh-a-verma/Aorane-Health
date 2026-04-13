@@ -485,4 +485,46 @@ router.put("/admin/ai-config/:feature", requireAdmin, async (req: AdminRequest, 
   } catch { res.status(500).json({ error: "Failed to update AI config" }); }
 });
 
+router.get("/admin/me", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const [admin] = await db.select({
+      id: adminUsersTable.id,
+      fullName: adminUsersTable.fullName,
+      email: adminUsersTable.email,
+      role: adminUsersTable.role,
+      lastLoginAt: adminUsersTable.lastLoginAt,
+      createdAt: adminUsersTable.createdAt,
+    }).from(adminUsersTable).where(eq(adminUsersTable.id, req.adminId!));
+    if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
+    res.json({ admin });
+  } catch { res.status(500).json({ error: "Failed to fetch profile" }); }
+});
+
+router.patch("/admin/me", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { fullName } = req.body as { fullName: string };
+    if (!fullName?.trim()) { res.status(400).json({ error: "Full name is required" }); return; }
+    const [updated] = await db.update(adminUsersTable)
+      .set({ fullName: fullName.trim() })
+      .where(eq(adminUsersTable.id, req.adminId!))
+      .returning({ id: adminUsersTable.id, fullName: adminUsersTable.fullName, email: adminUsersTable.email, role: adminUsersTable.role });
+    res.json({ admin: updated, success: true });
+  } catch { res.status(500).json({ error: "Failed to update profile" }); }
+});
+
+router.post("/admin/change-password", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body as { currentPassword: string; newPassword: string };
+    if (!currentPassword || !newPassword) { res.status(400).json({ error: "Both passwords are required" }); return; }
+    if (newPassword.length < 8) { res.status(400).json({ error: "New password must be at least 8 characters" }); return; }
+    const [admin] = await db.select().from(adminUsersTable).where(eq(adminUsersTable.id, req.adminId!));
+    if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
+    const currentHash = crypto.createHash("sha256").update(currentPassword).digest("hex");
+    if (admin.passwordHash !== currentHash) { res.status(401).json({ error: "Current password is incorrect" }); return; }
+    const newHash = crypto.createHash("sha256").update(newPassword).digest("hex");
+    await db.update(adminUsersTable).set({ passwordHash: newHash }).where(eq(adminUsersTable.id, req.adminId!));
+    res.json({ success: true, message: "Password changed successfully" });
+  } catch { res.status(500).json({ error: "Failed to change password" }); }
+});
+
 export default router;
