@@ -11,7 +11,8 @@ const isProduction = process.env.NODE_ENV === "production";
 const rawPort = process.env.PORT;
 const port = rawPort ? Number(rawPort) : 3000;
 
-const basePath = process.env.BASE_PATH ?? "/";
+const rawBasePath = process.env.BASE_PATH ?? "/";
+const basePath = rawBasePath.replace(/\/+$/, "") || "/";
 
 if (!isProduction && !process.env.PORT) {
   throw new Error("PORT environment variable is required but was not provided.");
@@ -20,8 +21,10 @@ if (!isProduction && !process.env.BASE_PATH) {
   throw new Error("BASE_PATH environment variable is required but was not provided.");
 }
 
+const apiProxyPath = basePath === "/" ? "/api" : `${basePath}/api`;
+
 export default defineConfig({
-  base: basePath,
+  base: rawBasePath,
   plugins: [
     react(),
     tailwindcss(),
@@ -65,9 +68,12 @@ export default defineConfig({
       "Pragma": "no-cache",
     },
     proxy: {
-      "/api": {
+      [apiProxyPath]: {
         target: "http://localhost:8080",
         changeOrigin: true,
+        rewrite: basePath === "/"
+          ? undefined
+          : (reqPath: string) => reqPath.replace(new RegExp(`^${basePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`), ""),
       },
     },
     fs: {
