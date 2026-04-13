@@ -3,9 +3,18 @@ import { db, usersTable, userProfilesTable, userPreferencesTable, userMedicalCon
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { callDeepSeek } from "../../lib/nvidia";
 
 const router = Router();
 
+// NVIDIA (LLaMA 3.3 70B) — diet-plan, health-tip, meal-swap ke liye
+async function callNvidia(prompt: string, maxTokens = 3000): Promise<string> {
+  const nvidiaKey = process.env.NVIDIA_API_KEY;
+  if (!nvidiaKey) throw new Error("NVIDIA_API_KEY not set");
+  return callDeepSeek([{ role: "user", content: prompt }], nvidiaKey, maxTokens, 0.4);
+}
+
+// Gemini — SIRF smart-scan ke liye (image mein medical report aa sakta hai)
 async function callGemini(prompt: string, geminiKey: string): Promise<string> {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
@@ -25,8 +34,7 @@ async function callGemini(prompt: string, geminiKey: string): Promise<string> {
 
 router.post("/ai/diet-plan", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
-    if (!geminiKey) return res.status(503).json({ error: "AI service not configured" });
+    if (!process.env.NVIDIA_API_KEY) return res.status(503).json({ error: "AI service not configured" });
 
     const userId = req.userId!;
     const { days = 1, preferences = {} } = req.body as { days?: number; preferences?: Record<string, unknown> };
@@ -111,7 +119,7 @@ Return ONLY valid JSON (no markdown, no extra text):
   "generalTips": ["tip1", "tip2", "tip3"]
 }`;
 
-    const jsonStr = await callGemini(prompt, geminiKey);
+    const jsonStr = await callNvidia(prompt, 4000);
     const plan = JSON.parse(jsonStr);
 
     res.json({ plan, generatedAt: new Date().toISOString(), userId });
@@ -123,8 +131,7 @@ Return ONLY valid JSON (no markdown, no extra text):
 
 router.post("/ai/health-tip", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
-    if (!geminiKey) return res.status(503).json({ error: "AI service not configured" });
+    if (!process.env.NVIDIA_API_KEY) return res.status(503).json({ error: "AI service not configured" });
 
     const { context = "" } = req.body as { context?: string };
 
@@ -138,7 +145,7 @@ Return ONLY valid JSON:
   "emoji": "single relevant emoji"
 }`;
 
-    const jsonStr = await callGemini(prompt, geminiKey);
+    const jsonStr = await callNvidia(prompt, 500);
     const result = JSON.parse(jsonStr);
     res.json(result);
   } catch {
@@ -148,8 +155,7 @@ Return ONLY valid JSON:
 
 router.post("/ai/meal-swap", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
-    if (!geminiKey) return res.status(503).json({ error: "AI service not configured" });
+    if (!process.env.NVIDIA_API_KEY) return res.status(503).json({ error: "AI service not configured" });
 
     const { mealName, reason, dietaryPref = "vegetarian" } = req.body as { mealName: string; reason?: string; dietaryPref?: string };
     if (!mealName) return res.status(400).json({ error: "mealName required" });
@@ -165,7 +171,7 @@ Return ONLY valid JSON:
   ]
 }`;
 
-    const jsonStr = await callGemini(prompt, geminiKey);
+    const jsonStr = await callNvidia(prompt, 800);
     const result = JSON.parse(jsonStr);
     res.json(result);
   } catch {

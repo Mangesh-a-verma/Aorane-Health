@@ -15,28 +15,15 @@ import {
 import { eq, and, gte, lte } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { callDeepSeek } from "../../lib/nvidia";
 
 const router = Router();
 
-// ── Gemini helper (reused from ai.ts pattern) ─────────────────────────────────
+// ── NVIDIA helper (LLaMA 3.3 70B) — Gemini se migrate kiya Jan 2026 tak ──────
 async function callGemini(prompt: string): Promise<string> {
-  const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
-  if (!geminiKey) throw new Error("GEMINI_API_KEY not set");
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    }
-  );
-  if (!res.ok) throw new Error(`Gemini error: ${res.status}`);
-  const data = await res.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON in Gemini response");
-  return jsonMatch[0];
+  const nvidiaKey = process.env.NVIDIA_API_KEY;
+  if (!nvidiaKey) throw new Error("NVIDIA_API_KEY not set");
+  return callDeepSeek([{ role: "user", content: prompt }], nvidiaKey, 2000, 0.4);
 }
 
 // ── Indian season detection ────────────────────────────────────────────────────

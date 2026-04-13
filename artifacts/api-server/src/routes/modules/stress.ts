@@ -3,16 +3,14 @@ import { db, stressLogsTable, userProfilesTable, exerciseLogsTable, waterLogsTab
 import { eq, and, gte, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { callDeepSeek } from "../../lib/nvidia";
 
 const router = Router();
 
-async function callGemini(prompt: string, key: string): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
-    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
-  );
-  const data = await res.json() as { candidates?: Array<{ content: { parts: Array<{ text: string }> } }> };
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+async function callNvidia(prompt: string): Promise<string> {
+  const nvidiaKey = process.env.NVIDIA_API_KEY;
+  if (!nvidiaKey) throw new Error("NVIDIA_API_KEY not set");
+  return callDeepSeek([{ role: "user", content: prompt }], nvidiaKey, 600, 0.4);
 }
 
 router.post("/stress/log", requireAuth, async (req: AuthRequest, res) => {
@@ -130,11 +128,11 @@ router.get("/stress/insight", requireAuth, async (req: AuthRequest, res) => {
       ? Math.round(recentLogs.reduce((s, l) => s + l.stressScore, 0) / recentLogs.length)
       : 40;
 
-    const geminiKey = process.env["GOOGLE_GEMINI_API_KEY"];
+    const nvidiaKey = process.env["NVIDIA_API_KEY"];
     let insight = "";
     let aiTips: string[] = [];
 
-    if (geminiKey && recentLogs.length > 0) {
+    if (nvidiaKey && recentLogs.length > 0) {
       const logSummary = recentLogs.slice(0, 7).map(l =>
         `${l.loggedAt.toISOString().split("T")[0]}: score=${l.stressScore}, type=${l.stressType}${l.mood ? `, mood=${l.mood}` : ""}${l.pillars ? `, pillars=${JSON.stringify(l.pillars)}` : ""}`
       ).join("\n");
@@ -154,7 +152,7 @@ Format your response as JSON exactly like this:
 {"insight": "...", "tips": ["tip1", "tip2", "tip3"]}`;
 
       try {
-        const raw = await callGemini(prompt, geminiKey);
+        const raw = await callNvidia(prompt);
         const jsonMatch = raw.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]) as { insight?: string; tips?: string[] };
@@ -176,7 +174,7 @@ Format your response as JSON exactly like this:
       else aiTips = ["Abhi 4-7-8 breathing shuru karo", "Aaj exercise zaroor karo, chahe 15 min walking ho", "Kisi dost ya family se baat karo"];
     }
 
-    res.json({ avgScore: avg, insight, tips: aiTips, logsCount: recentLogs.length, aiPowered: !!(geminiKey && recentLogs.length > 0) });
+    res.json({ avgScore: avg, insight, tips: aiTips, logsCount: recentLogs.length, aiPowered: !!(nvidiaKey && recentLogs.length > 0) });
   } catch {
     res.status(500).json({ error: "Failed to get insight" });
   }

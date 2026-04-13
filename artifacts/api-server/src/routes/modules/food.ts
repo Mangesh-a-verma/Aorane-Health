@@ -3,6 +3,7 @@ import { db, foodLogsTable, foodItemsTable, foodScanCacheTable } from "@workspac
 import { eq, and, gte, lte, ilike, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { callDeepSeek } from "../../lib/nvidia";
 
 const router = Router();
 
@@ -225,15 +226,16 @@ router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
       }
     }
 
-    // ── Level 4: Gemini AI (called only when not found anywhere) ─────────────
-    const geminiKey = process.env["GOOGLE_GEMINI_API_KEY"];
-    if (!geminiKey) {
-      return res.status(503).json({ error: "AI service not configured" });
-    }
+    // ── Level 4: AI fallback ──────────────────────────────────────────────────
+    // Text search → NVIDIA LLaMA 3.3 70B (fast, no quota issues)
+    // Image scan → Gemini (vision support needed, food images only, no personal data)
+    let result: Record<string, unknown>;
 
-    let promptText = "";
     if (searchTerm) {
-      promptText = `You are a certified Indian dietitian. The user typed "${searchTerm}" — this could be in Hindi, Hinglish, regional language or English. Identify the food and provide complete nutrition data.
+      const nvidiaKey = process.env["NVIDIA_API_KEY"];
+      if (!nvidiaKey) return res.status(503).json({ error: "AI service not configured" });
+
+      const prompt = `You are a certified Indian dietitian. The user typed "${searchTerm}" — this could be in Hindi, Hinglish, regional language or English. Identify the food and provide complete nutrition data.
 
 Return ONLY a valid JSON object (no markdown) with these exact fields:
 {
@@ -262,22 +264,28 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
   "glycemicIndex": number or null,
   "healthTip": "1 sentence health tip in Hinglish"
 }`;
+
+      const jsonStr = await callDeepSeek([{ role: "user", content: prompt }], nvidiaKey, 1500, 0.3);
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+      result = jsonMatch ? JSON.parse(jsonMatch[0]) : { foodNameEn: searchTerm, calories: 100, proteinG: 0, carbsG: 25, fatG: 2, fiberG: 0, servingSizeG: 100, servingDescription: "100g", category: "food", dietaryTags: [], vitamins: {} };
     } else if (imageBase64) {
-      promptText = `You are a certified Indian dietitian. Identify this food from the image and provide complete nutrition data. Return ONLY valid JSON with: foodNameEn, calories (per 100g), proteinG, carbsG, fatG, fiberG, sodiumMg, sugarG, servingSizeG, servingDescription, category, dietaryTags (array), vitamins (object with vitaminA_mcg, vitaminC_mg, vitaminD_mcg, vitaminB12_mcg, iron_mg, calcium_mg, potassium_mg, zinc_mg), glycemicIndex, healthTip.`;
+      // Image-based food scan — Gemini only (NVIDIA LLaMA does not support vision)
+      const geminiKey = process.env["GOOGLE_GEMINI_API_KEY"];
+      if (!geminiKey) return res.status(503).json({ error: "Image AI service not configured" });
+
+      const promptText = `You are a certified Indian dietitian. Identify this food from the image and provide complete nutrition data. Return ONLY valid JSON with: foodNameEn, calories (per 100g), proteinG, carbsG, fatG, fiberG, sodiumMg, sugarG, servingSizeG, servingDescription, category, dietaryTags (array), vitamins (object with vitaminA_mcg, vitaminC_mg, vitaminD_mcg, vitaminB12_mcg, iron_mg, calcium_mg, potassium_mg, zinc_mg), glycemicIndex, healthTip.`;
+      const geminiBody = { contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: mimeType || "image/jpeg", data: imageBase64 } }] }] };
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(geminiBody) }
+      );
+      const geminiData = await geminiRes.json() as { candidates?: Array<{ content: { parts: Array<{ text: string }> } }> };
+      const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      result = jsonMatch ? JSON.parse(jsonMatch[0]) : { foodNameEn: "Unknown Food", calories: 100, proteinG: 0, carbsG: 25, fatG: 2, fiberG: 0, servingSizeG: 100, servingDescription: "100g", category: "food", dietaryTags: [], vitamins: {} };
+    } else {
+      return res.status(400).json({ error: "searchTerm or imageBase64 required" });
     }
-
-    const geminiBody: Record<string, unknown> = imageBase64
-      ? { contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: mimeType || "image/jpeg", data: imageBase64 } }] }] }
-      : { contents: [{ parts: [{ text: promptText }] }] };
-
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(geminiBody) }
-    );
-    const geminiData = await geminiRes.json() as { candidates?: Array<{ content: { parts: Array<{ text: string }> } }> };
-    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const result = jsonMatch ? JSON.parse(jsonMatch[0]) : { foodNameEn: searchTerm || "Unknown Food", calories: 100, proteinG: 0, carbsG: 25, fatG: 2, fiberG: 0, servingSizeG: 100, servingDescription: "100g", category: "food", dietaryTags: [], vitamins: {} };
 
     // Save to AI-discovered foods cache so it's NEVER called again for this food
     if (searchTerm) {
