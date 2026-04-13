@@ -53,6 +53,7 @@
   },
   "dependencies": {
     "expo-auth-session": "^55.0.13",
+    "expo-build-properties": "^55.0.13",
     "expo-crypto": "^55.0.14",
     "expo-local-authentication": "^17.0.8",
     "expo-notifications": "^55.0.18",
