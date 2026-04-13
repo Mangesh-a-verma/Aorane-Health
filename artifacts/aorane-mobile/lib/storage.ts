@@ -14,7 +14,7 @@ export const storage = {
     return AsyncStorage.getItem("refresh_token");
   },
   async clearTokens(): Promise<void> {
-    await AsyncStorage.multiRemove(["auth_token", "refresh_token", "user_data", "onboarding_done", "pin_set", "biometric_enabled"]);
+    await AsyncStorage.multiRemove(["auth_token", "refresh_token", "user_data", "onboarding_done", "pin_set", "biometric_enabled", "app_pin"]);
   },
   async setUser(user: Record<string, unknown>): Promise<void> {
     await AsyncStorage.setItem("user_data", JSON.stringify(user));
