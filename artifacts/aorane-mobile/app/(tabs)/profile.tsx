@@ -264,7 +264,7 @@ export default function ProfileScreen() {
             {[
               { Icon: Diamond,    label: "Upgrade Plan",              color: DS.color.purple, bg: DS.color.purpleSoft, onPress: () => router.push("/upgrade" as never) },
               { Icon: Bell,       label: "Notifications & Reminders", color: P,               bg: DS.color.primarySoft, onPress: () => router.push("/notification-settings" as never) },
-              { Icon: HelpCircle, label: "Help & Support",            color: G,               bg: DS.color.greenSoft,   onPress: () => Alert.alert("Coming Soon") },
+              { Icon: HelpCircle, label: "Help & Support",            color: G,               bg: DS.color.greenSoft,   onPress: () => router.push("/help" as never) },
             ].map((item, idx) => (
               <TouchableOpacity
                 key={item.label}

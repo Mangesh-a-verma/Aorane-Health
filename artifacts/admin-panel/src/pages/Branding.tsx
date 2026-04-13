@@ -21,7 +21,7 @@ type CompanySettings = {
 
 const DEFAULTS: CompanySettings = {
   companyName: "AORANE Health", companyLogoUrl: null, tagline: "Your Health, In Your Hands",
-  website: "aorane.com", supportPhone: null, supportEmail: null, address: null,
+  website: "aorane.com", supportPhone: "+917307826291", supportEmail: "support@aorane.com", address: "Indra Nagar, Near Lekhraj Metro, Lucknow, Uttar Pradesh 226016",
   primaryColor: "#0077B6", accentColor: "#00B896",
   scorecardShowQr: true, scorecardShowBloodGroup: true, scorecardShowBmi: true,
   scorecardShowActivePercent: true, scorecardBgGradientFrom: "#023E8A", scorecardBgGradientTo: "#1B998B",

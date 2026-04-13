@@ -119,7 +119,7 @@ export default function PricingPage() {
           viewport={{ once: true }}
         >
           <h2 className="text-2xl font-extrabold text-gray-900 mb-2 text-center">Frequently Asked Questions</h2>
-          <p className="text-gray-500 text-center text-sm mb-8">Got more questions? Email us at hello@aorane.in</p>
+          <p className="text-gray-500 text-center text-sm mb-8">Got more questions? Email us at support@aorane.com or call +91 73078 26291</p>
           <div className="space-y-3">
             {faqs.map((faq) => <FAQItem key={faq.q} faq={faq} />)}
           </div>

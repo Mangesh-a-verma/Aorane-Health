@@ -637,10 +637,15 @@ export default function Landing() {
             <span>•</span>
             <span>© 2026 AORANE Health Tech</span>
           </div>
-          <div className="flex gap-3 text-xs">
-            <a href="https://aorane.com" className="text-white/30 hover:text-white/60 transition-colors">Main Website</a>
-            <span className="text-white/15">•</span>
-            <a href="mailto:business@aorane.in" className="text-white/30 hover:text-white/60 transition-colors">business@aorane.in</a>
+          <div className="flex flex-col items-end gap-1 text-xs text-white/30">
+            <div className="flex gap-3">
+              <a href="https://aorane.com" className="hover:text-white/60 transition-colors">Main Website</a>
+              <span className="text-white/15">•</span>
+              <a href="mailto:support@aorane.com" className="hover:text-white/60 transition-colors">support@aorane.com</a>
+              <span className="text-white/15">•</span>
+              <a href="tel:+917307826291" className="hover:text-white/60 transition-colors">+91 73078 26291</a>
+            </div>
+            <span>Indra Nagar, Near Lekhraj Metro, Lucknow, UP 226016</span>
           </div>
         </div>
       </footer>

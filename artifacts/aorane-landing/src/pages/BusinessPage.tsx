@@ -152,7 +152,7 @@ export default function BusinessPage() {
                 <motion.a href="#pricing" whileHover={{ scale: 1.02 }} className="flex items-center justify-center gap-2 px-6 py-3.5 green-gradient text-white rounded-2xl font-bold text-sm shadow">
                   Start Free Trial <ArrowRight className="w-4 h-4" />
                 </motion.a>
-                <motion.a href="mailto:business@aorane.in" whileHover={{ scale: 1.02 }} className="flex items-center justify-center gap-2 px-6 py-3.5 bg-white/10 text-white rounded-2xl font-bold text-sm border border-white/20 hover:bg-white/20 transition-colors">
+                <motion.a href="mailto:support@aorane.com" whileHover={{ scale: 1.02 }} className="flex items-center justify-center gap-2 px-6 py-3.5 bg-white/10 text-white rounded-2xl font-bold text-sm border border-white/20 hover:bg-white/20 transition-colors">
                   Book a Demo
                 </motion.a>
               </div>

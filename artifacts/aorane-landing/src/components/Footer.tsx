@@ -21,7 +21,7 @@ export default function Footer() {
         { label: "Blog", href: "#" },
         { label: "Careers", href: "#" },
         { label: "Press Kit", href: "#" },
-        { label: "Contact Us", href: "mailto:hello@aorane.in" },
+        { label: "Contact Us", href: "mailto:support@aorane.com" },
       ],
     },
     {
@@ -53,15 +53,15 @@ export default function Footer() {
             <div className="space-y-2.5 text-sm text-gray-400">
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-[#10B981]" />
-                <a href="mailto:hello@aorane.in" className="hover:text-white transition-colors">hello@aorane.in</a>
+                <a href="mailto:support@aorane.com" className="hover:text-white transition-colors">support@aorane.com</a>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-[#10B981]" />
-                <a href="tel:+918800000000" className="hover:text-white transition-colors">+91 88000 00000</a>
+                <a href="tel:+917307826291" className="hover:text-white transition-colors">+91 73078 26291</a>
               </div>
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-[#10B981] mt-0.5 shrink-0" />
-                <span>Bengaluru, Karnataka, India 560001</span>
+                <span>Indra Nagar, Near Lekhraj Metro,<br />Lucknow, Uttar Pradesh 226016</span>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
@@ -92,7 +92,7 @@ export default function Footer() {
 
         <div className="border-t border-white/10 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-500">
-            © {year} AORANE Health Technologies Pvt. Ltd. All rights reserved. GST: 29XXXXX1234X1Z5
+            © {year} AORANE Health Technologies Pvt. Ltd. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
             <span className="text-xs text-gray-500 flex items-center gap-1">
