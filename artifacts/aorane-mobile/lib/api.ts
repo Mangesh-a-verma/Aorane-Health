@@ -8,6 +8,12 @@ const API_BASE =
     ? "/api"
     : process.env.EXPO_PUBLIC_API_URL || "http://localhost:8080/api";
 
+let _onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedCallback(cb: () => void) {
+  _onUnauthorized = cb;
+}
+
 async function getToken(): Promise<string | null> {
   return AsyncStorage.getItem("auth_token");
 }
@@ -33,6 +39,12 @@ async function request<T>(
     });
   } catch {
     throw new Error("Network error — check your internet connection");
+  }
+
+  if (res.status === 401 && auth) {
+    await AsyncStorage.multiRemove(["auth_token", "refresh_token", "user_data", "onboarding_done", "pin_set", "app_pin"]);
+    _onUnauthorized?.();
+    throw new Error("Session expired — please log in again");
   }
 
   let text = "";

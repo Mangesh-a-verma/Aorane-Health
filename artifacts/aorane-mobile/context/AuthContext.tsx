@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { storage } from "@/lib/storage";
-import { api } from "@/lib/api";
+import { api, setUnauthorizedCallback } from "@/lib/api";
 
 type User = {
   id: string;
@@ -41,6 +41,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     initAuth();
+  }, []);
+
+  useEffect(() => {
+    setUnauthorizedCallback(() => {
+      setState({
+        isLoading: false,
+        isAuthenticated: false,
+        isOnboardingDone: false,
+        isPinSet: false,
+        user: null,
+        token: null,
+      });
+    });
+    return () => setUnauthorizedCallback(() => {});
   }, []);
 
   async function initAuth() {
