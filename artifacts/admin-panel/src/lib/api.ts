@@ -180,7 +180,7 @@ export const api = {
     req<{ success: boolean; plans: PlanPricingItem[] }>("/admin/plan-pricing/reset", { method: "POST" }),
 
   getMyProfile: () => req<{ admin: { id: string; fullName: string; email: string; role: string; lastLoginAt: string | null; createdAt: string } }>("/admin/me"),
-  updateMyProfile: (data: { fullName: string }) =>
+  updateMyProfile: (data: { fullName?: string; email?: string }) =>
     req<{ admin: { id: string; fullName: string; email: string; role: string }; success: boolean }>("/admin/me", { method: "PATCH", body: JSON.stringify(data) }),
   changePassword: (currentPassword: string, newPassword: string) =>
     req<{ success: boolean; message: string }>("/admin/change-password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),

@@ -502,10 +502,28 @@ router.get("/admin/me", requireAdmin, async (req: AdminRequest, res) => {
 
 router.patch("/admin/me", requireAdmin, async (req: AdminRequest, res) => {
   try {
-    const { fullName } = req.body as { fullName: string };
-    if (!fullName?.trim()) { res.status(400).json({ error: "Full name is required" }); return; }
+    const { fullName, email } = req.body as { fullName?: string; email?: string };
+    if (!fullName?.trim() && !email?.trim()) {
+      res.status(400).json({ error: "At least one field (fullName or email) is required" }); return;
+    }
+    const updates: Record<string, string> = {};
+    if (fullName?.trim()) updates.fullName = fullName.trim();
+    if (email?.trim()) {
+      const normalizedEmail = email.trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(normalizedEmail)) {
+        res.status(400).json({ error: "Invalid email address" }); return;
+      }
+      const [existing] = await db.select({ id: adminUsersTable.id })
+        .from(adminUsersTable)
+        .where(eq(adminUsersTable.email, normalizedEmail));
+      if (existing && existing.id !== req.adminId) {
+        res.status(409).json({ error: "Email already in use by another admin" }); return;
+      }
+      updates.email = normalizedEmail;
+    }
     const [updated] = await db.update(adminUsersTable)
-      .set({ fullName: fullName.trim() })
+      .set(updates)
       .where(eq(adminUsersTable.id, req.adminId!))
       .returning({ id: adminUsersTable.id, fullName: adminUsersTable.fullName, email: adminUsersTable.email, role: adminUsersTable.role });
     res.json({ admin: updated, success: true });

@@ -3,7 +3,7 @@ import Layout from "@/components/Layout";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { User, Lock, Shield, Calendar, Mail, Save, Eye, EyeOff, RefreshCw, AlertCircle } from "lucide-react";
+import { User, Lock, Shield, Calendar, Mail, Save, Eye, EyeOff, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 
 type AdminProfile = {
   id: string;
@@ -23,7 +23,8 @@ export default function Profile() {
   const [loadError, setLoadError] = useState("");
 
   const [fullName, setFullName] = useState("");
-  const [savingName, setSavingName] = useState(false);
+  const [email, setEmail] = useState("");
+  const [savingInfo, setSavingInfo] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -40,6 +41,7 @@ export default function Profile() {
       const r = await api.getMyProfile();
       setProfile(r.admin);
       setFullName(r.admin.fullName);
+      setEmail(r.admin.email);
     } catch (err: unknown) {
       const msg = (err as Error).message || "Failed to load profile";
       setLoadError(msg);
@@ -50,19 +52,39 @@ export default function Profile() {
 
   useEffect(() => { loadProfile(); }, [loadProfile]);
 
-  async function handleSaveName(e: React.FormEvent) {
+  const infoChanged =
+    fullName.trim() !== (profile?.fullName ?? "") ||
+    email.trim().toLowerCase() !== (profile?.email ?? "").toLowerCase();
+
+  async function handleSaveInfo(e: React.FormEvent) {
     e.preventDefault();
-    if (!fullName.trim()) return;
-    setSavingName(true);
+    if (!fullName.trim()) {
+      toast({ title: "Full name cannot be empty", variant: "destructive" }); return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      toast({ title: "Please enter a valid email address", variant: "destructive" }); return;
+    }
+    setSavingInfo(true);
     try {
-      const r = await api.updateMyProfile({ fullName: fullName.trim() });
-      setProfile((p) => p ? { ...p, fullName: r.admin.fullName } : p);
-      if (authAdmin) login(localStorage.getItem("ap_token")!, { ...authAdmin, fullName: r.admin.fullName });
-      toast({ title: "Profile updated successfully" });
+      const updates: { fullName?: string; email?: string } = {};
+      if (fullName.trim() !== profile?.fullName) updates.fullName = fullName.trim();
+      if (email.trim().toLowerCase() !== profile?.email?.toLowerCase()) updates.email = email.trim();
+
+      const r = await api.updateMyProfile(updates);
+      setProfile((p) => p ? { ...p, fullName: r.admin.fullName, email: r.admin.email } : p);
+      setFullName(r.admin.fullName);
+      setEmail(r.admin.email);
+
+      const token = localStorage.getItem("ap_token");
+      if (authAdmin && token) {
+        login(token, { ...authAdmin, fullName: r.admin.fullName });
+      }
+      toast({ title: "Profile updated successfully!" });
     } catch (err: unknown) {
       toast({ title: (err as Error).message || "Failed to update profile", variant: "destructive" });
     } finally {
-      setSavingName(false);
+      setSavingInfo(false);
     }
   }
 
@@ -81,7 +103,7 @@ export default function Profile() {
     try {
       await api.changePassword(currentPassword, newPassword);
       setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
-      toast({ title: "Password changed successfully!" });
+      toast({ title: "Password changed successfully! Please login again if needed." });
     } catch (err: unknown) {
       toast({ title: (err as Error).message || "Failed to change password", variant: "destructive" });
     } finally {
@@ -92,6 +114,10 @@ export default function Profile() {
   function fmt(d: string | null) {
     if (!d) return "—";
     return new Date(d).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+  }
+
+  function getInitials(name: string) {
+    return name.split(" ").map(p => p[0]).join("").toUpperCase().slice(0, 2) || "A";
   }
 
   if (loading) {
@@ -137,52 +163,53 @@ export default function Profile() {
           <p className="text-white/50 text-sm mt-1">Manage your admin account details and password</p>
         </div>
 
-        {/* Profile Info Card */}
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 space-y-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-[#0077B6]/20 flex items-center justify-center">
-              <User size={18} className="text-[#0077B6]" />
+        {/* Avatar + Account Summary Card */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-xl font-bold shrink-0"
+                 style={{ background: "linear-gradient(135deg,#0077B6,#1B998B)" }}>
+              {getInitials(profile?.fullName ?? "A")}
             </div>
-            <div>
-              <h2 className="text-white font-semibold text-sm">Account Information</h2>
-              <p className="text-white/40 text-xs">Your admin profile details</p>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-white font-bold text-lg truncate">{profile?.fullName}</h2>
+              <p className="text-white/50 text-sm truncate">{profile?.email}</p>
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#0077B6]/20 text-[#0077B6]">
+                  <Shield size={10} className="mr-1" />
+                  {profile?.role?.toUpperCase()}
+                </span>
+                <span className="text-white/30 text-xs">
+                  <Calendar size={10} className="inline mr-1" />
+                  Since {fmt(profile?.createdAt ?? null)}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <p className="text-white/40 text-xs flex items-center gap-1.5"><Mail size={11} /> Email</p>
-              <p className="text-white text-sm font-medium">{profile?.email}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-white/40 text-xs flex items-center gap-1.5"><Shield size={11} /> Role</p>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#0077B6]/20 text-[#0077B6]">
-                {profile?.role?.toUpperCase()}
-              </span>
-            </div>
-            <div className="space-y-1">
-              <p className="text-white/40 text-xs flex items-center gap-1.5"><Calendar size={11} /> Member Since</p>
-              <p className="text-white text-sm">{fmt(profile?.createdAt ?? null)}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-white/40 text-xs flex items-center gap-1.5"><Calendar size={11} /> Last Login</p>
+          <div className="mt-5 pt-5 border-t border-white/6 grid grid-cols-2 gap-4">
+            <div className="space-y-0.5">
+              <p className="text-white/35 text-xs">Last Login</p>
               <p className="text-white text-sm">{fmt(profile?.lastLoginAt ?? null)}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-white/35 text-xs">Admin ID</p>
+              <p className="text-white/60 text-xs font-mono truncate">{profile?.id}</p>
             </div>
           </div>
         </div>
 
-        {/* Edit Name */}
+        {/* Edit Name + Email Card */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-10 h-10 rounded-xl bg-[#1B998B]/20 flex items-center justify-center">
               <User size={18} className="text-[#1B998B]" />
             </div>
             <div>
-              <h2 className="text-white font-semibold text-sm">Edit Name</h2>
-              <p className="text-white/40 text-xs">Update your display name</p>
+              <h2 className="text-white font-semibold text-sm">Edit Profile Info</h2>
+              <p className="text-white/40 text-xs">Update your name and email address</p>
             </div>
           </div>
-          <form onSubmit={handleSaveName} className="space-y-4">
+          <form onSubmit={handleSaveInfo} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-white/60 text-xs font-medium">Full Name</label>
               <input
@@ -192,14 +219,34 @@ export default function Profile() {
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-[#1B998B]/50 focus:ring-1 focus:ring-[#1B998B]/30"
               />
             </div>
+            <div className="space-y-1.5">
+              <label className="text-white/60 text-xs font-medium flex items-center gap-1.5">
+                <Mail size={11} /> Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-[#1B998B]/50 focus:ring-1 focus:ring-[#1B998B]/30"
+              />
+            </div>
             <button
               type="submit"
-              disabled={savingName || !fullName.trim() || fullName.trim() === profile?.fullName}
+              disabled={savingInfo || !fullName.trim() || !infoChanged}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1B998B] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#1B998B]/80 transition-colors"
             >
-              <Save size={14} />
-              {savingName ? "Saving..." : "Save Name"}
+              {savingInfo ? (
+                <><div className="w-3.5 h-3.5 border border-white/30 border-t-white rounded-full animate-spin" /> Saving...</>
+              ) : (
+                <><Save size={14} /> Save Changes</>
+              )}
             </button>
+            {!infoChanged && !savingInfo && (
+              <p className="text-white/30 text-xs flex items-center gap-1.5">
+                <CheckCircle2 size={11} /> Profile is up to date
+              </p>
+            )}
           </form>
         </div>
 
@@ -241,8 +288,11 @@ export default function Profile() {
               disabled={changingPassword}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#EF4444] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#EF4444]/80 transition-colors"
             >
-              <Lock size={14} />
-              {changingPassword ? "Changing..." : "Change Password"}
+              {changingPassword ? (
+                <><div className="w-3.5 h-3.5 border border-white/30 border-t-white rounded-full animate-spin" /> Changing...</>
+              ) : (
+                <><Lock size={14} /> Change Password</>
+              )}
             </button>
           </form>
         </div>
