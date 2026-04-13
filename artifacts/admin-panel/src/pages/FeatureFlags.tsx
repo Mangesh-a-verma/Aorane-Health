@@ -114,7 +114,7 @@ export default function FeatureFlags() {
               ].map((f) => (
                 <div key={f.key}>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{f.label}</label>
-                  <input value={(form as Record<string, string>)[f.key]} onChange={(e) => setForm((x) => ({ ...x, [f.key]: e.target.value }))}
+                  <input value={(form as Record<string, unknown>)[f.key] as string} onChange={(e) => setForm((x) => ({ ...x, [f.key]: e.target.value }))}
                     placeholder={f.placeholder}
                     className="w-full bg-background border border-border rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-primary transition-all" />
                 </div>
