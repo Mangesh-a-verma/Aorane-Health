@@ -29,6 +29,28 @@ AORANE's architecture consists of three main components: a mobile app (built wit
 - **Global Readiness:** Tables are designed to support `country_code`, `language_code`, and RTL (Right-to-Left) for future internationalization.
 - **Data Entry Flexibility:** Supports Photo, Text, and Voice input for logging Food, Exercise, and Water.
 
+## Security Scan & Business Portal Update (April 2026)
+
+**Security Fixes Applied:**
+- `medicine.ts`, `users.ts`, `suggestions.ts`: Added `Object.prototype.hasOwnProperty.call()` guard on all dynamic field updates to prevent prototype pollution attacks (4 SAST HIGH findings resolved)
+- `business.ts`: Register endpoint now returns `admin` object in response (previously only returned org, token, orgCode)
+- **Result:** 0 critical, 0 high vulnerabilities (dependency audit clean; SAST 0 HIGH remaining)
+
+**Business Portal Features Built:**
+- **Members page**: Added CSV export button (downloads filtered member list as CSV), member detail modal (shows AORANE ID, BMI, blood group, health scores for last 7 days, remove from org option)
+- **Settings page**: Full rewrite — edit org details (name, email, phone, city, state), change admin password with show/hide toggle, org code + seat usage display
+- **New API endpoints**: `PATCH /business/settings` (update org details), `PATCH /business/admin/password` (change admin password)
+
+**Business Auth Flow (complete, working):**
+1. Landing page → "For Business" toggle in navbar → "Sign In" / "Get Started Free" buttons → `BusinessAuthModal`
+2. 3-step signup: Org Type → Details (name, email, city) → Account (name, password)
+3. After auth → redirects to `business-portal/auth?t=token&a=admin&o=org`
+4. Business portal stores credentials in localStorage, redirects to `/dashboard`
+
+**AI Strategy (confirmed):**
+- NVIDIA LLaMA 3.3 70B: diet-plan, health-tip, meal-swap, stress insights, daily suggestions, text food search
+- Gemini 2.0 Flash: medical report scan, smart-scan (camera), food image scan (vision required)
+
 ## Onboarding Flow Fix (April 2026)
 
 **Critical Bug Fixed:** Onboarding was skipping 4 screens entirely!

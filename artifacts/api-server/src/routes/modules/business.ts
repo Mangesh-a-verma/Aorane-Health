@@ -50,7 +50,7 @@ router.post("/business/register", async (req, res) => {
     }).returning();
 
     const token = signBusinessToken({ orgAdminId: admin.id, orgId: org.id, role: admin.role });
-    res.status(201).json({ success: true, org, token, orgCode });
+    res.status(201).json({ success: true, org, admin: { id: admin.id, fullName: admin.fullName, role: admin.role }, token, orgCode });
   } catch (err) {
     res.status(500).json({ error: "Failed to register organization" });
   }
@@ -399,6 +399,34 @@ router.get("/business/members/:userId/detail", requireBusinessAuth, async (req: 
       .orderBy(desc(dailyHealthScoresTable.scoreDate)).limit(7);
     res.json({ member, profile, user: { plan: user?.plan, aoraneId: profile?.aoraneId }, recentScores });
   } catch { res.status(500).json({ error: "Failed to fetch member detail" }); }
+});
+
+router.patch("/business/settings", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const allowed = ["name", "contactEmail", "contactPhone", "city", "state", "gstin", "industry", "companySize"];
+    const updates: Record<string, unknown> = {};
+    for (const field of allowed) {
+      if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field];
+    }
+    if (Object.keys(updates).length === 0) { res.status(400).json({ error: "No valid fields to update" }); return; }
+    const [updated] = await db.update(organizationsTable).set(updates).where(eq(organizationsTable.id, req.orgId!)).returning();
+    res.json({ org: updated });
+  } catch { res.status(500).json({ error: "Failed to update organization settings" }); }
+});
+
+router.patch("/business/admin/password", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body as { currentPassword: string; newPassword: string };
+    if (!currentPassword || !newPassword) { res.status(400).json({ error: "Current and new password required" }); return; }
+    if (newPassword.length < 6) { res.status(400).json({ error: "New password must be at least 6 characters" }); return; }
+    const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.id, req.orgAdminId!));
+    if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
+    const currentHash = crypto.createHash("sha256").update(currentPassword).digest("hex");
+    if (admin.passwordHash !== currentHash) { res.status(401).json({ error: "Current password is incorrect" }); return; }
+    const newHash = crypto.createHash("sha256").update(newPassword).digest("hex");
+    await db.update(orgAdminsTable).set({ passwordHash: newHash }).where(eq(orgAdminsTable.id, req.orgAdminId!));
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: "Failed to change password" }); }
 });
 
 router.post("/business/members/:userId/remove", requireBusinessAuth, async (req: BusinessRequest, res) => {

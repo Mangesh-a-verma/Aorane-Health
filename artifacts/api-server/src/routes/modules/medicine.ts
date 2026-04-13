@@ -46,7 +46,7 @@ router.patch("/medicine/schedule/:id", requireAuth, async (req: AuthRequest, res
     const allowedFields = ["medicineName", "dosage", "doseCount", "mealTiming", "frequency", "customDays", "reminderTimes", "endDate", "isActive", "refillAlertDays", "notes"];
     const updates: Record<string, unknown> = {};
     for (const field of allowedFields) {
-      if (req.body[field] !== undefined) updates[field] = req.body[field];
+      if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field];
     }
     const [updated] = await db.update(medicineSchedulesTable).set(updates as Parameters<typeof db.update>[0] extends infer T ? T : never)
       .where(and(eq(medicineSchedulesTable.id, id), eq(medicineSchedulesTable.userId, req.userId!)))

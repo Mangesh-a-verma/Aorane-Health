@@ -121,4 +121,10 @@ export const api = {
 
   createAnnouncement: (data: { title: string; body: string; type: string }) =>
     request<{ announcement: Announcement }>("/business/announcements", { method: "POST", body: JSON.stringify(data) }),
+
+  updateSettings: (data: Record<string, string>) =>
+    request<{ org: Org }>("/business/settings", { method: "PATCH", body: JSON.stringify(data) }),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ success: boolean }>("/business/admin/password", { method: "PATCH", body: JSON.stringify({ currentPassword, newPassword }) }),
 };

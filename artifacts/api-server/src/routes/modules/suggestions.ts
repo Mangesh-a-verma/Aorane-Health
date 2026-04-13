@@ -417,7 +417,7 @@ router.put("/notifications/settings", requireAuth, async (req: AuthRequest, res)
     ];
     const updates: Record<string, unknown> = {};
     for (const key of allowed) {
-      if (body[key] !== undefined) updates[key] = body[key];
+      if (Object.prototype.hasOwnProperty.call(body, key) && body[key] !== undefined) updates[key] = body[key];
     }
 
     await db.update(userPreferencesTable)

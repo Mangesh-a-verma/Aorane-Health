@@ -212,7 +212,7 @@ router.patch("/users/preferences", requireAuth, async (req: AuthRequest, res) =>
     ];
     const updates: Record<string, unknown> = {};
     for (const field of allowedFields) {
-      if (req.body[field] !== undefined) updates[field] = req.body[field];
+      if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field];
     }
     const [updated] = await db.update(userPreferencesTable).set(updates as Parameters<typeof db.update>[0] extends infer T ? T : never).where(eq(userPreferencesTable.userId, req.userId!)).returning();
     res.json({ preferences: updated });
@@ -239,7 +239,7 @@ router.patch("/users/privacy", requireAuth, async (req: AuthRequest, res) => {
     ];
     const updates: Record<string, unknown> = {};
     for (const field of allowedFields) {
-      if (req.body[field] !== undefined) updates[field] = req.body[field];
+      if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field];
     }
     const [updated] = await db.update(userPrivacySettingsTable).set(updates as Parameters<typeof db.update>[0] extends infer T ? T : never).where(eq(userPrivacySettingsTable.userId, req.userId!)).returning();
     res.json({ privacy: updated });
