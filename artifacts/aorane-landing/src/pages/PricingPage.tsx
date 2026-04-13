@@ -11,7 +11,7 @@ const comparisonRows = [
   { feature: "NVIDIA AI insights", free: false, pro: true, max: true, family: true },
   { feature: "Exercise tracking (MET)", free: "Basic", pro: true, max: true, family: true },
   { feature: "Medical report scan", free: false, pro: true, max: true, family: true },
-  { feature: "Family members", free: "1", pro: "1", max: "1", family: "6" },
+  { feature: "Family members", free: "1", pro: "1", max: "1", family: "4" },
   { feature: "Sleep stage analysis", free: false, pro: false, max: true, family: true },
   { feature: "Blood sugar & BP tracking", free: false, pro: false, max: true, family: true },
   { feature: "Period & stress tracking", free: false, pro: false, max: true, family: true },

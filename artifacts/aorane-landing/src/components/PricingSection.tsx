@@ -13,7 +13,7 @@ interface Plan {
   color: string;
 }
 
-const API_BASE = "https://aorane.onrender.com";
+const API_BASE = (import.meta.env.VITE_API_URL as string) || "https://aorane.onrender.com";
 
 const defaultIndividual: Plan[] = [
   { planKey: "free", displayName: "Free", type: "individual", monthlyPrice: "0", yearlyPrice: "0",
@@ -22,8 +22,8 @@ const defaultIndividual: Plan[] = [
     features: ["Everything in Free", "AI Food Scanner", "Exercise with MET scoring", "NVIDIA AI insights", "Full health history", "Medical report scan", "Google Fit sync"], badge: "Popular", color: "#0747A6" },
   { planKey: "max", displayName: "Max", type: "individual", monthlyPrice: "249", yearlyPrice: "2490",
     features: ["Everything in Pro", "Advanced AI predictions", "Blood sugar & BP tracking", "Sleep stage analysis", "Priority support", "Export health data", "Period & stress tracking"], badge: "Best Value", color: "#7C3AED" },
-  { planKey: "family", displayName: "Family", type: "individual", monthlyPrice: "399", yearlyPrice: "3990",
-    features: ["Up to 6 members", "All Max features per member", "Family health dashboard", "Elderly health monitoring", "Cross-member comparisons", "Family challenges", "Single billing"], badge: "Family", color: "#10B981" },
+  { planKey: "family", displayName: "Family", type: "individual", monthlyPrice: "499", yearlyPrice: "4990",
+    features: ["4 Family Members", "All Max features per member", "Family health dashboard", "Elderly health monitoring", "Cross-member comparisons", "Family challenges", "Single billing"], badge: "Family", color: "#10B981" },
 ];
 
 const defaultOrg: Plan[] = [
