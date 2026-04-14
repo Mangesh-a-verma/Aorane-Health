@@ -11,25 +11,17 @@ workflows:
         PACKAGE_NAME: in.aorane.app
 
     scripts:
-      - name: Setup pnpm
+      - name: Install dependencies
         script: |
-          curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=10.0.0 sh -
-          echo 'export PATH="$HOME/.local/share/pnpm:$PATH"' >> $CM_ENV
-          source $CM_ENV
-
-      - name: Install all dependencies
-        script: |
-          export PATH="$HOME/.local/share/pnpm:$PATH"
-          pnpm install --frozen-lockfile
+          cd artifacts/aorane-mobile
+          npm install --legacy-peer-deps
 
       - name: Expo Prebuild (generate Android native code)
         script: |
-          export PATH="$HOME/.local/share/pnpm:$PATH"
           cd artifacts/aorane-mobile
           npx expo prebuild \
             --platform android \
-            --clean \
-            --no-install
+            --clean
 
       - name: Build Android AAB
         script: |
