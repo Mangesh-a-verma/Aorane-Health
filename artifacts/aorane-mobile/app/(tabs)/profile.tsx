@@ -12,7 +12,7 @@ import { api } from "@/lib/api";
 import { DS } from "@/lib/theme";
 import {
   Briefcase, Heart, Shield, User, Bell, Diamond,
-  HelpCircle, LogOut, ChevronRight, Lock,
+  HelpCircle, LogOut, ChevronRight, Lock, Pencil,
 } from "lucide-react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -92,35 +92,85 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Hero section ── */}
-        <View style={[s.hero, { paddingTop: topPad + 20 }]}>
+        <LinearGradient
+          colors={["#C0392B", "#E8622A", "#F5A623"]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          style={[s.heroGrad, { paddingTop: topPad + 20 }]}
+        >
+          {/* Edit button top-right */}
+          <TouchableOpacity
+            onPress={() => router.push("/edit-profile" as never)}
+            activeOpacity={0.8}
+            style={[s.editProfileBtn, { top: topPad + 12 }]}
+          >
+            <Pencil size={14} color="#FFF" strokeWidth={2} />
+            <Text style={s.editProfileBtnText}>Edit</Text>
+          </TouchableOpacity>
+
           <LinearGradient colors={[P, G]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.avatar}>
             <Text style={s.avatarText}>{initials}</Text>
           </LinearGradient>
           <Text style={s.heroName}>{name}</Text>
           {phone ? <Text style={s.heroPhone}>+91 {phone}</Text> : null}
-          <LinearGradient colors={[DS.color.purple, P]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.planBadge}>
-            <Diamond size={12} color="#FFF" strokeWidth={2} />
-            <Text style={s.planText}>{plan} Plan</Text>
-          </LinearGradient>
-        </View>
+          <View style={{ flexDirection: "row", gap: 10, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+            <LinearGradient colors={[DS.color.purple, P]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.planBadge}>
+              <Diamond size={12} color="#FFF" strokeWidth={2} />
+              <Text style={s.planText}>{plan} Plan</Text>
+            </LinearGradient>
+            {/* Show quick stats inline if available */}
+            {profile.bloodGroup ? (
+              <View style={s.heroBadge}>
+                <Text style={s.heroBadgeText}>🩸 {String(profile.bloodGroup)}</Text>
+              </View>
+            ) : null}
+            {profile.city ? (
+              <View style={s.heroBadge}>
+                <Text style={s.heroBadgeText}>📍 {String(profile.city)}</Text>
+              </View>
+            ) : null}
+          </View>
+        </LinearGradient>
 
         <View style={s.body}>
           {/* ── Body stats ── */}
-          {bmi && (
-            <View style={s.statsRow}>
-              {[
-                { label: "Height", value: `${profile.heightCm}`, unit: "cm",  color: DS.color.sky    },
-                { label: "Weight", value: `${profile.weightKg}`, unit: "kg",  color: DS.color.orange },
-                { label: "BMI",    value: bmi,                   unit: "",    color: G               },
-                { label: "Blood",  value: (profile.bloodGroup as string) || "--", unit: "", color: DS.color.red },
-              ].map((item) => (
-                <View key={item.label} style={s.statCard}>
-                  <Text style={[s.statNum, { color: item.color }]}>{item.value}</Text>
-                  {item.unit ? <Text style={s.statUnit}>{item.unit}</Text> : null}
-                  <Text style={s.statLabel}>{item.label}</Text>
+          {bmi ? (
+            <TouchableOpacity onPress={() => router.push("/edit-profile" as never)} activeOpacity={0.9}>
+              <View style={s.statsRow}>
+                {[
+                  { label: "Height", value: `${profile.heightCm}`, unit: "cm",  color: DS.color.sky    },
+                  { label: "Weight", value: `${profile.weightKg}`, unit: "kg",  color: DS.color.orange },
+                  { label: "BMI",    value: bmi,                   unit: "",    color: G               },
+                  { label: "Blood",  value: (profile.bloodGroup as string) || "--", unit: "", color: DS.color.red },
+                ].map((item) => (
+                  <View key={item.label} style={s.statCard}>
+                    <Text style={[s.statNum, { color: item.color }]}>{item.value}</Text>
+                    {item.unit ? <Text style={s.statUnit}>{item.unit}</Text> : null}
+                    <Text style={s.statLabel}>{item.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </TouchableOpacity>
+          ) : (
+            /* Prompt to fill profile */
+            <TouchableOpacity
+              onPress={() => router.push("/edit-profile" as never)}
+              activeOpacity={0.87}
+            >
+              <LinearGradient
+                colors={["#FFF8F3", "#FFF0EE"]}
+                style={s.completeCard}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={s.completeTitle}>📋 Complete Your Profile</Text>
+                  <Text style={s.completeDesc}>
+                    Add your height, weight, blood group, and age to get your BMI, personalised health score, and AI recommendations.
+                  </Text>
+                  <View style={[s.completeCta, { marginTop: 10 }]}>
+                    <Text style={s.completeCtaText}>Fill Details Now →</Text>
+                  </View>
                 </View>
-              ))}
-            </View>
+              </LinearGradient>
+            </TouchableOpacity>
           )}
 
           {/* ── Medical Emergency ── */}
@@ -306,13 +356,29 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: DS.color.bgSoft },
 
   // Hero
-  hero:        { alignItems: "center", paddingBottom: 24, paddingHorizontal: 16 },
+  heroGrad:    { alignItems: "center", paddingBottom: 28, paddingHorizontal: 16 },
+  editProfileBtn: {
+    position: "absolute", top: 16, right: 16,
+    flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: "rgba(255,255,255,0.22)", borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 7,
+  },
+  editProfileBtnText: { color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  heroBadge:   { backgroundColor: "rgba(255,255,255,0.20)", borderRadius: 16, paddingHorizontal: 12, paddingVertical: 5 },
+  heroBadgeText: { color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 12 },
   avatar:      { width: 90, height: 90, borderRadius: 45, alignItems: "center", justifyContent: "center", marginBottom: 14, ...DS.shadow.lg },
   avatarText:  { fontSize: 32, fontFamily: "Inter_700Bold", color: "#FFF" },
-  heroName:    { fontSize: 22, fontFamily: "Inter_700Bold", color: DS.color.text, marginBottom: 4 },
-  heroPhone:   { fontSize: 14, fontFamily: "Inter_400Regular", color: DS.color.muted, marginBottom: 12 },
+  heroName:    { fontSize: 22, fontFamily: "Inter_700Bold", color: "#FFF", marginBottom: 4 },
+  heroPhone:   { fontSize: 14, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.80)", marginBottom: 12 },
   planBadge:   { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
   planText:    { color: "#FFF", fontSize: 12, fontFamily: "Inter_600SemiBold" },
+
+  // Complete profile card
+  completeCard:      { borderRadius: DS.radius.xl, padding: 18, borderWidth: 1.5, borderColor: "#C0392B30", ...DS.shadow.sm },
+  completeTitle:     { fontSize: 16, fontFamily: "Inter_700Bold", color: "#C0392B", marginBottom: 6 },
+  completeDesc:      { fontSize: 13, fontFamily: "Inter_400Regular", color: DS.color.muted, lineHeight: 19 },
+  completeCta:       { backgroundColor: "#C0392B", borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8, alignSelf: "flex-start" },
+  completeCtaText:   { color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13 },
 
   body: { paddingHorizontal: 16, gap: 12 },
 

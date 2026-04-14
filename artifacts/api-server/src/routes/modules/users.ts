@@ -336,6 +336,47 @@ function getActiveLabel(pct: number): string {
   return "Inactive 😴";
 }
 
+// ─── Notification Settings (GET + PUT) ───────────────────────────────────────
+router.get("/notifications/settings", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const r = await pool.query(`SELECT notifications_enabled, medicine_reminders, water_reminders, weekly_report_email FROM user_preferences WHERE user_id=$1`, [req.userId!]);
+    const row = r.rows[0] ?? {};
+    res.json({
+      settings: {
+        notificationsEnabled: row.notifications_enabled ?? true,
+        medicineReminders:    row.medicine_reminders    ?? true,
+        waterReminders:       row.water_reminders       ?? true,
+        weeklyReportEmail:    row.weekly_report_email   ?? false,
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch notification settings", detail: (e as Error).message });
+  }
+});
+
+router.put("/notifications/settings", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const colMap: Record<string, string> = {
+      notificationsEnabled: "notifications_enabled",
+      medicineReminders:    "medicine_reminders",
+      waterReminders:       "water_reminders",
+      weeklyReportEmail:    "weekly_report_email",
+    };
+    const fields: string[] = []; const vals: unknown[] = []; let idx = 1;
+    for (const [jsKey, col] of Object.entries(colMap)) {
+      if (Object.prototype.hasOwnProperty.call(req.body, jsKey) && req.body[jsKey] !== undefined) {
+        fields.push(`${col}=$${idx++}`); vals.push(req.body[jsKey]);
+      }
+    }
+    if (fields.length === 0) { res.json({ success: true }); return; }
+    vals.push(req.userId!);
+    await pool.query(`UPDATE user_preferences SET ${fields.join(",")} WHERE user_id=$${idx}`, vals);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to update notification settings", detail: (e as Error).message });
+  }
+});
+
 // ─── Search user by AORANE ID (for Admin + Business Portal) ──────────────────
 // Also supports search by name/phone for admin
 router.get("/users/search", requireAuth, async (req: AuthRequest, res) => {

@@ -20,8 +20,8 @@ import {
 function todayDate() { return new Date().toISOString().slice(0, 10); }
 
 // ── SUMMARY BANNER ─────────────────────────────────────────────────────────────
-function SummaryBanner({ userName, healthScore, calories, water, exerciseMin }: {
-  userName: string; healthScore: number;
+function SummaryBanner({ userName, greeting, healthScore, calories, water, exerciseMin }: {
+  userName: string; greeting: string; healthScore: number;
   calories: { eaten: number; burned: number };
   water: { current: number; goal: number };
   exerciseMin: number;
@@ -35,7 +35,7 @@ function SummaryBanner({ userName, healthScore, calories, water, exerciseMin }: 
       <View style={bn.shine1} />
       <View style={bn.topRow}>
         <View style={{ flex: 1 }}>
-          <Text style={bn.greet}>Namaste 🙏</Text>
+          <Text style={bn.greet}>{greeting}</Text>
           <Text style={bn.name} numberOfLines={1}>{(userName || "User").toUpperCase()}</Text>
         </View>
         <View style={bn.badge}>
@@ -293,7 +293,6 @@ export default function DashboardScreen() {
               activeOpacity={0.8}
             >
               <Bell size={20} color="#FFF" strokeWidth={2} />
-              <View style={s.bellDot} />
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -304,6 +303,7 @@ export default function DashboardScreen() {
           {/* 1. SUMMARY BANNER */}
           <SummaryBanner
             userName={userName}
+            greeting={greeting}
             healthScore={healthScore}
             calories={calories}
             water={water}

@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Linking, Alert,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -214,7 +214,25 @@ export default function MedicalEmergencyScreen() {
             { number: "100", label: "Police",             sub: "Law & order",             grad: ["#1D4ED8", "#1E40AF"] as [string, string] },
             { number: "101", label: "Fire",               sub: "Fire brigade",            grad: ["#EA580C", "#C2410C"] as [string, string] },
           ].map((e) => (
-            <View key={e.number} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, borderTopWidth: 1, borderTopColor: C.border }}>
+            <TouchableOpacity
+              key={e.number}
+              activeOpacity={0.75}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+                if (Platform.OS === "web") {
+                  Alert.alert(`Call ${e.number}`, `Dial ${e.number} — ${e.label}`, [
+                    { text: "Cancel", style: "cancel" },
+                    { text: `Call ${e.number}`, style: "destructive", onPress: () => Linking.openURL(`tel:${e.number}`) },
+                  ]);
+                } else {
+                  Alert.alert(`📞 Call ${e.number}?`, `${e.label}\n${e.sub}`, [
+                    { text: "Cancel", style: "cancel" },
+                    { text: `Call ${e.number} Now`, style: "destructive", onPress: () => Linking.openURL(`tel:${e.number}`) },
+                  ]);
+                }
+              }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: C.border }}
+            >
               <LinearGradient colors={e.grad} style={{ width: 48, height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center" }}>
                 <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 17 }}>{e.number}</Text>
               </LinearGradient>
@@ -222,8 +240,10 @@ export default function MedicalEmergencyScreen() {
                 <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{e.label}</Text>
                 <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 11 }}>{e.sub}</Text>
               </View>
-              <Ionicons name="call-outline" size={18} color={C.muted} />
-            </View>
+              <View style={{ backgroundColor: C.primary, borderRadius: 20, padding: 7 }}>
+                <Ionicons name="call" size={16} color="#FFF" />
+              </View>
+            </TouchableOpacity>
           ))}
           <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 4 }}>
             These numbers are always available for direct calls — no app needed

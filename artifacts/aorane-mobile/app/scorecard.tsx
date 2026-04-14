@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Platform, Alert, Dimensions, ActivityIndicator, Modal, Image,
+  Platform, Alert, Dimensions, ActivityIndicator, Modal, Image, Share,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Sharing from "expo-sharing";
+import * as Print from "expo-print";
 import { api } from "@/lib/api";
 import QRCode from "react-native-qrcode-svg";
 
@@ -141,6 +142,54 @@ export default function ScorecardScreen() {
     } catch { }
   };
 
+  // Generate a beautiful HTML card for PDF sharing on native
+  const generateCardHtml = (c: Scorecard, date: Date) => `
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+  body { background: #F0F9FF; padding: 24px; }
+  .card { background: linear-gradient(135deg, #023E8A 0%, #0077B6 50%, #1B998B 100%);
+    border-radius: 20px; padding: 28px; max-width: 400px; margin: 0 auto; color: #FFF; }
+  .logo { font-size: 22px; font-weight: 900; letter-spacing: 3px; margin-bottom: 4px; }
+  .tagline { font-size: 11px; opacity: 0.75; margin-bottom: 20px; }
+  .divider { height: 1px; background: rgba(255,255,255,0.2); margin: 16px 0; }
+  .name { font-size: 22px; font-weight: 700; }
+  .id { font-size: 18px; font-weight: 800; letter-spacing: 2px; margin: 8px 0; opacity: 0.95; }
+  .plan-badge { display: inline-block; background: rgba(255,255,255,0.18); border-radius: 8px;
+    padding: 2px 10px; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+  .box { background: rgba(255,255,255,0.12); border-radius: 12px; padding: 12px; }
+  .box-label { font-size: 10px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
+  .box-value { font-size: 18px; font-weight: 700; margin-top: 2px; }
+  .score-section { text-align: center; margin: 16px 0; }
+  .score-num { font-size: 52px; font-weight: 900; line-height: 1; }
+  .score-label { font-size: 13px; opacity: 0.75; margin-top: 4px; }
+  .grade { font-size: 28px; font-weight: 900; }
+  .footer { font-size: 10px; opacity: 0.5; text-align: center; margin-top: 16px; }
+</style></head><body>
+<div class="card">
+  <div class="logo">AORANE</div>
+  <div class="tagline">स्वास्थ्य ही धन — Your Health, Your Wealth</div>
+  <div class="name">${c.name || "User"}</div>
+  <div class="id">${(c.aoraneId || "").replace(/(\d{4})(\d{4})(\d{4})/, "$1  $2  $3")}</div>
+  <span class="plan-badge">${(c.plan || "FREE").toUpperCase()} MEMBER</span>
+  <div class="divider"></div>
+  <div class="score-section">
+    <div class="score-num">${Math.round(c.activePercent?.overall ?? 0)}</div>
+    <div class="score-label">Health Score • ${c.activePercent?.overall >= 80 ? 'Excellent 🌟' : c.activePercent?.overall >= 60 ? 'Good 👍' : c.activePercent?.overall >= 40 ? 'Average 📊' : 'Needs Improvement ⚡'}</div>
+  </div>
+  <div class="grid">
+    ${c.bloodGroup ? `<div class="box"><div class="box-label">Blood Group</div><div class="box-value">${c.bloodGroup}</div></div>` : ''}
+    ${c.bmi ? `<div class="box"><div class="box-label">BMI</div><div class="box-value">${c.bmi} <span style="font-size:13px;opacity:0.8">${c.bmiCategory || ''}</span></div></div>` : ''}
+    ${c.age ? `<div class="box"><div class="box-label">Age</div><div class="box-value">${c.age} yrs</div></div>` : ''}
+    ${c.city ? `<div class="box"><div class="box-label">Location</div><div class="box-value" style="font-size:14px">${c.city}${c.state ? ', ' + c.state : ''}</div></div>` : ''}
+  </div>
+  <div class="divider"></div>
+  <div class="footer">
+    Generated on ${date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} • aorane.com
+  </div>
+</div>
+</body></html>`;
+
   const handleDownload = async () => {
     if (!card) return;
     setDownloading(true);
@@ -160,7 +209,18 @@ export default function ScorecardScreen() {
         Alert.alert("Error", "Card capture failed. Please try again.");
       }
     } else {
-      Alert.alert("Download", "Save card to Photos? (Feature coming soon on mobile)");
+      try {
+        const html = generateCardHtml(card, now);
+        const { uri } = await Print.printToFileAsync({ html, base64: false });
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Save AORANE Health Card" });
+        } else {
+          Alert.alert("Saved", `Health card PDF saved to: ${uri}`);
+        }
+      } catch {
+        Alert.alert("Error", "Could not save health card. Please try again.");
+      }
     }
     setDownloading(false);
   };
@@ -199,9 +259,21 @@ export default function ScorecardScreen() {
         a.click();
       }
     } else {
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        Alert.alert("Share", "Share card as image? (Feature coming soon)");
+      try {
+        const html = generateCardHtml(card, now);
+        const { uri } = await Print.printToFileAsync({ html, base64: false });
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Share AORANE Health Card" });
+        } else {
+          // Fallback: share text via native Share sheet
+          await Share.share({
+            title: "My AORANE Health Card",
+            message: `🏥 My AORANE Health Card\n\nName: ${card.name}\nAORANE ID: ${(card.aoraneId || "").replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")}\nHealth Score: ${Math.round(card.activePercent?.overall ?? 0)}\nBlood Group: ${card.bloodGroup || "N/A"}\nBMI: ${card.bmi || "N/A"}\n\nDownload AORANE: https://play.google.com/store/apps/details?id=in.aorane.app`,
+          });
+        }
+      } catch {
+        Alert.alert("Error", "Could not share health card. Please try again.");
       }
     }
     setSharing(false);

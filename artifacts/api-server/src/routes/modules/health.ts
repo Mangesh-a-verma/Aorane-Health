@@ -126,7 +126,21 @@ router.get("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
     }
     query += ` ORDER BY logged_at DESC`;
     const result = await pool.query(query, params);
-    res.json({ logs: result.rows });
+    // Map snake_case DB columns → camelCase for mobile client
+    const logs = result.rows.map((r: Record<string, unknown>) => ({
+      id:              r.id,
+      userId:          r.user_id,
+      exerciseType:    r.exercise_type,
+      durationMinutes: r.duration_minutes,
+      intensity:       r.intensity,
+      caloriesBurned:  r.calories_burned,
+      metValue:        r.met_value,
+      inputMethod:     r.input_method,
+      notes:           r.notes,
+      photoUrl:        r.photo_url,
+      loggedAt:        r.logged_at,
+    }));
+    res.json({ logs });
   } catch (e) {
     res.status(500).json({ error: "Failed to fetch exercise logs", detail: (e as Error).message });
   }
