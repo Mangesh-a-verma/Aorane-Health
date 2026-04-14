@@ -26,11 +26,11 @@ workflows:
             --no-install
           npm install --legacy-peer-deps
 
-      - name: Pre-bundle JavaScript with Metro
+      - name: Pre-bundle JavaScript
         script: |
           cd artifacts/aorane-mobile
           mkdir -p android/app/src/main/assets
-          npx react-native bundle \
+          node node_modules/.bin/react-native bundle \
             --platform android \
             --dev false \
             --entry-file node_modules/expo-router/entry.js \
