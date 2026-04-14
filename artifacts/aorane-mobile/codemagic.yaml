@@ -1,0 +1,62 @@
+workflows:
+  android-release:
+    name: AORANE Android Release Build
+    max_build_duration: 60
+    environment:
+      groups:
+        - aorane_credentials
+      node: 20.18.0
+      vars:
+        EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
+        BUNDLE_ID: in.aorane.app
+        PACKAGE_NAME: in.aorane.app
+
+    scripts:
+      - name: Install pnpm
+        script: npm install -g pnpm@10
+
+      - name: Install dependencies
+        script: |
+          cd ../..
+          pnpm install --frozen-lockfile
+
+      - name: Expo prebuild (generate native Android code)
+        script: |
+          npx expo prebuild \
+            --platform android \
+            --clean \
+            --no-install
+        working_directory: /builds/clone/artifacts/aorane-mobile
+
+      - name: Build Android release AAB
+        script: |
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease \
+            -PandroidVersionCode=1 \
+            -PandroidVersionName=1.0.0
+        working_directory: /builds/clone/artifacts/aorane-mobile
+
+      - name: Sign AAB
+        script: |
+          jarsigner \
+            -verbose \
+            -keystore $CM_KEYSTORE_PATH \
+            -storepass $CM_KEYSTORE_PASSWORD \
+            -keypass $CM_KEY_PASSWORD \
+            -signedjar android/app/build/outputs/bundle/release/app-release-signed.aab \
+            android/app/build/outputs/bundle/release/app-release.aab \
+            $CM_KEY_ALIAS
+        working_directory: /builds/clone/artifacts/aorane-mobile
+
+    artifacts:
+      - artifacts/aorane-mobile/android/app/build/outputs/bundle/release/*.aab
+      - artifacts/aorane-mobile/android/app/build/outputs/apk/**/*.apk
+
+    publishing:
+      email:
+        recipients:
+          - mangeshangadverma@gmail.com
+        notify:
+          success: true
+          failure: true
