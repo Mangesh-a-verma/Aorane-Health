@@ -61,6 +61,12 @@ app.get("/api/version", (_req, res) => {
   res.json({ version: "2.1.0", build: "2026-04-14", status: "ok" });
 });
 
+app.get("/api/db-debug", (_req, res) => {
+  const url = process.env.DATABASE_URL || "NOT SET";
+  const masked = url.replace(/:([^@]+)@/, ":***@");
+  res.json({ db_url: masked });
+});
+
 app.use("/api", router);
 
 // 404 handler
