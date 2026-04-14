@@ -15,6 +15,7 @@ workflows:
         script: |
           cd artifacts/aorane-mobile
           npm install --legacy-peer-deps
+          npm install --legacy-peer-deps @react-native-community/cli @react-native-community/cli-platform-android
 
       - name: Expo Prebuild (generate Android native code)
         script: |
@@ -24,11 +25,23 @@ workflows:
             --clean \
             --no-install
 
+      - name: Bundle JavaScript (Metro)
+        script: |
+          cd artifacts/aorane-mobile
+          mkdir -p android/app/src/main/assets
+          node node_modules/.bin/react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file node_modules/expo-router/entry.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res \
+            --reset-cache 2>&1
+
       - name: Build Android AAB
         script: |
           cd artifacts/aorane-mobile/android
           chmod +x gradlew
-          ./gradlew bundleRelease
+          ./gradlew bundleRelease -x createBundleReleaseJsAndAssets
 
     artifacts:
       - artifacts/aorane-mobile/android/app/build/outputs/bundle/release/*.aab
