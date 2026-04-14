@@ -36,7 +36,7 @@ workflows:
           cd "$APP_DIR"
           mkdir -p android/app/src/main/assets
 
-          node_modules/.bin/expo export:embed . \
+          node_modules/.bin/expo export:embed \
             --platform android \
             --entry-file node_modules/expo-router/entry.js \
             --bundle-output android/app/src/main/assets/index.android.bundle \
