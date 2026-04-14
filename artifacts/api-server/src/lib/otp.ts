@@ -23,7 +23,7 @@ export async function sendSmsOtp(phone: string, otp: string): Promise<boolean> {
   const apiKey = process.env.FAST2SMS_API_KEY;
   if (!apiKey) {
     console.warn("FAST2SMS_API_KEY not set — OTP not sent:", otp);
-    return true;
+    return false;
   }
   try {
     const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${apiKey}&route=otp&variables_values=${otp}&flash=0&numbers=${phone}`;
