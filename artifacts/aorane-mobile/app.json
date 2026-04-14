@@ -8,7 +8,6 @@
     "scheme": "aorane",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
-    "privacyPolicyUrl": "https://aorane.in/privacy",
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
