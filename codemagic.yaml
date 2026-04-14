@@ -24,23 +24,11 @@ workflows:
             --clean \
             --no-install
 
-      - name: Pre-bundle JavaScript
-        script: |
-          cd artifacts/aorane-mobile
-          mkdir -p android/app/src/main/assets
-          node node_modules/.bin/react-native bundle \
-            --platform android \
-            --dev false \
-            --entry-file node_modules/expo-router/entry.js \
-            --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res \
-            --reset-cache
-
       - name: Build Android AAB
         script: |
           cd artifacts/aorane-mobile/android
           chmod +x gradlew
-          ./gradlew bundleRelease -x createBundleReleaseJsAndAssets
+          ./gradlew bundleRelease
 
     artifacts:
       - artifacts/aorane-mobile/android/app/build/outputs/bundle/release/*.aab
