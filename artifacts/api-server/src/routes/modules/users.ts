@@ -1,12 +1,8 @@
 import { Router } from "express";
-import {
-  db, pool, usersTable, userProfilesTable, userPreferencesTable, userPrivacySettingsTable,
-  userMedicalConditionsTable, userHealthGoalsTable,
-  foodLogsTable, waterLogsTable, exerciseLogsTable, medicineSchedulesTable, medicineLogsTable,
-} from "@workspace/db";
-import { eq, and, gte, lte, ilike, or } from "drizzle-orm";
+import { pool } from "@workspace/db";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { computeActivePercent } from "../../lib/scoring";
 
 // ── AORANE ID Generation (12 digits, immutable) ───────────────────────────────
 // Format: [G][AA][CCC][RRRRRR]
@@ -29,41 +25,9 @@ function generateAoraneId(gender: string | null, dateOfBirth: string | null, cit
 }
 
 // ── Daily Active Percentage Calculation ───────────────────────────────────────
-async function calculateActivePercent(userId: string, date?: string): Promise<{
-  overall: number; foodPct: number; waterPct: number; exercisePct: number; medicinePct: number;
-  breakdown: { food: number; water: number; exercise: number; medicine: number };
-}> {
-  try {
-    const today = date || new Date().toISOString().slice(0, 10);
-    const dayStart = today + "T00:00:00Z";
-    const dayEnd   = today + "T23:59:59Z";
-
-    const [foodR, waterR, exerciseR, schedR, medR, prefsR] = await Promise.all([
-      pool.query(`SELECT COUNT(*) FROM food_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`, [userId, dayStart, dayEnd]),
-      pool.query(`SELECT COALESCE(SUM(glasses_count),0) AS total FROM water_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`, [userId, dayStart, dayEnd]),
-      pool.query(`SELECT COUNT(*) FROM exercise_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`, [userId, dayStart, dayEnd]),
-      pool.query(`SELECT COUNT(*) FROM medicine_schedules WHERE user_id=$1 AND is_active=true`, [userId]),
-      pool.query(`SELECT COUNT(*) FROM medicine_logs WHERE user_id=$1 AND taken_at>=$2 AND taken_at<=$3`, [userId, dayStart, dayEnd]),
-      pool.query(`SELECT water_goal_glasses FROM user_preferences WHERE user_id=$1`, [userId]),
-    ]);
-
-    const foodCount   = parseInt(foodR.rows[0]?.count || "0");
-    const waterTotal  = parseInt(waterR.rows[0]?.total || "0");
-    const exCount     = parseInt(exerciseR.rows[0]?.count || "0");
-    const schedCount  = parseInt(schedR.rows[0]?.count || "0");
-    const takenCount  = parseInt(medR.rows[0]?.count || "0");
-    const waterGoal   = parseInt(prefsR.rows[0]?.water_goal_glasses || "8");
-
-    const foodPct     = Math.min(100, Math.round((foodCount / 3) * 100));
-    const waterPct    = Math.min(100, Math.round((waterTotal / waterGoal) * 100));
-    const exercisePct = exCount > 0 ? 100 : 0;
-    const medicinePct = schedCount > 0 ? Math.min(100, Math.round((takenCount / schedCount) * 100)) : 100;
-    const overall     = Math.round(foodPct * 0.35 + waterPct * 0.30 + exercisePct * 0.25 + medicinePct * 0.10);
-
-    return { overall, foodPct, waterPct, exercisePct, medicinePct, breakdown: { food: foodCount, water: waterTotal, exercise: exCount, medicine: takenCount } };
-  } catch {
-    return { overall: 0, foodPct: 0, waterPct: 0, exercisePct: 0, medicinePct: 0, breakdown: { food: 0, water: 0, exercise: 0, medicine: 0 } };
-  }
+// Uses scoring.ts scientific engine (WHO 2020 + ICMR 2024)
+async function calculateActivePercent(userId: string, date?: string) {
+  return computeActivePercent(userId, date);
 }
 
 const router = Router();
@@ -310,7 +274,11 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
       ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / (86400000 * 365.25))
       : null;
 
-    const activeData = await calculateActivePercent(uid).catch(() => ({ overall: 0, foodPct: 0, waterPct: 0, exercisePct: 0, medicinePct: 0, breakdown: { food: 0, water: 0, exercise: 0, medicine: 0 } }));
+    const activeData = await calculateActivePercent(uid).catch(() => ({
+      overall: 0, foodPct: 0, waterPct: 0, exercisePct: 0, medicinePct: 0,
+      sleepPct: 50, bmiScore: 50, grade: "—", gradeLabel: "No data yet",
+      breakdown: { food: 0, water: 0, exerciseMetMin: 0, medicine: 0, sleepHours: 0 }
+    }));
 
     res.json({
       aoraneId,
@@ -327,6 +295,8 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
       memberSince: user?.created_at,
       qrData: JSON.stringify({ aoraneId, name: profile?.full_name, bloodGroup: profile?.blood_group }),
       activePercent: activeData,
+      healthGrade: activeData.grade,
+      healthGradeLabel: activeData.gradeLabel,
     });
   } catch (e) {
     console.error("[SCORECARD ERROR]", (e as Error).message);

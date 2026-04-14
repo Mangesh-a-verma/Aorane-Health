@@ -1,11 +1,8 @@
 import { Router } from "express";
-import {
-  db, pool, exerciseLogsTable, waterLogsTable, dailyHealthScoresTable,
-  userProfilesTable, userPreferencesTable, foodLogsTable, medicineLogsTable, stressLogsTable
-} from "@workspace/db";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { pool } from "@workspace/db";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { computeScientificScore } from "../../lib/scoring";
 
 const router = Router();
 
@@ -204,50 +201,37 @@ router.get("/health/scores/history", requireAuth, async (req: AuthRequest, res) 
 });
 
 async function computeDailyScore(userId: string, date: string): Promise<Record<string, unknown>> {
-  const dayStart = date + "T00:00:00Z";
-  const dayEnd   = date + "T23:59:59Z";
-
-  const [foodR, exR, waterR, medR, medTakenR, prefsR] = await Promise.all([
-    pool.query(`SELECT COALESCE(SUM(calories::numeric),0) AS total_cal, COUNT(*) AS meal_count FROM food_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`, [userId, dayStart, dayEnd]),
-    pool.query(`SELECT COALESCE(SUM(duration_minutes),0) AS total_min FROM exercise_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`, [userId, dayStart, dayEnd]),
-    pool.query(`SELECT COALESCE(SUM(glasses_count),0) AS total FROM water_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`, [userId, dayStart, dayEnd]),
-    pool.query(`SELECT COUNT(*) FROM medicine_logs WHERE user_id=$1 AND scheduled_at>=$2 AND scheduled_at<=$3`, [userId, dayStart, dayEnd]),
-    pool.query(`SELECT COUNT(*) FROM medicine_logs WHERE user_id=$1 AND status='taken' AND scheduled_at>=$2 AND scheduled_at<=$3`, [userId, dayStart, dayEnd]),
-    pool.query(`SELECT water_goal_glasses, calorie_goal FROM user_preferences WHERE user_id=$1`, [userId]),
-  ]);
-
-  const totalCalories  = parseFloat(foodR.rows[0]?.total_cal || "0");
-  const mealCount      = parseInt(foodR.rows[0]?.meal_count || "0");
-  const totalExercise  = parseInt(exR.rows[0]?.total_min || "0");
-  const totalWater     = parseInt(waterR.rows[0]?.total || "0");
-  const totalMed       = parseInt(medR.rows[0]?.count || "0");
-  const takenMed       = parseInt(medTakenR.rows[0]?.count || "0");
-  const waterGoal      = parseInt(prefsR.rows[0]?.water_goal_glasses || "8");
-  const calorieGoal    = parseInt(prefsR.rows[0]?.calorie_goal || "2000");
-
-  const foodScore      = mealCount > 0 ? Math.min(100, Math.round((Math.min(totalCalories, calorieGoal) / calorieGoal) * 100)) : 0;
-  const waterScore     = Math.min(100, Math.round((totalWater / waterGoal) * 100));
-  const exerciseScore  = Math.min(100, Math.round((totalExercise / 30) * 100));
-  const medicineScore  = totalMed > 0 ? Math.round((takenMed / totalMed) * 100) : 50;
-  const healthScore    = Math.round((foodScore + waterScore + exerciseScore + medicineScore) / 4);
-  const fieldsLogged   = [mealCount > 0, totalWater > 0, totalExercise > 0].filter(Boolean).length;
-  const dataConfidencePct = (fieldsLogged / 3) * 100;
-
-  await pool.query(
-    `INSERT INTO daily_health_scores (user_id, score_date, health_score, data_confidence_pct, food_score, exercise_score, water_score, medicine_score, total_calories_in, water_glasses, exercise_minutes, fields_logged, total_possible_fields)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-     ON CONFLICT (user_id, score_date) DO UPDATE SET
-       health_score=$3, data_confidence_pct=$4, food_score=$5, exercise_score=$6, water_score=$7, medicine_score=$8,
-       total_calories_in=$9, water_glasses=$10, exercise_minutes=$11, fields_logged=$12`,
-    [userId, date, healthScore, String(dataConfidencePct), foodScore, exerciseScore, waterScore, medicineScore,
-     String(totalCalories), totalWater, totalExercise, fieldsLogged, 3]
-  ).catch(() => {});  // fail silently if table doesn't exist yet
-
+  const s = await computeScientificScore(userId, date);
   return {
-    userId, scoreDate: date, healthScore, dataConfidencePct: String(dataConfidencePct),
-    foodScore, exerciseScore, waterScore, medicineScore,
-    totalCaloriesIn: String(totalCalories), waterGlasses: totalWater,
-    exerciseMinutes: totalExercise, fieldsLogged, totalPossibleFields: 3,
+    userId,
+    scoreDate:          date,
+    healthScore:        s.overallScore,
+    grade:              s.grade,
+    gradeLabel:         s.gradeLabel,
+    dataConfidence:     s.dataConfidence,
+    dataConfidencePct:  String(s.dataConfidence),
+    // Component scores
+    foodScore:          s.foodScore,
+    exerciseScore:      s.exerciseScore,
+    waterScore:         s.waterScore,
+    medicineScore:      s.medicineScore,
+    sleepScore:         s.sleepScore,
+    bmiScore:           s.bmiScore,
+    // Detail breakdowns
+    food:               s.food,
+    exercise:           s.exercise,
+    water:              s.water,
+    medicine:           s.medicine,
+    sleep:              s.sleep,
+    bmi:                s.bmi,
+    // Backward compat fields for existing mobile screens
+    totalCaloriesIn:    String(s.food.calories),
+    waterGlasses:       s.water.glasses,
+    exerciseMinutes:    s.exercise.durationMinutes,
+    fieldsLogged:       [s.food.meals > 0, s.exercise.sessions > 0, s.water.glasses > 0].filter(Boolean).length,
+    totalPossibleFields: 3,
+    // Scientific transparency
+    methodology:        s.methodology,
   };
 }
 
