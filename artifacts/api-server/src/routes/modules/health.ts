@@ -1,6 +1,6 @@
 import { Router } from "express";
 import {
-  db, exerciseLogsTable, waterLogsTable, dailyHealthScoresTable,
+  db, pool, exerciseLogsTable, waterLogsTable, dailyHealthScoresTable,
   userProfilesTable, userPreferencesTable, foodLogsTable, medicineLogsTable, stressLogsTable
 } from "@workspace/db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
@@ -166,34 +166,31 @@ router.post("/health/water", requireAuth, async (req: AuthRequest, res) => {
       res.status(400).json({ error: "Water amount must be greater than 0ml" });
       return;
     }
-    const [log] = await db.insert(waterLogsTable).values({
-      userId: req.userId!,
-      glassesCount: Number(glassesCount),
-      mlAmount: Number(mlAmount),
-      drinkType: drinkType as string,
-      loggedAt: loggedAt ? new Date(loggedAt as string) : new Date(),
-    }).returning();
-    res.status(201).json({ log });
-  } catch {
-    res.status(500).json({ error: "Failed to log water" });
+    const logTime = loggedAt ? new Date(loggedAt as string) : new Date();
+    const result = await pool.query(
+      `INSERT INTO water_logs (user_id, glasses_count, ml_amount, drink_type, logged_at) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [req.userId!, Number(glassesCount), Number(mlAmount), drinkType, logTime]
+    );
+    res.status(201).json({ log: result.rows[0] });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to log water", detail: (e as Error).message });
   }
 });
 
 router.get("/health/water/:date", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { date } = req.params;
-    const logs = await db.select().from(waterLogsTable).where(
-      and(
-        eq(waterLogsTable.userId, req.userId!),
-        gte(waterLogsTable.loggedAt, new Date(date + "T00:00:00Z")),
-        lte(waterLogsTable.loggedAt, new Date(date + "T23:59:59Z"))
-      )
-    ).orderBy(waterLogsTable.loggedAt);
-    const total = logs.reduce((sum, l) => sum + l.glassesCount, 0);
-    const [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, req.userId!));
-    res.json({ logs, totalGlasses: total, goal: prefs?.waterGoalGlasses || 8 });
-  } catch {
-    res.status(500).json({ error: "Failed to fetch water logs" });
+    const logsRes = await pool.query(
+      `SELECT * FROM water_logs WHERE user_id=$1 AND logged_at >= $2 AND logged_at <= $3 ORDER BY logged_at`,
+      [req.userId!, date + "T00:00:00Z", date + "T23:59:59Z"]
+    );
+    const prefsRes = await pool.query(`SELECT water_goal_glasses FROM user_preferences WHERE user_id=$1`, [req.userId!]);
+    const logs = logsRes.rows;
+    const total = logs.reduce((sum: number, l: any) => sum + (l.glasses_count || 0), 0);
+    const goal = prefsRes.rows[0]?.water_goal_glasses || 8;
+    res.json({ logs, totalGlasses: total, goal });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch water logs", detail: (e as Error).message });
   }
 });
 

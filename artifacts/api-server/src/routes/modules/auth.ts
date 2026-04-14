@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, userPreferencesTable, userPrivacySettingsTable, userProfilesTable, otpStoreTable } from "@workspace/db";
+import { db, pool, usersTable, userPreferencesTable, userPrivacySettingsTable, userProfilesTable, otpStoreTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { generateOtp, hashOtp, verifyOtpHash, sendSmsOtp, sendWhatsappOtp } from "../../lib/otp";
 import { cache } from "../../lib/redis";
@@ -141,12 +141,11 @@ router.post("/auth/verify-otp", async (req, res) => {
       isNewUser = true;
     }
 
-    // Ensure supporting rows exist (safe upsert — create if missing)
-    await db.insert(userPreferencesTable).values({ userId: user.id, languageCode }).onConflictDoNothing().catch(() => {});
-    await db.insert(userPrivacySettingsTable).values({ userId: user.id }).onConflictDoNothing().catch(() => {});
-    await db.insert(userProfilesTable).values({ userId: user.id }).onConflictDoNothing().catch(() => {});
-
-    await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id)).catch(() => {});
+    // Ensure supporting rows exist using raw SQL (bypasses Drizzle for pooler compat)
+    await pool.query(`INSERT INTO user_preferences (user_id, language_code) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [user.id, languageCode]).catch(() => {});
+    await pool.query(`INSERT INTO user_privacy_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
+    await pool.query(`INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
+    await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]).catch(() => {});
 
     const payload = { userId: user.id, phone: phone, plan: user.plan };
     const accessToken = signUserToken(payload);

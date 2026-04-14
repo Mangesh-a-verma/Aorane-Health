@@ -115,6 +115,15 @@ app.get("/api/db-debug", async (_req, res) => {
 
 app.use("/api", router);
 
+// Render keep-alive: ping self every 10 min to prevent free-tier spin-down
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
+if (RENDER_URL) {
+  setInterval(() => {
+    fetch(`${RENDER_URL}/api/db-debug`).catch(() => {});
+  }, 10 * 60 * 1000);
+  logger.info({ url: RENDER_URL }, "Keep-alive ping scheduled (every 10 min)");
+}
+
 // 404 handler
 app.use((_req, res) => {
   res.status(404).json({ error: "Route not found" });

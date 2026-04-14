@@ -1,6 +1,6 @@
 import { Router } from "express";
 import {
-  db, usersTable, userProfilesTable, userPreferencesTable, userPrivacySettingsTable,
+  db, pool, usersTable, userProfilesTable, userPreferencesTable, userPrivacySettingsTable,
   userMedicalConditionsTable, userHealthGoalsTable,
   foodLogsTable, waterLogsTable, exerciseLogsTable, medicineSchedulesTable, medicineLogsTable,
 } from "@workspace/db";
@@ -33,45 +33,37 @@ async function calculateActivePercent(userId: string, date?: string): Promise<{
   overall: number; foodPct: number; waterPct: number; exercisePct: number; medicinePct: number;
   breakdown: { food: number; water: number; exercise: number; medicine: number };
 }> {
-  const today = date || new Date().toISOString().slice(0, 10);
-  const dayStart = new Date(today); dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(today); dayEnd.setHours(23, 59, 59, 999);
+  try {
+    const today = date || new Date().toISOString().slice(0, 10);
+    const dayStart = today + "T00:00:00Z";
+    const dayEnd   = today + "T23:59:59Z";
 
-  const [foodLogs, waterLogs, exerciseLogs, medSchedules, medLogs] = await Promise.allSettled([
-    db.select().from(foodLogsTable).where(and(eq(foodLogsTable.userId, userId), gte(foodLogsTable.loggedAt, dayStart), lte(foodLogsTable.loggedAt, dayEnd))),
-    db.select().from(waterLogsTable).where(and(eq(waterLogsTable.userId, userId), gte(waterLogsTable.loggedAt, dayStart), lte(waterLogsTable.loggedAt, dayEnd))),
-    db.select().from(exerciseLogsTable).where(and(eq(exerciseLogsTable.userId, userId), gte(exerciseLogsTable.loggedAt, dayStart), lte(exerciseLogsTable.loggedAt, dayEnd))),
-    db.select().from(medicineSchedulesTable).where(and(eq(medicineSchedulesTable.userId, userId), eq(medicineSchedulesTable.isActive, true))),
-    db.select().from(medicineLogsTable).where(and(eq(medicineLogsTable.userId, userId), gte(medicineLogsTable.takenAt, dayStart), lte(medicineLogsTable.takenAt, dayEnd))),
-  ]);
+    const [foodR, waterR, exerciseR, schedR, medR, prefsR] = await Promise.all([
+      pool.query(`SELECT COUNT(*) FROM food_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`, [userId, dayStart, dayEnd]),
+      pool.query(`SELECT COALESCE(SUM(glasses_count),0) AS total FROM water_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`, [userId, dayStart, dayEnd]),
+      pool.query(`SELECT COUNT(*) FROM exercise_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`, [userId, dayStart, dayEnd]),
+      pool.query(`SELECT COUNT(*) FROM medicine_schedules WHERE user_id=$1 AND is_active=true`, [userId]),
+      pool.query(`SELECT COUNT(*) FROM medicine_logs WHERE user_id=$1 AND taken_at>=$2 AND taken_at<=$3`, [userId, dayStart, dayEnd]),
+      pool.query(`SELECT water_goal_glasses FROM user_preferences WHERE user_id=$1`, [userId]),
+    ]);
 
-  // Food: 3 meals expected = max 3 entries, each = 33.3%
-  const foodCount = foodLogs.status === "fulfilled" ? foodLogs.value.length : 0;
-  const foodPct = Math.min(100, Math.round((foodCount / 3) * 100));
+    const foodCount   = parseInt(foodR.rows[0]?.count || "0");
+    const waterTotal  = parseInt(waterR.rows[0]?.total || "0");
+    const exCount     = parseInt(exerciseR.rows[0]?.count || "0");
+    const schedCount  = parseInt(schedR.rows[0]?.count || "0");
+    const takenCount  = parseInt(medR.rows[0]?.count || "0");
+    const waterGoal   = parseInt(prefsR.rows[0]?.water_goal_glasses || "8");
 
-  // Water: 8 glasses expected, each glass logged = 12.5%
-  const totalWaterGlasses = waterLogs.status === "fulfilled"
-    ? waterLogs.value.reduce((s, l) => s + (l.glassesCount || 0), 0) : 0;
-  const [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId)).limit(1).catch(() => [null]);
-  const waterGoal = (prefs as Record<string, unknown>)?.waterGoalGlasses as number || 8;
-  const waterPct = Math.min(100, Math.round((totalWaterGlasses / waterGoal) * 100));
+    const foodPct     = Math.min(100, Math.round((foodCount / 3) * 100));
+    const waterPct    = Math.min(100, Math.round((waterTotal / waterGoal) * 100));
+    const exercisePct = exCount > 0 ? 100 : 0;
+    const medicinePct = schedCount > 0 ? Math.min(100, Math.round((takenCount / schedCount) * 100)) : 100;
+    const overall     = Math.round(foodPct * 0.35 + waterPct * 0.30 + exercisePct * 0.25 + medicinePct * 0.10);
 
-  // Exercise: any exercise logged = 100%, nothing = 0%
-  const exerciseCount = exerciseLogs.status === "fulfilled" ? exerciseLogs.value.length : 0;
-  const exercisePct = exerciseCount > 0 ? 100 : 0;
-
-  // Medicine: (taken today / scheduled today) × 100
-  const scheduleCount = medSchedules.status === "fulfilled" ? medSchedules.value.length : 0;
-  const takenCount = medLogs.status === "fulfilled" ? medLogs.value.length : 0;
-  const medicinePct = scheduleCount > 0 ? Math.min(100, Math.round((takenCount / scheduleCount) * 100)) : 100;
-
-  // Overall weighted average: food 35%, water 30%, exercise 25%, medicine 10%
-  const overall = Math.round(foodPct * 0.35 + waterPct * 0.30 + exercisePct * 0.25 + medicinePct * 0.10);
-
-  return {
-    overall, foodPct, waterPct, exercisePct, medicinePct,
-    breakdown: { food: foodCount, water: totalWaterGlasses, exercise: exerciseCount, medicine: takenCount },
-  };
+    return { overall, foodPct, waterPct, exercisePct, medicinePct, breakdown: { food: foodCount, water: waterTotal, exercise: exCount, medicine: takenCount } };
+  } catch {
+    return { overall: 0, foodPct: 0, waterPct: 0, exercisePct: 0, medicinePct: 0, breakdown: { food: 0, water: 0, exercise: 0, medicine: 0 } };
+  }
 }
 
 const router = Router();
@@ -80,23 +72,30 @@ router.get("/users/profile", requireAuth, async (req: AuthRequest, res) => {
   try {
     const uid = req.userId!;
 
-    // Ensure profile/prefs exist (create if missing — handles old accounts)
-    await db.insert(userProfilesTable).values({ userId: uid }).onConflictDoNothing().catch(() => {});
-    await db.insert(userPreferencesTable).values({ userId: uid }).onConflictDoNothing().catch(() => {});
-    await db.insert(userPrivacySettingsTable).values({ userId: uid }).onConflictDoNothing().catch(() => {});
+    // Ensure rows exist for this user (safe — raw SQL bypasses Drizzle ORM for pooler compat)
+    await pool.query(`INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [uid]).catch(() => {});
+    await pool.query(`INSERT INTO user_preferences (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [uid]).catch(() => {});
+    await pool.query(`INSERT INTO user_privacy_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [uid]).catch(() => {});
 
-    const [profile, user, prefs, conditions, goals] = await Promise.all([
-      db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, uid)).then(r => r[0] ?? null),
-      db.select().from(usersTable).where(eq(usersTable.id, uid)).then(r => r[0] ?? null),
-      db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, uid)).then(r => r[0] ?? null),
-      db.select().from(userMedicalConditionsTable).where(eq(userMedicalConditionsTable.userId, uid)),
-      db.select().from(userHealthGoalsTable).where(eq(userHealthGoalsTable.userId, uid)).then(r => r[0] ?? null),
+    const [profileRes, userRes, prefsRes, condRes, goalsRes] = await Promise.all([
+      pool.query(`SELECT * FROM user_profiles WHERE user_id = $1`, [uid]),
+      pool.query(`SELECT id, phone, email, plan, language_code, created_at FROM users WHERE id = $1`, [uid]),
+      pool.query(`SELECT * FROM user_preferences WHERE user_id = $1`, [uid]),
+      pool.query(`SELECT * FROM user_medical_conditions WHERE user_id = $1`, [uid]),
+      pool.query(`SELECT * FROM user_health_goals WHERE user_id = $1`, [uid]),
     ]);
 
-    res.json({ profile, user: { plan: user?.plan, phone: user?.phone, email: user?.email }, preferences: prefs, conditions, goals });
+    res.json({
+      profile: profileRes.rows[0] ?? null,
+      user: userRes.rows[0] ? { plan: userRes.rows[0].plan, phone: userRes.rows[0].phone, email: userRes.rows[0].email } : null,
+      preferences: prefsRes.rows[0] ?? null,
+      conditions: condRes.rows,
+      goals: goalsRes.rows[0] ?? null,
+    });
   } catch (err) {
     const msg = (err as Error).message || String(err);
-    console.error("[PROFILE ERROR]", msg);
+    const cause = (err as any)?.cause?.message || "";
+    console.error("[PROFILE ERROR]", msg, cause);
     res.status(500).json({ error: "Failed to fetch profile", detail: msg });
   }
 });
@@ -262,30 +261,27 @@ router.patch("/users/privacy", requireAuth, async (req: AuthRequest, res) => {
 // ─── Health Scorecard — stores AORANE ID on first generation (immutable) ─────
 router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!));
-    const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, req.userId!));
+    const uid = req.userId!;
+    const [userRes, profileRes] = await Promise.all([
+      pool.query(`SELECT id, plan, created_at FROM users WHERE id=$1`, [uid]),
+      pool.query(`SELECT * FROM user_profiles WHERE user_id=$1`, [uid]),
+    ]);
+    const user    = userRes.rows[0] ?? null;
+    const profile = profileRes.rows[0] ?? null;
 
-    // Generate and SAVE AORANE ID only if not already stored
-    let aoraneId = profile?.aoraneId;
+    // Generate and save AORANE ID if missing
+    let aoraneId = profile?.aorane_id;
     if (!aoraneId) {
-      // Try up to 5 times for uniqueness
       let generated = "";
-      for (let attempt = 0; attempt < 5; attempt++) {
-        generated = generateAoraneId(
-          profile?.gender || null,
-          profile?.dateOfBirth || null,
-          (profile as Record<string, unknown>)?.city as string || null
-        );
-        // Save immediately — unique constraint will reject duplicates
+      for (let i = 0; i < 5; i++) {
+        generated = generateAoraneId(profile?.gender || null, profile?.date_of_birth || null, profile?.city || null);
         try {
-          await db.update(userProfilesTable)
-            .set({ aoraneId: generated })
-            .where(eq(userProfilesTable.userId, req.userId!));
+          await pool.query(`UPDATE user_profiles SET aorane_id=$1 WHERE user_id=$2 AND aorane_id IS NULL`, [generated, uid]);
           aoraneId = generated;
           break;
-        } catch { /* try again with different random */ }
+        } catch { /* collision — retry */ }
       }
-      if (!aoraneId) aoraneId = generated; // fallback, show but not saved
+      if (!aoraneId) aoraneId = generated;
     }
 
     const bmi = profile?.bmi || null;
@@ -297,32 +293,31 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
       else if (b < 30) bmiCategory = "Overweight";
       else bmiCategory = "Obese";
     }
-
-    const age = profile?.dateOfBirth
-      ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / (86400000 * 365.25))
+    const age = profile?.date_of_birth
+      ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / (86400000 * 365.25))
       : null;
 
-    // Active percentage for today
-    const activeData = await calculateActivePercent(req.userId!).catch(() => ({ overall: 0, foodPct: 0, waterPct: 0, exercisePct: 0, medicinePct: 0, breakdown: { food: 0, water: 0, exercise: 0, medicine: 0 } }));
+    const activeData = await calculateActivePercent(uid).catch(() => ({ overall: 0, foodPct: 0, waterPct: 0, exercisePct: 0, medicinePct: 0, breakdown: { food: 0, water: 0, exercise: 0, medicine: 0 } }));
 
     res.json({
       aoraneId,
-      name: profile?.fullName || "AORANE User",
-      bloodGroup: profile?.bloodGroup || "Unknown",
+      name: profile?.full_name || "AORANE User",
+      bloodGroup: profile?.blood_group || "Unknown",
       bmi: bmi || "N/A",
       bmiCategory,
       plan: user?.plan || "free",
       gender: profile?.gender || "other",
       age,
-      city: (profile as Record<string, unknown>)?.city || null,
-      state: (profile as Record<string, unknown>)?.state || null,
-      workProfile: profile?.workProfile || null,
-      memberSince: user?.createdAt,
-      qrData: JSON.stringify({ aoraneId, name: profile?.fullName, bloodGroup: profile?.bloodGroup }),
+      city: profile?.city || null,
+      state: profile?.state || null,
+      workProfile: profile?.work_profile || null,
+      memberSince: user?.created_at,
+      qrData: JSON.stringify({ aoraneId, name: profile?.full_name, bloodGroup: profile?.blood_group }),
       activePercent: activeData,
     });
-  } catch {
-    res.status(500).json({ error: "Failed to fetch scorecard" });
+  } catch (e) {
+    console.error("[SCORECARD ERROR]", (e as Error).message);
+    res.status(500).json({ error: "Failed to fetch scorecard", detail: (e as Error).message });
   }
 });
 
