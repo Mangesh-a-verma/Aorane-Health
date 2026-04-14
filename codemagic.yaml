@@ -27,6 +27,11 @@ workflows:
       - name: Bundle JavaScript (expo export:embed)
         script: |
           cd artifacts/aorane-mobile
+          # Use simple metro config in CI (no monorepo root needed)
+          cat > metro.config.js << 'METROEOF'
+          const { getDefaultConfig } = require("expo/metro-config");
+          module.exports = getDefaultConfig(__dirname);
+          METROEOF
           mkdir -p android/app/src/main/assets
           npx expo export:embed \
             --platform android \
