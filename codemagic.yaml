@@ -24,7 +24,6 @@ workflows:
             --platform android \
             --clean \
             --no-install
-          npm install --legacy-peer-deps
 
       - name: Pre-bundle JavaScript
         script: |
