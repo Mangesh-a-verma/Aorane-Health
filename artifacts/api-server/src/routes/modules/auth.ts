@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, usersTable, userPreferencesTable, userPrivacySettingsTable, userProfilesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, userPreferencesTable, userPrivacySettingsTable, userProfilesTable, otpStoreTable } from "@workspace/db";
+import { eq, and, gt } from "drizzle-orm";
 import { generateOtp, hashOtp, verifyOtpHash, sendSmsOtp, sendWhatsappOtp } from "../../lib/otp";
 import { cache } from "../../lib/redis";
 import { signUserToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt";
@@ -26,7 +26,14 @@ router.post("/auth/send-otp", async (req, res) => {
 
     const otp = generateOtp(6);
     const hashed = hashOtp(otp);
-    cache.setOtp(phone, hashed);
+
+    // Store OTP in DB (survives server restarts)
+    await db.delete(otpStoreTable).where(eq(otpStoreTable.phone, phone));
+    await db.insert(otpStoreTable).values({
+      phone,
+      hashedOtp: hashed,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+    });
 
     const smsSent = await sendSmsOtp(phone, otp);
     console.log(`[OTP] ${phone} → ${otp} | SMS sent: ${smsSent}`);
@@ -81,16 +88,22 @@ router.post("/auth/verify-otp", async (req, res) => {
       return;
     }
 
-    const storedHash = cache.getOtp(phone);
-    if (!storedHash) {
+    // Fetch OTP from DB
+    const [otpRecord] = await db
+      .select()
+      .from(otpStoreTable)
+      .where(and(eq(otpStoreTable.phone, phone), gt(otpStoreTable.expiresAt, new Date())))
+      .limit(1);
+
+    if (!otpRecord) {
       res.status(400).json({ error: "OTP expired or not found. Request a new one." });
       return;
     }
-    if (!verifyOtpHash(otp, storedHash)) {
+    if (!verifyOtpHash(otp, otpRecord.hashedOtp)) {
       res.status(400).json({ error: "Invalid OTP" });
       return;
     }
-    cache.deleteOtp(phone);
+    await db.delete(otpStoreTable).where(eq(otpStoreTable.phone, phone));
 
     let [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
     let isNewUser = false;
