@@ -312,14 +312,13 @@ router.get("/users/activity-score", requireAuth, async (req: AuthRequest, res) =
 
     // Monthly active percentage: days with any exercise this calendar month
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const daysElapsed = Math.max(1, now.getDate());
-    const monthlyLogs = await db
-      .select({ loggedAt: exerciseLogsTable.loggedAt })
-      .from(exerciseLogsTable)
-      .where(and(eq(exerciseLogsTable.userId, req.userId!), gte(exerciseLogsTable.loggedAt, monthStart)))
-      .catch(() => [] as { loggedAt: Date }[]);
-    const activeDates = new Set(monthlyLogs.map(l => (l.loggedAt as Date).toISOString().slice(0, 10)));
+    const monthlyRes = await pool.query(
+      `SELECT logged_at FROM exercise_logs WHERE user_id=$1 AND logged_at >= $2`,
+      [req.userId!, monthStart]
+    ).catch(() => ({ rows: [] as { logged_at: string }[] }));
+    const activeDates = new Set(monthlyRes.rows.map((r: { logged_at: string }) => new Date(r.logged_at).toISOString().slice(0, 10)));
     const monthlyActivePct = Math.round((activeDates.size / daysElapsed) * 100);
 
     res.json({ date, ...result, label: getActiveLabel(result.overall), monthlyActivePct });
@@ -386,29 +385,36 @@ router.get("/users/search", requireAuth, async (req: AuthRequest, res) => {
 
     const isAoraneId = /^\d{12}$/.test(q);
 
-    let profiles: typeof import("@workspace/db").userProfilesTable.$inferSelect[] = [];
-
+    let profileRows: Record<string, unknown>[] = [];
     if (isAoraneId) {
-      profiles = await db.select().from(userProfilesTable).where(eq(userProfilesTable.aoraneId, q)).limit(5);
+      const r = await pool.query(
+        `SELECT up.*, u.plan, u.phone FROM user_profiles up JOIN users u ON u.id = up.user_id WHERE up.aorane_id = $1 LIMIT 5`,
+        [q]
+      );
+      profileRows = r.rows;
     } else {
-      profiles = await db.select().from(userProfilesTable).where(ilike(userProfilesTable.fullName, `%${q}%`)).limit(10);
+      const r = await pool.query(
+        `SELECT up.*, u.plan, u.phone FROM user_profiles up JOIN users u ON u.id = up.user_id WHERE LOWER(up.full_name) LIKE $1 LIMIT 10`,
+        [`%${q.toLowerCase()}%`]
+      );
+      profileRows = r.rows;
     }
 
-    const results = await Promise.all(profiles.map(async (p) => {
-      const [user] = await db.select().from(usersTable).where(eq(usersTable.id, p.userId)).limit(1);
-      const activeData = await calculateActivePercent(p.userId).catch(() => ({ overall: 0 }));
+    const results = await Promise.all(profileRows.map(async (p) => {
+      const activeData = await calculateActivePercent(String(p.user_id)).catch(() => ({ overall: 0 }));
+      const dob = p.date_of_birth as string | null;
       return {
-        userId: p.userId,
-        aoraneId: p.aoraneId,
-        name: p.fullName,
-        bloodGroup: p.bloodGroup,
+        userId: p.user_id,
+        aoraneId: p.aorane_id,
+        name: p.full_name,
+        bloodGroup: p.blood_group,
         gender: p.gender,
-        age: p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (86400000 * 365.25)) : null,
-        city: (p as Record<string, unknown>).city,
-        state: (p as Record<string, unknown>).state,
+        age: dob ? Math.floor((Date.now() - new Date(dob).getTime()) / (86400000 * 365.25)) : null,
+        city: p.city,
+        state: p.state,
         bmi: p.bmi,
-        plan: user?.plan,
-        phone: user?.phone,
+        plan: p.plan,
+        phone: p.phone,
         activePercent: activeData.overall,
       };
     }));
