@@ -24,17 +24,16 @@ workflows:
             --clean \
             --no-install
 
-      - name: Bundle JavaScript (Metro)
+      - name: Bundle JavaScript (expo export:embed)
         script: |
           cd artifacts/aorane-mobile
           mkdir -p android/app/src/main/assets
-          node_modules/.bin/react-native bundle \
+          npx expo export:embed \
             --platform android \
-            --dev false \
             --entry-file node_modules/expo-router/entry.js \
             --bundle-output android/app/src/main/assets/index.android.bundle \
             --assets-dest android/app/src/main/res \
-            --reset-cache 2>&1
+            --dev false 2>&1
 
       - name: Build Android AAB
         script: |
