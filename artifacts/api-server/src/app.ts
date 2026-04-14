@@ -61,6 +61,25 @@ app.get("/api/version", (_req, res) => {
   res.json({ version: "2.1.0", build: "2026-04-14", status: "ok" });
 });
 
+app.get("/api/sms-debug", (_req, res) => {
+  const sid   = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  const from  = process.env.TWILIO_FROM_NUMBER;
+  const fast2 = process.env.FAST2SMS_API_KEY;
+  res.json({
+    twilio: {
+      sid:   sid   ? sid.slice(0, 6) + "***"   : "NOT SET",
+      token: token ? token.slice(0, 4) + "***" : "NOT SET",
+      from:  from  || "NOT SET",
+      ready: !!(sid && token && from),
+    },
+    fast2sms: {
+      key:   fast2 ? fast2.slice(0, 6) + "***" : "NOT SET",
+      ready: !!fast2,
+    },
+  });
+});
+
 app.get("/api/db-debug", async (_req, res) => {
   const url = process.env.DATABASE_URL || "NOT SET";
   const host = url.match(/@([^:\/]+)/)?.[1] || "unknown";
