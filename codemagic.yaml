@@ -1,6 +1,6 @@
 workflows:
   android-release:
-    name: AORANE Android Release Build
+    name: AORANE Android Release Build (AAB)
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -28,22 +28,66 @@ workflows:
         script: |
           set -e
           REPO_ROOT="$(pwd)"
-
-          # Hide pnpm-workspace.yaml so Metro (run by Gradle) cannot detect monorepo root
           mv "$REPO_ROOT/pnpm-workspace.yaml" "$REPO_ROOT/pnpm-workspace.yaml.bak"
-
           cd "$REPO_ROOT/artifacts/aorane-mobile/android"
           chmod +x gradlew
           ./gradlew bundleRelease 2>&1
           RESULT=$?
-
-          # Restore workspace file
           mv "$REPO_ROOT/pnpm-workspace.yaml.bak" "$REPO_ROOT/pnpm-workspace.yaml"
           exit $RESULT
 
     artifacts:
       - artifacts/aorane-mobile/android/app/build/outputs/bundle/release/*.aab
       - artifacts/aorane-mobile/android/app/build/outputs/**/*.aab
+
+    publishing:
+      email:
+        recipients:
+          - mangeshangadverma@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  android-apk:
+    name: AORANE Android APK (Phone Testing)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      node: 22.14.0
+      vars:
+        EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
+        PACKAGE_NAME: in.aorane.app
+
+    scripts:
+      - name: Install dependencies
+        script: |
+          cd artifacts/aorane-mobile
+          npm install --legacy-peer-deps
+
+      - name: Expo Prebuild (generate Android native code)
+        script: |
+          cd artifacts/aorane-mobile
+          npx expo prebuild \
+            --platform android \
+            --clean \
+            --no-install
+
+      - name: Build Android APK
+        script: |
+          set -e
+          REPO_ROOT="$(pwd)"
+          mv "$REPO_ROOT/pnpm-workspace.yaml" "$REPO_ROOT/pnpm-workspace.yaml.bak"
+          cd "$REPO_ROOT/artifacts/aorane-mobile/android"
+          chmod +x gradlew
+          ./gradlew assembleRelease 2>&1
+          RESULT=$?
+          mv "$REPO_ROOT/pnpm-workspace.yaml.bak" "$REPO_ROOT/pnpm-workspace.yaml"
+          exit $RESULT
+
+    artifacts:
+      - artifacts/aorane-mobile/android/app/build/outputs/apk/release/*.apk
+      - artifacts/aorane-mobile/android/app/build/outputs/**/*.apk
 
     publishing:
       email:
