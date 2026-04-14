@@ -10,11 +10,15 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
+const isSupabase = process.env.DATABASE_URL?.includes("supabase.com");
+const isPooler = process.env.DATABASE_URL?.includes("pooler.supabase.com");
+
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes("supabase.com") || process.env.DATABASE_URL?.includes("sslmode")
-    ? { rejectUnauthorized: false }
-    : undefined,
+  ssl: isSupabase ? { rejectUnauthorized: false } : undefined,
+  max: isPooler ? 1 : 10,
+  idleTimeoutMillis: isPooler ? 0 : 30000,
+  connectionTimeoutMillis: 10000,
 });
 export const db = drizzle(pool, { schema });
 
