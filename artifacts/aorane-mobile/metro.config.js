@@ -8,11 +8,14 @@ const workspaceRoot = path.resolve(__dirname, "../..");
 const config = getDefaultConfig(projectRoot);
 
 const rootNodeModules = path.resolve(workspaceRoot, "node_modules");
-if (fs.existsSync(path.join(workspaceRoot, "pnpm-workspace.yaml"))) {
+const isMonorepo = fs.existsSync(path.join(workspaceRoot, "pnpm-workspace.yaml"));
+const rootNodeModulesExist = fs.existsSync(rootNodeModules);
+
+if (isMonorepo && rootNodeModulesExist) {
   config.watchFolders = [...(config.watchFolders || []), workspaceRoot];
   config.resolver.nodeModulesPaths = [
     path.resolve(projectRoot, "node_modules"),
-    ...(fs.existsSync(rootNodeModules) ? [rootNodeModules] : []),
+    rootNodeModules,
   ];
 }
 
