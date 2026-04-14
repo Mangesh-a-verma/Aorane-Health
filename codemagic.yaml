@@ -9,6 +9,7 @@ workflows:
       vars:
         EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
         PACKAGE_NAME: in.aorane.app
+        NODE_ENV: production
 
     scripts:
       - name: Install dependencies
@@ -25,11 +26,23 @@ workflows:
             --no-install
           npm install --legacy-peer-deps
 
+      - name: Pre-bundle JavaScript with Metro
+        script: |
+          cd artifacts/aorane-mobile
+          mkdir -p android/app/src/main/assets
+          npx react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file node_modules/expo-router/entry.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res \
+            --reset-cache
+
       - name: Build Android AAB
         script: |
           cd artifacts/aorane-mobile/android
           chmod +x gradlew
-          ./gradlew bundleRelease
+          ./gradlew bundleRelease -x createBundleReleaseJsAndAssets
 
     artifacts:
       - artifacts/aorane-mobile/android/app/build/outputs/bundle/release/*.aab
