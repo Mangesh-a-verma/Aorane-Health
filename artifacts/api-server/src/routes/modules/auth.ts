@@ -46,8 +46,9 @@ router.post("/auth/send-otp", async (req, res) => {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[OTP ERROR]", msg);
-    res.status(500).json({ error: "Failed to send OTP", detail: msg });
+    const cause = (err as any)?.cause?.message || (err as any)?.cause || "";
+    console.error("[OTP ERROR]", msg, cause);
+    res.status(500).json({ error: "Failed to send OTP", detail: msg, cause: String(cause) });
   }
 });
 
