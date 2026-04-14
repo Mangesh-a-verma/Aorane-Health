@@ -26,14 +26,27 @@ workflows:
 
       - name: Bundle JavaScript (expo export:embed)
         script: |
-          cd artifacts/aorane-mobile
+          set -e
+          REPO_ROOT="$(pwd)"
+          APP_DIR="$REPO_ROOT/artifacts/aorane-mobile"
+
+          # Hide pnpm-workspace.yaml so expo cannot detect monorepo root
+          mv "$REPO_ROOT/pnpm-workspace.yaml" "$REPO_ROOT/pnpm-workspace.yaml.bak"
+
+          cd "$APP_DIR"
           mkdir -p android/app/src/main/assets
-          npx expo export:embed \
+
+          node_modules/.bin/expo export:embed . \
             --platform android \
             --entry-file node_modules/expo-router/entry.js \
             --bundle-output android/app/src/main/assets/index.android.bundle \
             --assets-dest android/app/src/main/res \
             --dev false 2>&1
+          RESULT=$?
+
+          # Restore workspace file
+          mv "$REPO_ROOT/pnpm-workspace.yaml.bak" "$REPO_ROOT/pnpm-workspace.yaml"
+          exit $RESULT
 
       - name: Build Android AAB
         script: |

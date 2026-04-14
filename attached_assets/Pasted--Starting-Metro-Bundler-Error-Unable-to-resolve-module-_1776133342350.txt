@@ -1,0 +1,26 @@
+
+Starting Metro Bundler
+Error: Unable to resolve module ./node_modules/expo-router/entry.js from /Users/builder/clone/.: 
+
+None of these files exist:
+  * ../../node_modules/expo-router/entry.js(.android.ts|.native.ts|.ts|.android.tsx|.native.tsx|.tsx|.android.mjs|.native.mjs|.mjs|.android.js|.native.js|.js|.android.jsx|.native.jsx|.jsx|.android.json|.native.json|.json|.android.cjs|.native.cjs|.cjs|.android.scss|.native.scss|.scss|.android.sass|.native.sass|.sass|.android.css|.native.css|.css)
+  * ../../node_modules/expo-router/entry.js
+Error: Unable to resolve module ./node_modules/expo-router/entry.js from /Users/builder/clone/.: 
+
+None of these files exist:
+  * ../../node_modules/expo-router/entry.js(.android.ts|.native.ts|.ts|.android.tsx|.native.tsx|.tsx|.android.mjs|.native.mjs|.mjs|.android.js|.native.js|.js|.android.jsx|.native.jsx|.jsx|.android.json|.native.json|.json|.android.cjs|.native.cjs|.cjs|.android.scss|.native.scss|.scss|.android.sass|.native.sass|.sass|.android.css|.native.css|.css)
+  * ../../node_modules/expo-router/entry.js
+    at ModuleResolver.resolveDependency (/Users/builder/clone/artifacts/aorane-mobile/node_modules/metro/src/node-haste/DependencyGraph/ModuleResolution.js:136:15)
+    at DependencyGraph.resolveDependency (/Users/builder/clone/artifacts/aorane-mobile/node_modules/metro/src/node-haste/DependencyGraph.js:252:43)
+    at /Users/builder/clone/artifacts/aorane-mobile/node_modules/metro/src/lib/transformHelpers.js:163:21
+    at Server._resolveRelativePath (/Users/builder/clone/artifacts/aorane-mobile/node_modules/metro/src/Server.js:1259:12)
+    at MetroBundlerDevServer.resolveRelativePathAsync (/Users/builder/clone/artifacts/aorane-mobile/node_modules/@expo/cli/src/start/server/metro/MetroBundlerDevServer.ts:1875:12)
+    at MetroBundlerDevServer.metroLoadModuleContents (/Users/builder/clone/artifacts/aorane-mobile/node_modules/@expo/cli/src/start/server/metro/MetroBundlerDevServer.ts:631:35)
+    at MetroBundlerDevServer.legacySinglePageExportBundleAsync (/Users/builder/clone/artifacts/aorane-mobile/node_modules/@expo/cli/src/start/server/metro/MetroBundlerDevServer.ts:958:20)
+    at exportEmbedBundleAndAssetsAsync (/Users/builder/clone/artifacts/aorane-mobile/node_modules/@expo/cli/src/export/embed/exportEmbedAsync.ts:195:21)
+    at exportEmbedInternalAsync (/Users/builder/clone/artifacts/aorane-mobile/node_modules/@expo/cli/src/export/embed/exportEmbedAsync.ts:127:37)
+    at exportEmbedAsync (/Users/builder/clone/artifacts/aorane-mobile/node_modules/@expo/cli/src/export/embed/exportEmbedAsync.ts:107:3)
+
+
+Build failed :|
+Step 4 script `Bundle JavaScript (expo export:embed)` exited with status code 1
