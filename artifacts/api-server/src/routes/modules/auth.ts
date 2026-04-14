@@ -31,11 +31,10 @@ router.post("/auth/send-otp", async (req, res) => {
     const smsSent = await sendSmsOtp(phone, otp);
     console.log(`[OTP] ${phone} → ${otp} | SMS sent: ${smsSent}`);
 
-    const isDev = process.env.NODE_ENV !== "production";
     res.json({
       success: true,
       message: smsSent ? "OTP sent via SMS" : "SMS service temporarily unavailable",
-      ...(isDev ? { devOtp: otp } : {}),
+      ...(!smsSent ? { devOtp: otp } : {}),
       smsSent,
     });
   } catch (err) {
