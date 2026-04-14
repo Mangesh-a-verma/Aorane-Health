@@ -21,7 +21,9 @@ workflows:
           cd artifacts/aorane-mobile
           npx expo prebuild \
             --platform android \
-            --clean
+            --clean \
+            --no-install
+          npm install --legacy-peer-deps
 
       - name: Build Android AAB
         script: |
