@@ -31,6 +31,10 @@ export const subscriptionsTable = pgTable("subscriptions", {
   startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  razorpaySubscriptionId: text("razorpay_subscription_id"),
+  paymentType: text("payment_type").notNull().default("one_time"),
+  autoRenew: boolean("auto_renew").notNull().default(false),
+  nextRenewalAt: timestamp("next_renewal_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -42,6 +46,7 @@ export const paymentsTable = pgTable("payments", {
   subscriptionId: uuid("subscription_id").references(() => subscriptionsTable.id),
   razorpayOrderId: text("razorpay_order_id"),
   razorpayPaymentId: text("razorpay_payment_id"),
+  razorpaySubscriptionId: text("razorpay_subscription_id"),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: text("currency").notNull().default("INR"),
   status: paymentStatusEnum("status").notNull().default("pending"),

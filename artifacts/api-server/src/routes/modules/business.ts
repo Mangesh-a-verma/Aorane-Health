@@ -6,6 +6,10 @@ import { requireAuth } from "../../middlewares/user-auth";
 import { signBusinessToken } from "../../lib/jwt";
 import type { BusinessRequest } from "../../middlewares/business-auth";
 import crypto from "crypto";
+import {
+  isLiveMode, createPlan, createSubscription, cancelSubscription,
+  verifySubscriptionSignature, verifyPaymentSignature, createOrder,
+} from "../../lib/razorpay";
 
 const router = Router();
 
@@ -233,15 +237,18 @@ router.get("/business/billing/plans", requireBusinessAuth, async (_req: Business
 
 router.get("/business/billing/subscription", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
-    const [payment] = await db.select().from(orgPaymentsTable)
-      .where(and(eq(orgPaymentsTable.orgId, req.orgId!), eq(orgPaymentsTable.status, "success")))
-      .orderBy(desc(orgPaymentsTable.createdAt)).limit(1);
+    // Get latest payment (success or pending auto-renew)
+    const payments = await db.select().from(orgPaymentsTable)
+      .where(eq(orgPaymentsTable.orgId, req.orgId!))
+      .orderBy(desc(orgPaymentsTable.createdAt)).limit(5);
+    const activePayment = payments.find((p) => p.status === "success") || payments.find((p) => p.autoRenew) || payments[0] || null;
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
     const plans = await getOrgPlansFromDB();
-    res.json({ payment: payment || null, org, plans });
+    res.json({ payment: activePayment || null, org, plans });
   } catch { res.status(500).json({ error: "Failed to fetch subscription" }); }
 });
 
+// ─── one-time billing order ───────────────────────────────────────────────────
 router.post("/business/billing/order", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
     const { plan, billing = "monthly" } = req.body as { plan: string; billing?: string };
@@ -249,45 +256,135 @@ router.post("/business/billing/order", requireBusinessAuth, async (req: Business
     if (!orgPlans[plan]) { res.status(400).json({ error: "Invalid plan" }); return; }
     const planInfo = orgPlans[plan];
     const amount = billing === "yearly" ? planInfo.priceYearly : planInfo.price;
-    const razorpayKeyId = process.env["RAZORPAY_KEY_ID"];
-    const razorpayKeySecret = process.env["RAZORPAY_KEY_SECRET"];
     let razorpayOrderId: string | null = null;
-    if (razorpayKeyId && razorpayKeySecret) {
-      const auth = Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString("base64");
-      const rzRes = await fetch("https://api.razorpay.com/v1/orders", {
-        method: "POST",
-        headers: { "Authorization": `Basic ${auth}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: amount * 100, currency: "INR", receipt: `org_${req.orgId!.substring(0, 8)}` }),
-      });
-      if (rzRes.ok) { const d = await rzRes.json() as { id: string }; razorpayOrderId = d.id; }
+    if (isLiveMode()) {
+      const order = await createOrder({ amount, receipt: `org_${req.orgId!.substring(0, 8)}` });
+      razorpayOrderId = order.id;
     }
     const [payment] = await db.insert(orgPaymentsTable).values({
       orgId: req.orgId!, plan, seats: planInfo.seats, amount: amount.toString(),
-      currency: "INR", razorpayOrderId, status: "pending",
+      currency: "INR", razorpayOrderId, status: "pending", paymentType: "one_time",
     }).returning();
-    res.json({ success: true, paymentId: payment.id, razorpayOrderId, razorpayKeyId: razorpayKeyId || null, amount, plan, planLabel: planInfo.label, seats: planInfo.seats, isTestMode: !razorpayKeyId });
-  } catch { res.status(500).json({ error: "Failed to create billing order" }); }
+    res.json({
+      success: true, paymentId: payment.id, razorpayOrderId,
+      razorpayKeyId: process.env["RAZORPAY_KEY_ID"] || null,
+      amount, plan, planLabel: planInfo.label, seats: planInfo.seats,
+      isTestMode: !isLiveMode(),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to create billing order";
+    res.status(500).json({ error: msg });
+  }
 });
 
+// ─── verify one-time payment ──────────────────────────────────────────────────
 router.post("/business/billing/verify", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
     const { paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature, plan, isTestMode } = req.body as Record<string, unknown>;
-    const razorpayKeySecret = process.env["RAZORPAY_KEY_SECRET"];
-    if (!isTestMode && razorpayKeySecret) {
-      const body = `${razorpayOrderId}|${razorpayPaymentId}`;
-      const expectedSig = crypto.createHmac("sha256", razorpayKeySecret).update(body).digest("hex");
-      if (expectedSig !== razorpaySignature) { res.status(400).json({ error: "Payment signature invalid" }); return; }
+    if (!isTestMode && isLiveMode()) {
+      const valid = verifyPaymentSignature(razorpayOrderId as string, razorpayPaymentId as string, razorpaySignature as string);
+      if (!valid) { res.status(400).json({ error: "Payment signature invalid" }); return; }
     }
     const orgPlansVerify = await getOrgPlansFromDB();
     const planInfo = orgPlansVerify[plan as string];
     if (!planInfo) { res.status(400).json({ error: "Invalid plan" }); return; }
     await db.update(orgPaymentsTable).set({ status: "success", razorpayPaymentId: razorpayPaymentId as string }).where(eq(orgPaymentsTable.id, paymentId as string));
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 365);
-    await db.update(organizationsTable).set({ totalSeats: planInfo.seats, plan: "pro" as "basic" | "pro" | "max", isVerified: true }).where(eq(organizationsTable.id, req.orgId!));
+    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+    await db.update(organizationsTable).set({
+      totalSeats: planInfo.seats, plan: "pro" as "basic" | "pro" | "max", isVerified: true,
+    }).where(eq(organizationsTable.id, req.orgId!));
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
-    res.json({ success: true, org, message: `${planInfo.label} plan activated! ${planInfo.seats} seats unlocked.` });
+    res.json({ success: true, org, message: `${planInfo.label} plan activated! ${planInfo.seats} seats unlocked.`, expiresAt });
   } catch { res.status(500).json({ error: "Failed to verify payment" }); }
+});
+
+// ─── create auto-recurring subscription for org ───────────────────────────────
+router.post("/business/billing/subscription/create", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const { plan, billing = "monthly" } = req.body as { plan: string; billing?: string };
+    const orgPlans = await getOrgPlansFromDB();
+    if (!orgPlans[plan]) { res.status(400).json({ error: "Invalid plan" }); return; }
+    const planInfo = orgPlans[plan];
+    const isMonthly = billing !== "yearly";
+    const amount = isMonthly ? planInfo.price : planInfo.priceYearly;
+    const period: "monthly" | "yearly" = isMonthly ? "monthly" : "yearly";
+
+    if (!isLiveMode()) {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + (isMonthly ? 30 : 365));
+      const [payment] = await db.insert(orgPaymentsTable).values({
+        orgId: req.orgId!, plan, seats: planInfo.seats, amount: amount.toString(),
+        currency: "INR", status: "success", paymentType: "recurring",
+        autoRenew: true, nextRenewalAt: expiresAt,
+      }).returning();
+      await db.update(organizationsTable).set({
+        totalSeats: planInfo.seats, plan: "pro" as "basic" | "pro" | "max", isVerified: true,
+      }).where(eq(organizationsTable.id, req.orgId!));
+      const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
+      return res.json({
+        isTestMode: true, paymentId: payment.id, org,
+        message: `${planInfo.label} auto-subscription activated! (test mode)`,
+        plan, amount, seats: planInfo.seats, expiresAt, nextRenewalAt: expiresAt,
+      });
+    }
+
+    const rzPlan = await createPlan({ name: `AORANE Business ${planInfo.label} ${period}`, amount, period });
+    const rzSub = await createSubscription({ planId: rzPlan.id, totalCount: 60, notes: { orgId: req.orgId!, plan } });
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + (isMonthly ? 30 : 365));
+    const [payment] = await db.insert(orgPaymentsTable).values({
+      orgId: req.orgId!, plan, seats: planInfo.seats, amount: amount.toString(),
+      currency: "INR", status: "pending", paymentType: "recurring",
+      autoRenew: true, nextRenewalAt: expiresAt, razorpaySubscriptionId: rzSub.id,
+    }).returning();
+    res.json({
+      isTestMode: false, paymentId: payment.id, razorpaySubscriptionId: rzSub.id,
+      razorpayKeyId: process.env["RAZORPAY_KEY_ID"],
+      plan, planLabel: planInfo.label, amount, seats: planInfo.seats,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to create subscription";
+    res.status(500).json({ error: msg });
+  }
+});
+
+// ─── verify subscription first payment ───────────────────────────────────────
+router.post("/business/billing/subscription/verify", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const { paymentId, razorpaySubscriptionId, razorpayPaymentId, razorpaySignature, plan } = req.body as Record<string, string>;
+    if (isLiveMode()) {
+      const valid = verifySubscriptionSignature(razorpaySubscriptionId, razorpayPaymentId, razorpaySignature);
+      if (!valid) { res.status(400).json({ error: "Payment signature invalid" }); return; }
+    }
+    const orgPlans = await getOrgPlansFromDB();
+    const planInfo = orgPlans[plan];
+    if (!planInfo) { res.status(400).json({ error: "Invalid plan" }); return; }
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+    await db.update(orgPaymentsTable).set({ status: "success", nextRenewalAt: expiresAt }).where(eq(orgPaymentsTable.id, paymentId));
+    await db.update(organizationsTable).set({
+      totalSeats: planInfo.seats, plan: "pro" as "basic" | "pro" | "max", isVerified: true,
+    }).where(eq(organizationsTable.id, req.orgId!));
+    const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
+    res.json({ success: true, org, message: `${planInfo.label} auto-subscription activated!`, expiresAt });
+  } catch { res.status(500).json({ error: "Failed to verify subscription" }); }
+});
+
+// ─── cancel org auto-renew ────────────────────────────────────────────────────
+router.delete("/business/billing/subscription/cancel", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const payments = await db.select().from(orgPaymentsTable)
+      .where(and(eq(orgPaymentsTable.orgId, req.orgId!), eq(orgPaymentsTable.autoRenew, true)))
+      .orderBy(desc(orgPaymentsTable.createdAt)).limit(1);
+    const payment = payments[0];
+    if (!payment) { res.status(404).json({ error: "No active auto-renew subscription found" }); return; }
+    if (isLiveMode() && payment.razorpaySubscriptionId) {
+      try { await cancelSubscription(payment.razorpaySubscriptionId, true); } catch { /* ignore if already cancelled */ }
+    }
+    await db.update(orgPaymentsTable).set({ autoRenew: false }).where(eq(orgPaymentsTable.id, payment.id));
+    res.json({ success: true, message: "Auto-renew cancelled. Plan stays active until next renewal date.", nextRenewalAt: payment.nextRenewalAt });
+  } catch { res.status(500).json({ error: "Failed to cancel auto-renew" }); }
 });
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────

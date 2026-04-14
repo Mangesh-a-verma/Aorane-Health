@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import webhookRouter from "./modules/webhook";
 import authRouter from "./modules/auth";
 import usersRouter from "./modules/users";
 import foodRouter from "./modules/food";
@@ -25,6 +26,7 @@ import whatsappRouter from "./modules/whatsapp";
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(webhookRouter);
 router.use(authRouter);
 router.use(usersRouter);
 router.use(foodRouter);

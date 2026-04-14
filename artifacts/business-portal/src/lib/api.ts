@@ -115,7 +115,16 @@ export const api = {
     request<{ paymentId: string; razorpayOrderId: string | null; razorpayKeyId: string | null; amount: number; plan: string; planLabel: string; seats: number; isTestMode: boolean }>("/business/billing/order", { method: "POST", body: JSON.stringify({ plan, billing }) }),
 
   verifyBillingPayment: (data: Record<string, unknown>) =>
-    request<{ success: boolean; org: Org; message: string }>("/business/billing/verify", { method: "POST", body: JSON.stringify(data) }),
+    request<{ success: boolean; org: Org; message: string; expiresAt?: string }>("/business/billing/verify", { method: "POST", body: JSON.stringify(data) }),
+
+  createBillingSubscription: (plan: string, billing: string) =>
+    request<{ isTestMode: boolean; paymentId: string; razorpaySubscriptionId?: string; razorpayKeyId?: string; plan: string; planLabel?: string; amount: number; seats?: number; message?: string; nextRenewalAt?: string; expiresAt?: string; org?: Org }>("/business/billing/subscription/create", { method: "POST", body: JSON.stringify({ plan, billing }) }),
+
+  verifyBillingSubscription: (data: Record<string, unknown>) =>
+    request<{ success: boolean; org: Org; message: string; expiresAt?: string }>("/business/billing/subscription/verify", { method: "POST", body: JSON.stringify(data) }),
+
+  cancelBillingSubscription: () =>
+    request<{ success: boolean; message: string; nextRenewalAt?: string }>("/business/billing/subscription/cancel", { method: "DELETE" }),
 
   getAnalytics: () => request<Analytics>("/business/analytics"),
 
