@@ -52,40 +52,29 @@ function calculateCalories(
 }
 
 // ─────────────────────────────────────────────────────────
-// Calculate calorie burn estimate (no auth required for quick estimate)
+// Calculate calorie burn estimate
 // ─────────────────────────────────────────────────────────
 router.post("/health/exercise/calculate", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { exerciseType, durationMinutes, intensity } = req.body as {
       exerciseType: string; durationMinutes: number; intensity: string;
     };
-
-    const [profile] = await db.select().from(userProfilesTable)
-      .where(eq(userProfilesTable.userId, req.userId!));
-
-    const weightKg = Number(profile?.weightKg || 70);
-    const gender = profile?.gender || "male";
+    const profRes = await pool.query(`SELECT weight_kg, gender FROM user_profiles WHERE user_id=$1`, [req.userId!]);
+    const weightKg = Number(profRes.rows[0]?.weight_kg || 70);
+    const gender = profRes.rows[0]?.gender || "male";
 
     const { calories, met } = calculateCalories(
-      exerciseType,
-      durationMinutes,
+      exerciseType, durationMinutes,
       (intensity || "moderate") as "light" | "moderate" | "intense",
-      weightKg,
-      gender,
+      weightKg, gender,
     );
-
     res.json({
-      exerciseType,
-      durationMinutes,
-      intensity,
-      weightKg,
-      gender,
-      metValue: met,
-      caloriesBurned: calories,
+      exerciseType, durationMinutes, intensity, weightKg, gender,
+      metValue: met, caloriesBurned: calories,
       formula: `MET(${met}) × ${weightKg}kg × ${(durationMinutes/60).toFixed(2)}h × gender(${gender === "female" ? "0.9" : "1.0"}) = ${calories} kcal`,
     });
-  } catch {
-    res.status(500).json({ error: "Calculation failed" });
+  } catch (e) {
+    res.status(500).json({ error: "Calculation failed", detail: (e as Error).message });
   }
 });
 
@@ -93,69 +82,56 @@ router.post("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { exerciseType, durationMinutes, intensity, caloriesBurned, inputMethod, notes, loggedAt } = req.body as Record<string, unknown>;
 
-    // Fetch user profile for accurate calorie calculation
-    const [profile] = await db.select().from(userProfilesTable)
-      .where(eq(userProfilesTable.userId, req.userId!));
+    const profRes = await pool.query(`SELECT weight_kg, gender FROM user_profiles WHERE user_id=$1`, [req.userId!]);
+    const weightKg = Number(profRes.rows[0]?.weight_kg || 70);
+    const gender = profRes.rows[0]?.gender || "male";
 
-    const weightKg = Number(profile?.weightKg || 70);
-    const gender = profile?.gender || "male";
-
-    let finalCalories: string;
+    let finalCalories: number;
     let finalMet: number;
 
     if (caloriesBurned) {
-      finalCalories = String(caloriesBurned);
+      finalCalories = Number(caloriesBurned);
       finalMet = MET_VALUES[exerciseType as string]?.moderate || 5.0;
     } else {
       const calc = calculateCalories(
-        exerciseType as string,
-        Number(durationMinutes),
+        exerciseType as string, Number(durationMinutes),
         (intensity as "light" | "moderate" | "intense") || "moderate",
-        weightKg,
-        gender,
+        weightKg, gender,
       );
-      finalCalories = String(calc.calories);
+      finalCalories = calc.calories;
       finalMet = calc.met;
     }
 
-    const [log] = await db.insert(exerciseLogsTable).values({
-      userId: req.userId!,
-      exerciseType: exerciseType as string,
-      durationMinutes: Number(durationMinutes),
-      intensity: (intensity as "light" | "moderate" | "intense") || "moderate",
-      caloriesBurned: finalCalories,
-      metValue: String(finalMet),
-      inputMethod: (inputMethod as "photo" | "text" | "voice" | "manual") || "manual",
-      notes: notes as string | undefined,
-      loggedAt: loggedAt ? new Date(loggedAt as string) : new Date(),
-    }).returning();
-
+    const logTime = loggedAt ? new Date(loggedAt as string) : new Date();
+    const result = await pool.query(
+      `INSERT INTO exercise_logs (user_id, exercise_type, duration_minutes, intensity, calories_burned, met_value, input_method, notes, logged_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [req.userId!, exerciseType, Number(durationMinutes), intensity || "moderate",
+       String(finalCalories), String(finalMet), inputMethod || "manual", notes || null, logTime]
+    );
     res.status(201).json({
-      log,
-      calculation: {
-        weightKg,
-        gender,
-        metValue: finalMet,
-        caloriesBurned: Number(finalCalories),
-      }
+      log: result.rows[0],
+      calculation: { weightKg, gender, metValue: finalMet, caloriesBurned: finalCalories },
     });
-  } catch {
-    res.status(500).json({ error: "Failed to log exercise" });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to log exercise", detail: (e as Error).message });
   }
 });
 
 router.get("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { date } = req.query as { date?: string };
-    const conditions = [eq(exerciseLogsTable.userId, req.userId!)];
+    let query = `SELECT * FROM exercise_logs WHERE user_id=$1`;
+    const params: unknown[] = [req.userId!];
     if (date) {
-      conditions.push(gte(exerciseLogsTable.loggedAt, new Date(date + "T00:00:00Z")));
-      conditions.push(lte(exerciseLogsTable.loggedAt, new Date(date + "T23:59:59Z")));
+      query += ` AND logged_at >= $2 AND logged_at <= $3`;
+      params.push(date + "T00:00:00Z", date + "T23:59:59Z");
     }
-    const logs = await db.select().from(exerciseLogsTable).where(and(...conditions)).orderBy(desc(exerciseLogsTable.loggedAt));
-    res.json({ logs });
-  } catch {
-    res.status(500).json({ error: "Failed to fetch exercise logs" });
+    query += ` ORDER BY logged_at DESC`;
+    const result = await pool.query(query, params);
+    res.json({ logs: result.rows });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch exercise logs", detail: (e as Error).message });
   }
 });
 
@@ -197,14 +173,10 @@ router.get("/health/water/:date", requireAuth, async (req: AuthRequest, res) => 
 router.get("/health/score/:date", requireAuth, async (req: AuthRequest, res) => {
   try {
     const date = String(req.params.date);
-    const [existing] = await db.select().from(dailyHealthScoresTable).where(
-      and(eq(dailyHealthScoresTable.userId, req.userId!), eq(dailyHealthScoresTable.scoreDate, date))
-    );
-    if (existing) { res.json({ score: existing }); return; }
     const score = await computeDailyScore(req.userId!, date);
     res.json({ score });
-  } catch {
-    res.status(500).json({ error: "Failed to fetch health score" });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch health score", detail: (e as Error).message });
   }
 });
 
@@ -213,75 +185,70 @@ router.post("/health/score/:date/compute", requireAuth, async (req: AuthRequest,
     const date = String(req.params.date);
     const score = await computeDailyScore(req.userId!, date);
     res.json({ score });
-  } catch {
-    res.status(500).json({ error: "Failed to compute health score" });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to compute health score", detail: (e as Error).message });
   }
 });
 
 router.get("/health/scores/history", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { days = "30" } = req.query as { days?: string };
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(days));
-    const scores = await db.select().from(dailyHealthScoresTable).where(
-      and(
-        eq(dailyHealthScoresTable.userId, req.userId!),
-        gte(dailyHealthScoresTable.createdAt, startDate)
-      )
-    ).orderBy(dailyHealthScoresTable.scoreDate);
-    res.json({ scores });
-  } catch {
-    res.status(500).json({ error: "Failed to fetch score history" });
+    const result = await pool.query(
+      `SELECT * FROM daily_health_scores WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${parseInt(days)} days' ORDER BY score_date`,
+      [req.userId!]
+    );
+    res.json({ scores: result.rows });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch score history", detail: (e as Error).message });
   }
 });
 
-async function computeDailyScore(userId: string, date: string): Promise<typeof dailyHealthScoresTable.$inferSelect> {
-  const startOfDay = new Date(date + "T00:00:00Z");
-  const endOfDay = new Date(date + "T23:59:59Z");
+async function computeDailyScore(userId: string, date: string): Promise<Record<string, unknown>> {
+  const dayStart = date + "T00:00:00Z";
+  const dayEnd   = date + "T23:59:59Z";
 
-  const [foodLogs, exerciseLogs, waterLogs, medicineLogs, stressLogs, prefs] = await Promise.all([
-    db.select().from(foodLogsTable).where(and(eq(foodLogsTable.userId, userId), gte(foodLogsTable.loggedAt, startOfDay), lte(foodLogsTable.loggedAt, endOfDay))),
-    db.select().from(exerciseLogsTable).where(and(eq(exerciseLogsTable.userId, userId), gte(exerciseLogsTable.loggedAt, startOfDay), lte(exerciseLogsTable.loggedAt, endOfDay))),
-    db.select().from(waterLogsTable).where(and(eq(waterLogsTable.userId, userId), gte(waterLogsTable.loggedAt, startOfDay), lte(waterLogsTable.loggedAt, endOfDay))),
-    db.select().from(medicineLogsTable).where(and(eq(medicineLogsTable.userId, userId), gte(medicineLogsTable.scheduledAt, startOfDay), lte(medicineLogsTable.scheduledAt, endOfDay))),
-    db.select().from(stressLogsTable).where(and(eq(stressLogsTable.userId, userId), gte(stressLogsTable.loggedAt, startOfDay), lte(stressLogsTable.loggedAt, endOfDay))),
-    db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId)),
+  const [foodR, exR, waterR, medR, medTakenR, prefsR] = await Promise.all([
+    pool.query(`SELECT COALESCE(SUM(calories::numeric),0) AS total_cal, COUNT(*) AS meal_count FROM food_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`, [userId, dayStart, dayEnd]),
+    pool.query(`SELECT COALESCE(SUM(duration_minutes),0) AS total_min FROM exercise_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`, [userId, dayStart, dayEnd]),
+    pool.query(`SELECT COALESCE(SUM(glasses_count),0) AS total FROM water_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`, [userId, dayStart, dayEnd]),
+    pool.query(`SELECT COUNT(*) FROM medicine_logs WHERE user_id=$1 AND scheduled_at>=$2 AND scheduled_at<=$3`, [userId, dayStart, dayEnd]),
+    pool.query(`SELECT COUNT(*) FROM medicine_logs WHERE user_id=$1 AND status='taken' AND scheduled_at>=$2 AND scheduled_at<=$3`, [userId, dayStart, dayEnd]),
+    pool.query(`SELECT water_goal_glasses, calorie_goal FROM user_preferences WHERE user_id=$1`, [userId]),
   ]);
 
-  const waterGoal = prefs[0]?.waterGoalGlasses || 8;
-  const calorieGoal = prefs[0]?.calorieGoal || 2000;
-  const totalCalories = foodLogs.reduce((s, l) => s + Number(l.calories), 0);
-  const totalWater = waterLogs.reduce((s, l) => s + l.glassesCount, 0);
-  const totalExercise = exerciseLogs.reduce((s, l) => s + l.durationMinutes, 0);
+  const totalCalories  = parseFloat(foodR.rows[0]?.total_cal || "0");
+  const mealCount      = parseInt(foodR.rows[0]?.meal_count || "0");
+  const totalExercise  = parseInt(exR.rows[0]?.total_min || "0");
+  const totalWater     = parseInt(waterR.rows[0]?.total || "0");
+  const totalMed       = parseInt(medR.rows[0]?.count || "0");
+  const takenMed       = parseInt(medTakenR.rows[0]?.count || "0");
+  const waterGoal      = parseInt(prefsR.rows[0]?.water_goal_glasses || "8");
+  const calorieGoal    = parseInt(prefsR.rows[0]?.calorie_goal || "2000");
 
-  const foodScore = foodLogs.length > 0 ? Math.min(100, Math.round((Math.min(totalCalories, calorieGoal) / calorieGoal) * 100)) : 0;
-  const waterScore = Math.min(100, Math.round((totalWater / waterGoal) * 100));
-  const exerciseScore = Math.min(100, Math.round((totalExercise / 30) * 100));
-  const takeMedicines = medicineLogs.filter((m) => m.status === "taken").length;
-  const totalMedicines = medicineLogs.length;
-  const medicineScore = totalMedicines > 0 ? Math.round((takeMedicines / totalMedicines) * 100) : 50;
-  const fieldsLogged = [foodLogs.length > 0, waterLogs.length > 0, exerciseLogs.length > 0].filter(Boolean).length;
-  const healthScore = Math.round((foodScore + waterScore + exerciseScore + medicineScore) / 4);
+  const foodScore      = mealCount > 0 ? Math.min(100, Math.round((Math.min(totalCalories, calorieGoal) / calorieGoal) * 100)) : 0;
+  const waterScore     = Math.min(100, Math.round((totalWater / waterGoal) * 100));
+  const exerciseScore  = Math.min(100, Math.round((totalExercise / 30) * 100));
+  const medicineScore  = totalMed > 0 ? Math.round((takenMed / totalMed) * 100) : 50;
+  const healthScore    = Math.round((foodScore + waterScore + exerciseScore + medicineScore) / 4);
+  const fieldsLogged   = [mealCount > 0, totalWater > 0, totalExercise > 0].filter(Boolean).length;
   const dataConfidencePct = (fieldsLogged / 3) * 100;
 
-  const [existing] = await db.select().from(dailyHealthScoresTable).where(
-    and(eq(dailyHealthScoresTable.userId, userId), eq(dailyHealthScoresTable.scoreDate, date))
-  );
+  await pool.query(
+    `INSERT INTO daily_health_scores (user_id, score_date, health_score, data_confidence_pct, food_score, exercise_score, water_score, medicine_score, total_calories_in, water_glasses, exercise_minutes, fields_logged, total_possible_fields)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+     ON CONFLICT (user_id, score_date) DO UPDATE SET
+       health_score=$3, data_confidence_pct=$4, food_score=$5, exercise_score=$6, water_score=$7, medicine_score=$8,
+       total_calories_in=$9, water_glasses=$10, exercise_minutes=$11, fields_logged=$12`,
+    [userId, date, healthScore, String(dataConfidencePct), foodScore, exerciseScore, waterScore, medicineScore,
+     String(totalCalories), totalWater, totalExercise, fieldsLogged, 3]
+  ).catch(() => {});  // fail silently if table doesn't exist yet
 
-  if (existing) {
-    const [updated] = await db.update(dailyHealthScoresTable).set({
-      healthScore, dataConfidencePct: String(dataConfidencePct), foodScore, exerciseScore, waterScore, medicineScore,
-      totalCaloriesIn: String(totalCalories), waterGlasses: totalWater, exerciseMinutes: totalExercise, fieldsLogged,
-    }).where(and(eq(dailyHealthScoresTable.userId, userId), eq(dailyHealthScoresTable.scoreDate, date))).returning();
-    return updated;
-  }
-
-  const [created] = await db.insert(dailyHealthScoresTable).values({
-    userId, scoreDate: date, healthScore, dataConfidencePct: String(dataConfidencePct), foodScore, exerciseScore,
-    waterScore, medicineScore, totalCaloriesIn: String(totalCalories), waterGlasses: totalWater,
+  return {
+    userId, scoreDate: date, healthScore, dataConfidencePct: String(dataConfidencePct),
+    foodScore, exerciseScore, waterScore, medicineScore,
+    totalCaloriesIn: String(totalCalories), waterGlasses: totalWater,
     exerciseMinutes: totalExercise, fieldsLogged, totalPossibleFields: 3,
-  }).returning();
-  return created;
+  };
 }
 
 export default router;

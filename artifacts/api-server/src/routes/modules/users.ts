@@ -113,63 +113,72 @@ router.patch("/users/profile", requireAuth, async (req: AuthRequest, res) => {
       ? Number((Number(weightKg) / Math.pow(Number(heightCm) / 100, 2)).toFixed(1))
       : undefined;
 
-    const updateData: Record<string, unknown> = {};
-    if (fullName !== undefined) updateData.fullName = fullName;
-    if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth;
-    if (gender !== undefined) updateData.gender = gender;
-    if (heightCm !== undefined) updateData.heightCm = String(heightCm);
-    if (weightKg !== undefined) updateData.weightKg = String(weightKg);
-    if (bmi !== undefined) updateData.bmi = String(bmi);
-    if (bloodGroup !== undefined) updateData.bloodGroup = bloodGroup;
-    if (foodPreference !== undefined) updateData.foodPreference = foodPreference;
-    if (foodAllergies !== undefined) updateData.foodAllergies = foodAllergies;
-    if (workProfile !== undefined) updateData.workProfile = workProfile;
-    if (activityLevel !== undefined) updateData.activityLevel = activityLevel;
-    if (exerciseFrequency !== undefined) updateData.exerciseFrequency = exerciseFrequency;
-    if (exerciseTypes !== undefined) updateData.exerciseTypes = exerciseTypes;
-    if (sleepHoursAvg !== undefined) updateData.sleepHoursAvg = String(sleepHoursAvg);
-    if (wakeTime !== undefined) updateData.wakeTime = wakeTime;
-    if (sleepTime !== undefined) updateData.sleepTime = sleepTime;
-    if (stressLevelSelf !== undefined) updateData.stressLevelSelf = stressLevelSelf;
-    if (profilePhotoUrl !== undefined) updateData.profilePhotoUrl = profilePhotoUrl;
-    if (city !== undefined) updateData.city = city;
-    if (state !== undefined) updateData.state = state;
+    // Build SET clause dynamically — raw SQL to bypass Drizzle ORM Transaction Pooler issues
+    const fields: string[] = [];
+    const vals: unknown[]  = [];
+    let   idx              = 1;
+    const set = (col: string, val: unknown) => { fields.push(`${col}=$${idx++}`); vals.push(val); };
 
-    const [updated] = await db
-      .update(userProfilesTable)
-      .set(updateData as Partial<typeof userProfilesTable.$inferInsert>)
-      .where(eq(userProfilesTable.userId, req.userId!))
-      .returning();
+    if (fullName          !== undefined) set("full_name",         fullName);
+    if (dateOfBirth       !== undefined) set("date_of_birth",     dateOfBirth);
+    if (gender            !== undefined) set("gender",            gender);
+    if (heightCm          !== undefined) set("height_cm",         String(heightCm));
+    if (weightKg          !== undefined) set("weight_kg",         String(weightKg));
+    if (bmi               !== undefined) set("bmi",               String(bmi));
+    if (bloodGroup        !== undefined) set("blood_group",       bloodGroup);
+    if (foodPreference    !== undefined) set("food_preference",   foodPreference);
+    if (foodAllergies     !== undefined) set("food_allergies",    JSON.stringify(foodAllergies));
+    if (workProfile       !== undefined) set("work_profile",      workProfile);
+    if (activityLevel     !== undefined) set("activity_level",    activityLevel);
+    if (exerciseFrequency !== undefined) set("exercise_frequency",exerciseFrequency);
+    if (exerciseTypes     !== undefined) set("exercise_types",    JSON.stringify(exerciseTypes));
+    if (sleepHoursAvg     !== undefined) set("sleep_hours_avg",   String(sleepHoursAvg));
+    if (wakeTime          !== undefined) set("wake_time",         wakeTime);
+    if (sleepTime         !== undefined) set("sleep_time",        sleepTime);
+    if (stressLevelSelf   !== undefined) set("stress_level_self", stressLevelSelf);
+    if (profilePhotoUrl   !== undefined) set("profile_photo_url", profilePhotoUrl);
+    if (city              !== undefined) set("city",              city);
+    if (state             !== undefined) set("state",             state);
 
-    res.json({ profile: updated });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to update profile" });
+    if (fields.length === 0) { res.json({ profile: null }); return; }
+
+    vals.push(req.userId!);
+    const result = await pool.query(
+      `UPDATE user_profiles SET ${fields.join(",")} WHERE user_id=$${idx} RETURNING *`,
+      vals
+    );
+    res.json({ profile: result.rows[0] ?? null });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to update profile", detail: (e as Error).message });
   }
 });
 
 router.patch("/users/onboarding/step", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { step } = req.body as { step: number };
-    await db.update(userProfilesTable).set({ onboardingStep: step }).where(eq(userProfilesTable.userId, req.userId!));
+    await pool.query(`UPDATE user_profiles SET onboarding_step=$1 WHERE user_id=$2`, [step, req.userId!]);
     res.json({ success: true, step });
-  } catch {
-    res.status(500).json({ error: "Failed to update onboarding step" });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to update onboarding step", detail: (e as Error).message });
   }
 });
 
 router.post("/users/medical-conditions", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { conditions } = req.body as { conditions: Array<{ condition: string; conditionType?: string }> };
-    await db.delete(userMedicalConditionsTable).where(eq(userMedicalConditionsTable.userId, req.userId!));
+    await pool.query(`DELETE FROM user_medical_conditions WHERE user_id=$1`, [req.userId!]);
     if (conditions?.length) {
-      await db.insert(userMedicalConditionsTable).values(
-        conditions.map((c) => ({ userId: req.userId!, ...c }))
-      );
+      for (const c of conditions) {
+        await pool.query(
+          `INSERT INTO user_medical_conditions (user_id, condition, condition_type) VALUES ($1,$2,$3)`,
+          [req.userId!, c.condition, c.conditionType || "chronic"]
+        );
+      }
     }
-    const saved = await db.select().from(userMedicalConditionsTable).where(eq(userMedicalConditionsTable.userId, req.userId!));
-    res.json({ conditions: saved });
-  } catch {
-    res.status(500).json({ error: "Failed to save conditions" });
+    const saved = await pool.query(`SELECT * FROM user_medical_conditions WHERE user_id=$1`, [req.userId!]);
+    res.json({ conditions: saved.rows });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to save conditions", detail: (e as Error).message });
   }
 });
 
@@ -178,83 +187,87 @@ router.post("/users/health-goals", requireAuth, async (req: AuthRequest, res) =>
     const { primaryGoal, currentWeightKg, targetWeightKg, targetDate, secondaryGoals } = req.body as {
       primaryGoal: string; currentWeightKg?: number; targetWeightKg?: number; targetDate?: string; secondaryGoals?: string[];
     };
-    const existing = await db.select().from(userHealthGoalsTable).where(eq(userHealthGoalsTable.userId, req.userId!));
-    if (existing.length) {
-      const [updated] = await db.update(userHealthGoalsTable).set({
-        primaryGoal,
-        currentWeightKg: currentWeightKg ? String(currentWeightKg) : undefined,
-        targetWeightKg: targetWeightKg ? String(targetWeightKg) : undefined,
-        targetDate,
-        secondaryGoals,
-      }).where(eq(userHealthGoalsTable.userId, req.userId!)).returning();
-      res.json({ goals: updated });
-    } else {
-      const [created] = await db.insert(userHealthGoalsTable).values({
-        userId: req.userId!,
-        primaryGoal,
-        currentWeightKg: currentWeightKg ? String(currentWeightKg) : undefined,
-        targetWeightKg: targetWeightKg ? String(targetWeightKg) : undefined,
-        targetDate,
-        secondaryGoals,
-      }).returning();
-      res.json({ goals: created });
-    }
-  } catch {
-    res.status(500).json({ error: "Failed to save goals" });
+    const result = await pool.query(
+      `INSERT INTO user_health_goals (user_id, primary_goal, current_weight_kg, target_weight_kg, target_date, secondary_goals)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (user_id) DO UPDATE SET
+         primary_goal=$2, current_weight_kg=$3, target_weight_kg=$4, target_date=$5, secondary_goals=$6
+       RETURNING *`,
+      [req.userId!, primaryGoal,
+       currentWeightKg ? String(currentWeightKg) : null,
+       targetWeightKg  ? String(targetWeightKg)  : null,
+       targetDate || null,
+       secondaryGoals ? JSON.stringify(secondaryGoals) : null]
+    );
+    res.json({ goals: result.rows[0] });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to save goals", detail: (e as Error).message });
   }
 });
 
 router.get("/users/preferences", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, req.userId!));
-    res.json({ preferences: prefs });
-  } catch {
-    res.status(500).json({ error: "Failed to fetch preferences" });
+    const r = await pool.query(`SELECT * FROM user_preferences WHERE user_id=$1`, [req.userId!]);
+    res.json({ preferences: r.rows[0] ?? null });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch preferences", detail: (e as Error).message });
   }
 });
 
 router.patch("/users/preferences", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const allowedFields = [
-      "languageCode", "darkMode", "waterGoalGlasses", "calorieGoal",
-      "notificationsEnabled", "medicineReminders", "waterReminders",
-      "weeklyReportEmail", "appLockEnabled", "appLockMethod", "adsEnabled",
-    ];
-    const updates: Record<string, unknown> = {};
-    for (const field of allowedFields) {
-      if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field];
+    const colMap: Record<string, string> = {
+      languageCode: "language_code", darkMode: "dark_mode",
+      waterGoalGlasses: "water_goal_glasses", calorieGoal: "calorie_goal",
+      notificationsEnabled: "notifications_enabled", medicineReminders: "medicine_reminders",
+      waterReminders: "water_reminders", weeklyReportEmail: "weekly_report_email",
+      appLockEnabled: "app_lock_enabled", appLockMethod: "app_lock_method", adsEnabled: "ads_enabled",
+    };
+    const fields: string[] = []; const vals: unknown[] = []; let idx = 1;
+    for (const [jsKey, col] of Object.entries(colMap)) {
+      if (Object.prototype.hasOwnProperty.call(req.body, jsKey) && req.body[jsKey] !== undefined) {
+        fields.push(`${col}=$${idx++}`); vals.push(req.body[jsKey]);
+      }
     }
-    const [updated] = await db.update(userPreferencesTable).set(updates as Partial<typeof userPreferencesTable.$inferInsert>).where(eq(userPreferencesTable.userId, req.userId!)).returning();
-    res.json({ preferences: updated });
-  } catch {
-    res.status(500).json({ error: "Failed to update preferences" });
+    if (fields.length === 0) { res.json({ preferences: null }); return; }
+    vals.push(req.userId!);
+    const result = await pool.query(`UPDATE user_preferences SET ${fields.join(",")} WHERE user_id=$${idx} RETURNING *`, vals);
+    res.json({ preferences: result.rows[0] ?? null });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to update preferences", detail: (e as Error).message });
   }
 });
 
 router.get("/users/privacy", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const [privacy] = await db.select().from(userPrivacySettingsTable).where(eq(userPrivacySettingsTable.userId, req.userId!));
-    res.json({ privacy });
-  } catch {
-    res.status(500).json({ error: "Failed to fetch privacy settings" });
+    const r = await pool.query(`SELECT * FROM user_privacy_settings WHERE user_id=$1`, [req.userId!]);
+    res.json({ privacy: r.rows[0] ?? null });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch privacy settings", detail: (e as Error).message });
   }
 });
 
 router.patch("/users/privacy", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const allowedFields = [
-      "shareBasicProfile", "shareBmi", "shareExerciseData", "shareWaterIntake",
-      "shareSleepData", "shareStressLevel", "shareMedicineDetails",
-      "shareMedicalConditions", "shareFoodData",
-    ];
-    const updates: Record<string, unknown> = {};
-    for (const field of allowedFields) {
-      if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field];
+    const colMap: Record<string, string> = {
+      shareBasicProfile: "share_basic_profile", shareBmi: "share_bmi",
+      shareExerciseData: "share_exercise_data", shareWaterIntake: "share_water_intake",
+      shareSleepData: "share_sleep_data", shareStressLevel: "share_stress_level",
+      shareMedicineDetails: "share_medicine_details", shareMedicalConditions: "share_medical_conditions",
+      shareFoodData: "share_food_data",
+    };
+    const fields: string[] = []; const vals: unknown[] = []; let idx = 1;
+    for (const [jsKey, col] of Object.entries(colMap)) {
+      if (Object.prototype.hasOwnProperty.call(req.body, jsKey) && req.body[jsKey] !== undefined) {
+        fields.push(`${col}=$${idx++}`); vals.push(req.body[jsKey]);
+      }
     }
-    const [updated] = await db.update(userPrivacySettingsTable).set(updates as Partial<typeof userPrivacySettingsTable.$inferInsert>).where(eq(userPrivacySettingsTable.userId, req.userId!)).returning();
-    res.json({ privacy: updated });
-  } catch {
-    res.status(500).json({ error: "Failed to update privacy settings" });
+    if (fields.length === 0) { res.json({ privacy: null }); return; }
+    vals.push(req.userId!);
+    const result = await pool.query(`UPDATE user_privacy_settings SET ${fields.join(",")} WHERE user_id=$${idx} RETURNING *`, vals);
+    res.json({ privacy: result.rows[0] ?? null });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to update privacy settings", detail: (e as Error).message });
   }
 });
 

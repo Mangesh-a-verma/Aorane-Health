@@ -3,6 +3,10 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { runStartupMigrations } from "./lib/migrate";
+
+// Run DB migrations at startup (adds missing columns safely)
+runStartupMigrations().catch((e) => logger.error({ err: e }, "Startup migration failed"));
 
 const app: Express = express();
 
