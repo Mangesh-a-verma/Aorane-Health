@@ -27,13 +27,20 @@ router.post("/auth/send-otp", async (req, res) => {
     const otp = generateOtp(6);
     const hashed = hashOtp(otp);
 
-    // Store OTP in DB (survives server restarts)
-    await db.delete(otpStoreTable).where(eq(otpStoreTable.phone, phone));
-    await db.insert(otpStoreTable).values({
-      phone,
-      hashedOtp: hashed,
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
-    });
+    // Try DB storage first, fallback to in-memory
+    let usedDb = false;
+    try {
+      await db.delete(otpStoreTable).where(eq(otpStoreTable.phone, phone));
+      await db.insert(otpStoreTable).values({
+        phone,
+        hashedOtp: hashed,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      });
+      usedDb = true;
+    } catch {
+      cache.setOtp(phone, hashed);
+    }
+    console.log(`[OTP] storage: ${usedDb ? "db" : "memory"}`);
 
     const smsSent = await sendSmsOtp(phone, otp);
     console.log(`[OTP] ${phone} → ${otp} | SMS sent: ${smsSent}`);
@@ -91,22 +98,34 @@ router.post("/auth/verify-otp", async (req, res) => {
       return;
     }
 
-    // Fetch OTP from DB
-    const [otpRecord] = await db
-      .select()
-      .from(otpStoreTable)
-      .where(and(eq(otpStoreTable.phone, phone), gt(otpStoreTable.expiresAt, new Date())))
-      .limit(1);
+    // Try DB first, then in-memory fallback
+    let storedHash: string | null = null;
+    let fromDb = false;
+    try {
+      const [otpRecord] = await db
+        .select()
+        .from(otpStoreTable)
+        .where(and(eq(otpStoreTable.phone, phone), gt(otpStoreTable.expiresAt, new Date())))
+        .limit(1);
+      if (otpRecord) { storedHash = otpRecord.hashedOtp; fromDb = true; }
+    } catch {
+      storedHash = cache.getOtp(phone);
+    }
 
-    if (!otpRecord) {
+    if (!storedHash) {
       res.status(400).json({ error: "OTP expired or not found. Request a new one." });
       return;
     }
-    if (!verifyOtpHash(otp, otpRecord.hashedOtp)) {
+    if (!verifyOtpHash(otp, storedHash)) {
       res.status(400).json({ error: "Invalid OTP" });
       return;
     }
-    await db.delete(otpStoreTable).where(eq(otpStoreTable.phone, phone));
+
+    if (fromDb) {
+      await db.delete(otpStoreTable).where(eq(otpStoreTable.phone, phone)).catch(() => {});
+    } else {
+      cache.deleteOtp(phone);
+    }
 
     let [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
     let isNewUser = false;

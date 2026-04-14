@@ -61,10 +61,16 @@ app.get("/api/version", (_req, res) => {
   res.json({ version: "2.1.0", build: "2026-04-14", status: "ok" });
 });
 
-app.get("/api/db-debug", (_req, res) => {
+app.get("/api/db-debug", async (_req, res) => {
   const url = process.env.DATABASE_URL || "NOT SET";
-  const masked = url.replace(/:([^@]+)@/, ":***@");
-  res.json({ db_url: masked });
+  const host = url.match(/@([^:\/]+)/)?.[1] || "unknown";
+  try {
+    const { pool } = await import("@workspace/db");
+    const result = await pool.query("SELECT current_database() as db, NOW() as time");
+    res.json({ status: "connected", host, db: result.rows[0].db });
+  } catch (e) {
+    res.json({ status: "error", host, error: (e as Error).message });
+  }
 });
 
 app.use("/api", router);
