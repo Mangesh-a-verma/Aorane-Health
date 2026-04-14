@@ -29,7 +29,7 @@ workflows:
         script: |
           cd artifacts/aorane-mobile/android
           chmod +x gradlew
-          ./gradlew bundleRelease --info --stacktrace 2>&1 | tail -100
+          ./gradlew bundleRelease
 
     artifacts:
       - artifacts/aorane-mobile/android/app/build/outputs/bundle/release/*.aab
