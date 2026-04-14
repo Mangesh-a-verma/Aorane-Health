@@ -5,11 +5,10 @@ workflows:
     instance_type: mac_mini_m2
 
     environment:
-      node: 20.18.0
+      node: 22.14.0
       vars:
         EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
         PACKAGE_NAME: in.aorane.app
-        NODE_ENV: production
 
     scripts:
       - name: Install dependencies
