@@ -78,15 +78,26 @@ const router = Router();
 
 router.get("/users/profile", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, req.userId!));
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!));
-    const [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, req.userId!));
-    const conditions = await db.select().from(userMedicalConditionsTable).where(eq(userMedicalConditionsTable.userId, req.userId!));
-    const [goals] = await db.select().from(userHealthGoalsTable).where(eq(userHealthGoalsTable.userId, req.userId!));
+    const uid = req.userId!;
+
+    // Ensure profile/prefs exist (create if missing — handles old accounts)
+    await db.insert(userProfilesTable).values({ userId: uid }).onConflictDoNothing().catch(() => {});
+    await db.insert(userPreferencesTable).values({ userId: uid }).onConflictDoNothing().catch(() => {});
+    await db.insert(userPrivacySettingsTable).values({ userId: uid }).onConflictDoNothing().catch(() => {});
+
+    const [profile, user, prefs, conditions, goals] = await Promise.all([
+      db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, uid)).then(r => r[0] ?? null),
+      db.select().from(usersTable).where(eq(usersTable.id, uid)).then(r => r[0] ?? null),
+      db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, uid)).then(r => r[0] ?? null),
+      db.select().from(userMedicalConditionsTable).where(eq(userMedicalConditionsTable.userId, uid)),
+      db.select().from(userHealthGoalsTable).where(eq(userHealthGoalsTable.userId, uid)).then(r => r[0] ?? null),
+    ]);
 
     res.json({ profile, user: { plan: user?.plan, phone: user?.phone, email: user?.email }, preferences: prefs, conditions, goals });
-  } catch {
-    res.status(500).json({ error: "Failed to fetch profile" });
+  } catch (err) {
+    const msg = (err as Error).message || String(err);
+    console.error("[PROFILE ERROR]", msg);
+    res.status(500).json({ error: "Failed to fetch profile", detail: msg });
   }
 });
 

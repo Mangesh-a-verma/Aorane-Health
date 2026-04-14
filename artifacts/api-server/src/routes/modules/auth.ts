@@ -139,13 +139,14 @@ router.post("/auth/verify-otp", async (req, res) => {
       }).returning();
       user = newUser;
       isNewUser = true;
-
-      await db.insert(userPreferencesTable).values({ userId: user.id, languageCode });
-      await db.insert(userPrivacySettingsTable).values({ userId: user.id });
-      await db.insert(userProfilesTable).values({ userId: user.id });
     }
 
-    await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
+    // Ensure supporting rows exist (safe upsert — create if missing)
+    await db.insert(userPreferencesTable).values({ userId: user.id, languageCode }).onConflictDoNothing().catch(() => {});
+    await db.insert(userPrivacySettingsTable).values({ userId: user.id }).onConflictDoNothing().catch(() => {});
+    await db.insert(userProfilesTable).values({ userId: user.id }).onConflictDoNothing().catch(() => {});
+
+    await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id)).catch(() => {});
 
     const payload = { userId: user.id, phone: phone, plan: user.plan };
     const accessToken = signUserToken(payload);

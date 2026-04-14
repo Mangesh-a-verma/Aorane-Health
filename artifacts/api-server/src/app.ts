@@ -80,6 +80,27 @@ app.get("/api/sms-debug", (_req, res) => {
   });
 });
 
+app.get("/api/tables-debug", async (_req, res) => {
+  try {
+    const { pool } = await import("@workspace/db");
+    const tables = ["users","user_profiles","user_preferences","user_privacy_settings",
+      "user_medical_conditions","user_health_goals","water_logs","food_logs",
+      "exercise_logs","medicine_schedules","medicine_logs","otp_store"];
+    const results: Record<string, string> = {};
+    for (const t of tables) {
+      try {
+        const r = await pool.query(`SELECT COUNT(*) FROM "${t}" LIMIT 1`);
+        results[t] = `ok (${r.rows[0].count} rows)`;
+      } catch (e) {
+        results[t] = `ERROR: ${(e as Error).message}`;
+      }
+    }
+    res.json(results);
+  } catch (e) {
+    res.json({ error: (e as Error).message });
+  }
+});
+
 app.get("/api/db-debug", async (_req, res) => {
   const url = process.env.DATABASE_URL || "NOT SET";
   const host = url.match(/@([^:\/]+)/)?.[1] || "unknown";
