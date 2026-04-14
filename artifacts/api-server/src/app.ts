@@ -57,6 +57,10 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.get("/api/version", (_req, res) => {
+  res.json({ version: "2.1.0", build: "2026-04-14", status: "ok" });
+});
+
 app.use("/api", router);
 
 // 404 handler
