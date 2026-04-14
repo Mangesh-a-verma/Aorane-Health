@@ -5,8 +5,6 @@ workflows:
     instance_type: mac_mini_m2
 
     environment:
-      groups:
-        - aorane_credentials
       node: 20.18.0
       vars:
         EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
@@ -27,27 +25,16 @@ workflows:
             --clean \
             --no-install
 
-      - name: Build Android release AAB
+      - name: Build Android AAB
         script: |
           cd artifacts/aorane-mobile/android
           chmod +x gradlew
           ./gradlew bundleRelease
 
-      - name: Align and Sign AAB
-        script: |
-          cd artifacts/aorane-mobile
-          jarsigner \
-            -verbose \
-            -keystore $CM_KEYSTORE_PATH \
-            -storepass $CM_KEYSTORE_PASSWORD \
-            -keypass $CM_KEY_PASSWORD \
-            -signedjar android/app/build/outputs/bundle/release/app-release-signed.aab \
-            android/app/build/outputs/bundle/release/app-release.aab \
-            $CM_KEY_ALIAS
-
     artifacts:
       - artifacts/aorane-mobile/android/app/build/outputs/bundle/release/*.aab
       - artifacts/aorane-mobile/android/app/build/outputs/apk/**/*.apk
+      - artifacts/aorane-mobile/android/app/build/outputs/**/*.aab
 
     publishing:
       email:
