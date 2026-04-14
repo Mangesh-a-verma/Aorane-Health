@@ -195,20 +195,12 @@ export default function LoginScreen() {
               />
             </Animated.View>
 
-            {/* Logo container */}
-            <LinearGradient
-              colors={[PRIMARY, SKY, ACCENT]}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={s.logoRing}
-            >
-              <View style={s.logoInner}>
-                <Image
-                  source={require("../../assets/images/aorane-logo.png")}
-                  style={s.logo}
-                  resizeMode="contain"
-                />
-              </View>
-            </LinearGradient>
+            {/* Logo */}
+            <Image
+              source={require("../../assets/images/aorane-logo.png")}
+              style={s.logo}
+              resizeMode="contain"
+            />
 
             {/* Tagline */}
             <View style={s.taglineRow}>
@@ -409,18 +401,10 @@ const s = StyleSheet.create({
   glowRing: { position: "absolute", top: -20 },
   glowGrad: { width: W * 0.9, height: 240, borderRadius: 120 },
 
-  logoRing: {
-    width: 148, height: 148, borderRadius: 74,
-    padding: 3.5, marginBottom: 18,
-    shadowColor: PRIMARY, shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.4, shadowRadius: 24, elevation: 14,
+  logo: {
+    width: W * 0.80, height: 200,
+    marginBottom: 10,
   },
-  logoInner: {
-    flex: 1, borderRadius: 71,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    alignItems: "center", justifyContent: "center",
-  },
-  logo: { width: 108, height: 108 },
 
   taglineRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 },
   taglineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ACCENT },
