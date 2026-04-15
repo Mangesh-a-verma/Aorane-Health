@@ -73,19 +73,58 @@ function GlassCard({ children, style }: { children: React.ReactNode; style?: obj
   );
 }
 
-function SuccessOverlay({ plan, onDone }: { plan: string; onDone: () => void }) {
+function SuccessOverlay({ plan, inviteCode, onDone }: { plan: string; inviteCode?: string | null; onDone: () => void }) {
   const isDark = useColorScheme() === "dark";
+  const isFamilyPlan = plan === "family";
+  const [copied, setCopied] = React.useState(false);
+
+  const copyCode = async () => {
+    if (!inviteCode) return;
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(inviteCode);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { }
+  };
+
   return (
-    <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.85)", zIndex: 999 }]}>
-      <LinearGradient colors={["#0077B6","#1B998B"]} style={{ borderRadius: 28, padding: 40, alignItems: "center", width: 300 }}>
-        <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-          <Ionicons name="checkmark-circle" size={56} color="#FFF" />
+    <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.85)", zIndex: 999, padding: 20 }]}>
+      <LinearGradient colors={isFamilyPlan ? ["#F59E0B","#D97706"] : ["#0077B6","#1B998B"]} style={{ borderRadius: 28, padding: 32, alignItems: "center", width: "100%", maxWidth: 340 }}>
+        <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+          <Text style={{ fontSize: isFamilyPlan ? 40 : 0 }}>{isFamilyPlan ? "👨‍👩‍👧‍👦" : ""}</Text>
+          {!isFamilyPlan && <Ionicons name="checkmark-circle" size={52} color="#FFF" />}
         </View>
-        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 26, textAlign: "center", marginBottom: 8 }}>🎉 Congratulations!</Text>
-        <Text style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter_500Medium", fontSize: 16, textAlign: "center", marginBottom: 6 }}>{plan.toUpperCase()} Plan is Active!</Text>
-        <Text style={{ color: "rgba(255,255,255,0.65)", fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center", marginBottom: 28 }}>All your premium features are now unlocked</Text>
+        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 24, textAlign: "center", marginBottom: 6 }}>
+          {isFamilyPlan ? "Family Plan Active! 🎉" : "🎉 Congratulations!"}
+        </Text>
+        <Text style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter_500Medium", fontSize: 14, textAlign: "center", marginBottom: 4 }}>
+          {plan.toUpperCase()} Plan is Active!
+        </Text>
+        <Text style={{ color: "rgba(255,255,255,0.65)", fontFamily: "Inter_400Regular", fontSize: 12, textAlign: "center", marginBottom: 20 }}>
+          {isFamilyPlan ? "4 family members ke liye — code share karo" : "All premium features unlocked!"}
+        </Text>
+
+        {/* Family invite code */}
+        {isFamilyPlan && inviteCode && (
+          <View style={{ backgroundColor: "rgba(0,0,0,0.25)", borderRadius: 16, padding: 16, width: "100%", marginBottom: 16, alignItems: "center" }}>
+            <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 11, fontFamily: "Inter_500Medium", marginBottom: 6, letterSpacing: 1 }}>FAMILY INVITE CODE</Text>
+            <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 28, letterSpacing: 4, marginBottom: 10 }}>{inviteCode}</Text>
+            <TouchableOpacity onPress={copyCode} style={{ backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 10, paddingHorizontal: 20, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Ionicons name={copied ? "checkmark" : "copy-outline"} size={14} color="#FFF" />
+              <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{copied ? "Copied!" : "Copy Code"}</Text>
+            </TouchableOpacity>
+            <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 8 }}>
+              Family members → App → Family Health → Code daalo
+            </Text>
+          </View>
+        )}
+
         <TouchableOpacity onPress={onDone} style={{ backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14, width: "100%", alignItems: "center" }}>
-          <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>Go to Dashboard</Text>
+          <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>
+            {isFamilyPlan ? "Family Screen Dekho" : "Go to Dashboard"}
+          </Text>
         </TouchableOpacity>
       </LinearGradient>
     </View>
@@ -104,6 +143,7 @@ export default function UpgradeScreen() {
   const [loading, setLoading] = useState(false);
   const [validatingPromo, setValidatingPromo] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [familyInviteCode, setFamilyInviteCode] = useState<string | null>(null);
   const [rzpReady, setRzpReady] = useState(false);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bg = isDark ? "#010814" : "#F0F9FF";
@@ -150,8 +190,9 @@ export default function UpgradeScreen() {
 
   const onPaymentSuccess = async (paymentId: string, rzPaymentId: string, rzOrderId: string, rzSignature: string, isTestMode = false) => {
     try {
-      await api.verifyPayment({ paymentId, razorpayPaymentId: rzPaymentId, razorpayOrderId: rzOrderId, razorpaySignature: rzSignature, plan: selectedPlan, isTestMode });
+      const result = await api.verifyPayment({ paymentId, razorpayPaymentId: rzPaymentId, razorpayOrderId: rzOrderId, razorpaySignature: rzSignature, plan: selectedPlan, isTestMode });
       if (refreshUser) await refreshUser();
+      if (result?.inviteCode) setFamilyInviteCode(result.inviteCode);
       setSuccess(true);
     } catch (e: unknown) {
       Alert.alert("Verification Failed", (e as Error).message || "Payment could not be verified");
@@ -368,7 +409,7 @@ export default function UpgradeScreen() {
       </ScrollView>
 
       {success && (
-        <SuccessOverlay plan={selectedPlan} onDone={() => { setSuccess(false); router.replace("/(tabs)"); }} />
+        <SuccessOverlay plan={selectedPlan} inviteCode={familyInviteCode} onDone={() => { setSuccess(false); setFamilyInviteCode(null); router.replace(selectedPlan === "family" ? "/(tabs)/family" : "/(tabs)"); }} />
       )}
     </View>
   );

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, familyGroupsTable, familyMembersTable, usersTable, userProfilesTable, dailyHealthScoresTable } from "@workspace/db";
+import { db, familyGroupsTable, familyMembersTable, usersTable, userProfilesTable, dailyHealthScoresTable, subscriptionsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
@@ -60,7 +60,19 @@ router.post("/family/join", requireAuth, async (req: AuthRequest, res) => {
     const members = await db.select().from(familyMembersTable).where(eq(familyMembersTable.groupId, group.id));
     if (members.length >= (group.maxMembers || 6)) { res.status(400).json({ error: "Group full ho gaya hai" }); return; }
     await db.insert(familyMembersTable).values({ groupId: group.id, userId: req.userId!, role: "member" });
-    res.json({ success: true, group });
+
+    // Sync member's plan to "family" with owner's subscription expiry
+    const [ownerSub] = await db.select().from(subscriptionsTable)
+      .where(and(eq(subscriptionsTable.userId, group.ownerId), eq(subscriptionsTable.status, "active")))
+      .orderBy(desc(subscriptionsTable.createdAt)).limit(1);
+    const expiresAt = ownerSub?.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await db.insert(subscriptionsTable).values({
+      userId: req.userId!, plan: "family", status: "active", source: "family_invite",
+      expiresAt, paymentType: "one_time", autoRenew: false, nextRenewalAt: expiresAt,
+    });
+    await db.update(usersTable).set({ plan: "family" }).where(eq(usersTable.id, req.userId!));
+
+    res.json({ success: true, group, message: "Family group mein join ho gaye! Family plan active hai." });
   } catch {
     res.status(500).json({ error: "Failed to join family group" });
   }

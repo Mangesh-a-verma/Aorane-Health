@@ -348,7 +348,7 @@ export const api = {
   createPaymentOrder: (plan: string, promoCode?: string) =>
     request<{ success: boolean; paymentId: string; razorpayOrderId: string | null; razorpayKeyId: string | null; amount: number; plan: string; discount: number; isTestMode: boolean }>("POST", "/payment/order", { plan, promoCode }),
   verifyPayment: (data: { paymentId: string; razorpayOrderId?: string; razorpayPaymentId?: string; razorpaySignature?: string; plan: string; isTestMode?: boolean }) =>
-    request<{ success: boolean; message: string }>("POST", "/payment/verify", data),
+    request<{ success: boolean; message: string; inviteCode?: string | null; expiresAt?: string }>("POST", "/payment/verify", data),
   validatePromoCode: (code: string, plan: string) =>
     request<{ valid: boolean; discount: number; code: string; message: string }>("POST", "/payment/promo/validate", { code, plan }),
 

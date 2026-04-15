@@ -1,12 +1,31 @@
 import { Router } from "express";
-import { db, usersTable, subscriptionsTable, paymentsTable, promoCodesTable, planPricingTable } from "@workspace/db";
+import { db, usersTable, subscriptionsTable, paymentsTable, promoCodesTable, planPricingTable, familyGroupsTable, familyMembersTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
+
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import {
   isLiveMode, createPlan, createSubscription, cancelSubscription,
   verifySubscriptionSignature, verifyPaymentSignature, createOrder,
 } from "../../lib/razorpay";
+
+function generateFamilyCode() {
+  return "FAM" + Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+async function autoCreateFamilyGroup(userId: string): Promise<string | null> {
+  try {
+    const existing = await db.select().from(familyMembersTable).where(eq(familyMembersTable.userId, userId));
+    if (existing.length) {
+      const [grp] = await db.select().from(familyGroupsTable).where(eq(familyGroupsTable.id, existing[0].groupId));
+      return grp?.inviteCode ?? null;
+    }
+    const inviteCode = generateFamilyCode();
+    const [group] = await db.insert(familyGroupsTable).values({ ownerId: userId, inviteCode, maxMembers: 4 }).returning();
+    await db.insert(familyMembersTable).values({ groupId: group.id, userId, role: "owner" });
+    return inviteCode;
+  } catch { return null; }
+}
 
 const router = Router();
 
@@ -104,7 +123,9 @@ router.post("/payment/verify", requireAuth, async (req: AuthRequest, res) => {
       source: "razorpay", expiresAt, paymentType: "one_time", autoRenew: false, nextRenewalAt: expiresAt,
     });
     await db.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, req.userId!));
-    res.json({ success: true, message: `${plan} plan activate ho gaya!`, expiresAt });
+    let inviteCode: string | null = null;
+    if (plan === "family") inviteCode = await autoCreateFamilyGroup(req.userId!);
+    res.json({ success: true, message: `${plan} plan activate ho gaya!`, expiresAt, inviteCode });
   } catch {
     res.status(500).json({ error: "Failed to verify payment" });
   }
@@ -180,7 +201,9 @@ router.post("/payment/subscription/verify", requireAuth, async (req: AuthRequest
     expiresAt.setDate(expiresAt.getDate() + 30);
     await db.update(subscriptionsTable).set({ status: "active", expiresAt, nextRenewalAt: expiresAt }).where(eq(subscriptionsTable.id, subscriptionId));
     await db.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, req.userId!));
-    res.json({ success: true, message: "Auto-renew subscription activated!", expiresAt });
+    let inviteCode: string | null = null;
+    if (plan === "family") inviteCode = await autoCreateFamilyGroup(req.userId!);
+    res.json({ success: true, message: "Auto-renew subscription activated!", expiresAt, inviteCode });
   } catch {
     res.status(500).json({ error: "Failed to verify subscription" });
   }
@@ -230,6 +253,7 @@ router.post("/payment/rzp-callback", async (req, res) => {
         await db.update(usersTable)
           .set({ plan: payment.plan as "free" | "pro" | "max" | "family" })
           .where(eq(usersTable.id, payment.userId));
+        if (payment.plan === "family") await autoCreateFamilyGroup(payment.userId);
       }
     } catch { /* best effort */ }
   }
