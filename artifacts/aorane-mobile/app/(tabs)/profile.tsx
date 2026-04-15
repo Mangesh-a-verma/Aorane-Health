@@ -38,8 +38,9 @@ export default function ProfileScreen() {
   useEffect(() => { loadProfile(); }, []);
 
   useFocusEffect(useCallback(() => {
+    loadProfile();
     scrollRef.current?.scrollTo({ y: 0, animated: false });
-  }, []));
+  }, [loadProfile]));
 
   const togglePrivacy = async (key: string, value: boolean) => {
     setPrivacy((p) => ({ ...p, [key]: value }));
