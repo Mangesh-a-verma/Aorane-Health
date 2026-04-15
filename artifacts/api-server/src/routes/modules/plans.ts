@@ -18,7 +18,7 @@ const DEFAULT_PLANS = [
     isActive: true, sortOrder: 0,
   },
   {
-    planKey: "pro", displayName: "Pro", type: "individual",
+    planKey: "max", displayName: "Max", type: "individual",
     monthlyPrice: "199", yearlyPrice: "1990", maxSeats: 1,
     features: ["AI Food Scan", "Personalized Diet Plan", "Health Reports PDF", "Medicine Reminders", "Exercise Tracking", "Water Tracker"],
     badgeText: "Popular", badgeColor: "#0077B6",
@@ -26,9 +26,9 @@ const DEFAULT_PLANS = [
     isActive: true, sortOrder: 1,
   },
   {
-    planKey: "max", displayName: "Max", type: "individual",
+    planKey: "pro", displayName: "Pro", type: "individual",
     monthlyPrice: "249", yearlyPrice: "2490", maxSeats: 1,
-    features: ["Sab Pro features +", "Medical Report AI Scanner", "Advanced Gemini AI", "Priority Support", "Family Add-on", "Unlimited History"],
+    features: ["Sab Max features +", "Medical Report AI Scanner", "Advanced Gemini AI", "Priority Support", "Family Add-on", "Unlimited History"],
     badgeText: "Best Value", badgeColor: "#8B5CF6",
     gradientColors: ["#8B5CF6", "#6D28D9"] as [string, string],
     isActive: true, sortOrder: 2,

@@ -711,6 +711,11 @@ export async function runStartupMigrations(): Promise<void> {
 
     // ── blood_donors: add donor_inactive_until for 90-day cooldown enforcement ──
     `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS donor_inactive_until TIMESTAMPTZ`,
+
+    // ── plan_pricing: update Free/Max/Pro prices to correct values ──
+    `UPDATE plan_pricing SET monthly_price='0', yearly_price=NULL, sort_order=0 WHERE plan_key='free'`,
+    `UPDATE plan_pricing SET monthly_price='199', yearly_price='1990', badge_text='Popular', sort_order=1 WHERE plan_key='max'`,
+    `UPDATE plan_pricing SET monthly_price='249', yearly_price='2490', badge_text='Best Value', sort_order=2 WHERE plan_key='pro'`,
   ];
 
   let ok = 0; let fail = 0;

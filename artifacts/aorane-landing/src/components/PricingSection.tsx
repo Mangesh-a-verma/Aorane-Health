@@ -18,10 +18,10 @@ const API_BASE = (import.meta.env.VITE_API_URL as string) || "";
 const defaultIndividual: Plan[] = [
   { planKey: "free", displayName: "Free", type: "individual", monthlyPrice: "0", yearlyPrice: "0",
     features: ["Basic health tracking", "Food logging (text)", "Water & step tracking", "7-day history", "Community access"], badge: "", color: "#6B7280" },
-  { planKey: "pro", displayName: "Pro", type: "individual", monthlyPrice: "199", yearlyPrice: "1990",
+  { planKey: "max", displayName: "Max", type: "individual", monthlyPrice: "199", yearlyPrice: "1990",
     features: ["Everything in Free", "AI Food Scanner", "Exercise with MET scoring", "NVIDIA AI insights", "Full health history", "Medical report scan", "Google Fit sync"], badge: "Popular", color: "#0747A6" },
-  { planKey: "max", displayName: "Max", type: "individual", monthlyPrice: "249", yearlyPrice: "2490",
-    features: ["Everything in Pro", "Advanced AI predictions", "Blood sugar & BP tracking", "Sleep stage analysis", "Priority support", "Export health data", "Period & stress tracking"], badge: "Best Value", color: "#7C3AED" },
+  { planKey: "pro", displayName: "Pro", type: "individual", monthlyPrice: "249", yearlyPrice: "2490",
+    features: ["Everything in Max", "Advanced AI predictions", "Blood sugar & BP tracking", "Sleep stage analysis", "Priority support", "Export health data", "Period & stress tracking"], badge: "Best Value", color: "#7C3AED" },
   { planKey: "family", displayName: "Family", type: "individual", monthlyPrice: "499", yearlyPrice: "4990",
     features: ["4 Family Members", "All Max features per member", "Family health dashboard", "Elderly health monitoring", "Cross-member comparisons", "Family challenges", "Single billing"], badge: "Family", color: "#10B981" },
 ];
