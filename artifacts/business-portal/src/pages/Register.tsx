@@ -2,20 +2,63 @@ import React, { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
-import { Building2, AlertCircle, ChevronRight, ChevronLeft, Heart, CheckCircle2 } from "lucide-react";
+
+const PRIMARY = "#005d90";
+const TEAL = "#006b56";
+const BG = "#f7f9fe";
 
 const ORG_TYPES = [
-  { value: "corporate", label: "Corporate", icon: "🏢" },
-  { value: "hospital", label: "Hospital / Clinic", icon: "🏥" },
-  { value: "gym", label: "Gym & Fitness", icon: "💪" },
-  { value: "insurance", label: "Insurance", icon: "🛡️" },
-  { value: "ngo", label: "NGO / Nonprofit", icon: "🤝" },
-  { value: "yoga", label: "Yoga / Wellness", icon: "🧘" },
-  { value: "school", label: "School / College", icon: "📚" },
-  { value: "other", label: "Other", icon: "✨" },
+  { value: "corporate", label: "Corporate", icon: "corporate_fare" },
+  { value: "hospital", label: "Hospital / Clinic", icon: "local_hospital" },
+  { value: "gym", label: "Gym & Fitness", icon: "fitness_center" },
+  { value: "yoga", label: "Yoga / Wellness", icon: "self_improvement" },
+  { value: "school", label: "School / College", icon: "school" },
+  { value: "insurance", label: "Insurance / TPA", icon: "policy" },
+  { value: "ngo", label: "NGO / Nonprofit", icon: "volunteer_activism" },
+  { value: "other", label: "Other", icon: "business" },
 ];
 
-const STEP_LABELS = ["Organization Type", "Org Details", "Admin Account"];
+const STEP_LABELS = ["Organization Type", "Organization Details", "Admin Account"];
+
+function Icon({ name, size = 20, color = PRIMARY }: { name: string; size?: number; color?: string }) {
+  return (
+    <span className="material-symbols-outlined" style={{ fontSize: size, color, lineHeight: 1, display: "inline-block", userSelect: "none" }}>
+      {name}
+    </span>
+  );
+}
+
+function Input({
+  label, type = "text", value, onChange, placeholder, required,
+}: {
+  label: string; type?: string; value: string; onChange: (v: string) => void; placeholder?: string; required?: boolean;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div>
+      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+        {label}{required && <span style={{ color: PRIMARY }}> *</span>}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={{
+          width: "100%", boxSizing: "border-box",
+          padding: "12px 16px", borderRadius: 12,
+          border: focused ? `2px solid ${PRIMARY}` : "2px solid #e5e7eb",
+          background: "white", color: "#181c20", fontSize: 14,
+          outline: "none", transition: "border-color 0.2s, box-shadow 0.2s",
+          boxShadow: focused ? `0 0 0 3px ${PRIMARY}18` : "none",
+          fontFamily: "'Inter', sans-serif",
+        }}
+      />
+    </div>
+  );
+}
 
 export default function Register() {
   const [, navigate] = useLocation();
@@ -23,40 +66,27 @@ export default function Register() {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [form, setForm] = useState({
-    orgType: "",
-    name: "",
-    contactEmail: "",
-    contactPhone: "",
-    city: "",
-    state: "",
-    adminName: "",
-    adminPassword: "",
-    confirmPassword: "",
-    totalSeats: "50",
+    orgType: "", name: "", contactEmail: "", contactPhone: "",
+    city: "", state: "", adminName: "", adminPassword: "",
+    confirmPassword: "", totalSeats: "50",
   });
 
-  const set = (field: string, val: string) => setForm((f) => ({ ...f, [field]: val }));
+  const set = (field: string, val: string) => setForm(f => ({ ...f, [field]: val }));
 
   const handleSubmit = async () => {
-    if (form.adminPassword !== form.confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-    setIsLoading(true);
-    setError("");
+    if (form.adminPassword !== form.confirmPassword) { setError("Passwords do not match"); return; }
+    if (form.adminPassword.length < 6) { setError("Password must be at least 6 characters"); return; }
+    setIsLoading(true); setError("");
     try {
       const res = await api.register({
-        orgType: form.orgType,
-        name: form.name,
-        contactEmail: form.contactEmail,
-        contactPhone: form.contactPhone,
-        city: form.city,
-        state: form.state,
-        adminName: form.adminName,
-        adminPassword: form.adminPassword,
-        totalSeats: parseInt(form.totalSeats),
+        orgType: form.orgType, name: form.name, contactEmail: form.contactEmail,
+        contactPhone: form.contactPhone, city: form.city, state: form.state,
+        adminName: form.adminName, adminPassword: form.adminPassword,
+        totalSeats: parseInt(form.totalSeats) || 50,
       });
       const admin = { id: "", fullName: form.adminName, role: "owner", email: form.contactEmail };
       login(res.token, admin, res.org);
@@ -68,205 +98,307 @@ export default function Register() {
     }
   };
 
-  const inputStyle = {
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.10)",
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 overflow-hidden"
-      style={{ fontFamily: "'Inter', sans-serif", background: "linear-gradient(135deg, #020B18 0%, #051B2C 40%, #081F30 70%, #04141F 100%)" }}>
+    <div style={{ minHeight: "100vh", background: BG, fontFamily: "'Inter', sans-serif", display: "flex" }}>
+      <style>{`
+        @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        .org-btn:hover { transform: translateY(-2px); }
+      `}</style>
 
-      {/* Background orbs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-48 -right-48 w-[500px] h-[500px] rounded-full opacity-20"
-          style={{ background: "radial-gradient(circle, #0EA5E9 0%, transparent 70%)", filter: "blur(40px)" }} />
-        <div className="absolute -bottom-48 -left-48 w-[500px] h-[500px] rounded-full opacity-15"
-          style={{ background: "radial-gradient(circle, #10B981 0%, transparent 70%)", filter: "blur(40px)" }} />
-        <div className="absolute inset-0 opacity-[0.03]"
-          style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
-      </div>
-
-      <div className="relative w-full max-w-lg z-10">
-
-        {/* Logo */}
-        <div className="text-center mb-7">
-          <a href="/" className="inline-flex flex-col items-center gap-2 group">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110"
-              style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 0 28px rgba(14,165,233,0.45)" }}>
-              <Heart size={22} className="text-white" />
+      {/* Left branding panel — desktop only */}
+      <div style={{
+        width: 420, flexShrink: 0, background: `linear-gradient(160deg, ${PRIMARY} 0%, ${TEAL} 100%)`,
+        display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "48px 40px",
+      }} className="hide-on-mobile">
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 56 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="monitor_heart" size={22} color="white" />
             </div>
-            <div>
-              <span className="text-xl font-bold" style={{ background: "linear-gradient(90deg, #38BDF8, #34D399)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                AORANE
-              </span>
-              <span className="text-white/40 text-sm font-normal ml-1.5">Business</span>
-            </div>
-          </a>
+            <span style={{ color: "white", fontSize: 20, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>AORANE Business</span>
+          </div>
+          <h2 style={{ fontSize: 32, fontWeight: 800, color: "white", lineHeight: 1.25, margin: "0 0 16px", fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
+            Start your organization's health journey today
+          </h2>
+          <p style={{ color: "rgba(255,255,255,0.72)", fontSize: 15, lineHeight: 1.75, margin: 0 }}>
+            Join 500+ organizations monitoring and improving their team's health in real time with AORANE.
+          </p>
         </div>
-
-        {/* Step progress */}
-        <div className="flex items-center gap-2 mb-6">
-          {STEP_LABELS.map((label, i) => (
-            <React.Fragment key={label}>
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
-                  i + 1 < step ? "text-white" : i + 1 === step ? "text-white" : "text-white/30"
-                }`}
-                  style={{
-                    background: i + 1 < step ? "linear-gradient(135deg, #0EA5E9, #10B981)" :
-                      i + 1 === step ? "rgba(14,165,233,0.3)" : "rgba(255,255,255,0.06)",
-                    border: i + 1 === step ? "1px solid rgba(14,165,233,0.5)" : "1px solid rgba(255,255,255,0.08)",
-                    boxShadow: i + 1 === step ? "0 0 14px rgba(14,165,233,0.3)" : "none"
-                  }}>
-                  {i + 1 < step ? <CheckCircle2 size={14} /> : i + 1}
-                </div>
-                <span className={`text-xs hidden sm:block truncate transition-colors ${i + 1 === step ? "text-white/70" : "text-white/25"}`}>
-                  {label}
-                </span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {[
+            { icon: "dashboard", text: "Real-time health dashboard for your entire team" },
+            { icon: "psychology", text: "AI-powered burnout and wellness insights" },
+            { icon: "manage_accounts", text: "Simple seat management and flexible billing" },
+            { icon: "verified", text: "HIPAA-ready and DPDP Act 2023 compliant" },
+          ].map((item, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Icon name={item.icon} size={18} color="white" />
               </div>
-              {i < 2 && <div className="w-6 shrink-0 h-px" style={{ background: i + 1 < step ? "rgba(14,165,233,0.5)" : "rgba(255,255,255,0.1)" }} />}
-            </React.Fragment>
+              <span style={{ color: "rgba(255,255,255,0.82)", fontSize: 14, lineHeight: 1.5 }}>{item.text}</span>
+            </div>
           ))}
         </div>
-
-        {/* Glass Card */}
-        <div className="rounded-3xl p-8 border"
-          style={{ background: "rgba(255,255,255,0.04)", backdropFilter: "blur(24px)", borderColor: "rgba(255,255,255,0.10)", boxShadow: "0 32px 64px rgba(0,0,0,0.4)" }}>
-
-          {error && (
-            <div className="mb-5 flex items-start gap-2.5 rounded-xl px-4 py-3 border"
-              style={{ background: "rgba(239,68,68,0.1)", borderColor: "rgba(239,68,68,0.2)", color: "#FCA5A5" }}>
-              <AlertCircle size={15} className="shrink-0 mt-0.5" />
-              <span className="text-sm">{error}</span>
-            </div>
-          )}
-
-          {/* Step 1: Org Type */}
-          {step === 1 && (
-            <div>
-              <h2 className="text-xl font-bold text-white mb-1">Organization Type</h2>
-              <p className="text-white/40 text-sm mb-6">What type of organization are you?</p>
-              <div className="grid grid-cols-2 gap-2.5">
-                {ORG_TYPES.map((t) => (
-                  <button key={t.value} onClick={() => set("orgType", t.value)}
-                    className="flex items-center gap-2.5 p-3.5 rounded-xl border text-left transition-all hover:scale-[1.02]"
-                    style={{
-                      background: form.orgType === t.value ? "rgba(14,165,233,0.15)" : "rgba(255,255,255,0.04)",
-                      borderColor: form.orgType === t.value ? "rgba(14,165,233,0.5)" : "rgba(255,255,255,0.09)",
-                      color: form.orgType === t.value ? "#fff" : "rgba(255,255,255,0.50)",
-                      boxShadow: form.orgType === t.value ? "0 0 16px rgba(14,165,233,0.2)" : "none",
-                    }}>
-                    <span className="text-xl">{t.icon}</span>
-                    <span className="text-sm font-medium">{t.label}</span>
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => form.orgType && setStep(2)} disabled={!form.orgType}
-                className="w-full mt-6 font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 hover:scale-[1.02] disabled:opacity-40 disabled:scale-100"
-                style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 8px 24px rgba(14,165,233,0.3)" }}>
-                Continue <ChevronRight size={16} />
-              </button>
-            </div>
-          )}
-
-          {/* Step 2: Org Details */}
-          {step === 2 && (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-xl font-bold text-white mb-1">Organization Details</h2>
-                <p className="text-white/40 text-sm">Fill in your basic information</p>
-              </div>
-              {[
-                { label: "Organization Name *", key: "name", placeholder: "e.g., Sunrise Health Clinic" },
-                { label: "Email Address *", key: "contactEmail", placeholder: "admin@yourorg.com", type: "email" },
-                { label: "Phone Number", key: "contactPhone", placeholder: "+91 XXXXXXXXXX" },
-                { label: "City", key: "city", placeholder: "Mumbai" },
-                { label: "State", key: "state", placeholder: "Maharashtra" },
-                { label: "Total Seats (Members)", key: "totalSeats", placeholder: "50", type: "number" },
-              ].map((f) => (
-                <div key={f.key}>
-                  <label className="block text-white/50 text-xs font-medium mb-1.5">{f.label}</label>
-                  <input
-                    type={f.type || "text"}
-                    value={form[f.key as keyof typeof form]}
-                    onChange={(e) => set(f.key, e.target.value)}
-                    placeholder={f.placeholder}
-                    className="w-full rounded-xl px-3.5 py-2.5 text-white placeholder-white/20 focus:outline-none transition-all text-sm"
-                    style={inputStyle}
-                    onFocus={e => { e.target.style.borderColor = "rgba(14,165,233,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.1)"; }}
-                    onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.10)"; e.target.style.boxShadow = "none"; }}
-                  />
-                </div>
-              ))}
-              <div className="flex gap-2 pt-1">
-                <button onClick={() => setStep(1)}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-white/50 hover:text-white text-sm transition-all"
-                  style={{ borderColor: "rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.03)" }}>
-                  <ChevronLeft size={14} /> Back
-                </button>
-                <button onClick={() => form.name && form.contactEmail && setStep(3)}
-                  disabled={!form.name || !form.contactEmail}
-                  className="flex-1 font-semibold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm hover:scale-[1.01] disabled:opacity-40"
-                  style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 4px 16px rgba(14,165,233,0.25)" }}>
-                  Continue <ChevronRight size={15} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Admin Setup */}
-          {step === 3 && (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-xl font-bold text-white mb-1">Admin Account</h2>
-                <p className="text-white/40 text-sm">Set up your portal credentials</p>
-              </div>
-              {[
-                { label: "Full Name *", key: "adminName", placeholder: "Dr. Rajesh Kumar" },
-                { label: "Password *", key: "adminPassword", placeholder: "••••••••", type: "password" },
-                { label: "Confirm Password *", key: "confirmPassword", placeholder: "••••••••", type: "password" },
-              ].map((f) => (
-                <div key={f.key}>
-                  <label className="block text-white/50 text-xs font-medium mb-1.5">{f.label}</label>
-                  <input
-                    type={f.type || "text"}
-                    value={form[f.key as keyof typeof form]}
-                    onChange={(e) => set(f.key, e.target.value)}
-                    placeholder={f.placeholder}
-                    className="w-full rounded-xl px-3.5 py-2.5 text-white placeholder-white/20 focus:outline-none transition-all text-sm"
-                    style={inputStyle}
-                    onFocus={e => { e.target.style.borderColor = "rgba(14,165,233,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.1)"; }}
-                    onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.10)"; e.target.style.boxShadow = "none"; }}
-                  />
-                </div>
-              ))}
-              <div className="flex gap-2 pt-1">
-                <button onClick={() => setStep(2)}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-white/50 hover:text-white text-sm transition-all"
-                  style={{ borderColor: "rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.03)" }}>
-                  <ChevronLeft size={14} /> Back
-                </button>
-                <button onClick={handleSubmit}
-                  disabled={isLoading || !form.adminName || !form.adminPassword || !form.confirmPassword}
-                  className="flex-1 font-semibold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm hover:scale-[1.01] disabled:opacity-40"
-                  style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 4px 16px rgba(14,165,233,0.25)" }}>
-                  {isLoading
-                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    : "Create Account"}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <p className="text-center text-white/30 text-xs mt-5">
-          Already registered?{" "}
-          <a href="/login" className="font-medium transition-colors hover:text-white" style={{ color: "#38BDF8" }}>
-            Login here
-          </a>
-        </p>
       </div>
+
+      {/* Right form panel */}
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", overflowY: "auto" }}>
+        <div style={{ width: "100%", maxWidth: 520, animation: "fadeUp 0.5s ease forwards" }}>
+
+          {/* Mobile logo */}
+          <div style={{ display: "none", alignItems: "center", gap: 10, marginBottom: 32 }} className="mobile-logo">
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="monitor_heart" size={20} color="white" />
+            </div>
+            <span style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20" }}>AORANE Business</span>
+          </div>
+
+          {/* Step Progress */}
+          <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 36 }}>
+            {STEP_LABELS.map((label, i) => (
+              <React.Fragment key={label}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                    background: i + 1 < step ? `linear-gradient(135deg, ${PRIMARY}, ${TEAL})` : i + 1 === step ? "white" : "#f3f4f6",
+                    border: i + 1 === step ? `2px solid ${PRIMARY}` : i + 1 < step ? "none" : "2px solid #e5e7eb",
+                    fontSize: 13, fontWeight: 700, flexShrink: 0,
+                    color: i + 1 < step ? "white" : i + 1 === step ? PRIMARY : "#9ca3af",
+                    boxShadow: i + 1 === step ? `0 0 0 4px ${PRIMARY}18` : "none",
+                    transition: "all 0.3s",
+                  }}>
+                    {i + 1 < step ? <Icon name="check" size={16} color="white" /> : i + 1}
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: i + 1 === step ? PRIMARY : "#9ca3af", display: "none", whiteSpace: "nowrap" }} className="step-label">
+                    {label}
+                  </span>
+                </div>
+                {i < 2 && (
+                  <div style={{ flex: 1, height: 2, background: i + 1 < step ? `linear-gradient(to right, ${PRIMARY}, ${TEAL})` : "#e5e7eb", margin: "0 8px", transition: "background 0.3s" }} />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: 12, padding: "12px 16px", marginBottom: 20 }}>
+              <Icon name="error" size={18} color="#ef4444" />
+              <span style={{ fontSize: 14, color: "#dc2626" }}>{error}</span>
+            </div>
+          )}
+
+          {/* Card */}
+          <div style={{ background: "white", borderRadius: 24, border: "1.5px solid rgba(191,199,209,0.3)", boxShadow: "0 8px 40px rgba(0,0,0,0.07)", padding: "36px 32px" }}>
+
+            {/* STEP 1: Org Type */}
+            {step === 1 && (
+              <div style={{ animation: "fadeUp 0.3s ease" }}>
+                <div style={{ marginBottom: 28 }}>
+                  <h2 style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", margin: "0 0 6px", letterSpacing: "-0.02em" }}>
+                    What type of organization are you?
+                  </h2>
+                  <p style={{ fontSize: 14, color: "#6b7280", margin: 0 }}>Select your business category to get started</p>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 28 }}>
+                  {ORG_TYPES.map(t => (
+                    <button
+                      key={t.value}
+                      className="org-btn"
+                      onClick={() => set("orgType", t.value)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 12, padding: "14px 16px",
+                        borderRadius: 14, border: `2px solid ${form.orgType === t.value ? PRIMARY : "#e5e7eb"}`,
+                        background: form.orgType === t.value ? `${PRIMARY}08` : "white",
+                        cursor: "pointer", textAlign: "left", transition: "all 0.2s",
+                        boxShadow: form.orgType === t.value ? `0 0 0 3px ${PRIMARY}18` : "none",
+                      }}
+                    >
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: form.orgType === t.value ? `${PRIMARY}12` : "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <Icon name={t.icon} size={20} color={form.orgType === t.value ? PRIMARY : "#9ca3af"} />
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: form.orgType === t.value ? "#181c20" : "#6b7280" }}>{t.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => form.orgType && setStep(2)}
+                  disabled={!form.orgType}
+                  style={{
+                    width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
+                    background: form.orgType ? `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)` : "#e5e7eb",
+                    color: form.orgType ? "white" : "#9ca3af", fontWeight: 700, fontSize: 15,
+                    cursor: form.orgType ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    transition: "all 0.2s", boxShadow: form.orgType ? "0 4px 16px rgba(0,93,144,0.25)" : "none",
+                  }}
+                >
+                  Continue
+                  <Icon name="arrow_forward" size={18} color={form.orgType ? "white" : "#9ca3af"} />
+                </button>
+              </div>
+            )}
+
+            {/* STEP 2: Org Details */}
+            {step === 2 && (
+              <div style={{ animation: "fadeUp 0.3s ease" }}>
+                <div style={{ marginBottom: 24 }}>
+                  <h2 style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", margin: "0 0 6px", letterSpacing: "-0.02em" }}>
+                    Organization Details
+                  </h2>
+                  <p style={{ fontSize: 14, color: "#6b7280", margin: 0 }}>Tell us about your organization</p>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 }}>
+                  <Input label="Organization Name" value={form.name} onChange={v => set("name", v)} placeholder="e.g., Sunrise Health Clinic" required />
+                  <Input label="Email Address" type="email" value={form.contactEmail} onChange={v => set("contactEmail", v)} placeholder="admin@yourorg.com" required />
+                  <Input label="Phone Number" value={form.contactPhone} onChange={v => set("contactPhone", v)} placeholder="+91 98765 43210" />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <Input label="City" value={form.city} onChange={v => set("city", v)} placeholder="Mumbai" />
+                    <Input label="State" value={form.state} onChange={v => set("state", v)} placeholder="Maharashtra" />
+                  </div>
+                  <Input label="Total Seats (Members)" type="number" value={form.totalSeats} onChange={v => set("totalSeats", v)} placeholder="50" />
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    onClick={() => setStep(1)}
+                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "13px 20px", borderRadius: 12, border: "2px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: 600, fontSize: 14, cursor: "pointer", transition: "all 0.2s" }}
+                  >
+                    <Icon name="arrow_back" size={16} color="#6b7280" /> Back
+                  </button>
+                  <button
+                    onClick={() => form.name && form.contactEmail && setStep(3)}
+                    disabled={!form.name || !form.contactEmail}
+                    style={{
+                      flex: 1, padding: "13px 0", borderRadius: 12, border: "none",
+                      background: form.name && form.contactEmail ? `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)` : "#e5e7eb",
+                      color: form.name && form.contactEmail ? "white" : "#9ca3af",
+                      fontWeight: 700, fontSize: 15, cursor: form.name && form.contactEmail ? "pointer" : "not-allowed",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      boxShadow: form.name && form.contactEmail ? "0 4px 16px rgba(0,93,144,0.25)" : "none",
+                    }}
+                  >
+                    Continue <Icon name="arrow_forward" size={18} color={form.name && form.contactEmail ? "white" : "#9ca3af"} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: Admin Account */}
+            {step === 3 && (
+              <div style={{ animation: "fadeUp 0.3s ease" }}>
+                <div style={{ marginBottom: 24 }}>
+                  <h2 style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", margin: "0 0 6px", letterSpacing: "-0.02em" }}>
+                    Create Your Admin Account
+                  </h2>
+                  <p style={{ fontSize: 14, color: "#6b7280", margin: 0 }}>Set up login credentials for your portal</p>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 }}>
+                  <Input label="Full Name" value={form.adminName} onChange={v => set("adminName", v)} placeholder="Dr. Rajesh Kumar" required />
+                  <div>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                      Password <span style={{ color: PRIMARY }}>*</span>
+                    </label>
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type={showPass ? "text" : "password"}
+                        value={form.adminPassword}
+                        onChange={e => set("adminPassword", e.target.value)}
+                        placeholder="Min. 6 characters"
+                        style={{ width: "100%", boxSizing: "border-box", padding: "12px 48px 12px 16px", borderRadius: 12, border: `2px solid ${form.adminPassword ? PRIMARY + "60" : "#e5e7eb"}`, background: "white", color: "#181c20", fontSize: 14, outline: "none", fontFamily: "'Inter', sans-serif" }}
+                      />
+                      <button type="button" onClick={() => setShowPass(!showPass)} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                        <Icon name={showPass ? "visibility_off" : "visibility"} size={18} color="#9ca3af" />
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                      Confirm Password <span style={{ color: PRIMARY }}>*</span>
+                    </label>
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type={showConfirm ? "text" : "password"}
+                        value={form.confirmPassword}
+                        onChange={e => set("confirmPassword", e.target.value)}
+                        placeholder="Re-enter password"
+                        style={{ width: "100%", boxSizing: "border-box", padding: "12px 48px 12px 16px", borderRadius: 12, border: `2px solid ${form.confirmPassword && form.confirmPassword === form.adminPassword ? TEAL + "80" : form.confirmPassword ? "#ef4444" : "#e5e7eb"}`, background: "white", color: "#181c20", fontSize: 14, outline: "none", fontFamily: "'Inter', sans-serif" }}
+                      />
+                      <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                        <Icon name={showConfirm ? "visibility_off" : "visibility"} size={18} color="#9ca3af" />
+                      </button>
+                    </div>
+                    {form.confirmPassword && form.confirmPassword !== form.adminPassword && (
+                      <p style={{ fontSize: 12, color: "#ef4444", marginTop: 4 }}>Passwords do not match</p>
+                    )}
+                  </div>
+                  {/* Summary */}
+                  <div style={{ background: "#f7f9fe", borderRadius: 12, padding: "14px 16px", border: "1.5px solid rgba(191,199,209,0.3)" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Registration Summary</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {[
+                        { label: "Organization", value: form.name },
+                        { label: "Email", value: form.contactEmail },
+                        { label: "Total Seats", value: `${form.totalSeats} members` },
+                      ].map((item, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                          <span style={{ color: "#9ca3af" }}>{item.label}</span>
+                          <span style={{ color: "#181c20", fontWeight: 600 }}>{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    onClick={() => setStep(2)}
+                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "13px 20px", borderRadius: 12, border: "2px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+                  >
+                    <Icon name="arrow_back" size={16} color="#6b7280" /> Back
+                  </button>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isLoading || !form.adminName || !form.adminPassword || !form.confirmPassword || form.adminPassword !== form.confirmPassword}
+                    style={{
+                      flex: 1, padding: "13px 0", borderRadius: 12, border: "none",
+                      background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`,
+                      color: "white", fontWeight: 700, fontSize: 15, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                      opacity: isLoading || !form.adminName || !form.adminPassword || !form.confirmPassword ? 0.65 : 1,
+                      boxShadow: "0 4px 16px rgba(0,93,144,0.25)",
+                    }}
+                  >
+                    {isLoading ? (
+                      <>
+                        <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.3)", borderTop: "2px solid white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                        Creating account...
+                      </>
+                    ) : (
+                      <>Create Account <Icon name="check_circle" size={18} color="white" /></>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <p style={{ textAlign: "center", color: "#9ca3af", fontSize: 13, marginTop: 20 }}>
+            Already registered?{" "}
+            <a href="/business-portal/login" style={{ color: PRIMARY, fontWeight: 600, textDecoration: "none" }}>
+              Log in here
+            </a>
+          </p>
+          <p style={{ textAlign: "center", color: "#9ca3af", fontSize: 12, marginTop: 12 }}>
+            Protected by DPDP Act 2023 · 256-bit SSL · Made in India 🇮🇳
+          </p>
+        </div>
+      </div>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .hide-on-mobile { display: none !important; }
+          .mobile-logo { display: flex !important; }
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
