@@ -178,6 +178,15 @@ export const companySettingsTable = pgTable("company_settings", {
   scorecardShowActivePercent: boolean("scorecard_show_active_percent").default(true),
   scorecardBgGradientFrom: text("scorecard_bg_gradient_from").default("#023E8A"),
   scorecardBgGradientTo: text("scorecard_bg_gradient_to").default("#1B998B"),
+  // Company / Legal registration details
+  gstin: text("gstin"),
+  cin: text("cin"),
+  pan: text("pan"),
+  city: text("city"),
+  state: text("state"),
+  pincode: text("pincode"),
+  country: text("country").default("India"),
+  registeredAddress: text("registered_address"),
   // Report settings
   reportHeaderText: text("report_header_text"),
   reportFooterText: text("report_footer_text"),

@@ -454,6 +454,14 @@ export async function runStartupMigrations(): Promise<void> {
       monthly_report_enabled BOOLEAN DEFAULT TRUE,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS gstin TEXT`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS cin TEXT`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS pan TEXT`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS city TEXT`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS state TEXT`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS pincode TEXT`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'India'`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS registered_address TEXT`,
 
     // ══════════════════════════════════════════════════════
     // BUSINESS / CORPORATE TABLES

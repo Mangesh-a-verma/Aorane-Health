@@ -3,7 +3,7 @@ import Layout from "@/components/Layout";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { User, Lock, Shield, Calendar, Mail, Save, Eye, EyeOff, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import { User, Lock, Shield, Calendar, Mail, Save, Eye, EyeOff, RefreshCw, AlertCircle, CheckCircle2, Building2, FileText, Phone, Globe, MapPin, Hash } from "lucide-react";
 
 type AdminProfile = {
   id: string;
@@ -12,6 +12,19 @@ type AdminProfile = {
   role: string;
   lastLoginAt: string | null;
   createdAt: string;
+};
+
+type CompanyForm = {
+  companyName: string; tagline: string; website: string; supportEmail: string;
+  supportPhone: string; address: string; registeredAddress: string;
+  city: string; state: string; pincode: string; gstin: string; cin: string; pan: string;
+};
+
+const EMPTY_COMPANY: CompanyForm = {
+  companyName: "AORANE Health", tagline: "Your Health, In Your Hands",
+  website: "aorane.com", supportEmail: "", supportPhone: "",
+  address: "", registeredAddress: "", city: "", state: "", pincode: "",
+  gstin: "", cin: "", pan: "",
 };
 
 export default function Profile() {
@@ -34,6 +47,13 @@ export default function Profile() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
 
+  const [company, setCompany] = useState<CompanyForm>(EMPTY_COMPANY);
+  const [companySaved, setCompanySaved] = useState<CompanyForm>(EMPTY_COMPANY);
+  const [loadingCompany, setLoadingCompany] = useState(true);
+  const [savingCompany, setSavingCompany] = useState(false);
+
+  const companyChanged = JSON.stringify(company) !== JSON.stringify(companySaved);
+
   const loadProfile = useCallback(async () => {
     setLoading(true);
     setLoadError("");
@@ -50,7 +70,33 @@ export default function Profile() {
     }
   }, []);
 
-  useEffect(() => { loadProfile(); }, [loadProfile]);
+  const loadCompany = useCallback(async () => {
+    setLoadingCompany(true);
+    try {
+      const r = await api.getCompanySettings();
+      const s = r.settings as Record<string, string>;
+      const form: CompanyForm = {
+        companyName: s.companyName || s.company_name || "AORANE Health",
+        tagline: s.tagline || "Your Health, In Your Hands",
+        website: s.website || "aorane.com",
+        supportEmail: s.supportEmail || s.support_email || "",
+        supportPhone: s.supportPhone || s.support_phone || "",
+        address: s.address || "",
+        registeredAddress: s.registeredAddress || s.registered_address || "",
+        city: s.city || "",
+        state: s.state || "",
+        pincode: s.pincode || "",
+        gstin: s.gstin || "",
+        cin: s.cin || "",
+        pan: s.pan || "",
+      };
+      setCompany(form);
+      setCompanySaved(form);
+    } catch { }
+    setLoadingCompany(false);
+  }, []);
+
+  useEffect(() => { loadProfile(); loadCompany(); }, [loadProfile, loadCompany]);
 
   const infoChanged =
     fullName.trim() !== (profile?.fullName ?? "") ||
@@ -85,6 +131,37 @@ export default function Profile() {
       toast({ title: (err as Error).message || "Failed to update profile", variant: "destructive" });
     } finally {
       setSavingInfo(false);
+    }
+  }
+
+  async function handleSaveCompany(e: React.FormEvent) {
+    e.preventDefault();
+    if (!company.companyName.trim()) {
+      toast({ title: "Company name cannot be empty", variant: "destructive" }); return;
+    }
+    setSavingCompany(true);
+    try {
+      await api.updateCompanySettings({
+        companyName: company.companyName.trim(),
+        tagline: company.tagline.trim(),
+        website: company.website.trim(),
+        supportEmail: company.supportEmail.trim(),
+        supportPhone: company.supportPhone.trim(),
+        address: company.address.trim(),
+        registeredAddress: company.registeredAddress.trim(),
+        city: company.city.trim(),
+        state: company.state.trim(),
+        pincode: company.pincode.trim(),
+        gstin: company.gstin.trim().toUpperCase(),
+        cin: company.cin.trim().toUpperCase(),
+        pan: company.pan.trim().toUpperCase(),
+      });
+      setCompanySaved({ ...company });
+      toast({ title: "Platform settings saved successfully!" });
+    } catch (err: unknown) {
+      toast({ title: (err as Error).message || "Failed to save settings", variant: "destructive" });
+    } finally {
+      setSavingCompany(false);
     }
   }
 
@@ -295,6 +372,126 @@ export default function Profile() {
               )}
             </button>
           </form>
+        </div>
+
+        {/* Platform / Company Settings */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-[#0747A6]/30 flex items-center justify-center">
+              <Building2 size={18} className="text-[#4A9EFF]" />
+            </div>
+            <div>
+              <h2 className="text-white font-semibold text-sm">Platform Settings</h2>
+              <p className="text-white/40 text-xs">Company identity, legal details, and support info used across the platform</p>
+            </div>
+          </div>
+
+          {loadingCompany ? (
+            <div className="flex items-center gap-2 text-white/40 text-sm py-4">
+              <div className="w-4 h-4 border border-white/20 border-t-white/60 rounded-full animate-spin" />
+              Loading settings…
+            </div>
+          ) : (
+            <form onSubmit={handleSaveCompany} className="space-y-5">
+              {/* Brand */}
+              <div>
+                <p className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <Globe size={11} /> Brand Identity
+                </p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {[
+                    { label: "Company / Brand Name", key: "companyName", placeholder: "AORANE Health" },
+                    { label: "Tagline", key: "tagline", placeholder: "Your Health, In Your Hands" },
+                    { label: "Website", key: "website", placeholder: "aorane.com" },
+                    { label: "Support Email", key: "supportEmail", placeholder: "support@aorane.com" },
+                    { label: "Support Phone", key: "supportPhone", placeholder: "+91 73078 26291" },
+                  ].map(({ label, key, placeholder }) => (
+                    <div key={key} className="space-y-1">
+                      <label className="text-white/50 text-xs font-medium">{label}</label>
+                      <input
+                        value={(company as Record<string, string>)[key]}
+                        onChange={(e) => setCompany(c => ({ ...c, [key]: e.target.value }))}
+                        placeholder={placeholder}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-[#4A9EFF]/50 focus:ring-1 focus:ring-[#4A9EFF]/20"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Address */}
+              <div>
+                <p className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <MapPin size={11} /> Address
+                </p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {[
+                    { label: "Office Address", key: "address", placeholder: "Indra Nagar, Near Lekhraj Metro" },
+                    { label: "Registered Address (for invoices)", key: "registeredAddress", placeholder: "Same as office or different legal address" },
+                    { label: "City", key: "city", placeholder: "Lucknow" },
+                    { label: "State", key: "state", placeholder: "Uttar Pradesh" },
+                    { label: "Pincode", key: "pincode", placeholder: "226016" },
+                  ].map(({ label, key, placeholder }) => (
+                    <div key={key} className="space-y-1">
+                      <label className="text-white/50 text-xs font-medium">{label}</label>
+                      <input
+                        value={(company as Record<string, string>)[key]}
+                        onChange={(e) => setCompany(c => ({ ...c, [key]: e.target.value }))}
+                        placeholder={placeholder}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-[#4A9EFF]/50 focus:ring-1 focus:ring-[#4A9EFF]/20"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Legal */}
+              <div>
+                <p className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <Hash size={11} /> Legal & Tax Identifiers
+                </p>
+                <div className="bg-amber-500/8 border border-amber-500/20 rounded-xl px-4 py-3 mb-3 text-amber-300/70 text-xs">
+                  These are used on GST invoices sent to business customers. Leave blank until company is incorporated.
+                </div>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  {[
+                    { label: "GSTIN (15 chars)", key: "gstin", placeholder: "29AADCB2230M1ZV" },
+                    { label: "CIN (Corporate ID)", key: "cin", placeholder: "U74999UP2025PTC0XXXXX" },
+                    { label: "PAN", key: "pan", placeholder: "AAACA1234C" },
+                  ].map(({ label, key, placeholder }) => (
+                    <div key={key} className="space-y-1">
+                      <label className="text-white/50 text-xs font-medium">{label}</label>
+                      <input
+                        value={(company as Record<string, string>)[key]}
+                        onChange={(e) => setCompany(c => ({ ...c, [key]: e.target.value.toUpperCase() }))}
+                        placeholder={placeholder}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-[#4A9EFF]/50 focus:ring-1 focus:ring-[#4A9EFF]/20 font-mono tracking-wider"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  type="submit"
+                  disabled={savingCompany || !companyChanged}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0747A6] text-white text-sm font-medium disabled:opacity-40 hover:bg-[#0747A6]/80 transition-colors"
+                >
+                  {savingCompany ? (
+                    <><div className="w-3.5 h-3.5 border border-white/30 border-t-white rounded-full animate-spin" /> Saving…</>
+                  ) : (
+                    <><Save size={14} /> Save Platform Settings</>
+                  )}
+                </button>
+                {!companyChanged && (
+                  <span className="flex items-center gap-1 text-[#10B981] text-xs">
+                    <CheckCircle2 size={12} /> Settings saved
+                  </span>
+                )}
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </Layout>

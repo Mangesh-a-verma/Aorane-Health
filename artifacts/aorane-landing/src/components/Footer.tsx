@@ -27,11 +27,11 @@ export default function Footer() {
     {
       title: "Legal",
       links: [
-        { label: "Privacy Policy", href: "#" },
-        { label: "Terms of Service", href: "#" },
-        { label: "DPDPA Compliance", href: "#" },
-        { label: "Cookie Policy", href: "#" },
-        { label: "Data Deletion", href: "#" },
+        { label: "Privacy Policy", href: "/privacy" },
+        { label: "Terms of Service", href: "/terms" },
+        { label: "DPDPA Compliance", href: "/privacy#6" },
+        { label: "Data Deletion", href: "mailto:privacy@aorane.com?subject=Data Deletion Request" },
+        { label: "Contact Legal", href: "mailto:legal@aorane.com" },
       ],
     },
   ];

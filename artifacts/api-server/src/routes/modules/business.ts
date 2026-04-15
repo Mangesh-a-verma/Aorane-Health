@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable, subscriptionsTable } from "@workspace/db";
+import { db, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable, subscriptionsTable, companySettingsTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte, desc, ilike, sql } from "drizzle-orm";
 import { requireBusinessAuth } from "../../middlewares/business-auth";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -645,7 +645,12 @@ const SEAT_PLANS: Record<string, { label: string; pricePerSeat: number; yearlyPr
   max: { label: "Max", pricePerSeat: 199, yearlyPricePerSeat: 169 },
   pro: { label: "Pro", pricePerSeat: 249, yearlyPricePerSeat: 211 },
 };
-const AORANE_GSTIN = "09AANCA7148R1ZI"; // UP GSTIN placeholder
+async function getAoraneGstin(): Promise<string> {
+  try {
+    const rows = await db.select({ gstin: companySettingsTable.gstin }).from(companySettingsTable).limit(1);
+    return rows[0]?.gstin || "UPDATE_IN_ADMIN_PANEL";
+  } catch { return "UPDATE_IN_ADMIN_PANEL"; }
+}
 const AORANE_STATE = "UP";
 const GST_RATE = 0.18;
 
@@ -717,7 +722,7 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
       orgGstin: orgGstin || org.gstin,
       orgState: orgState || org.state,
       orgName: org.name,
-      aoranGstin: AORANE_GSTIN,
+      aoranGstin: await getAoraneGstin(),
       razorpayOrderId,
       razorpayKeyId: process.env["RAZORPAY_KEY_ID"] || null,
       isTestMode,
