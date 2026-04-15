@@ -27,12 +27,12 @@ const defaultIndividual: Plan[] = [
 ];
 
 const defaultOrg: Plan[] = [
-  { planKey: "starter", displayName: "Starter", type: "organization", monthlyPrice: "4999", yearlyPrice: "49990",
-    features: ["Up to 50 employees", "Basic health dashboard", "Department analytics", "Monthly reports", "Email support"], badge: "", color: "#6B7280" },
-  { planKey: "growth", displayName: "Growth", type: "organization", monthlyPrice: "12999", yearlyPrice: "129990",
-    features: ["Up to 250 employees", "Advanced analytics", "Risk stratification", "Custom wellness programs", "API access", "Dedicated CSM", "Weekly reports"], badge: "Most Popular", color: "#0747A6" },
+  { planKey: "starter", displayName: "Max", type: "organization", monthlyPrice: "179", yearlyPrice: "1781",
+    features: ["Min 10 users", "Aggregate health dashboard", "Enrollment code management", "Employee search & filter", "GST-ready invoicing", "Department analytics", "Monthly reports", "Email support"], badge: "", color: "#6B7280" },
+  { planKey: "growth", displayName: "Pro", type: "organization", monthlyPrice: "224", yearlyPrice: "2231",
+    features: ["Min 50 users", "Everything in Max", "Advanced health analytics", "Health risk alerts", "Custom wellness programs", "Weekly & monthly team reports", "Custom announcements", "Priority support"], badge: "Most Popular", color: "#0747A6" },
   { planKey: "enterprise", displayName: "Enterprise", type: "organization", monthlyPrice: "0", yearlyPrice: "0",
-    features: ["Unlimited employees", "All Growth features", "Custom integrations", "SLA guarantee", "On-premise option", "Compliance reports", "24/7 Priority support", "White-labeling"], badge: "Enterprise", color: "#7C3AED" },
+    features: ["Unlimited users", "All Pro features", "Custom integrations", "SLA guarantee", "On-premise option", "Compliance reports", "24/7 Priority support", "White-labeling"], badge: "Enterprise", color: "#7C3AED" },
 ];
 
 const planIcons: Record<string, React.ComponentType<{ className?: string; color?: string }>> = {
@@ -93,11 +93,13 @@ function PlanCard({ plan, isYearly, highlight, onBusinessSignUp }: { plan: Plan;
               <span className="text-3xl font-extrabold text-gray-900">
                 {monthlyFromYearly || price}
               </span>
-              <span className="text-sm text-gray-400">/mo</span>
+              <span className="text-sm text-gray-400">
+                {plan.type === "organization" ? "/user/mo" : "/mo"}
+              </span>
             </div>
             {isYearly && (
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-gray-400">₹{price}/year</span>
+                <span className="text-xs text-gray-400">₹{price}/{plan.type === "organization" ? "user/yr" : "year"}</span>
                 <span className="text-xs font-bold text-[#10B981] bg-[#10B981]/10 px-1.5 py-0.5 rounded-full">Save 17%</span>
               </div>
             )}

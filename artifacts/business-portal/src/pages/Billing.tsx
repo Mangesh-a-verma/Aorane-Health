@@ -148,16 +148,8 @@ export default function Billing() {
     try {
       const order = await api.createSeatOrder(selectedPlan, seatCount, billing, orgGstin, orgState);
       if (order.isTestMode || !order.razorpayOrderId) {
-        const result = await api.verifySeatPayment({
-          paymentId: order.paymentId,
-          seats: seatCount,
-          plan: selectedPlan,
-          billingCycle: billing,
-          isTestMode: true,
-        });
-        if (result.org) setOrg?.(result.org);
-        setSuccess(result.message || `${seatCount} seats activated!`);
-        setSubscription({ plan: selectedPlan, status: "success", payment_type: "one_time", expires_at: result.expiresAt });
+        setError("Payment gateway is not configured. Please contact AORANE support to activate your plan.");
+        return;
       } else {
         const ok = await loadRazorpay();
         if (!ok) { setError("Payment gateway failed to load. Try again."); return; }

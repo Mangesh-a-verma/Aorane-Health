@@ -87,9 +87,15 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
     const baseAmount = Number(planData.monthlyPrice);
     const finalAmount = Math.round(baseAmount * (1 - discount / 100));
     let razorpayOrderId: string | null = null;
+    let orderIsTestMode = !isLiveMode();
     if (isLiveMode()) {
-      const order = await createOrder({ amount: finalAmount, receipt: `usr_${req.userId!.substring(0, 8)}` });
-      razorpayOrderId = order.id;
+      try {
+        const order = await createOrder({ amount: finalAmount, receipt: `usr_${req.userId!.substring(0, 8)}` });
+        razorpayOrderId = order.id;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Razorpay error";
+        res.status(502).json({ error: `Payment gateway error: ${msg}` }); return;
+      }
     }
     const [payment] = await db.insert(paymentsTable).values({
       userId: req.userId!, amount: finalAmount.toString(), currency: "INR",
@@ -100,7 +106,7 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
       razorpayKeyId: process.env["RAZORPAY_KEY_ID"] || null,
       amount: finalAmount, plan, discount, promoUsed,
       planLabel: planData.displayName,
-      isTestMode: !isLiveMode(),
+      isTestMode: orderIsTestMode,
     });
   } catch {
     res.status(500).json({ error: "Failed to create payment order" });

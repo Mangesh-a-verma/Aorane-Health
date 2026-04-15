@@ -682,14 +682,16 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
     const invoiceSeq = Math.floor(Math.random() * 9000) + 1000;
     const invoiceNumber = `AOR/${fy}/${invoiceSeq}`;
 
-    const { createRazorpayOrder } = await import("../../lib/razorpay.js");
+    const { createOrder, isLiveMode } = await import("../../lib/razorpay.js");
     let razorpayOrderId: string | null = null;
-    let isTestMode = false;
-    try {
-      const order = await createRazorpayOrder(totalAmount);
-      razorpayOrderId = order.id;
-    } catch {
-      isTestMode = true;
+    let isTestMode = !isLiveMode();
+    if (isLiveMode()) {
+      try {
+        const order = await createOrder({ amount: totalAmount, receipt: `biz_${req.orgId!.substring(0, 8)}` });
+        razorpayOrderId = order.id;
+      } catch {
+        isTestMode = true;
+      }
     }
 
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));

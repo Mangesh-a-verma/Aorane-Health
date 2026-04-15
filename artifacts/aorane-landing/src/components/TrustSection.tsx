@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Shield, Lock, FileCheck, Globe, Server, Eye, AlertTriangle, Award } from "lucide-react";
+import { Shield, Lock, FileCheck, Globe, Server, Eye, AlertTriangle } from "lucide-react";
 
 const compliance = [
   { icon: Shield, title: "DPDPA 2023 Compliant", desc: "India's Digital Personal Data Protection Act compliant. Your data stays in India on Indian servers.", color: "#0747A6", bg: "#EEF4FF" },
@@ -8,13 +8,6 @@ const compliance = [
   { icon: Globe, title: "HIPAA Ready", desc: "HIPAA-grade data handling practices for organizations that require US healthcare compliance.", color: "#F59E0B", bg: "#FFFBEB" },
   { icon: Server, title: "India Data Residency", desc: "All health data stored on servers located within India. Compliant with Indian data localization laws.", color: "#EF4444", bg: "#FFF1F2" },
   { icon: Eye, title: "Transparent Privacy", desc: "No data selling. No third-party ad targeting. Full audit log of who accessed your health data.", color: "#6B7280", bg: "#F9FAFB" },
-];
-
-const awards = [
-  { label: "India Health Tech Award 2024", sub: "Best Consumer Health App" },
-  { label: "Nasscom Emerge 50", sub: "Top HealthTech Startup" },
-  { label: "Startup India Recognition", sub: "DPIIT Certified" },
-  { label: "Google Play Choice", sub: "Editors' Pick — Health" },
 ];
 
 export default function TrustSection() {
@@ -57,31 +50,6 @@ export default function TrustSection() {
               </div>
             </motion.div>
           ))}
-        </div>
-
-        <div className="bg-[#F8FAFC] rounded-3xl p-8 border border-gray-100">
-          <div className="flex items-center gap-2 mb-6">
-            <Award className="w-5 h-5 text-[#F59E0B]" />
-            <h3 className="text-lg font-bold text-gray-900">Recognition & Awards</h3>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {awards.map((a, i) => (
-              <motion.div
-                key={a.label}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                className="bg-white rounded-2xl p-4 border border-gray-100 text-center card-hover"
-              >
-                <div className="w-10 h-10 bg-[#F59E0B]/10 rounded-xl flex items-center justify-center mx-auto mb-3">
-                  <Award className="w-5 h-5 text-[#F59E0B]" />
-                </div>
-                <p className="text-sm font-bold text-gray-900 leading-snug">{a.label}</p>
-                <p className="text-xs text-gray-500 mt-1">{a.sub}</p>
-              </motion.div>
-            ))}
-          </div>
         </div>
 
         <motion.div
