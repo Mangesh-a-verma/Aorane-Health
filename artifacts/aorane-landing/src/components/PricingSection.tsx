@@ -13,7 +13,7 @@ interface Plan {
   color: string;
 }
 
-const API_BASE = (import.meta.env.VITE_API_URL as string) || "https://aorane.onrender.com";
+const API_BASE = (import.meta.env.VITE_API_URL as string) || "";
 
 const defaultIndividual: Plan[] = [
   { planKey: "free", displayName: "Free", type: "individual", monthlyPrice: "0", yearlyPrice: "0",
