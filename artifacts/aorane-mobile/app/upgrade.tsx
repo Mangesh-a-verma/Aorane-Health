@@ -38,14 +38,14 @@ type PlanItem = {
 
 const FALLBACK_PLANS: PlanItem[] = [
   {
-    key: "pro", label: "Pro", price: 199, badge: "Popular",
+    key: "max", label: "Max", price: 199, badge: "Popular",
     color: "#0077B6", gradient: ["#0077B6","#023E8A"],
     features: ["AI Food Scan", "Personalized Diet Plan", "Health Reports PDF", "Medicine Reminders", "Exercise Tracking", "Water Tracker"],
   },
   {
-    key: "max", label: "Max", price: 249, badge: "Best Value",
+    key: "pro", label: "Pro", price: 249, badge: "Best Value",
     color: "#8B5CF6", gradient: ["#8B5CF6","#6D28D9"],
-    features: ["Sab Pro features +", "Medical Report AI Scanner", "Advanced Gemini AI", "Priority Support", "Family Add-on", "Unlimited History"],
+    features: ["Sab Max features +", "Medical Report AI Scanner", "Advanced Gemini AI", "Priority Support", "Family Add-on", "Unlimited History"],
   },
 ];
 

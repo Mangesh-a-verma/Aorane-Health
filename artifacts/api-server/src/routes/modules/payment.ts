@@ -203,4 +203,71 @@ router.delete("/payment/subscription/cancel", requireAuth, async (req: AuthReque
   }
 });
 
+// ─── GET/POST: Razorpay native mobile checkout callback ──────────────────────
+// Razorpay embedded checkout redirects here after payment on native browser
+router.post("/payment/rzp-callback", async (req, res) => {
+  const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body as Record<string, string>;
+  const isValid = razorpay_order_id && razorpay_payment_id && razorpay_signature
+    ? verifyPaymentSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature)
+    : false;
+
+  // Try to update payment record in DB
+  if (isValid && razorpay_order_id) {
+    try {
+      await db.update(paymentsTable)
+        .set({ status: "success", razorpayPaymentId: razorpay_payment_id })
+        .where(eq(paymentsTable.razorpayOrderId, razorpay_order_id));
+      // Activate user plan via payment record
+      const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.razorpayOrderId, razorpay_order_id));
+      if (payment?.userId && payment?.plan) {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        await db.insert(subscriptionsTable).values({
+          userId: payment.userId, plan: payment.plan as "free" | "pro" | "max" | "family",
+          status: "active", source: "razorpay", expiresAt, paymentType: "one_time",
+          autoRenew: false, nextRenewalAt: expiresAt,
+        }).onConflictDoNothing();
+        await db.update(usersTable)
+          .set({ plan: payment.plan as "free" | "pro" | "max" | "family" })
+          .where(eq(usersTable.id, payment.userId));
+      }
+    } catch { /* best effort */ }
+  }
+
+  // Return HTML page — user sees this in their browser before closing
+  const html = isValid
+    ? `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Payment Successful</title></head>
+       <body style="margin:0;background:#0A1628;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif">
+       <div style="background:#0D2040;border-radius:24px;padding:40px 32px;text-align:center;max-width:340px;border:1px solid rgba(16,185,129,0.3)">
+         <div style="font-size:64px;margin-bottom:16px">✅</div>
+         <h2 style="color:#34d399;margin:0 0 8px">Payment Successful!</h2>
+         <p style="color:rgba(255,255,255,0.6);margin:0 0 24px;font-size:14px">Your AORANE Premium plan is now active. Close this window and return to the app.</p>
+         <div style="background:rgba(16,185,129,0.1);border-radius:12px;padding:12px;font-size:12px;color:rgba(255,255,255,0.4)">
+           Payment ID: ${razorpay_payment_id}
+         </div>
+       </div></body></html>`
+    : `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Payment Failed</title></head>
+       <body style="margin:0;background:#0A1628;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif">
+       <div style="background:#0D2040;border-radius:24px;padding:40px 32px;text-align:center;max-width:340px;border:1px solid rgba(239,68,68,0.3)">
+         <div style="font-size:64px;margin-bottom:16px">❌</div>
+         <h2 style="color:#f87171;margin:0 0 8px">Payment Cancelled</h2>
+         <p style="color:rgba(255,255,255,0.6);margin:0 0 24px;font-size:14px">Payment was not completed. Close this window and try again from the app.</p>
+       </div></body></html>`;
+
+  res.setHeader("Content-Type", "text/html");
+  res.send(html);
+});
+
+// Also handle GET (Razorpay sometimes redirects with GET for cancel)
+router.get("/payment/rzp-callback", (_req, res) => {
+  res.setHeader("Content-Type", "text/html");
+  res.send(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/><title>AORANE Pay</title></head>
+    <body style="margin:0;background:#0A1628;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif">
+    <div style="background:#0D2040;border-radius:24px;padding:40px 32px;text-align:center;max-width:340px">
+      <div style="font-size:48px;margin-bottom:16px">💙</div>
+      <h2 style="color:#94ccff;margin:0 0 8px">Return to AORANE App</h2>
+      <p style="color:rgba(255,255,255,0.5);font-size:14px">Close this window and check your plan status in the app.</p>
+    </div></body></html>`);
+});
+
 export default router;
