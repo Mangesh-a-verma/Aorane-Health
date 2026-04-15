@@ -162,21 +162,21 @@ export default function Dashboard() {
             <div className="flex items-center justify-center h-48">
               <div className="w-8 h-8 border-2 border-[#0077B6]/30 border-t-[#0077B6] rounded-full animate-spin" />
             </div>
-          ) : !analytics || analytics.totalMembers === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <Heart size={36} className="text-[#E5E7EB] mb-3" />
-              <p className="text-[#6B7280] font-medium">No health data yet</p>
-              <p className="text-xs text-[#9CA3AF] mt-1">Data appears when employees log health activities in the AORANE app</p>
-            </div>
           ) : (
             <>
-              {/* Health Metric Circles */}
-              <div className="flex justify-around flex-wrap gap-4 mb-6 py-4 bg-[#F8FAFC] rounded-xl">
-                <HealthCircle label="Nutrition" value={analytics.avgFood} color="#F59E0B" icon={Heart} />
-                <HealthCircle label="Hydration" value={analytics.avgWater} color="#0EA5E9" icon={Droplets} />
-                <HealthCircle label="Exercise" value={analytics.avgExercise} color="#10B981" icon={Dumbbell} />
-                <HealthCircle label="Medicine" value={analytics.avgMedicine} color="#8B5CF6" icon={Pill} />
+              {/* Health Metric Circles — always shown, zeros when no data */}
+              <div className="flex justify-around flex-wrap gap-4 mb-4 py-4 bg-[#F8FAFC] rounded-xl">
+                <HealthCircle label="Nutrition" value={analytics?.avgFood ?? 0} color="#F59E0B" icon={Heart} />
+                <HealthCircle label="Hydration" value={analytics?.avgWater ?? 0} color="#0EA5E9" icon={Droplets} />
+                <HealthCircle label="Exercise" value={analytics?.avgExercise ?? 0} color="#10B981" icon={Dumbbell} />
+                <HealthCircle label="Medicine" value={analytics?.avgMedicine ?? 0} color="#8B5CF6" icon={Pill} />
               </div>
+              {(!analytics || analytics.totalMembers === 0) && (
+                <div className="flex items-center gap-2 text-xs text-[#9CA3AF] justify-center mb-4 bg-[#F8FAFC] rounded-lg px-3 py-2 border border-[#E5E7EB]">
+                  <Heart size={12} className="text-[#D1D5DB]" />
+                  Data appears when employees log health activities in the AORANE app
+                </div>
+              )}
 
               <div className="grid md:grid-cols-2 gap-5">
                 {/* Daily Active Trend */}
