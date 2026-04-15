@@ -16,6 +16,7 @@ import Settings from "@/pages/Settings";
 import Billing from "@/pages/Billing";
 import Analytics from "@/pages/Analytics";
 import Communications from "@/pages/Communications";
+import Verify from "@/pages/Verify";
 
 const queryClient = new QueryClient();
 
@@ -92,6 +93,7 @@ function Router() {
       <Route path="/codes" component={() => <ProtectedRoute component={EnrollmentCodes} />} />
       <Route path="/billing" component={() => <ProtectedRoute component={Billing} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
+      <Route path="/verify" component={() => <ProtectedRoute component={Verify} />} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -30,7 +30,7 @@ export interface Org {
   id: string; orgType: string; name: string; orgCode: string;
   contactEmail: string; contactPhone: string; city: string; state: string;
   totalSeats: number; usedSeats: number; isActive: boolean; isVerified: boolean;
-  plan: string; createdAt: string;
+  plan: string; gstin?: string; createdAt: string;
 }
 
 export interface Admin {
@@ -71,6 +71,47 @@ export interface Analytics {
   joinTrend: { date: string; count: number }[];
 }
 
+export interface HealthAnalytics {
+  totalMembers: number;
+  activeToday: number;
+  activeLast7Days: number;
+  avgHealthScore: number;
+  avgFood: number;
+  avgWater: number;
+  avgExercise: number;
+  avgMedicine: number;
+  healthyCount: number;
+  atRiskCount: number;
+  inactiveCount: number;
+  dailyActiveTrend: { date: string; activeCount: number }[];
+}
+
+export interface SeatOrder {
+  paymentId: string;
+  invoiceNumber: string;
+  plan: string;
+  planLabel: string;
+  seats: number;
+  billingCycle: string;
+  pricePerSeat: number;
+  months: number;
+  baseAmount: number;
+  gstAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  totalAmount: number;
+  isSameState: boolean;
+  gstRate: number;
+  orgGstin?: string;
+  orgState?: string;
+  orgName: string;
+  aoranGstin: string;
+  razorpayOrderId: string | null;
+  razorpayKeyId: string | null;
+  isTestMode: boolean;
+}
+
 export interface Announcement {
   id: string; title: string; body: string; type: string; sentCount: number; createdAt: string;
 }
@@ -102,6 +143,9 @@ export const api = {
   removeMember: (userId: string) =>
     request<{ success: boolean }>(`/business/members/${userId}/remove`, { method: "POST" }),
 
+  cancelMemberSubscription: (userId: string) =>
+    request<{ success: boolean; message: string }>(`/business/members/${userId}/cancel-subscription`, { method: "POST" }),
+
   getCodes: () => request<{ codes: EnrollmentCode[] }>("/business/enrollment-codes"),
 
   createCode: (data: { planType: string; totalSeats: number; validityDays: number }) =>
@@ -111,6 +155,18 @@ export const api = {
 
   getBillingSubscription: () => request<{ payment: { plan: string; status: string; paymentType?: string; payment_type?: string; autoRenew?: boolean; auto_renew?: boolean; nextRenewalAt?: string; next_renewal_at?: string; expiresAt?: string; expires_at?: string } | null; org: Org; plans: Record<string, OrgPlan> }>("/business/billing/subscription"),
 
+  // Seat-based billing
+  createSeatOrder: (plan: string, seats: number, billingCycle: "monthly" | "yearly", orgGstin?: string, orgState?: string) =>
+    request<SeatOrder>("/business/billing/seat-order", { method: "POST", body: JSON.stringify({ plan, seats, billingCycle, orgGstin, orgState }) }),
+
+  verifySeatPayment: (data: Record<string, unknown>) =>
+    request<{ success: boolean; org: Org; message: string; expiresAt?: string }>("/business/billing/seat-verify", { method: "POST", body: JSON.stringify(data) }),
+
+  getInvoices: () => request<{ invoices: Record<string, unknown>[] }>("/business/billing/invoices"),
+
+  getSeatPlans: () => request<{ plans: Record<string, { label: string; pricePerSeat: number; yearlyPricePerSeat: number }>; gstRate: number }>("/business/billing/seat-plans"),
+
+  // Legacy billing (kept for backward compat)
   createBillingOrder: (plan: string, billing: string) =>
     request<{ paymentId: string; razorpayOrderId: string | null; razorpayKeyId: string | null; amount: number; plan: string; planLabel: string; seats: number; isTestMode: boolean }>("/business/billing/order", { method: "POST", body: JSON.stringify({ plan, billing }) }),
 
@@ -126,6 +182,9 @@ export const api = {
   cancelBillingSubscription: () =>
     request<{ success: boolean; message: string; nextRenewalAt?: string }>("/business/billing/subscription/cancel", { method: "DELETE" }),
 
+  // Health Analytics (aggregate, privacy-safe)
+  getHealthAnalytics: () => request<HealthAnalytics>("/business/health-analytics"),
+
   getAnalytics: () => request<Analytics>("/business/analytics"),
 
   getAnnouncements: () => request<{ announcements: Announcement[] }>("/business/announcements"),
@@ -138,4 +197,11 @@ export const api = {
 
   changePassword: (currentPassword: string, newPassword: string) =>
     request<{ success: boolean }>("/business/admin/password", { method: "PATCH", body: JSON.stringify({ currentPassword, newPassword }) }),
+
+  // Verification stubs
+  sendEmailVerification: () =>
+    request<{ success: boolean; message: string; stub: boolean }>("/business/verify/send-email", { method: "POST" }),
+
+  sendPhoneOtp: () =>
+    request<{ success: boolean; message: string; stub: boolean }>("/business/verify/send-phone-otp", { method: "POST" }),
 };

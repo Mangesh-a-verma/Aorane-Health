@@ -11,7 +11,7 @@ AORANE's architecture consists of three main components: a mobile app (built wit
 
 **UI/UX Decisions:**
 - **Mobile App:** Complete Apple Health-inspired redesign with white (#FFFFFF) background, Trust Blue (#007AFF) primary, Mint Green (#34C759) accent. Design system in `lib/theme.ts` (DS tokens). Lucide icons for general UI, MaterialCommunityIcons for exercise-specific icons. Glassmorphism glass headers (BlurView on iOS, semi-transparent on Android). White card sections with subtle blue shadows. CustomTabBar with animated pill. Screens: Dashboard (Paytm-style 3×2 grid), Exercise, Food, Medicine, Profile — all fully redesigned.
-- **Business Portal:** Designed with a dark sidebar displaying organization information and seat progress, and a top bar with an organization code chip. Uses AORANE Blue (#0077B6) and Teal (#1B998B) on a dark navy background.
+- **Business Portal:** Light theme with professional split-panel login (blue branding left, white form right). Dashboard shows aggregate health analytics (recharts bar + pie charts), seat-based billing (MAX ₹199/seat, PRO ₹249/seat, GST 18% with CGST/SGST/IGST split), verification structure stubs (email + phone OTP ready for keys). Uses AORANE Blue (#0077B6) and Teal (#1B998B) on white background (#F8FAFC).
 - **Admin Panel:** Features a dark navy sidebar with a prominent "ADMIN PANEL" badge and AORANE blue/teal accents.
 
 **Technical Implementations & Feature Specifications:**

@@ -646,6 +646,22 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS payment_type TEXT NOT NULL DEFAULT 'one_time'`,
     `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS auto_renew BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS next_renewal_at TIMESTAMPTZ`,
+    // ══════════════════════════════════════════════════════
+    // ALTER TABLE: Billing invoice + verification fields
+    // ══════════════════════════════════════════════════════
+    `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS billing_cycle TEXT NOT NULL DEFAULT 'monthly'`,
+    `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS seat_price INTEGER`,
+    `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS base_amount INTEGER`,
+    `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS gst_amount INTEGER`,
+    `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS cgst_amount INTEGER`,
+    `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS sgst_amount INTEGER`,
+    `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS igst_amount INTEGER`,
+    `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS org_gstin TEXT`,
+    `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS org_state TEXT`,
+    `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS invoice_number TEXT`,
+    `ALTER TABLE org_admins ADD COLUMN IF NOT EXISTS is_email_verified BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE org_admins ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ`,
+    `ALTER TABLE org_admins ADD COLUMN IF NOT EXISTS phone_otp_verified BOOLEAN NOT NULL DEFAULT FALSE`,
   ];
 
   let ok = 0; let fail = 0;

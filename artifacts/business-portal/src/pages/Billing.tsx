@@ -1,19 +1,81 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
-import { api, type OrgPlan } from "@/lib/api";
-import { CreditCard, CheckCircle, Zap, Building2, Crown, AlertCircle, RefreshCw, RotateCcw, XCircle, CalendarClock } from "lucide-react";
+import { api } from "@/lib/api";
+import {
+  CreditCard, CheckCircle, AlertCircle, RefreshCw, FileText,
+  Users, Calendar, IndianRupee, Info, ChevronDown, ChevronUp,
+  RotateCcw, XCircle, CalendarClock
+} from "lucide-react";
 
 declare global {
   interface Window { Razorpay: new (opts: Record<string, unknown>) => { open(): void }; }
 }
 
-const PLAN_ICONS: Record<string, React.ElementType> = { starter: Zap, growth: Building2, enterprise: Crown };
-const PLAN_FEATURES: Record<string, string[]> = {
-  starter:    ["50 member seats", "Member health dashboard", "AORANE ID search", "Enrollment code management", "Basic analytics"],
-  growth:     ["200 member seats", "Everything in Starter", "Advanced health analytics", "Team announcements & comms", "Member detail & health trends", "Priority support"],
-  enterprise: ["500 member seats", "Everything in Growth", "Custom enrollment codes", "Data export (CSV)", "Dedicated account manager", "White-label reports"],
+const SEAT_PLANS = {
+  max: {
+    label: "Max",
+    pricePerSeat: 199,
+    yearlyPricePerSeat: 169,
+    color: "#0077B6",
+    features: [
+      "Basic aggregate health dashboard",
+      "Enrollment code management",
+      "Employee search",
+      "GST-ready invoice",
+      "Email support",
+    ],
+  },
+  pro: {
+    label: "Pro",
+    pricePerSeat: 249,
+    yearlyPricePerSeat: 211,
+    color: "#7C3AED",
+    features: [
+      "Everything in Max",
+      "Advanced health analytics & charts",
+      "Health risk distribution alerts",
+      "Weekly & monthly team reports",
+      "Priority support",
+      "Custom announcements to employees",
+    ],
+  },
 };
+
+const INDIAN_STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
+  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
+  "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+  "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+  "Delhi", "Chandigarh", "Puducherry",
+];
+
+const AORANE_STATE = "Uttar Pradesh";
+const GST_RATE = 0.18;
+
+function formatINR(n: number) {
+  return "₹" + n.toLocaleString("en-IN");
+}
+
+interface GSTBreakdown {
+  baseAmount: number;
+  gstAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  totalAmount: number;
+  isSameState: boolean;
+}
+
+function calcGST(baseAmount: number, orgState: string): GSTBreakdown {
+  const isSameState = orgState === AORANE_STATE;
+  const gstAmount = Math.round(baseAmount * GST_RATE);
+  const cgstAmount = isSameState ? Math.round(gstAmount / 2) : 0;
+  const sgstAmount = isSameState ? Math.round(gstAmount / 2) : 0;
+  const igstAmount = isSameState ? 0 : gstAmount;
+  return { baseAmount, gstAmount, cgstAmount, sgstAmount, igstAmount, totalAmount: baseAmount + gstAmount, isSameState };
+}
 
 interface SubscriptionInfo {
   plan: string;
@@ -26,20 +88,22 @@ interface SubscriptionInfo {
 
 export default function Billing() {
   const { org, setOrg } = useAuth();
-  const [plans, setPlans] = useState<Record<string, OrgPlan>>({});
+  const [selectedPlan, setSelectedPlan] = useState<"max" | "pro">("max");
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
-  const [autoRenew, setAutoRenew] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [paying, setPaying] = useState<string | null>(null);
-  const [cancelling, setCancelling] = useState(false);
+  const [seatCount, setSeatCount] = useState(10);
+  const [orgState, setOrgState] = useState(org?.state || "");
+  const [orgGstin, setOrgGstin] = useState(org?.gstin || "");
+  const [showInvoice, setShowInvoice] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
+  const [loadingSubscription, setLoadingSubscription] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     api.getBillingSubscription()
       .then((d) => {
-        setPlans(d.plans);
         if (d.payment) {
           setSubscription({
             plan: d.payment.plan,
@@ -52,8 +116,19 @@ export default function Billing() {
         }
       })
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => setLoadingSubscription(false));
   }, []);
+
+  const planInfo = SEAT_PLANS[selectedPlan];
+  const pricePerSeat = billing === "yearly" ? planInfo.yearlyPricePerSeat : planInfo.pricePerSeat;
+  const months = billing === "yearly" ? 12 : 1;
+  const baseAmount = pricePerSeat * Math.max(10, seatCount) * months;
+  const gst = calcGST(baseAmount, orgState || "Delhi");
+  const yearlyFY = (() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    return now.getMonth() >= 3 ? `${y}-${String(y + 1).slice(2)}` : `${y - 1}-${String(y).slice(2)}`;
+  })();
 
   const loadRazorpay = () =>
     new Promise<boolean>((resolve) => {
@@ -65,178 +140,136 @@ export default function Billing() {
       document.body.appendChild(s);
     });
 
-  const handlePay = async (planKey: string) => {
-    setPaying(planKey);
+  const handlePay = async () => {
+    if (seatCount < 10) { setError("Minimum 10 seats required"); return; }
+    setPaying(true);
     setError("");
     setSuccess("");
     try {
-      if (autoRenew) {
-        // Auto-recurring subscription flow
-        const sub = await api.createBillingSubscription(planKey, billing);
-        if (sub.isTestMode || !sub.razorpaySubscriptionId) {
-          if (sub.org) setOrg?.(sub.org);
-          setSuccess(sub.message || "Auto-renew subscription activated!");
-          setSubscription({ plan: planKey, status: "success", payment_type: "recurring", auto_renew: true, next_renewal_at: sub.nextRenewalAt });
-        } else {
-          const ok = await loadRazorpay();
-          if (!ok) { setError("Payment gateway failed to load"); return; }
-          await new Promise<void>((resolve, reject) => {
-            const rzp = new window.Razorpay({
-              key: sub.razorpayKeyId,
-              subscription_id: sub.razorpaySubscriptionId,
-              name: "AORANE Business",
-              description: `${sub.planLabel} Plan — ${sub.seats} seats (Auto-renew)`,
-              handler: async (resp: Record<string, string>) => {
-                try {
-                  const result = await api.verifyBillingSubscription({
-                    paymentId: sub.paymentId,
-                    razorpaySubscriptionId: resp.razorpay_subscription_id,
-                    razorpayPaymentId: resp.razorpay_payment_id,
-                    razorpaySignature: resp.razorpay_signature,
-                    plan: planKey,
-                  });
-                  if (result.org) setOrg?.(result.org);
-                  setSuccess(result.message || "Auto-renew subscription activated!");
-                  setSubscription({ plan: planKey, status: "success", payment_type: "recurring", auto_renew: true, next_renewal_at: result.expiresAt });
-                  resolve();
-                } catch (e) { reject(e); }
-              },
-              prefill: { email: org?.contactEmail, contact: org?.contactPhone },
-              theme: { color: "#0077B6" },
-            });
-            rzp.open();
-          });
-        }
+      const order = await api.createSeatOrder(selectedPlan, seatCount, billing, orgGstin, orgState);
+      if (order.isTestMode || !order.razorpayOrderId) {
+        const result = await api.verifySeatPayment({
+          paymentId: order.paymentId,
+          seats: seatCount,
+          plan: selectedPlan,
+          billingCycle: billing,
+          isTestMode: true,
+        });
+        if (result.org) setOrg?.(result.org);
+        setSuccess(result.message || `${seatCount} seats activated!`);
+        setSubscription({ plan: selectedPlan, status: "success", payment_type: "one_time", expires_at: result.expiresAt });
       } else {
-        // One-time payment flow
-        const order = await api.createBillingOrder(planKey, billing);
-        if (order.isTestMode || !order.razorpayOrderId) {
-          const result = await api.verifyBillingPayment({ paymentId: order.paymentId, plan: planKey, isTestMode: true });
-          if (result.org) setOrg?.(result.org);
-          setSuccess(result.message || "Plan activated!");
-          setSubscription({ plan: planKey, status: "success", payment_type: "one_time" });
-        } else {
-          const ok = await loadRazorpay();
-          if (!ok) { setError("Payment gateway failed to load"); return; }
-          await new Promise<void>((resolve, reject) => {
-            const rzp = new window.Razorpay({
-              key: order.razorpayKeyId, amount: order.amount * 100, currency: "INR",
-              name: "AORANE Business", description: `${order.planLabel} Plan — ${order.seats} seats`,
-              order_id: order.razorpayOrderId,
-              handler: async (resp: Record<string, string>) => {
-                try {
-                  const result = await api.verifyBillingPayment({
-                    paymentId: order.paymentId,
-                    razorpayOrderId: resp.razorpay_order_id,
-                    razorpayPaymentId: resp.razorpay_payment_id,
-                    razorpaySignature: resp.razorpay_signature,
-                    plan: planKey,
-                  });
-                  if (result.org) setOrg?.(result.org);
-                  setSuccess(result.message || "Plan activated!");
-                  setSubscription({ plan: planKey, status: "success", payment_type: "one_time" });
-                  resolve();
-                } catch (e) { reject(e); }
-              },
-              prefill: { email: org?.contactEmail, contact: org?.contactPhone },
-              theme: { color: "#0077B6" },
-            });
-            rzp.open();
+        const ok = await loadRazorpay();
+        if (!ok) { setError("Payment gateway failed to load. Try again."); return; }
+        await new Promise<void>((resolve, reject) => {
+          const rzp = new window.Razorpay({
+            key: order.razorpayKeyId,
+            amount: order.totalAmount * 100,
+            currency: "INR",
+            order_id: order.razorpayOrderId,
+            name: "AORANE Business",
+            description: `${planInfo.label} Plan — ${seatCount} seats (${billing})`,
+            handler: async (resp: Record<string, string>) => {
+              try {
+                const result = await api.verifySeatPayment({
+                  paymentId: order.paymentId,
+                  razorpayPaymentId: resp.razorpay_payment_id,
+                  razorpayOrderId: resp.razorpay_order_id,
+                  razorpaySignature: resp.razorpay_signature,
+                  seats: seatCount,
+                  plan: selectedPlan,
+                  billingCycle: billing,
+                });
+                if (result.org) setOrg?.(result.org);
+                setSuccess(result.message || `${seatCount} seats activated!`);
+                setSubscription({ plan: selectedPlan, status: "success", payment_type: "one_time", expires_at: result.expiresAt });
+                resolve();
+              } catch (e) { reject(e); }
+            },
+            prefill: { email: org?.contactEmail, contact: org?.contactPhone },
+            theme: { color: "#0077B6" },
           });
-        }
+          rzp.open();
+        });
       }
     } catch (e) {
       setError((e as Error).message || "Payment failed");
-    } finally { setPaying(null); }
+    } finally { setPaying(false); }
   };
 
   const handleCancelAutoRenew = async () => {
     setCancelling(true);
-    setError("");
     try {
       const result = await api.cancelBillingSubscription();
       setSuccess(result.message || "Auto-renew cancelled.");
       setSubscription((s) => s ? { ...s, auto_renew: false } : s);
     } catch (e) {
-      setError((e as Error).message || "Failed to cancel auto-renew");
+      setError((e as Error).message || "Failed to cancel");
     } finally { setCancelling(false); }
   };
 
-  if (loading) return (
-    <Layout>
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    </Layout>
-  );
-
   const currentPlan = org?.plan || "basic";
-  const isVerified = org?.isVerified;
-  const renewalDate = subscription?.next_renewal_at ? new Date(subscription.next_renewal_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : null;
-  const isAutoRenewActive = subscription?.auto_renew === true;
+  const isActive = org?.isVerified && subscription?.status === "success";
+  const expiresAt = subscription?.expires_at ? new Date(subscription.expires_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : null;
 
   return (
     <Layout>
       <div className="p-6 max-w-5xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Billing & Subscription</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Manage your organization plan and seat allocation</p>
+          <h1 className="text-2xl font-bold text-foreground">Billing & Plans</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">Seat-based pricing — pay only for what you need</p>
         </div>
 
         {success && (
-          <div className="mb-6 flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
-            <CheckCircle size={20} className="text-emerald-500 shrink-0" />
-            <p className="text-emerald-400 text-sm font-medium">{success}</p>
+          <div className="mb-5 flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl p-4">
+            <CheckCircle size={18} className="shrink-0" />
+            <p className="text-sm font-medium">{success}</p>
           </div>
         )}
         {error && (
-          <div className="mb-6 flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl p-4">
-            <AlertCircle size={20} className="text-red-400 shrink-0" />
-            <p className="text-red-400 text-sm">{error}</p>
+          <div className="mb-5 flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4">
+            <AlertCircle size={18} className="shrink-0" />
+            <p className="text-sm">{error}</p>
           </div>
         )}
 
-        {/* Current plan status */}
-        <div className="bg-card border border-border rounded-xl p-5 mb-6">
+        {/* Current Plan Status */}
+        <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 mb-6">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                <CreditCard size={20} className="text-primary" />
+              <div className="w-10 h-10 rounded-xl bg-[#0077B6]/10 flex items-center justify-center">
+                <CreditCard size={20} className="text-[#0077B6]" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-foreground">Current Plan</div>
-                <div className="text-xs text-muted-foreground capitalize">
+                <div className="text-sm font-semibold text-[#0D1F33]">Current Plan</div>
+                <div className="text-xs text-[#6B7280] capitalize">
                   {currentPlan === "basic" ? "Free (Basic)" : currentPlan} · {org?.totalSeats} seats · {org?.usedSeats} used
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {isVerified ? (
-                <span className="text-xs bg-emerald-500/15 text-emerald-400 px-3 py-1 rounded-full font-medium">✓ Active</span>
+            <div className="flex items-center gap-2">
+              {isActive ? (
+                <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full font-medium">✓ Active</span>
               ) : (
-                <span className="text-xs bg-yellow-500/15 text-yellow-400 px-3 py-1 rounded-full font-medium">⚠ Unverified</span>
+                <span className="text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 px-3 py-1 rounded-full font-medium">⚠ No Active Plan</span>
               )}
-              {isAutoRenewActive && (
-                <span className="text-xs bg-blue-500/15 text-blue-400 px-3 py-1 rounded-full font-medium flex items-center gap-1">
-                  <RotateCcw size={11} /> Auto-renew ON
+              {!loadingSubscription && subscription?.auto_renew && (
+                <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full font-medium flex items-center gap-1">
+                  <RotateCcw size={10} /> Auto-renew ON
                 </span>
               )}
             </div>
           </div>
-          {/* Renewal info + cancel */}
-          {isVerified && renewalDate && (
-            <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <CalendarClock size={14} className="text-primary" />
-                {isAutoRenewActive ? `Auto-renews on ${renewalDate}` : `Active until ${renewalDate}`}
+          {expiresAt && (
+            <div className="mt-3 pt-3 border-t border-[#F3F4F6] flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+                <CalendarClock size={13} className="text-[#0077B6]" />
+                {subscription?.auto_renew ? `Auto-renews on ${expiresAt}` : `Active until ${expiresAt}`}
               </div>
-              {isAutoRenewActive && (
-                <button
-                  onClick={handleCancelAutoRenew}
-                  disabled={cancelling}
-                  className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors"
-                >
-                  {cancelling ? <RefreshCw size={12} className="animate-spin" /> : <XCircle size={13} />}
+              {subscription?.auto_renew && (
+                <button onClick={handleCancelAutoRenew} disabled={cancelling}
+                  className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 disabled:opacity-50 transition-colors">
+                  {cancelling ? <RefreshCw size={12} className="animate-spin" /> : <XCircle size={12} />}
                   Cancel auto-renew
                 </button>
               )}
@@ -244,83 +277,242 @@ export default function Billing() {
           )}
         </div>
 
-        {/* Billing toggle */}
-        <div className="flex items-center justify-center gap-3 mb-5">
-          <span className={`text-sm font-medium ${billing === "monthly" ? "text-foreground" : "text-muted-foreground"}`}>Monthly</span>
-          <button onClick={() => setBilling(b => b === "monthly" ? "yearly" : "monthly")}
-            className={`relative w-12 h-6 rounded-full transition-colors ${billing === "yearly" ? "bg-primary" : "bg-muted"}`}>
-            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${billing === "yearly" ? "left-7" : "left-1"}`} />
-          </button>
-          <span className={`text-sm font-medium ${billing === "yearly" ? "text-foreground" : "text-muted-foreground"}`}>
-            Yearly <span className="text-emerald-400 text-xs font-medium">Save 17%</span>
-          </span>
-        </div>
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Left: Configuration */}
+          <div className="lg:col-span-2 space-y-5">
 
-        {/* Auto-renew toggle */}
-        <div className="flex items-center justify-center gap-3 mb-8 bg-blue-500/5 border border-blue-500/10 rounded-xl py-3 px-4">
-          <RotateCcw size={15} className={autoRenew ? "text-blue-400" : "text-muted-foreground"} />
-          <span className={`text-sm font-medium ${autoRenew ? "text-foreground" : "text-muted-foreground"}`}>Auto-renew (recommended)</span>
-          <button onClick={() => setAutoRenew(a => !a)}
-            className={`relative w-12 h-6 rounded-full transition-colors ${autoRenew ? "bg-blue-500" : "bg-muted"}`}>
-            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${autoRenew ? "left-7" : "left-1"}`} />
-          </button>
-          <span className="text-xs text-muted-foreground">{autoRenew ? "Auto-charges on renewal — no interruption" : "Pay manually each cycle"}</span>
-        </div>
-
-        {/* Plans grid */}
-        <div className="grid md:grid-cols-3 gap-4 mb-8">
-          {Object.entries(plans).map(([key, plan]) => {
-            const Icon = PLAN_ICONS[key] || Zap;
-            const features = PLAN_FEATURES[key] || [];
-            const amount = billing === "yearly" ? plan.priceYearly : plan.price;
-            const isCurrentPlan = subscription && (subscription.plan as string) === key && subscription.status === "success";
-            const isPaying = paying === key;
-            return (
-              <div key={key} className={`relative bg-card border rounded-2xl p-6 flex flex-col transition-all ${isCurrentPlan ? "border-emerald-500/40 ring-1 ring-emerald-500/20" : key === "growth" ? "border-primary/40 ring-1 ring-primary/20" : "border-border"}`}>
-                {key === "growth" && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">Most Popular</div>
-                )}
-                {isCurrentPlan && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full">Current Plan</div>
-                )}
-                <div className="w-10 h-10 rounded-xl mb-4 flex items-center justify-center" style={{ backgroundColor: plan.color + "20" }}>
-                  <Icon size={20} style={{ color: plan.color }} />
-                </div>
-                <h3 className="text-lg font-bold text-foreground">{plan.label}</h3>
-                <div className="mt-2 mb-1">
-                  <span className="text-3xl font-bold text-foreground">₹{amount.toLocaleString("en-IN")}</span>
-                  <span className="text-muted-foreground text-sm">/{billing === "yearly" ? "yr" : "mo"}</span>
-                </div>
-                <p className="text-xs text-muted-foreground mb-1">{plan.seats} member seats</p>
-                {autoRenew && (
-                  <p className="text-xs text-blue-400 mb-3 flex items-center gap-1">
-                    <RotateCcw size={10} /> Auto-renews {billing === "monthly" ? "every month" : "yearly"}
-                  </p>
-                )}
-                <ul className="flex-1 space-y-2 mb-5">
-                  {features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle size={14} className="text-emerald-500 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  onClick={() => handlePay(key)}
-                  disabled={isPaying || !!isCurrentPlan}
-                  className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${isCurrentPlan ? "bg-emerald-500/10 text-emerald-400 cursor-default" : "text-white hover:opacity-90 active:scale-95"}`}
-                  style={isCurrentPlan ? {} : { backgroundColor: plan.color }}
-                >
-                  {isPaying ? <RefreshCw size={15} className="animate-spin" /> : isCurrentPlan ? "✓ Active" : autoRenew ? `Subscribe to ${plan.label}` : `Buy ${plan.label}`}
-                </button>
+            {/* Step 1: Choose Plan */}
+            <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-6 h-6 rounded-full bg-[#0077B6] text-white flex items-center justify-center text-xs font-bold">1</div>
+                <h3 className="font-semibold text-[#0D1F33]">Choose Plan</h3>
               </div>
-            );
-          })}
-        </div>
+              <div className="grid grid-cols-2 gap-3">
+                {(["max", "pro"] as const).map((key) => {
+                  const plan = SEAT_PLANS[key];
+                  const isSelected = selectedPlan === key;
+                  return (
+                    <button key={key} onClick={() => setSelectedPlan(key)}
+                      className={`relative text-left p-4 rounded-xl border-2 transition-all ${isSelected ? "border-[#0077B6] bg-[#0077B6]/5" : "border-[#E5E7EB] hover:border-[#0077B6]/40"}`}>
+                      {key === "pro" && (
+                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-[#7C3AED] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Popular</div>
+                      )}
+                      <div className="font-bold text-[#0D1F33] mb-1">{plan.label}</div>
+                      <div className="text-xl font-bold" style={{ color: plan.color }}>
+                        {formatINR(billing === "yearly" ? plan.yearlyPricePerSeat : plan.pricePerSeat)}
+                        <span className="text-xs font-normal text-[#6B7280]">/seat/mo</span>
+                      </div>
+                      {billing === "yearly" && (
+                        <div className="text-[10px] text-emerald-600 font-medium mt-0.5">Save 15% yearly</div>
+                      )}
+                      <ul className="mt-3 space-y-1.5">
+                        {plan.features.slice(0, 3).map(f => (
+                          <li key={f} className="flex items-start gap-1.5 text-[11px] text-[#6B7280]">
+                            <CheckCircle size={10} className="text-emerald-500 mt-0.5 shrink-0" />
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Full features comparison */}
+              <div className="mt-3 pt-3 border-t border-[#F3F4F6]">
+                <p className="text-xs font-medium text-[#374151] mb-2">{SEAT_PLANS[selectedPlan].label} plan includes:</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {SEAT_PLANS[selectedPlan].features.map(f => (
+                    <div key={f} className="flex items-start gap-1.5 text-xs text-[#6B7280]">
+                      <CheckCircle size={11} className="text-emerald-500 mt-0.5 shrink-0" />
+                      {f}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
 
-        <p className="text-center text-xs text-muted-foreground">
-          Secure payments via Razorpay · GST applicable · Cancel auto-renew anytime
-        </p>
+            {/* Step 2: Seats & Billing Cycle */}
+            <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-6 h-6 rounded-full bg-[#0077B6] text-white flex items-center justify-center text-xs font-bold">2</div>
+                <h3 className="font-semibold text-[#0D1F33]">Seats & Billing Cycle</h3>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#374151] mb-1.5">
+                    Number of Seats <span className="text-[#9CA3AF] font-normal">(min 10)</span>
+                  </label>
+                  <div className="flex items-center border border-[#E5E7EB] rounded-xl overflow-hidden bg-white">
+                    <button onClick={() => setSeatCount(c => Math.max(10, c - 10))}
+                      className="px-4 py-3 text-[#0077B6] font-bold text-lg hover:bg-[#F3F4F6] transition-colors">−</button>
+                    <input
+                      type="number"
+                      value={seatCount}
+                      min={10}
+                      step={5}
+                      onChange={e => setSeatCount(Math.max(10, parseInt(e.target.value) || 10))}
+                      className="flex-1 text-center py-3 font-bold text-[#0D1F33] focus:outline-none text-lg"
+                    />
+                    <button onClick={() => setSeatCount(c => c + 10)}
+                      className="px-4 py-3 text-[#0077B6] font-bold text-lg hover:bg-[#F3F4F6] transition-colors">+</button>
+                  </div>
+                  <p className="text-xs text-[#9CA3AF] mt-1 flex items-center gap-1">
+                    <Users size={11} /> {org?.usedSeats} currently enrolled
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#374151] mb-1.5">Billing Cycle</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["monthly", "yearly"] as const).map(b => (
+                      <button key={b} onClick={() => setBilling(b)}
+                        className={`py-3 rounded-xl text-sm font-semibold border-2 transition-all ${billing === b ? "border-[#0077B6] bg-[#0077B6]/5 text-[#0077B6]" : "border-[#E5E7EB] text-[#6B7280]"}`}>
+                        {b === "monthly" ? "Monthly" : <>Yearly <span className="text-[10px] text-emerald-600 font-bold block">Save 15%</span></>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3: GST Details */}
+            <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-6 h-6 rounded-full bg-[#0077B6] text-white flex items-center justify-center text-xs font-bold">3</div>
+                <h3 className="font-semibold text-[#0D1F33]">GST Details</h3>
+                <span className="text-xs text-[#9CA3AF]">(For invoice — optional)</span>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#374151] mb-1.5">Your State</label>
+                  <select value={orgState} onChange={e => setOrgState(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] bg-white text-[#0D1F33] text-sm focus:outline-none focus:border-[#0077B6] focus:ring-2 focus:ring-[#0077B6]/20 transition-all">
+                    <option value="">Select state</option>
+                    {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  {orgState && (
+                    <p className="text-[11px] mt-1 text-[#6B7280]">
+                      {orgState === AORANE_STATE
+                        ? "Same state as AORANE → CGST + SGST (9% + 9%)"
+                        : "Different state → IGST (18%)"}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#374151] mb-1.5">GSTIN <span className="text-[#9CA3AF] font-normal">(optional)</span></label>
+                  <input type="text" value={orgGstin} onChange={e => setOrgGstin(e.target.value.toUpperCase())}
+                    placeholder="22AAAAA0000A1Z5"
+                    maxLength={15}
+                    className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] bg-white text-[#0D1F33] text-sm font-mono focus:outline-none focus:border-[#0077B6] focus:ring-2 focus:ring-[#0077B6]/20 transition-all" />
+                  <p className="text-[11px] mt-1 text-[#9CA3AF]">For B2B GST invoice</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Order Summary */}
+          <div className="space-y-4">
+            <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 sticky top-6">
+              <h3 className="font-bold text-[#0D1F33] mb-4">Order Summary</h3>
+
+              <div className="space-y-2.5 text-sm mb-4">
+                <div className="flex justify-between text-[#374151]">
+                  <span>Plan</span>
+                  <span className="font-semibold">{planInfo.label} {billing === "yearly" ? "(Yearly)" : "(Monthly)"}</span>
+                </div>
+                <div className="flex justify-between text-[#374151]">
+                  <span>Seats</span>
+                  <span className="font-semibold">{seatCount}</span>
+                </div>
+                <div className="flex justify-between text-[#374151]">
+                  <span>Price/seat{billing === "yearly" ? "/mo" : ""}</span>
+                  <span className="font-semibold">{formatINR(pricePerSeat)}</span>
+                </div>
+                {billing === "yearly" && (
+                  <div className="flex justify-between text-[#374151]">
+                    <span>Months</span>
+                    <span className="font-semibold">12</span>
+                  </div>
+                )}
+                <div className="border-t border-[#F3F4F6] pt-2.5">
+                  <div className="flex justify-between text-[#374151]">
+                    <span>Subtotal</span>
+                    <span className="font-semibold">{formatINR(gst.baseAmount)}</span>
+                  </div>
+
+                  {/* GST breakdown toggle */}
+                  <button onClick={() => setShowInvoice(!showInvoice)}
+                    className="flex items-center gap-1 text-xs text-[#0077B6] mt-2 hover:underline">
+                    <FileText size={11} /> GST Breakdown
+                    {showInvoice ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                  </button>
+                  {showInvoice && (
+                    <div className="mt-2 bg-[#F8FAFC] rounded-lg p-3 space-y-1.5 text-xs">
+                      <div className="text-[#6B7280] font-medium mb-2">
+                        Invoice No: AOR/{yearlyFY}/XXXX
+                        <div className="text-[10px] text-[#9CA3AF] mt-0.5">HSN: 998313</div>
+                      </div>
+                      {gst.isSameState ? (
+                        <>
+                          <div className="flex justify-between text-[#374151]"><span>CGST (9%)</span><span>{formatINR(gst.cgstAmount)}</span></div>
+                          <div className="flex justify-between text-[#374151]"><span>SGST (9%)</span><span>{formatINR(gst.sgstAmount)}</span></div>
+                        </>
+                      ) : (
+                        <div className="flex justify-between text-[#374151]"><span>IGST (18%)</span><span>{formatINR(gst.igstAmount)}</span></div>
+                      )}
+                      {!orgState && (
+                        <p className="text-[#9CA3AF] text-[10px] flex items-center gap-1 mt-1">
+                          <Info size={10} /> Select state to see GST type
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex justify-between mt-2">
+                    <span className="text-[#374151]">GST (18%)</span>
+                    <span className="font-semibold text-[#374151]">{formatINR(gst.gstAmount)}</span>
+                  </div>
+                </div>
+                <div className="border-t border-[#E5E7EB] pt-2.5 flex justify-between">
+                  <span className="font-bold text-[#0D1F33]">Total</span>
+                  <span className="font-bold text-[#0077B6] text-lg">{formatINR(gst.totalAmount)}</span>
+                </div>
+                {billing === "yearly" && (
+                  <div className="text-[11px] text-emerald-600 text-center bg-emerald-50 rounded-lg py-1.5">
+                    You save {formatINR((SEAT_PLANS[selectedPlan].pricePerSeat - pricePerSeat) * seatCount * 12 || 0)} per year
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={handlePay}
+                disabled={paying || seatCount < 10}
+                className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                style={{ background: "linear-gradient(135deg, #0077B6, #005E8E)" }}
+              >
+                {paying ? (
+                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
+                ) : (
+                  <><IndianRupee size={15} /> Pay {formatINR(gst.totalAmount)}</>
+                )}
+              </button>
+
+              <div className="mt-3 space-y-1.5 text-[11px] text-[#9CA3AF]">
+                <div className="flex items-center gap-1.5"><Calendar size={11} />
+                  Active for {billing === "yearly" ? "12 months" : "1 month"} from payment
+                </div>
+                <div className="flex items-center gap-1.5"><FileText size={11} />
+                  GST invoice sent to {org?.contactEmail || "your email"}
+                </div>
+                <div className="flex items-center gap-1.5"><CheckCircle size={11} className="text-emerald-500" />
+                  Enrollment code ready immediately
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-[#F3F4F6] text-center text-[11px] text-[#9CA3AF]">
+                Secure payments via Razorpay · All amounts in INR · GST applicable
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </Layout>
   );

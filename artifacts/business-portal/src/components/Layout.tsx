@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard, Users, QrCode, Settings, LogOut,
   Menu, X, Building2, ChevronRight, Bell,
-  BarChart2, Megaphone, CreditCard,
+  BarChart2, Megaphone, CreditCard, ShieldCheck,
 } from "lucide-react";
 
 const navItems = [
@@ -14,6 +14,7 @@ const navItems = [
   { path: "/communications", icon: Megaphone, label: "Communications" },
   { path: "/codes", icon: QrCode, label: "Enrollment Codes" },
   { path: "/billing", icon: CreditCard, label: "Billing" },
+  { path: "/verify", icon: ShieldCheck, label: "Verification" },
   { path: "/settings", icon: Settings, label: "Settings" },
 ];
 

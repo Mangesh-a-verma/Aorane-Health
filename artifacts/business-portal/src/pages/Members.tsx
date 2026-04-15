@@ -39,6 +39,7 @@ function MemberDetailModal({ userId, name, onClose }: { userId: string; name: st
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [removing, setRemoving] = useState(false);
+  const [cancellingSubscription, setCancellingSubscription] = useState(false);
 
   useEffect(() => {
     api.getMemberDetail(userId)
@@ -56,6 +57,19 @@ function MemberDetailModal({ userId, name, onClose }: { userId: string; name: st
     } catch (e: unknown) {
       alert((e as Error).message || "Failed to remove member");
       setRemoving(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!confirm(`Cancel the subscription for ${name || "this member"}? Their plan will be downgraded to Free.`)) return;
+    setCancellingSubscription(true);
+    try {
+      await api.cancelMemberSubscription(userId);
+      alert("Subscription cancelled. Member downgraded to Free plan.");
+      onClose();
+    } catch (e: unknown) {
+      alert((e as Error).message || "Failed to cancel subscription");
+      setCancellingSubscription(false);
     }
   };
 
@@ -151,6 +165,18 @@ function MemberDetailModal({ userId, name, onClose }: { userId: string; name: st
               <div className="text-xs text-muted-foreground border-t border-border pt-3">
                 Joined: {new Date(detail.member.joinedAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
               </div>
+
+              {/* Cancel Subscription */}
+              {detail.user?.plan && detail.user.plan !== "free" && (
+                <button
+                  onClick={handleCancelSubscription}
+                  disabled={cancellingSubscription}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-amber-600 border border-amber-200 hover:bg-amber-50 transition-all disabled:opacity-50"
+                >
+                  {cancellingSubscription ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />}
+                  Cancel Subscription (Downgrade to Free)
+                </button>
+              )}
 
               {/* Remove Member */}
               <button
@@ -341,7 +367,7 @@ export default function Members() {
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Name se search karein..."
+              placeholder="Search by name..."
               className="w-full bg-card border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-all"
             />
           </div>

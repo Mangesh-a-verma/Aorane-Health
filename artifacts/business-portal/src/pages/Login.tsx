@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
-import { Building2, Eye, EyeOff, AlertCircle, ArrowRight, Heart, Shield, Lock } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, ArrowRight, Shield, BarChart3, Users } from "lucide-react";
 
 export default function Login() {
   const [, navigate] = useLocation();
@@ -33,122 +33,112 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 overflow-hidden"
-      style={{ fontFamily: "'Inter', sans-serif", background: "linear-gradient(135deg, #020B18 0%, #051B2C 40%, #081F30 70%, #04141F 100%)" }}>
-
-      {/* Background orbs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-48 -right-48 w-[500px] h-[500px] rounded-full opacity-20"
-          style={{ background: "radial-gradient(circle, #0EA5E9 0%, transparent 70%)", filter: "blur(40px)" }} />
-        <div className="absolute -bottom-48 -left-48 w-[500px] h-[500px] rounded-full opacity-15"
-          style={{ background: "radial-gradient(circle, #10B981 0%, transparent 70%)", filter: "blur(40px)" }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-5"
-          style={{ background: "radial-gradient(circle, #8B5CF6 0%, transparent 70%)", filter: "blur(60px)" }} />
-        {/* Grid pattern */}
-        <div className="absolute inset-0 opacity-[0.03]"
-          style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
+    <div className="min-h-screen flex" style={{ fontFamily: "'Inter', sans-serif", background: "#F8FAFC" }}>
+      {/* Left branding panel */}
+      <div className="hidden lg:flex flex-col justify-between w-[460px] shrink-0 p-12"
+        style={{ background: "linear-gradient(160deg, #0077B6 0%, #005E8E 60%, #00496F 100%)" }}>
+        <div>
+          <div className="flex items-center gap-3 mb-14">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+              <span className="text-white text-lg font-bold">A</span>
+            </div>
+            <span className="text-white text-xl font-bold tracking-wide">AORANE Business</span>
+          </div>
+          <h2 className="text-3xl font-bold text-white leading-tight mb-4">
+            Employee health,<br />measured. Not guessed.
+          </h2>
+          <p className="text-white/70 text-base leading-relaxed">
+            Real-time aggregate health analytics for your entire workforce — privacy-safe, GST-compliant, built for Indian companies.
+          </p>
+        </div>
+        <div className="space-y-4">
+          {[
+            { icon: BarChart3, text: "Live aggregate health dashboard" },
+            { icon: Users, text: "Seat-based enrollment management" },
+            { icon: Shield, text: "DPDP Act 2023 compliant" },
+          ].map(({ icon: Icon, text }) => (
+            <div key={text} className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+                <Icon size={15} className="text-white" />
+              </div>
+              <span className="text-white/80 text-sm">{text}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="relative w-full max-w-md z-10">
-
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <a href="/" className="inline-flex flex-col items-center gap-2 group">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110"
-              style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 0 32px rgba(14,165,233,0.5)" }}>
-              <Heart size={26} className="text-white" />
+      {/* Right form panel */}
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#0077B6" }}>
+              <span className="text-white font-bold">A</span>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold" style={{ background: "linear-gradient(90deg, #38BDF8, #34D399)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                AORANE
-              </h1>
-              <p className="text-white/35 text-xs">Business Portal</p>
-            </div>
-          </a>
-        </div>
-
-        {/* Glass Card */}
-        <div className="rounded-3xl p-8 border"
-          style={{ background: "rgba(255,255,255,0.04)", backdropFilter: "blur(24px)", borderColor: "rgba(255,255,255,0.10)", boxShadow: "0 32px 64px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)" }}>
-
-          <div className="mb-7">
-            <h2 className="text-2xl font-bold text-white mb-1">Welcome back</h2>
-            <p className="text-white/40 text-sm">Sign in to your organization account</p>
+            <span className="text-[#0D1F33] font-bold text-lg">AORANE Business</span>
           </div>
 
+          <h1 className="text-2xl font-bold text-[#0D1F33] mb-1">Welcome back</h1>
+          <p className="text-[#6B7280] text-sm mb-7">Sign in to your organization account</p>
+
           {error && (
-            <div className="mb-5 flex items-start gap-2.5 rounded-xl px-4 py-3 border"
-              style={{ background: "rgba(239,68,68,0.1)", borderColor: "rgba(239,68,68,0.2)", color: "#FCA5A5" }}>
-              <AlertCircle size={15} className="shrink-0 mt-0.5" />
-              <span className="text-sm">{error}</span>
+            <div className="flex items-center gap-2.5 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 mb-5 text-sm">
+              <AlertCircle size={15} className="shrink-0" />
+              {error}
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-white/60 mb-1.5">Email Address</label>
+              <label className="block text-sm font-medium text-[#374151] mb-1.5">Email address</label>
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@yourorg.com"
-                className="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all placeholder-white/20"
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}
-                onFocus={e => { e.target.style.borderColor = "rgba(14,165,233,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.1)"; }}
-                onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.10)"; e.target.style.boxShadow = "none"; }}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="admin@yourcompany.com"
+                className="w-full px-4 py-3 rounded-xl border border-[#E5E7EB] bg-white text-[#0D1F33] text-sm placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#0077B6]/25 focus:border-[#0077B6] transition-all"
               />
             </div>
             <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="block text-sm font-medium text-white/60">Password</label>
-                <a href="#" className="text-xs transition-colors" style={{ color: "#38BDF8" }}>Forgot password?</a>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-[#374151]">Password</label>
               </div>
               <div className="relative">
                 <input
                   type={showPass ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full rounded-xl px-4 py-3 pr-11 text-white text-sm focus:outline-none transition-all placeholder-white/20"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}
-                  onFocus={e => { e.target.style.borderColor = "rgba(14,165,233,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.1)"; }}
-                  onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.10)"; e.target.style.boxShadow = "none"; }}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full px-4 py-3 pr-11 rounded-xl border border-[#E5E7EB] bg-white text-[#0D1F33] text-sm placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#0077B6]/25 focus:border-[#0077B6] transition-all"
                 />
                 <button type="button" onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
-                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#6B7280]">
+                  {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
               </div>
             </div>
 
-            <button type="submit" disabled={isLoading}
-              className="w-full font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 mt-2 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
-              style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 8px 24px rgba(14,165,233,0.35)" }}>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold text-sm transition-all disabled:opacity-60"
+              style={{ background: "linear-gradient(135deg, #0077B6, #005E8E)" }}
+            >
               {isLoading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Signing in...</>
               ) : (
-                <>Sign In <ArrowRight size={16} /></>
+                <>Sign in <ArrowRight size={15} /></>
               )}
             </button>
           </form>
 
-          <div className="mt-6 pt-5 text-center" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-            <p className="text-sm text-white/40">
-              New organization?{" "}
-              <a href="/register" className="font-semibold transition-colors hover:text-white" style={{ color: "#38BDF8" }}>
-                Register here
-              </a>
-            </p>
+          <div className="mt-6 text-center">
+            <span className="text-[#6B7280] text-sm">Don't have an account? </span>
+            <a href="/register" className="text-[#0077B6] text-sm font-medium hover:underline">Register your organization</a>
           </div>
-        </div>
 
-        {/* Trust badges */}
-        <div className="flex items-center justify-center gap-4 mt-6 text-xs text-white/25 flex-wrap">
-          <span className="flex items-center gap-1.5"><Lock size={10} /> End-to-end encrypted</span>
-          <span className="text-white/15">•</span>
-          <span>🇮🇳 DPDP Compliant</span>
-          <span className="text-white/15">•</span>
-          <span className="flex items-center gap-1.5"><Shield size={10} /> AORANE Certified</span>
+          <div className="mt-8 pt-6 border-t border-[#E5E7EB] text-center">
+            <p className="text-xs text-[#9CA3AF]">Protected by DPDP Act 2023 &bull; 256-bit SSL encryption &bull; Made in India 🇮🇳</p>
+          </div>
         </div>
       </div>
     </div>

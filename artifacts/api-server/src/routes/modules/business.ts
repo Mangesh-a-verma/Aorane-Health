@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable } from "@workspace/db";
-import { eq, and, avg, desc, ilike, gte, sql } from "drizzle-orm";
+import { db, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable, subscriptionsTable } from "@workspace/db";
+import { eq, and, inArray, gte, lte, desc, ilike, sql } from "drizzle-orm";
 import { requireBusinessAuth } from "../../middlewares/business-auth";
 import { requireAuth } from "../../middlewares/user-auth";
 import { signBusinessToken } from "../../lib/jwt";
@@ -537,6 +537,274 @@ router.post("/business/members/:userId/remove", requireBusinessAuth, async (req:
     }
     res.json({ success: true });
   } catch { res.status(500).json({ error: "Failed to remove member" }); }
+});
+
+// ─── HEALTH ANALYTICS (aggregate, privacy-safe) ────────────────────────────
+router.get("/business/health-analytics", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const memberRows = await db.select({ userId: orgMembersTable.userId })
+      .from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.isActive, true)));
+    const memberIds = memberRows.map((m) => m.userId);
+    if (!memberIds.length) {
+      res.json({ totalMembers: 0, activeToday: 0, activeLast7Days: 0, avgHealthScore: 0, avgFood: 0, avgWater: 0, avgExercise: 0, avgMedicine: 0, healthyCount: 0, atRiskCount: 0, inactiveCount: 0, dailyActiveTrend: [] });
+      return;
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+    // Get all health scores for last 30 days
+    const scores = await db.select({
+      userId: dailyHealthScoresTable.userId,
+      scoreDate: dailyHealthScoresTable.scoreDate,
+      healthScore: dailyHealthScoresTable.healthScore,
+      foodScore: dailyHealthScoresTable.foodScore,
+      waterScore: dailyHealthScoresTable.waterScore,
+      exerciseScore: dailyHealthScoresTable.exerciseScore,
+      medicineScore: dailyHealthScoresTable.medicineScore,
+    }).from(dailyHealthScoresTable)
+      .where(and(
+        inArray(dailyHealthScoresTable.userId, memberIds),
+        gte(dailyHealthScoresTable.scoreDate, thirtyDaysAgo)
+      ));
+
+    // Latest score per user (for avg, distribution)
+    const latestByUser = new Map<string, { healthScore: number; foodScore: number; waterScore: number; exerciseScore: number; medicineScore: number }>();
+    for (const s of scores) {
+      const existing = latestByUser.get(s.userId);
+      if (!existing || s.scoreDate > (existing as unknown as { date?: string }).date!) {
+        latestByUser.set(s.userId, { healthScore: s.healthScore, foodScore: s.foodScore, waterScore: s.waterScore, exerciseScore: s.exerciseScore, medicineScore: s.medicineScore });
+      }
+    }
+
+    // Active in last 7 days (any score)
+    const activeUserIds7 = new Set(scores.filter(s => s.scoreDate >= sevenDaysAgo).map(s => s.userId));
+    // Active today
+    const activeTodayIds = new Set(scores.filter(s => s.scoreDate === today).map(s => s.userId));
+
+    // Distribution
+    let healthyCount = 0, atRiskCount = 0, inactiveCount = 0;
+    let sumHealth = 0, sumFood = 0, sumWater = 0, sumExercise = 0, sumMedicine = 0;
+    const scored = Array.from(latestByUser.values());
+    for (const s of scored) {
+      sumHealth += s.healthScore; sumFood += s.foodScore; sumWater += s.waterScore;
+      sumExercise += s.exerciseScore; sumMedicine += s.medicineScore;
+      if (s.healthScore >= 70) healthyCount++;
+      else if (s.healthScore >= 40) atRiskCount++;
+      else inactiveCount++;
+    }
+    const scoredCount = scored.length || 1;
+    const unscored = memberIds.length - scored.length;
+    inactiveCount += unscored;
+
+    // Daily active trend (last 30 days)
+    const trendMap = new Map<string, Set<string>>();
+    for (const s of scores) {
+      if (!trendMap.has(s.scoreDate)) trendMap.set(s.scoreDate, new Set());
+      trendMap.get(s.scoreDate)!.add(s.userId);
+    }
+    const dailyActiveTrend = Array.from(trendMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-30)
+      .map(([date, users]) => ({ date, activeCount: users.size }));
+
+    res.json({
+      totalMembers: memberIds.length,
+      activeToday: activeTodayIds.size,
+      activeLast7Days: activeUserIds7.size,
+      avgHealthScore: Math.round(sumHealth / scoredCount),
+      avgFood: Math.round(sumFood / scoredCount),
+      avgWater: Math.round(sumWater / scoredCount),
+      avgExercise: Math.round(sumExercise / scoredCount),
+      avgMedicine: Math.round(sumMedicine / scoredCount),
+      healthyCount,
+      atRiskCount,
+      inactiveCount,
+      dailyActiveTrend,
+    });
+  } catch (e) {
+    console.error("[health-analytics]", e);
+    res.status(500).json({ error: "Failed to fetch health analytics" });
+  }
+});
+
+// ─── SEAT-BASED BILLING ─────────────────────────────────────────────────────
+const SEAT_PLANS: Record<string, { label: string; pricePerSeat: number; yearlyPricePerSeat: number }> = {
+  max: { label: "Max", pricePerSeat: 199, yearlyPricePerSeat: 169 },
+  pro: { label: "Pro", pricePerSeat: 249, yearlyPricePerSeat: 211 },
+};
+const AORANE_GSTIN = "09AANCA7148R1ZI"; // UP GSTIN placeholder
+const AORANE_STATE = "UP";
+const GST_RATE = 0.18;
+
+router.get("/business/billing/seat-plans", requireBusinessAuth, async (_req: BusinessRequest, res) => {
+  res.json({ plans: SEAT_PLANS, gstRate: GST_RATE * 100, aoranState: AORANE_STATE });
+});
+
+router.post("/business/billing/seat-order", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const { plan, seats, billingCycle, orgGstin, orgState } = req.body as { plan: string; seats: number; billingCycle: "monthly" | "yearly"; orgGstin?: string; orgState?: string };
+    if (!plan || !SEAT_PLANS[plan]) { res.status(400).json({ error: "Invalid plan. Choose 'max' or 'pro'" }); return; }
+    if (!seats || seats < 10) { res.status(400).json({ error: "Minimum 10 seats required" }); return; }
+    if (!billingCycle || !["monthly", "yearly"].includes(billingCycle)) { res.status(400).json({ error: "billingCycle must be 'monthly' or 'yearly'" }); return; }
+
+    const planInfo = SEAT_PLANS[plan];
+    const pricePerSeat = billingCycle === "yearly" ? planInfo.yearlyPricePerSeat : planInfo.pricePerSeat;
+    const months = billingCycle === "yearly" ? 12 : 1;
+    const baseAmount = pricePerSeat * seats * months;
+    const isSameState = (orgState || "").toUpperCase() === AORANE_STATE;
+    const gstAmount = Math.round(baseAmount * GST_RATE);
+    const cgstAmount = isSameState ? Math.round(gstAmount / 2) : 0;
+    const sgstAmount = isSameState ? Math.round(gstAmount / 2) : 0;
+    const igstAmount = isSameState ? 0 : gstAmount;
+    const totalAmount = baseAmount + gstAmount;
+
+    // Invoice number
+    const year = new Date().getFullYear();
+    const fy = new Date().getMonth() >= 3 ? `${year}-${String(year + 1).slice(2)}` : `${year - 1}-${String(year).slice(2)}`;
+    const invoiceSeq = Math.floor(Math.random() * 9000) + 1000;
+    const invoiceNumber = `AOR/${fy}/${invoiceSeq}`;
+
+    const { createRazorpayOrder } = await import("../../lib/razorpay.js");
+    let razorpayOrderId: string | null = null;
+    let isTestMode = false;
+    try {
+      const order = await createRazorpayOrder(totalAmount);
+      razorpayOrderId = order.id;
+    } catch {
+      isTestMode = true;
+    }
+
+    const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
+    const [payment] = await db.insert(orgPaymentsTable).values({
+      orgId: req.orgId!,
+      plan,
+      seats,
+      amount: String(totalAmount),
+      razorpayOrderId,
+      status: isTestMode ? "test_pending" : "pending",
+    }).returning();
+
+    res.json({
+      paymentId: payment.id,
+      invoiceNumber,
+      plan,
+      planLabel: planInfo.label,
+      seats,
+      billingCycle,
+      pricePerSeat,
+      months,
+      baseAmount,
+      gstAmount,
+      cgstAmount,
+      sgstAmount,
+      igstAmount,
+      totalAmount,
+      isSameState,
+      gstRate: GST_RATE * 100,
+      orgGstin: orgGstin || org.gstin,
+      orgState: orgState || org.state,
+      orgName: org.name,
+      aoranGstin: AORANE_GSTIN,
+      razorpayOrderId,
+      razorpayKeyId: process.env["RAZORPAY_KEY_ID"] || null,
+      isTestMode,
+    });
+  } catch (e) {
+    console.error("[seat-order]", e);
+    res.status(500).json({ error: "Failed to create seat order" });
+  }
+});
+
+router.post("/business/billing/seat-verify", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const { paymentId, razorpayPaymentId, razorpayOrderId, razorpaySignature, seats, plan, billingCycle, isTestMode } = req.body as Record<string, unknown>;
+    if (!paymentId) { res.status(400).json({ error: "paymentId required" }); return; }
+
+    if (!isTestMode) {
+      const { verifyOrderSignature } = await import("../../lib/razorpay.js");
+      const valid = verifyOrderSignature(String(razorpayOrderId), String(razorpayPaymentId), String(razorpaySignature));
+      if (!valid) { res.status(400).json({ error: "Payment verification failed" }); return; }
+    }
+
+    const months = billingCycle === "yearly" ? 12 : 1;
+    const expiresAt = new Date();
+    expiresAt.setMonth(expiresAt.getMonth() + (months as number));
+
+    await db.update(orgPaymentsTable).set({
+      status: "success",
+      razorpayPaymentId: String(razorpayPaymentId || "test_" + Date.now()),
+      expiresAt,
+    }).where(eq(orgPaymentsTable.id, String(paymentId)));
+
+    const seatCount = Number(seats) || 10;
+    await db.update(organizationsTable).set({
+      totalSeats: seatCount,
+      plan: (String(plan) === "pro" ? "pro" : "max") as "max" | "pro" | "basic",
+      isVerified: true,
+    }).where(eq(organizationsTable.id, req.orgId!));
+
+    const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
+    res.json({ success: true, message: `${seatCount} seats activated! Your enrollment code is ready.`, org, expiresAt });
+  } catch (e) {
+    console.error("[seat-verify]", e);
+    res.status(500).json({ error: "Failed to verify payment" });
+  }
+});
+
+// ─── GET INVOICE ─────────────────────────────────────────────────────────────
+router.get("/business/billing/invoices", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const payments = await db.select().from(orgPaymentsTable)
+      .where(and(eq(orgPaymentsTable.orgId, req.orgId!), eq(orgPaymentsTable.status, "success")))
+      .orderBy(desc(orgPaymentsTable.createdAt));
+    res.json({ invoices: payments });
+  } catch { res.status(500).json({ error: "Failed to fetch invoices" }); }
+});
+
+// ─── CANCEL MEMBER SUBSCRIPTION ──────────────────────────────────────────────
+router.post("/business/members/:userId/cancel-subscription", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const userId = String(req.params.userId);
+    const member = await db.select().from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId), eq(orgMembersTable.isActive, true)));
+    if (!member.length) { res.status(404).json({ error: "Member not found in your organization" }); return; }
+
+    // Downgrade user to free plan
+    await db.update(usersTable).set({ plan: "free" }).where(eq(usersTable.id, userId));
+    // Mark their subscription as cancelled if exists
+    await db.update(subscriptionsTable).set({ status: "cancelled" }).where(and(eq(subscriptionsTable.userId, userId), eq(subscriptionsTable.status, "active")));
+
+    res.json({ success: true, message: "Member subscription cancelled. Their plan downgraded to free." });
+  } catch (e) {
+    console.error("[cancel-member-sub]", e);
+    res.status(500).json({ error: "Failed to cancel member subscription" });
+  }
+});
+
+// ─── VERIFICATION STUBS (structure ready, implement when OTP/Gmail ready) ────
+router.post("/business/verify/send-email", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  // STUB: Will send verification email when email service is configured
+  res.json({ success: true, message: "Verification email sent (stub — configure email service to activate)", stub: true });
+});
+
+router.get("/business/verify/confirm-email", async (req, res) => {
+  // STUB: Will verify email token when implemented
+  const { token } = req.query as { token?: string };
+  if (!token) { res.status(400).json({ error: "Verification token required" }); return; }
+  res.json({ success: true, message: "Email verification stub — will be activated with email service", stub: true });
+});
+
+router.post("/business/verify/send-phone-otp", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  // STUB: Will send phone OTP when Twilio/MSG91 is configured
+  res.json({ success: true, message: "Phone OTP sent (stub)", stub: true, devOtp: "123456" });
+});
+
+router.post("/business/verify/confirm-phone-otp", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  // STUB: Will verify phone OTP when implemented
+  res.json({ success: true, message: "Phone OTP verified (stub)", stub: true });
 });
 
 function generateOrgCode(): string {
