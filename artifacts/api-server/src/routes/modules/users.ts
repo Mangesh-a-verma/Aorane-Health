@@ -403,6 +403,10 @@ router.get("/users/search", requireAuth, async (req: AuthRequest, res) => {
     const results = await Promise.all(profileRows.map(async (p) => {
       const activeData = await calculateActivePercent(String(p.user_id)).catch(() => ({ overall: 0 }));
       const dob = p.date_of_birth as string | null;
+      const rawPhone = String(p.phone || "");
+      const maskedPhone = rawPhone.length >= 10
+        ? rawPhone.slice(0, 2) + "******" + rawPhone.slice(-2)
+        : undefined;
       return {
         userId: p.user_id,
         aoraneId: p.aorane_id,
@@ -414,7 +418,7 @@ router.get("/users/search", requireAuth, async (req: AuthRequest, res) => {
         state: p.state,
         bmi: p.bmi,
         plan: p.plan,
-        phone: p.phone,
+        phone: maskedPhone,
         activePercent: activeData.overall,
       };
     }));

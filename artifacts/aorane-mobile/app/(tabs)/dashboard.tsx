@@ -218,16 +218,22 @@ export default function DashboardScreen() {
       }
       if (profileRes.status === "fulfilled") {
         const p = profileRes.value.profile as Record<string, string>;
-        setUserName(p?.fullName?.split(" ")?.[0] || "");
+        const name = p?.full_name || p?.fullName || "";
+        setUserName(name.split(" ")[0] || "");
       }
       if (medRes.status === "fulfilled") {
         setMedicines(
           (medRes.value.schedules as typeof medicines).filter((m) => m.isActive)
         );
       }
-    } catch { }
-    setIsLoading(false);
-    setRefreshing(false);
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[Dashboard] Data load error:", err);
+      }
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
     Animated.parallel([
       Animated.timing(fadeAnim,  { toValue: 1, duration: 460, useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, damping: 18,   useNativeDriver: true }),

@@ -14,6 +14,16 @@ router.post("/admin/login", async (req, res) => {
   try {
     const { email, password } = req.body as { email: string; password: string };
     if (!email || !password) { res.status(400).json({ error: "Email and password required" }); return; }
+
+    // Brute-force protection: max 10 attempts per email per 15 minutes
+    const { cache } = await import("../../lib/redis");
+    const rlKey = `admin_login:${email.toLowerCase()}`;
+    const attempts = cache.incrementRateLimitFixed(rlKey, 15 * 60);
+    if (attempts > 10) {
+      res.status(429).json({ error: "Too many login attempts. Try after 15 minutes." });
+      return;
+    }
+
     const [admin] = await db.select().from(adminUsersTable).where(eq(adminUsersTable.email, email));
     if (!admin || !admin.isActive) { res.status(401).json({ error: "Invalid credentials" }); return; }
     const passwordHash = crypto.createHash("sha256").update(password).digest("hex");
@@ -43,7 +53,9 @@ router.get("/admin/users", requireAdmin, async (req: AdminRequest, res) => {
     const filtered = search
       ? baseQuery.where(ilike(usersTable.phone, `%${search}%`))
       : baseQuery;
-    const users = await filtered.orderBy(desc(usersTable.createdAt)).limit(parseInt(limit)).offset(parseInt(offset));
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+    const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
+    const users = await filtered.orderBy(desc(usersTable.createdAt)).limit(limitNum).offset(offsetNum);
     res.json({ users });
   } catch {
     res.status(500).json({ error: "Failed to fetch users" });
@@ -152,7 +164,8 @@ router.patch("/admin/feature-flags/:key", requireAdmin, async (req: AdminRequest
 router.get("/admin/food-items", requireAdmin, async (req: AdminRequest, res) => {
   try {
     const { search, limit = "50" } = req.query as Record<string, string>;
-    const items = await db.select().from(foodItemsTable).limit(parseInt(limit));
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 500);
+    const items = await db.select().from(foodItemsTable).limit(limitNum);
     res.json({ items });
   } catch {
     res.status(500).json({ error: "Failed to fetch food items" });

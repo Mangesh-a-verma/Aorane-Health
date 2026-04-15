@@ -65,10 +65,12 @@ export default function ProfileScreen() {
   };
 
   const topPad  = Platform.OS === "web" ? 67 : insets.top;
-  const bmi     = profile.heightCm && profile.weightKg
-    ? (Number(profile.weightKg) / Math.pow(Number(profile.heightCm) / 100, 2)).toFixed(1) : null;
+  const heightVal = profile.height_cm ?? profile.heightCm;
+  const weightVal = profile.weight_kg ?? profile.weightKg;
+  const bmi     = heightVal && weightVal
+    ? (Number(weightVal) / Math.pow(Number(heightVal) / 100, 2)).toFixed(1) : null;
   const phone   = (user as Record<string, unknown>)?.phone as string;
-  const name    = (profile.fullName as string) || "AORANE User";
+  const name    = (profile.full_name as string) || (profile.fullName as string) || "AORANE User";
   const plan    = ((user as Record<string, unknown>)?.plan as string || "free").toUpperCase();
   const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
@@ -118,9 +120,9 @@ export default function ProfileScreen() {
               <Text style={s.planText}>{plan} Plan</Text>
             </LinearGradient>
             {/* Show quick stats inline if available */}
-            {profile.bloodGroup ? (
+            {(profile.blood_group || profile.bloodGroup) ? (
               <View style={s.heroBadge}>
-                <Text style={s.heroBadgeText}>🩸 {String(profile.bloodGroup)}</Text>
+                <Text style={s.heroBadgeText}>🩸 {String(profile.blood_group || profile.bloodGroup)}</Text>
               </View>
             ) : null}
             {profile.city ? (
@@ -137,10 +139,10 @@ export default function ProfileScreen() {
             <TouchableOpacity onPress={() => router.push("/edit-profile" as never)} activeOpacity={0.9}>
               <View style={s.statsRow}>
                 {[
-                  { label: "Height", value: `${profile.heightCm}`, unit: "cm",  color: DS.color.sky    },
-                  { label: "Weight", value: `${profile.weightKg}`, unit: "kg",  color: DS.color.orange },
-                  { label: "BMI",    value: bmi,                   unit: "",    color: G               },
-                  { label: "Blood",  value: (profile.bloodGroup as string) || "--", unit: "", color: DS.color.red },
+                  { label: "Height", value: `${heightVal}`, unit: "cm",  color: DS.color.sky    },
+                  { label: "Weight", value: `${weightVal}`, unit: "kg",  color: DS.color.orange },
+                  { label: "BMI",    value: bmi,            unit: "",    color: G               },
+                  { label: "Blood",  value: (profile.blood_group || profile.bloodGroup) as string || "--", unit: "", color: DS.color.red },
                 ].map((item) => (
                   <View key={item.label} style={s.statCard}>
                     <Text style={[s.statNum, { color: item.color }]}>{item.value}</Text>
@@ -205,10 +207,10 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
             <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-              {profile.workProfile ? (
+              {(profile.work_profile || profile.workProfile) ? (
                 <View style={[s.chip, { backgroundColor: DS.color.orangeSoft, borderColor: DS.color.orange + "30" }]}>
                   <Ionicons name="briefcase-outline" size={13} color={DS.color.orange} />
-                  <Text style={[s.chipText, { color: DS.color.orange }]}>{profile.workProfile as string}</Text>
+                  <Text style={[s.chipText, { color: DS.color.orange }]}>{(profile.work_profile || profile.workProfile) as string}</Text>
                 </View>
               ) : (
                 <TouchableOpacity style={[s.chip, { backgroundColor: DS.color.primarySoft, borderColor: P + "25" }]}
@@ -217,11 +219,11 @@ export default function ProfileScreen() {
                   <Text style={[s.chipText, { color: P }]}>Add Work Profile</Text>
                 </TouchableOpacity>
               )}
-              {profile.activityLevel ? (
+              {(profile.activity_level || profile.activityLevel) ? (
                 <View style={[s.chip, { backgroundColor: DS.color.greenSoft, borderColor: G + "30" }]}>
                   <Ionicons name="fitness-outline" size={13} color={G} />
                   <Text style={[s.chipText, { color: G }]}>
-                    {({ sedentary: "Sedentary", light: "Light Active", moderate: "Moderate", very: "Very Active", athlete: "Athlete" } as Record<string, string>)[profile.activityLevel as string] || profile.activityLevel as string}
+                    {({ sedentary: "Sedentary", light: "Light Active", moderate: "Moderate", very: "Very Active", athlete: "Athlete" } as Record<string, string>)[(profile.activity_level || profile.activityLevel) as string] || (profile.activity_level || profile.activityLevel) as string}
                   </Text>
                 </View>
               ) : null}

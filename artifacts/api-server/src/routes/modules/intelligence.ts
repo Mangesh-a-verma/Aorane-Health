@@ -32,7 +32,7 @@ function getCurrentWeekStart(): string {
   const now = new Date();
   const day = now.getDay(); // 0=Sun, 1=Mon...
   const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday
-  const monday = new Date(now.setDate(diff));
+  const monday = new Date(now.getFullYear(), now.getMonth(), diff);
   return monday.toISOString().split("T")[0];
 }
 
@@ -65,7 +65,7 @@ async function gatherUserContext(userId: string) {
   const state = (profile as unknown as Record<string, string>)?.state ?? null;
   const workProfile = (profile as unknown as Record<string, string>)?.workProfile ?? null;
   const conditionsList = conditions.map((c) => c.condition).join(", ") || "None";
-  const dietaryPref = "vegetarian";
+  const dietaryPref = profile?.foodPreference ?? "vegetarian";
   const healthGoals = "General wellness";
   void prefs;
 

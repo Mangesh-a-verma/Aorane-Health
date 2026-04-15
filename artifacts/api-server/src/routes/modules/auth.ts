@@ -6,6 +6,7 @@ import { cache } from "../../lib/redis";
 import { signUserToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { logger } from "../../lib/logger";
 
 const router = Router();
 
@@ -18,7 +19,7 @@ router.post("/auth/send-otp", async (req, res) => {
     }
 
     const rateLimitKey = `otp_req:${phone}`;
-    const attempts = cache.incrementRateLimit(rateLimitKey, 3600);
+    const attempts = cache.incrementRateLimitFixed(rateLimitKey, 3600);
     if (attempts > 5) {
       res.status(429).json({ error: "Too many OTP requests. Try after 1 hour." });
       return;
@@ -40,15 +41,22 @@ router.post("/auth/send-otp", async (req, res) => {
     } catch {
       cache.setOtp(phone, hashed);
     }
-    console.log(`[OTP] storage: ${usedDb ? "db" : "memory"}`);
+
+    if (process.env.NODE_ENV !== "production") {
+      logger.info({ storage: usedDb ? "db" : "memory" }, "[OTP] storage");
+    }
 
     const smsSent = await sendSmsOtp(phone, otp);
-    console.log(`[OTP] ${phone} → ${otp} | SMS sent: ${smsSent}`);
 
+    if (process.env.NODE_ENV !== "production") {
+      logger.info({ phone, smsSent }, "[OTP] sent");
+    }
+
+    const isDev = process.env.NODE_ENV !== "production";
     res.json({
       success: true,
       message: smsSent ? "OTP sent via SMS" : "SMS service temporarily unavailable",
-      ...(!smsSent ? { devOtp: otp } : {}),
+      ...(!smsSent && isDev ? { devOtp: otp } : {}),
       smsSent,
     });
   } catch (err) {
@@ -67,7 +75,7 @@ router.post("/auth/send-otp-whatsapp", async (req, res) => {
       return;
     }
     const rateLimitKey = `otp_req:${phone}`;
-    const attempts = cache.incrementRateLimit(rateLimitKey, 3600);
+    const attempts = cache.incrementRateLimitFixed(rateLimitKey, 3600);
     if (attempts > 5) {
       res.status(429).json({ error: "Too many OTP requests. Try after 1 hour." });
       return;
@@ -76,8 +84,10 @@ router.post("/auth/send-otp-whatsapp", async (req, res) => {
     const hashed = hashOtp(otp);
     cache.setOtp(phone, hashed);
     const result = await sendWhatsappOtp(phone, otp);
-    console.log(`[OTP-WA] ${phone} → ${otp} | channel: ${result.fallback ? "sms" : "whatsapp"}`);
     const isDevWa = process.env.NODE_ENV !== "production";
+    if (isDevWa) {
+      logger.info({ phone, channel: result.fallback ? "sms" : "whatsapp" }, "[OTP-WA] sent");
+    }
     if (result.fallback) {
       res.json({ success: true, message: "OTP SMS se bheja gaya (WhatsApp unavailable)", channel: "sms", ...(isDevWa ? { devOtp: otp } : {}), smsSent: result.success });
     } else {
@@ -200,12 +210,23 @@ router.post("/auth/google", async (req, res) => {
     }
 
     const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+    if (!googleRes.ok) {
+      res.status(401).json({ error: "Invalid Google token" });
+      return;
+    }
     const googleData = await googleRes.json() as {
-      sub: string; email: string; name: string; picture: string; aud: string;
+      sub: string; email: string; name: string; picture: string; aud: string; error_description?: string;
     };
 
-    if (!googleData.sub) {
+    if (!googleData.sub || googleData.error_description) {
       res.status(401).json({ error: "Invalid Google token" });
+      return;
+    }
+
+    // Verify the token was issued for this app
+    const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+    if (GOOGLE_CLIENT_ID && googleData.aud !== GOOGLE_CLIENT_ID) {
+      res.status(401).json({ error: "Google token audience mismatch" });
       return;
     }
 

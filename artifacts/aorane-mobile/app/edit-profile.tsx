@@ -118,16 +118,27 @@ export default function EditProfileScreen() {
     try {
       const res = await api.getProfile();
       const p = res.profile as Record<string, unknown>;
-      if (p.fullName)   setFullName(String(p.fullName));
-      if (p.gender)     setGender(String(p.gender));
-      if (p.heightCm)   setHeightCm(String(p.heightCm));
-      if (p.weightKg)   setWeightKg(String(p.weightKg));
-      if (p.bloodGroup) setBloodGroup(String(p.bloodGroup));
-      if (p.city)       setCity(String(p.city));
-      if (p.state)      setState(String(p.state));
-      if (p.foodPreference) setFoodPref(String(p.foodPreference));
-      if (p.dateOfBirth) {
-        const d = new Date(p.dateOfBirth as string);
+      // API returns snake_case from pool.query (full_name, height_cm, etc.)
+      const fullNameVal = (p.full_name ?? p.fullName) as string | undefined;
+      const genderVal = p.gender as string | undefined;
+      const heightVal = (p.height_cm ?? p.heightCm) as string | undefined;
+      const weightVal = (p.weight_kg ?? p.weightKg) as string | undefined;
+      const bloodVal = (p.blood_group ?? p.bloodGroup) as string | undefined;
+      const cityVal = p.city as string | undefined;
+      const stateVal = p.state as string | undefined;
+      const foodPrefVal = (p.food_preference ?? p.foodPreference) as string | undefined;
+      const dobVal = (p.date_of_birth ?? p.dateOfBirth) as string | undefined;
+
+      if (fullNameVal)  setFullName(fullNameVal);
+      if (genderVal)    setGender(genderVal);
+      if (heightVal)    setHeightCm(String(heightVal));
+      if (weightVal)    setWeightKg(String(weightVal));
+      if (bloodVal)     setBloodGroup(bloodVal);
+      if (cityVal)      setCity(cityVal);
+      if (stateVal)     setState(stateVal);
+      if (foodPrefVal)  setFoodPref(foodPrefVal);
+      if (dobVal) {
+        const d = new Date(dobVal);
         if (!isNaN(d.getTime())) {
           setDobDay(String(d.getDate()).padStart(2, "0"));
           setDobMonth(String(d.getMonth() + 1).padStart(2, "0"));

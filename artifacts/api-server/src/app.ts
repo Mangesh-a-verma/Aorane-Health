@@ -73,57 +73,60 @@ app.get("/api/version", (_req, res) => {
   res.json({ version: "2.1.0", build: "2026-04-14", status: "ok" });
 });
 
-app.get("/api/sms-debug", (_req, res) => {
-  const sid   = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  const from  = process.env.TWILIO_FROM_NUMBER;
-  const fast2 = process.env.FAST2SMS_API_KEY;
-  res.json({
-    twilio: {
-      sid:   sid   ? sid.slice(0, 6) + "***"   : "NOT SET",
-      token: token ? token.slice(0, 4) + "***" : "NOT SET",
-      from:  from  || "NOT SET",
-      ready: !!(sid && token && from),
-    },
-    fast2sms: {
-      key:   fast2 ? fast2.slice(0, 6) + "***" : "NOT SET",
-      ready: !!fast2,
-    },
+// Debug routes — only available in development mode
+if (process.env.NODE_ENV !== "production") {
+  app.get("/api/sms-debug", (_req, res) => {
+    const sid   = process.env.TWILIO_ACCOUNT_SID;
+    const token = process.env.TWILIO_AUTH_TOKEN;
+    const from  = process.env.TWILIO_FROM_NUMBER;
+    const fast2 = process.env.FAST2SMS_API_KEY;
+    res.json({
+      twilio: {
+        sid:   sid   ? sid.slice(0, 6) + "***"   : "NOT SET",
+        token: token ? token.slice(0, 4) + "***" : "NOT SET",
+        from:  from  || "NOT SET",
+        ready: !!(sid && token && from),
+      },
+      fast2sms: {
+        key:   fast2 ? fast2.slice(0, 6) + "***" : "NOT SET",
+        ready: !!fast2,
+      },
+    });
   });
-});
 
-app.get("/api/tables-debug", async (_req, res) => {
-  try {
-    const { pool } = await import("@workspace/db");
-    const tables = ["users","user_profiles","user_preferences","user_privacy_settings",
-      "user_medical_conditions","user_health_goals","water_logs","food_logs",
-      "exercise_logs","medicine_schedules","medicine_logs","otp_store"];
-    const results: Record<string, string> = {};
-    for (const t of tables) {
-      try {
-        const r = await pool.query(`SELECT COUNT(*) FROM "${t}" LIMIT 1`);
-        results[t] = `ok (${r.rows[0].count} rows)`;
-      } catch (e) {
-        results[t] = `ERROR: ${(e as Error).message}`;
+  app.get("/api/tables-debug", async (_req, res) => {
+    try {
+      const { pool } = await import("@workspace/db");
+      const tables = ["users","user_profiles","user_preferences","user_privacy_settings",
+        "user_medical_conditions","user_health_goals","water_logs","food_logs",
+        "exercise_logs","medicine_schedules","medicine_logs","otp_store"];
+      const results: Record<string, string> = {};
+      for (const t of tables) {
+        try {
+          const r = await pool.query(`SELECT COUNT(*) FROM "${t}" LIMIT 1`);
+          results[t] = `ok (${r.rows[0].count} rows)`;
+        } catch (e) {
+          results[t] = `ERROR: ${(e as Error).message}`;
+        }
       }
+      res.json(results);
+    } catch (e) {
+      res.json({ error: (e as Error).message });
     }
-    res.json(results);
-  } catch (e) {
-    res.json({ error: (e as Error).message });
-  }
-});
+  });
 
-app.get("/api/db-debug", async (_req, res) => {
-  const url = process.env.DATABASE_URL || "NOT SET";
-  const host = url.match(/@([^:\/]+)/)?.[1] || "unknown";
-  try {
-    const { pool } = await import("@workspace/db");
-    const result = await pool.query("SELECT current_database() as db, NOW() as time");
-    res.json({ status: "connected", host, db: result.rows[0].db });
-  } catch (e) {
-    res.json({ status: "error", host, error: (e as Error).message });
-  }
-});
+  app.get("/api/db-debug", async (_req, res) => {
+    const url = process.env.DATABASE_URL || "NOT SET";
+    const host = url.match(/@([^:/]+)/)?.[1] || "unknown";
+    try {
+      const { pool } = await import("@workspace/db");
+      const result = await pool.query("SELECT current_database() as db, NOW() as time");
+      res.json({ status: "connected", host, db: result.rows[0].db });
+    } catch (e) {
+      res.json({ status: "error", host, error: (e as Error).message });
+    }
+  });
+}
 
 app.use("/api", router);
 

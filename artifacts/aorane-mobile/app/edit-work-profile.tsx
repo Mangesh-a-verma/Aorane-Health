@@ -75,8 +75,8 @@ export default function EditWorkProfileScreen() {
       try {
         const res = await api.getProfile();
         const p = res.profile as Record<string, unknown>;
-        setWorkProfile((p.workProfile as string) || "");
-        setActivityLevel((p.activityLevel as string) || "");
+        setWorkProfile(((p.work_profile ?? p.workProfile) as string) || "");
+        setActivityLevel(((p.activity_level ?? p.activityLevel) as string) || "");
       } catch { }
       setLoading(false);
     })();

@@ -67,6 +67,16 @@ router.post("/business/login", async (req, res) => {
       res.status(400).json({ error: "Email and password required" });
       return;
     }
+
+    // Brute-force protection: max 10 attempts per email per 15 minutes
+    const { cache } = await import("../../lib/redis");
+    const rlKey = `biz_login:${email.toLowerCase()}`;
+    const attempts = cache.incrementRateLimitFixed(rlKey, 15 * 60);
+    if (attempts > 10) {
+      res.status(429).json({ error: "Too many login attempts. Try after 15 minutes." });
+      return;
+    }
+
     const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.email, email));
     if (!admin || !admin.isActive) {
       res.status(401).json({ error: "Invalid credentials" });

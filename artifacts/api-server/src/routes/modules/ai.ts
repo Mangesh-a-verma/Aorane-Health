@@ -16,7 +16,7 @@ router.post("/ai/diet-plan", requireAuth, requireFeature("meal_planner"), aiRate
 
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, userId)).limit(1);
-    void await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId)).limit(1);
+    const [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId)).limit(1);
     const conditions = await db.select().from(userMedicalConditionsTable).where(eq(userMedicalConditionsTable.userId, userId));
 
     const now = new Date();
@@ -28,10 +28,10 @@ router.post("/ai/diet-plan", requireAuth, requireFeature("meal_planner"), aiRate
     const heightCm = profile?.heightCm ? Number(profile.heightCm) : null;
     const gender = profile?.gender || "other";
     const conditionsList = conditions.map((c) => c.condition).join(", ") || "none";
-    const dietaryPref = (preferences.dietaryPref as string) || "vegetarian";
-    const activityLevel = (preferences.activityLevel as string) || "moderate";
+    const dietaryPref = (preferences.dietaryPref as string) || profile?.foodPreference || "vegetarian";
+    const activityLevel = (preferences.activityLevel as string) || profile?.activityLevel || "moderate";
     const goalsList = ((preferences.healthGoals as string[]) || []).join(", ") || "general wellness";
-    const language = (preferences.language as string) || user?.languageCode || "en";
+    const language = (preferences.language as string) || prefs?.languageCode || user?.languageCode || "en";
 
     let bmr = 0;
     if (weightKg && heightCm && age) {
