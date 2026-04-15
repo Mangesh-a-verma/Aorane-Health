@@ -12,7 +12,8 @@ function authHeader() {
 }
 
 export function isLiveMode() {
-  return !!RAZORPAY_KEY_ID() && !!RAZORPAY_KEY_SECRET();
+  const keyId = RAZORPAY_KEY_ID();
+  return !!keyId && keyId.startsWith("rzp_live_");
 }
 
 async function rzPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
