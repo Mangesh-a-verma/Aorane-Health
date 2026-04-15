@@ -4,15 +4,9 @@ services:
     runtime: node
     region: singapore
     plan: free
-    rootDir: artifacts/api-server
-    buildCommand: npm install --legacy-peer-deps && npm run build
-    startCommand: npm run start
+    buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile --ignore-scripts && npx pnpm@10 --filter @workspace/api-server build
+    startCommand: npx pnpm@10 --filter @workspace/api-server start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        fromService:
-          type: web
-          name: aorane-api
-          envVarKey: PORT
     autoDeploy: true
