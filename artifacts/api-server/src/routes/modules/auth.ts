@@ -52,11 +52,17 @@ router.post("/auth/send-otp", async (req, res) => {
       logger.info({ phone, smsSent }, "[OTP] sent");
     }
 
+    // TEST_PHONES: comma-separated list of numbers that always receive devOtp in response
+    // Used for testing without a paid SMS provider (e.g. "9876543210,9123456789")
+    const testPhones = (process.env.TEST_PHONES || "").split(",").map(p => p.trim()).filter(Boolean);
+    const isTestPhone = testPhones.includes(phone);
     const isDev = process.env.NODE_ENV !== "production";
+    const returnDevOtp = !smsSent && (isDev || isTestPhone);
+
     res.json({
       success: true,
-      message: smsSent ? "OTP sent via SMS" : "SMS service temporarily unavailable",
-      ...(!smsSent && isDev ? { devOtp: otp } : {}),
+      message: smsSent ? "OTP sent via SMS" : (isTestPhone ? "Test mode — OTP in response" : "SMS service temporarily unavailable"),
+      ...(returnDevOtp ? { devOtp: otp } : {}),
       smsSent,
     });
   } catch (err) {
@@ -88,10 +94,13 @@ router.post("/auth/send-otp-whatsapp", async (req, res) => {
     if (isDevWa) {
       logger.info({ phone, channel: result.fallback ? "sms" : "whatsapp" }, "[OTP-WA] sent");
     }
+    const testPhonesWa = (process.env.TEST_PHONES || "").split(",").map(p => p.trim()).filter(Boolean);
+    const isTestPhoneWa = testPhonesWa.includes(phone);
+    const returnDevOtpWa = !result.success && (isDevWa || isTestPhoneWa);
     if (result.fallback) {
-      res.json({ success: true, message: "OTP SMS se bheja gaya (WhatsApp unavailable)", channel: "sms", ...(isDevWa ? { devOtp: otp } : {}), smsSent: result.success });
+      res.json({ success: true, message: "OTP SMS se bheja gaya (WhatsApp unavailable)", channel: "sms", ...(returnDevOtpWa ? { devOtp: otp } : {}), smsSent: result.success });
     } else {
-      res.json({ success: true, message: "OTP WhatsApp pe bheja gaya", channel: "whatsapp", ...(isDevWa ? { devOtp: otp } : {}), smsSent: result.success });
+      res.json({ success: true, message: "OTP WhatsApp pe bheja gaya", channel: "whatsapp", ...(returnDevOtpWa ? { devOtp: otp } : {}), smsSent: result.success });
     }
   } catch {
     res.status(500).json({ error: "Failed to send WhatsApp OTP" });
