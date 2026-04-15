@@ -3,12 +3,13 @@ import { db, usersTable, userProfilesTable, userPreferencesTable, userMedicalCon
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { aiRateLimit } from "../../middlewares/ai-rate-limit";
 import { requireFeature } from "../../middlewares/feature-check";
 import { callAI } from "../../lib/ai";
 
 const router = Router();
 
-router.post("/ai/diet-plan", requireAuth, requireFeature("meal_planner"), async (req: AuthRequest, res) => {
+router.post("/ai/diet-plan", requireAuth, requireFeature("meal_planner"), aiRateLimit("meal_planner", 5), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const { days = 1, preferences = {} } = req.body as { days?: number; preferences?: Record<string, unknown> };
@@ -95,7 +96,7 @@ Return ONLY valid JSON (no markdown, no extra text):
   }
 });
 
-router.post("/ai/health-tip", requireAuth, requireFeature("health_suggestions"), async (req: AuthRequest, res) => {
+router.post("/ai/health-tip", requireAuth, requireFeature("health_suggestions"), aiRateLimit("health_tip", 10), async (req: AuthRequest, res) => {
   try {
     const { context = "" } = req.body as { context?: string };
 
@@ -117,7 +118,7 @@ Return ONLY valid JSON:
   }
 });
 
-router.post("/ai/meal-swap", requireAuth, requireFeature("meal_planner"), async (req: AuthRequest, res) => {
+router.post("/ai/meal-swap", requireAuth, requireFeature("meal_planner"), aiRateLimit("meal_swap", 20), async (req: AuthRequest, res) => {
   try {
     const { mealName, reason, dietaryPref = "vegetarian" } = req.body as { mealName: string; reason?: string; dietaryPref?: string };
     if (!mealName) { res.status(400).json({ error: "mealName required" }); return; }

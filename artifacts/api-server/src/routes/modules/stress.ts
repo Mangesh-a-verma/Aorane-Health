@@ -3,6 +3,7 @@ import { db, stressLogsTable, userProfilesTable, exerciseLogsTable, waterLogsTab
 import { eq, and, gte, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { aiRateLimit } from "../../middlewares/ai-rate-limit";
 import { callAI } from "../../lib/ai";
 
 const router = Router();
@@ -111,7 +112,7 @@ router.get("/stress/weekly", requireAuth, async (req: AuthRequest, res) => {
 });
 
 // AI-powered insight using Gemini
-router.get("/stress/insight", requireAuth, async (req: AuthRequest, res) => {
+router.get("/stress/insight", requireAuth, aiRateLimit("stress_insight", 5), async (req: AuthRequest, res) => {
   try {
     const recentLogs = await db.select().from(stressLogsTable)
       .where(eq(stressLogsTable.userId, req.userId!))

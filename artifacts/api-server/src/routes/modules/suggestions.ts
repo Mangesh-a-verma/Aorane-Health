@@ -15,6 +15,7 @@ import {
 import { eq, and, gte, lte } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { aiRateLimit } from "../../middlewares/ai-rate-limit";
 import { callAI } from "../../lib/ai";
 
 const router = Router();
@@ -231,7 +232,7 @@ Return ONLY valid JSON (no markdown):
 }
 
 // ── GET /suggestions/daily — Main endpoint ────────────────────────────────────
-router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
+router.get("/suggestions/daily", requireAuth, aiRateLimit("daily_suggestions", 3), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const today = new Date().toISOString().slice(0, 10);
@@ -354,7 +355,7 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
 });
 
 // ── POST /suggestions/refresh — Force new AI generation ──────────────────────
-router.post("/suggestions/refresh", requireAuth, async (req: AuthRequest, res) => {
+router.post("/suggestions/refresh", requireAuth, aiRateLimit("daily_suggestions", 3), async (req: AuthRequest, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10);
     await db.delete(dailySuggestionsTable).where(

@@ -13,6 +13,7 @@ import { db, usersTable, userProfilesTable, userPreferencesTable, userMedicalCon
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { aiRateLimit } from "../../middlewares/ai-rate-limit";
 import { callAI } from "../../lib/ai";
 import { requireFeature } from "../../middlewares/feature-check";
 import { getWeatherContext } from "../../lib/weather";
@@ -122,7 +123,7 @@ async function gather30DayData(userId: string) {
 
 // ── Monthly Disease Risk Prediction ──────────────────────────────────────────
 
-router.get("/health/intelligence/predict", requireAuth, async (req: AuthRequest, res) => {
+router.get("/health/intelligence/predict", requireAuth, aiRateLimit("health_prediction", 5), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const month = getCurrentMonth();
@@ -142,7 +143,7 @@ router.get("/health/intelligence/predict", requireAuth, async (req: AuthRequest,
   }
 });
 
-router.post("/health/intelligence/predict/refresh", requireAuth, async (req: AuthRequest, res) => {
+router.post("/health/intelligence/predict/refresh", requireAuth, aiRateLimit("health_prediction", 5), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const month = getCurrentMonth();
@@ -239,7 +240,7 @@ Return ONLY valid JSON (no markdown, no extra text):
 
 // ── Weekly Diet Chart ─────────────────────────────────────────────────────────
 
-router.get("/health/intelligence/diet-chart", requireAuth, async (req: AuthRequest, res) => {
+router.get("/health/intelligence/diet-chart", requireAuth, aiRateLimit("diet_chart", 4), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const weekStart = getCurrentWeekStart();
@@ -259,7 +260,7 @@ router.get("/health/intelligence/diet-chart", requireAuth, async (req: AuthReque
   }
 });
 
-router.post("/health/intelligence/diet-chart/refresh", requireAuth, async (req: AuthRequest, res) => {
+router.post("/health/intelligence/diet-chart/refresh", requireAuth, aiRateLimit("diet_chart", 2), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const weekStart = getCurrentWeekStart();

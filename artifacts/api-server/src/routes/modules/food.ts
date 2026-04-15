@@ -3,8 +3,12 @@ import { db, foodLogsTable, foodItemsTable, foodScanCacheTable, userProfilesTabl
 import { eq, and, gte, lte, ilike, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { aiRateLimit } from "../../middlewares/ai-rate-limit";
 import { callAI } from "../../lib/ai";
 import { getWeatherContext } from "../../lib/weather";
+import { cache } from "../../lib/redis";
+
+const WEATHER_CACHE_TTL = 6 * 60 * 60; // 6 hours
 
 const router = Router();
 
@@ -138,7 +142,7 @@ router.get("/food/favorites", requireAuth, async (req: AuthRequest, res) => {
 
 // ── AI Food Scan — 4-level lookup: History → DB → AI-Cache → Gemini AI ───────
 // This is the core of AI cost reduction: personal history is checked FIRST
-router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
+router.post("/food/scan", requireAuth, aiRateLimit("food_scan", 50), async (req: AuthRequest, res) => {
   try {
     const { foodName, imageBase64, mimeType } = req.body as { foodName?: string; imageBase64?: string; mimeType?: string };
     const searchTerm = foodName?.toLowerCase().trim();
@@ -204,11 +208,18 @@ router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
             carbsG: Number(dbItem.carbsG || 0),
             fatG: Number(dbItem.fatG || 0),
             fiberG: Number(dbItem.fiberG || 0),
+            sodiumMg: Number(dbItem.sodiumMg || 0),
             servingSizeG: Number(dbItem.servingSizeG || 100),
             servingDescription: dbItem.servingDescription || "100g",
             category: dbItem.category || "food",
             dietaryTags: (dbItem.dietaryTags as string[]) || [],
-            vitamins: {},
+            vitamins: {
+              vitaminC_mg:   dbItem.vitaminCMg   ? Number(dbItem.vitaminCMg)   : undefined,
+              vitaminD_mcg:  dbItem.vitaminDMcg  ? Number(dbItem.vitaminDMcg)  : undefined,
+              calcium_mg:    dbItem.calciumMg    ? Number(dbItem.calciumMg)    : undefined,
+              iron_mg:       dbItem.ironMg       ? Number(dbItem.ironMg)       : undefined,
+              potassium_mg:  dbItem.potassiumMg  ? Number(dbItem.potassiumMg)  : undefined,
+            },
           },
           fromDb: true,
           fromHistory: false,
@@ -325,14 +336,24 @@ router.get("/food/summary/:date", requireAuth, async (req: AuthRequest, res) => 
 });
 
 // ── Weather-based Food Suggestions ───────────────────────────────────────────
-router.post("/food/weather-suggestions", requireAuth, async (req: AuthRequest, res) => {
+router.post("/food/weather-suggestions", requireAuth, aiRateLimit("weather_suggestions", 4), async (req: AuthRequest, res) => {
   try {
+    const userId = req.userId!;
+
+    // ── 6-hour server-side cache (per user) — prevents AI call on every food screen open ──
+    const cacheKey = `weather:sug:${userId}`;
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      res.json({ ...JSON.parse(cached), fromCache: true });
+      return;
+    }
+
     const { city, state } = req.body as { city?: string; state?: string };
 
     const [profile] = await db
       .select()
       .from(userProfilesTable)
-      .where(eq(userProfilesTable.userId, req.userId!))
+      .where(eq(userProfilesTable.userId, userId))
       .limit(1);
 
     const profileData = profile as unknown as Record<string, string>;
@@ -367,7 +388,9 @@ Return ONLY valid JSON:
     try {
       const jsonStr = await callAI("food_ai", [{ role: "user", content: prompt }], { maxTokens: 1200 });
       const result = JSON.parse(jsonStr);
-      res.json({ ...result, weatherContext: weather });
+      const response = { ...result, weatherContext: weather, fromCache: false };
+      cache.set(cacheKey, JSON.stringify(response), WEATHER_CACHE_TTL);
+      res.json(response);
     } catch {
       const month = new Date().getMonth() + 1;
       let season = "Autumn";

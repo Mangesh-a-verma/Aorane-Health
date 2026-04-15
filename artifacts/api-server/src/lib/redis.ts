@@ -42,6 +42,18 @@ export const cache = {
     setKey(`rate:${key}`, String(next), ttlSeconds);
     return next;
   },
+  // Fixed: only sets TTL on FIRST call — subsequent increments don't reset expiry
+  incrementRateLimitFixed(key: string, ttlSeconds: number): number {
+    const fullKey = `rate:${key}`;
+    const existing = STORE.get(fullKey);
+    if (existing && Date.now() <= existing.expiresAt) {
+      const next = parseInt(existing.value, 10) + 1;
+      existing.value = String(next);
+      return next;
+    }
+    STORE.set(fullKey, { value: "1", expiresAt: Date.now() + ttlSeconds * 1000 });
+    return 1;
+  },
   set(key: string, value: string, ttlSeconds: number): void {
     setKey(key, value, ttlSeconds);
   },
