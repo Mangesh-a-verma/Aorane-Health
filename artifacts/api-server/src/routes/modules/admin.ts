@@ -4,6 +4,8 @@ import { eq, desc, ilike, count, or, sql, and } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import { signAdminToken } from "../../lib/jwt";
 import type { AdminRequest } from "../../middlewares/admin-auth";
+import { invalidateAICache } from "../../lib/ai";
+import { invalidateFeatureCache } from "../../middlewares/feature-check";
 import crypto from "crypto";
 
 const router = Router();
@@ -140,6 +142,7 @@ router.patch("/admin/feature-flags/:key", requireAdmin, async (req: AdminRequest
     const flagKey = String(req.params.key);
     const [updated] = await db.update(featureFlagsTable).set(updates as Partial<typeof featureFlagsTable.$inferInsert>).where(eq(featureFlagsTable.key, flagKey)).returning();
     await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "toggle_feature_flag", targetType: "feature_flag", targetId: flagKey, details: { isEnabled } });
+    invalidateFeatureCache(flagKey);
     res.json({ flag: updated });
   } catch {
     res.status(500).json({ error: "Failed to update feature flag" });
@@ -488,6 +491,7 @@ router.put("/admin/ai-config/:feature", requireAdmin, async (req: AdminRequest, 
     } else {
       [result] = await db.update(aiConfigTable).set({ provider: providerStr, model: modelStr, apiKey: apiKeyStr, systemPrompt: systemPromptStr, isEnabled: Boolean(isEnabled), updatedAt: new Date() }).where(eq(aiConfigTable.feature, feature)).returning();
     }
+    invalidateAICache(feature);
     res.json({ config: result, success: true });
   } catch { res.status(500).json({ error: "Failed to update AI config" }); }
 });

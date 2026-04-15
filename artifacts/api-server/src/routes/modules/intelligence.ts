@@ -13,7 +13,8 @@ import { db, usersTable, userProfilesTable, userPreferencesTable, userMedicalCon
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { callDeepSeek } from "../../lib/nvidia";
+import { callAI } from "../../lib/ai";
+import { requireFeature } from "../../middlewares/feature-check";
 import { getWeatherContext } from "../../lib/weather";
 import { calculateCaloriesBurned, getMet, MET_VALUES } from "../../lib/met";
 
@@ -155,9 +156,6 @@ router.post("/health/intelligence/predict/refresh", requireAuth, async (req: Aut
 });
 
 async function generatePrediction(userId: string, month: string, res: import("express").Response, forced: boolean) {
-  const nvidiaKey = process.env.NVIDIA_API_KEY;
-  if (!nvidiaKey) { res.status(503).json({ error: "AI prediction service not configured. Please set NVIDIA_API_KEY." }); return; }
-
   const ctx = await gatherUserContext(userId);
   const data = await gather30DayData(userId);
   const weather = await getWeatherContext(ctx.city ?? "India", ctx.state ?? undefined);
@@ -218,10 +216,10 @@ Return ONLY valid JSON (no markdown, no extra text):
   "generatedFor": "${month}"
 }`;
 
-  const jsonStr = await callDeepSeek([
+  const jsonStr = await callAI("health_prediction", [
     { role: "system", content: "You are a preventive health analyst. Return only valid JSON." },
     { role: "user", content: prompt },
-  ], nvidiaKey, 3000, 0.5);
+  ], { maxTokens: 3000, temperature: 0.5 });
 
   const prediction = JSON.parse(jsonStr);
 
@@ -275,9 +273,6 @@ router.post("/health/intelligence/diet-chart/refresh", requireAuth, async (req: 
 });
 
 async function generateDietChart(userId: string, weekStart: string, res: import("express").Response, forced: boolean) {
-  const nvidiaKey = process.env.NVIDIA_API_KEY;
-  if (!nvidiaKey) { res.status(503).json({ error: "AI diet service not configured. Please set NVIDIA_API_KEY." }); return; }
-
   const ctx = await gatherUserContext(userId);
   const data = await gather30DayData(userId);
   const weather = await getWeatherContext(ctx.city ?? "India", ctx.state ?? undefined);
@@ -335,10 +330,10 @@ Return ONLY valid JSON (no markdown):
   "weeklyTips": ["Tip 1", "Tip 2", "Tip 3"]
 }`;
 
-  const jsonStr = await callDeepSeek([
+  const jsonStr = await callAI("weekly_diet_chart", [
     { role: "system", content: "You are a certified Indian dietitian. Return only valid JSON." },
     { role: "user", content: prompt },
-  ], nvidiaKey, 6000, 0.7);
+  ], { maxTokens: 6000, temperature: 0.7 });
 
   const dietChart = JSON.parse(jsonStr);
 

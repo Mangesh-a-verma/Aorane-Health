@@ -188,3 +188,22 @@ export const companySettingsTable = pgTable("company_settings", {
 });
 
 export type CompanySettings = typeof companySettingsTable.$inferSelect;
+
+// ─── App Sessions — DAU/MAU tracking ─────────────────────────────────────────
+export const appSessionsTable = pgTable("app_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  sessionId: text("session_id").notNull().unique(),
+  deviceType: text("device_type").default("mobile"),   // android | ios | web
+  deviceModel: text("device_model"),
+  appVersion: text("app_version"),
+  platform: text("platform"),                          // expo | web
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+  isActive: boolean("is_active").notNull().default(true),
+  durationSeconds: integer("duration_seconds"),
+  screenCount: integer("screen_count").default(0),
+});
+
+export type AppSession = typeof appSessionsTable.$inferSelect;

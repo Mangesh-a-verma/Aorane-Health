@@ -50,6 +50,7 @@ export const bloodDonorsTable = pgTable("blood_donors", {
   badges: text("badges").array(),
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
   otpVerified: boolean("otp_verified").notNull().default(false),
+  donorInactiveUntil: timestamp("donor_inactive_until", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -162,6 +163,23 @@ export const emergencyContactsTable = pgTable("emergency_contacts", {
 export const insertBloodDonorSchema = createInsertSchema(bloodDonorsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertBloodEmergencyRequestSchema = createInsertSchema(bloodEmergencyRequestsTable).omit({ id: true, createdAt: true, updatedAt: true });
 
+// ─── Blood Donations — confirmed donations + 90-day donor cooldown ────────────
+export const bloodDonationsTable = pgTable("blood_donations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  donorId: uuid("donor_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  requestId: uuid("request_id").references(() => bloodEmergencyRequestsTable.id, { onDelete: "set null" }),
+  bloodGroup: bloodGroupEnum("blood_group").notNull(),
+  unitsDoanted: integer("units_donated").notNull().default(1),
+  hospitalName: text("hospital_name"),
+  hospitalCity: text("hospital_city"),
+  donatedAt: timestamp("donated_at", { withTimezone: true }).notNull().defaultNow(),
+  donorInactiveUntil: timestamp("donor_inactive_until", { withTimezone: true }).notNull(),
+  confirmedByAdmin: boolean("confirmed_by_admin").notNull().default(false),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type BloodDonor = typeof bloodDonorsTable.$inferSelect;
 export type BloodEmergencyRequest = typeof bloodEmergencyRequestsTable.$inferSelect;
+export type BloodDonation = typeof bloodDonationsTable.$inferSelect;
 export type FamilyGroup = typeof familyGroupsTable.$inferSelect;

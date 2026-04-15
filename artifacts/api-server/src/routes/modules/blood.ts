@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, bloodDonorsTable, bloodEmergencyRequestsTable, bloodEmergencyResponsesTable } from "@workspace/db";
-import { eq, and, or, ilike } from "drizzle-orm";
+import { db, bloodDonorsTable, bloodEmergencyRequestsTable, bloodEmergencyResponsesTable, bloodDonationsTable } from "@workspace/db";
+import { eq, and, or, ilike, isNull, lt, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import { cache } from "../../lib/redis";
 import { generateOtp, hashOtp, verifyOtpHash, sendSmsOtp } from "../../lib/otp";
@@ -77,7 +77,13 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 router.get("/blood/donors", async (req, res) => {
   try {
     const { bloodGroup, city, lat, lng, radiusKm = "50" } = req.query as Record<string, string>;
-    const conditions = [eq(bloodDonorsTable.isAvailable, true), eq(bloodDonorsTable.otpVerified, true)];
+    const now = new Date();
+    const conditions = [
+      eq(bloodDonorsTable.isAvailable, true),
+      eq(bloodDonorsTable.otpVerified, true),
+      // 90-day cooldown: exclude donors who donated in the last 90 days
+      or(isNull(bloodDonorsTable.donorInactiveUntil), lt(bloodDonorsTable.donorInactiveUntil, now))!,
+    ];
     if (bloodGroup) {
       const compatible = COMPATIBLE_DONORS[bloodGroup] || [bloodGroup];
       conditions.push(or(...compatible.map((g) => eq(bloodDonorsTable.bloodGroup, g as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-")))!);
@@ -313,5 +319,108 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
     res.status(500).json({ error: "Failed to create blood emergency" });
   }
 });
+
+// ── Confirm Blood Donation (V2) — records donation + 90-day cooldown ─────────
+// Called when a donor actually donates blood (verified by donor themselves OR admin)
+router.post("/blood/donate/confirm", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.userId!;
+    const { requestId, bloodGroup, unitsDoanted = 1, hospitalName, hospitalCity, notes } = req.body as {
+      requestId?: string;
+      bloodGroup: string;
+      unitsDoanted?: number;
+      hospitalName?: string;
+      hospitalCity?: string;
+      notes?: string;
+    };
+
+    if (!bloodGroup) { res.status(400).json({ error: "bloodGroup required" }); return; }
+
+    // Check if donor is within cooldown
+    const [donor] = await db.select().from(bloodDonorsTable)
+      .where(eq(bloodDonorsTable.userId, userId)).limit(1);
+
+    if (donor?.donorInactiveUntil && donor.donorInactiveUntil > new Date()) {
+      const daysLeft = Math.ceil((donor.donorInactiveUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      res.status(409).json({
+        error: `Aap ${daysLeft} din baad dobara donate kar sakte hain. Blood donation ke baad 90-day rest compulsory hai.`,
+        daysLeft,
+        inactiveUntil: donor.donorInactiveUntil,
+      });
+      return;
+    }
+
+    // Record donation
+    const donatedAt = new Date();
+    const inactiveUntil = new Date(donatedAt);
+    inactiveUntil.setDate(inactiveUntil.getDate() + 90);
+
+    const [donation] = await db.insert(bloodDonationsTable).values({
+      donorId: userId,
+      requestId: requestId || null,
+      bloodGroup: bloodGroup as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-",
+      unitsDoanted: Number(unitsDoanted) || 1,
+      hospitalName,
+      hospitalCity,
+      donatedAt,
+      donorInactiveUntil: inactiveUntil,
+      notes,
+    }).returning();
+
+    // Update blood_donors: set cooldown + increment donation count
+    if (donor) {
+      await db.update(bloodDonorsTable)
+        .set({
+          donorInactiveUntil: inactiveUntil,
+          isAvailable: false,
+          lastDonatedAt: donatedAt.toISOString(),
+          donationCount: (donor.donationCount || 0) + 1,
+          nextEligibleAt: inactiveUntil.toISOString(),
+        })
+        .where(eq(bloodDonorsTable.userId, userId));
+    }
+
+    res.status(201).json({
+      success: true,
+      donation,
+      message: "Donation recorded! 90-din ki cooldown shuru ho gayi. Aap logo ki jaan bache hain — bahut shukriya! 🙏",
+      inactiveUntil,
+      daysInactive: 90,
+    });
+  } catch (err) {
+    console.error("Blood donation confirm error:", err);
+    res.status(500).json({ error: "Failed to confirm donation" });
+  }
+});
+
+// ── My Donation History ───────────────────────────────────────────────────────
+router.get("/blood/donate/history", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const donations = await db.select().from(bloodDonationsTable)
+      .where(eq(bloodDonationsTable.donorId, req.userId!))
+      .orderBy(sql`${bloodDonationsTable.donatedAt} DESC`)
+      .limit(20);
+
+    const [donor] = await db.select().from(bloodDonorsTable)
+      .where(eq(bloodDonorsTable.userId, req.userId!)).limit(1);
+
+    const isOnCooldown = !!(donor?.donorInactiveUntil && donor.donorInactiveUntil > new Date());
+    const daysUntilEligible = isOnCooldown
+      ? Math.ceil((donor!.donorInactiveUntil!.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : 0;
+
+    res.json({
+      donations,
+      totalDonations: donations.length,
+      isOnCooldown,
+      daysUntilEligible,
+      inactiveUntil: donor?.donorInactiveUntil ?? null,
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to get donation history" });
+  }
+});
+
+void sql;
 
 export default router;

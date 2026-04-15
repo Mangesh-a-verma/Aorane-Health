@@ -125,6 +125,10 @@ export default function FoodScreen() {
   const [scanMeta,     setScanMeta]     = useState<ScanMeta | null>(null);
   const [scanning,     setScanning]     = useState(false);
   const [submitting,   setSubmitting]   = useState(false);
+  const [weatherData,  setWeatherData]  = useState<{
+    weatherContext?: string; season?: string; weatherTip?: string;
+    suggestions?: Array<{ name: string; nameHindi: string; emoji: string; reason: string; calories: number; benefit: string; category: string; isSeasonalSpecial: boolean }>;
+  } | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pulseAnim   = useRef(new Animated.Value(1)).current;
 
@@ -144,6 +148,12 @@ export default function FoodScreen() {
   }, [favsLoaded]);
 
   useEffect(() => { loadLogs(); }, []);
+
+  useEffect(() => {
+    api.getWeatherFoodSuggestions()
+      .then((data) => setWeatherData(data))
+      .catch(() => {});
+  }, []);
 
   const { listening, start: startVoice, stop: stopVoice } = useVoice((spoken) => { setText(spoken); triggerSearch(spoken); });
 
@@ -301,6 +311,52 @@ export default function FoodScreen() {
         </View>
         <MacroBars cal={totalCal} protein={totalP} carbs={totalC} fat={totalF} />
       </View>
+
+      {/* ── Weather Food Suggestions ── */}
+      {weatherData?.suggestions && weatherData.suggestions.length > 0 && (
+        <View style={{ marginTop: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, marginBottom: 8, gap: 6 }}>
+            <Text style={{ fontSize: 14 }}>🌤️</Text>
+            <Text style={{ color: DS.color.text, fontSize: 12, fontFamily: "Inter_600SemiBold", flex: 1 }}>
+              {weatherData.season ? `${weatherData.season} ke liye` : "Mausam ke anusar"}
+            </Text>
+            {weatherData.weatherTip && (
+              <Text style={{ color: DS.color.muted, fontSize: 10, fontFamily: "Inter_400Regular", maxWidth: 180 }} numberOfLines={1}>
+                {weatherData.weatherTip}
+              </Text>
+            )}
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+            {weatherData.suggestions.slice(0, 8).map((s) => (
+              <TouchableOpacity
+                key={s.name}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setText(s.name);
+                  openModal("snack");
+                  triggerSearch(s.name);
+                }}
+                style={{
+                  backgroundColor: DS.color.bgSoft,
+                  borderRadius: 12,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  alignItems: "center",
+                  minWidth: 90,
+                  borderWidth: s.isSeasonalSpecial ? 1 : 0,
+                  borderColor: s.isSeasonalSpecial ? P + "40" : "transparent",
+                }}
+              >
+                <Text style={{ fontSize: 22 }}>{s.emoji}</Text>
+                <Text style={{ color: DS.color.text, fontSize: 11, fontFamily: "Inter_600SemiBold", textAlign: "center", marginTop: 2 }} numberOfLines={2}>
+                  {s.name}
+                </Text>
+                <Text style={{ color: DS.color.muted, fontSize: 10, fontFamily: "Inter_400Regular" }}>{s.calories} kcal</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* ── Meal Sections ── */}
       {loading ? (

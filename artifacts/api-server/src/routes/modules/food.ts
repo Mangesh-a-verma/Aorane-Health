@@ -1,9 +1,10 @@
 import { Router } from "express";
-import { db, foodLogsTable, foodItemsTable, foodScanCacheTable } from "@workspace/db";
+import { db, foodLogsTable, foodItemsTable, foodScanCacheTable, userProfilesTable } from "@workspace/db";
 import { eq, and, gte, lte, ilike, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { callDeepSeek } from "../../lib/nvidia";
+import { callAI } from "../../lib/ai";
+import { getWeatherContext } from "../../lib/weather";
 
 const router = Router();
 
@@ -232,9 +233,6 @@ router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
     let result: Record<string, unknown>;
 
     if (searchTerm) {
-      const nvidiaKey = process.env["NVIDIA_API_KEY"];
-      if (!nvidiaKey) { res.status(503).json({ error: "AI service not configured" }); return; }
-
       const prompt = `You are a certified Indian dietitian. The user typed "${searchTerm}" — this could be in Hindi, Hinglish, regional language or English. Identify the food and provide complete nutrition data.
 
 Return ONLY a valid JSON object (no markdown) with these exact fields:
@@ -265,7 +263,7 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
   "healthTip": "1 sentence health tip in Hinglish"
 }`;
 
-      const jsonStr = await callDeepSeek([{ role: "user", content: prompt }], nvidiaKey, 1500, 0.3);
+      const jsonStr = await callAI("food_ai", [{ role: "user", content: prompt }], { maxTokens: 1500, temperature: 0.3 });
       const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
       result = jsonMatch ? JSON.parse(jsonMatch[0]) : { foodNameEn: searchTerm, calories: 100, proteinG: 0, carbsG: 25, fatG: 2, fiberG: 0, servingSizeG: 100, servingDescription: "100g", category: "food", dietaryTags: [], vitamins: {} };
     } else if (imageBase64) {
@@ -323,6 +321,111 @@ router.get("/food/summary/:date", requireAuth, async (req: AuthRequest, res) => 
     res.json({ summary });
   } catch {
     res.status(500).json({ error: "Failed to fetch food summary" });
+  }
+});
+
+// ── Weather-based Food Suggestions ───────────────────────────────────────────
+router.post("/food/weather-suggestions", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { city, state } = req.body as { city?: string; state?: string };
+
+    const [profile] = await db
+      .select()
+      .from(userProfilesTable)
+      .where(eq(userProfilesTable.userId, req.userId!))
+      .limit(1);
+
+    const profileData = profile as unknown as Record<string, string>;
+    const userCity = profileData?.city ?? city ?? "India";
+    const userState = profileData?.state ?? state ?? "";
+
+    const weather = await getWeatherContext(userCity, userState || undefined);
+
+    const prompt = `You are a certified Indian dietitian. Based on the current weather and season, suggest 6 ideal Indian foods for an Indian person.
+
+Weather & Season Context: ${weather}
+
+Return ONLY valid JSON:
+{
+  "weatherContext": "short description of current weather/season",
+  "season": "Winter|Summer|Monsoon|Autumn",
+  "suggestions": [
+    {
+      "name": "Food name in English",
+      "nameHindi": "Hindi name",
+      "emoji": "single food emoji",
+      "reason": "Why this food is ideal right now (1 sentence in Hinglish)",
+      "calories": number,
+      "benefit": "Main health benefit",
+      "category": "breakfast|lunch|dinner|snack|beverage",
+      "isSeasonalSpecial": true
+    }
+  ],
+  "weatherTip": "1 practical weather-appropriate health tip in Hinglish"
+}`;
+
+    try {
+      const jsonStr = await callAI("food_ai", [{ role: "user", content: prompt }], { maxTokens: 1200 });
+      const result = JSON.parse(jsonStr);
+      res.json({ ...result, weatherContext: weather });
+    } catch {
+      const month = new Date().getMonth() + 1;
+      let season = "Autumn";
+      let suggestions: unknown[] = [];
+
+      if ([12, 1, 2].includes(month)) {
+        season = "Winter";
+        suggestions = [
+          { name: "Sarson Ka Saag", nameHindi: "सरसों का साग", emoji: "🥬", reason: "Sardiyon mein body ko warm rakhta hai", calories: 120, benefit: "Iron & Vitamin A", category: "lunch", isSeasonalSpecial: true },
+          { name: "Makki Di Roti", nameHindi: "मक्की की रोटी", emoji: "🌽", reason: "Winter mein energy deta hai", calories: 180, benefit: "Complex carbs", category: "lunch", isSeasonalSpecial: true },
+          { name: "Tilgud Laddoo", nameHindi: "तिलगुड लड्डू", emoji: "🍡", reason: "Sesame body ko warm karta hai", calories: 220, benefit: "Calcium & healthy fats", category: "snack", isSeasonalSpecial: true },
+          { name: "Masala Chai", nameHindi: "मसाला चाय", emoji: "☕", reason: "Adrak aur elaichi sardiyon mein best hain", calories: 60, benefit: "Anti-inflammatory ginger", category: "beverage", isSeasonalSpecial: true },
+          { name: "Gajar Halwa", nameHindi: "गाजर का हलवा", emoji: "🥕", reason: "Carrots are peak in winter, Vitamin A se bhare", calories: 300, benefit: "Vitamin A & antioxidants", category: "snack", isSeasonalSpecial: true },
+          { name: "Moong Dal Khichdi", nameHindi: "मूंग दाल खिचड़ी", emoji: "🍲", reason: "Easy to digest, winter mein body ko sustain karta hai", calories: 280, benefit: "Protein & minerals", category: "dinner", isSeasonalSpecial: false },
+        ];
+      } else if ([3, 4, 5].includes(month)) {
+        season = "Summer";
+        suggestions = [
+          { name: "Aam Panna", nameHindi: "आम पन्ना", emoji: "🥭", reason: "Garmi mein heatstroke se bachata hai", calories: 80, benefit: "Electrolytes & Vitamin C", category: "beverage", isSeasonalSpecial: true },
+          { name: "Lassi", nameHindi: "लस्सी", emoji: "🥛", reason: "Body ko cool rakhti hai", calories: 150, benefit: "Probiotics & calcium", category: "beverage", isSeasonalSpecial: true },
+          { name: "Watermelon / Tarbuz", nameHindi: "तरबूज", emoji: "🍉", reason: "95% paani, body hydrated rakhta hai", calories: 30, benefit: "Hydration & lycopene", category: "snack", isSeasonalSpecial: true },
+          { name: "Coconut Water", nameHindi: "नारियल पानी", emoji: "🥥", reason: "Natural electrolytes, garmi mein best", calories: 45, benefit: "Potassium & hydration", category: "beverage", isSeasonalSpecial: true },
+          { name: "Raita", nameHindi: "रायता", emoji: "🥗", reason: "Dahi body ko andar se thanda karta hai", calories: 90, benefit: "Probiotics & cooling", category: "lunch", isSeasonalSpecial: true },
+          { name: "Sattu Sharbat", nameHindi: "सत्तू शर्बत", emoji: "🧊", reason: "Bihar-UP mein garmi ka traditional drink", calories: 120, benefit: "Protein & energy", category: "beverage", isSeasonalSpecial: true },
+        ];
+      } else if ([6, 7, 8, 9].includes(month)) {
+        season = "Monsoon";
+        suggestions = [
+          { name: "Khichdi", nameHindi: "खिचड़ी", emoji: "🍲", reason: "Monsoon mein digestive system ke liye best", calories: 280, benefit: "Easy to digest & warming", category: "dinner", isSeasonalSpecial: true },
+          { name: "Ginger Tea", nameHindi: "अदरक की चाय", emoji: "☕", reason: "Immunity boost karta hai barsaat mein", calories: 50, benefit: "Anti-inflammatory", category: "beverage", isSeasonalSpecial: true },
+          { name: "Haldi Doodh", nameHindi: "हल्दी दूध", emoji: "🥛", reason: "Infection se bachata hai monsoon mein", calories: 120, benefit: "Immunity & anti-bacterial", category: "beverage", isSeasonalSpecial: true },
+          { name: "Corn Bhutta", nameHindi: "भुट्टा", emoji: "🌽", reason: "Barsaat aur bhutta — classic Indian combo!", calories: 130, benefit: "Fiber & antioxidants", category: "snack", isSeasonalSpecial: true },
+          { name: "Pakora", nameHindi: "पकोड़ा", emoji: "🍘", reason: "Baarish mein pakoda — ultimate comfort food", calories: 200, benefit: "Energy boost (occasionally)", category: "snack", isSeasonalSpecial: true },
+          { name: "Moong Dal Soup", nameHindi: "मूंग दाल सूप", emoji: "🍵", reason: "Light aur nutritious, monsoon mein digestion easy", calories: 150, benefit: "Protein & easy digestion", category: "dinner", isSeasonalSpecial: true },
+        ];
+      } else {
+        season = "Autumn";
+        suggestions = [
+          { name: "Pomegranate", nameHindi: "अनार", emoji: "🍎", reason: "Sharad mein blood purifier, peak season", calories: 80, benefit: "Iron & antioxidants", category: "snack", isSeasonalSpecial: true },
+          { name: "Guava", nameHindi: "अमरूद", emoji: "🍐", reason: "Vitamin C se bhara, immunity badhata hai", calories: 60, benefit: "Vitamin C & fiber", category: "snack", isSeasonalSpecial: true },
+          { name: "Apple", nameHindi: "सेब", emoji: "🍏", reason: "Sharad mein fresh apples available, ek roz ka doctor dur", calories: 80, benefit: "Fiber & quercetin", category: "snack", isSeasonalSpecial: true },
+          { name: "Pumpkin Sabzi", nameHindi: "कद्दू की सब्जी", emoji: "🎃", reason: "Seasonal vegetable, kaafi nutritious hai", calories: 90, benefit: "Beta-carotene & fiber", category: "dinner", isSeasonalSpecial: true },
+          { name: "Bajra Roti", nameHindi: "बाजरे की रोटी", emoji: "🫓", reason: "Winter shuru hoti hai, bajra body warm rakhta hai", calories: 170, benefit: "Iron & magnesium", category: "lunch", isSeasonalSpecial: false },
+          { name: "Moong Dal Khichdi", nameHindi: "मूंग दाल खिचड़ी", emoji: "🍲", reason: "Light aur nutritious, autumn mein digestive health", calories: 250, benefit: "Protein & minerals", category: "lunch", isSeasonalSpecial: false },
+        ];
+      }
+
+      res.json({
+        weatherContext: weather,
+        season,
+        suggestions,
+        weatherTip: "Mausam ke hisaab se khana khao — seasonal foods sabse zyada nutritious hote hain! 🌿",
+        fallback: true,
+      });
+    }
+  } catch (err) {
+    console.error("Weather suggestions error:", err);
+    res.status(500).json({ error: "Failed to get weather suggestions" });
   }
 });
 

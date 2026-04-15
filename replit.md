@@ -93,6 +93,32 @@ OTP Verify → Profile (Step 1/5) → Physical/BMI (Step 2/5) → Health Conditi
 - **SMS fallback**: When Fast2SMS DLT not configured, `smsSent: false` returned. devOtp visible in dev only — users must enter OTP manually.
 - **WhatsApp OTP fallback**: Automatically falls back to SMS if WhatsApp delivery fails.
 
+## Advanced API Features (April 2026)
+
+**AI Provider Abstraction Layer:**
+- `lib/ai.ts` — `callAI(feature, messages, options?)` routes each feature to correct provider (NVIDIA or Gemini)
+- `middlewares/feature-check.ts` — `requireFeature(name)` middleware with 5-min in-memory cache; applied to all AI routes
+- Feature names: `meal_planner`, `health_suggestions`, `food_ai`, `smart_scan`, `stress_ai`, `health_prediction`, `weekly_diet_chart`, `water_ai`, `blood_ai`, `medical_ai`
+- `smart_scan` stays on Gemini (image vision); all others can be toggled to NVIDIA via Admin Panel AI Config
+- Admin panel cache invalidation calls added to `admin.ts` after config/flag updates
+
+**Weather-Based Food Suggestions:**
+- `POST /food/weather-suggestions` — AI-powered seasonal Indian food recommendations
+- 4-season fallback (Winter=Sarson Saag, Summer=Aam Panna, Monsoon=Khichdi, Autumn=Pomegranate)
+- Mobile food.tsx shows horizontal scrollable chip row with emoji, name, and calorie count
+- Tapping a chip pre-fills the food search in the Add Food modal
+
+**App Sessions / DAU Tracking:**
+- `appSessionsTable` in DB schema (`lib/db/src/schema/platform.ts`)
+- `sessions.ts` route module: `POST /sessions/start`, `POST /sessions/heartbeat`, `POST /sessions/end`, `GET /sessions/dau` (admin)
+- Returns DAU/MAU stats for Admin Panel analytics
+
+**Blood Emergency V2:**
+- `bloodDonationsTable` in DB schema (`lib/db/src/schema/community.ts`)
+- 90-day donor cooldown enforced via `blood_donors.donor_inactive_until` column
+- `POST /blood/donate/confirm` + `GET /blood/donate/history` endpoints
+- Donor search excludes donors within cooldown period
+
 ## External Dependencies
 - **Database:** PostgreSQL (managed by Supabase)
 - **Backend Framework:** Express.js (Node.js)

@@ -662,6 +662,45 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE org_admins ADD COLUMN IF NOT EXISTS is_email_verified BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE org_admins ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ`,
     `ALTER TABLE org_admins ADD COLUMN IF NOT EXISTS phone_otp_verified BOOLEAN NOT NULL DEFAULT FALSE`,
+
+    // ── app_sessions: DAU/MAU tracking ─────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS app_sessions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      session_id TEXT NOT NULL UNIQUE,
+      device_type TEXT DEFAULT 'mobile',
+      device_model TEXT,
+      app_version TEXT,
+      platform TEXT,
+      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      ended_at TIMESTAMPTZ,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      duration_seconds INTEGER,
+      screen_count INTEGER DEFAULT 0
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_app_sessions_user_id ON app_sessions(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_app_sessions_started_at ON app_sessions(started_at)`,
+
+    // ── blood_donations: 90-day donor cooldown ─────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS blood_donations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      donor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      request_id UUID REFERENCES blood_emergency_requests(id) ON DELETE SET NULL,
+      blood_group TEXT NOT NULL,
+      units_donated INTEGER NOT NULL DEFAULT 1,
+      hospital_name TEXT,
+      hospital_city TEXT,
+      donated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      donor_inactive_until TIMESTAMPTZ NOT NULL,
+      confirmed_by_admin BOOLEAN NOT NULL DEFAULT FALSE,
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_blood_donations_donor_id ON blood_donations(donor_id)`,
+
+    // ── blood_donors: add donor_inactive_until for 90-day cooldown enforcement ──
+    `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS donor_inactive_until TIMESTAMPTZ`,
   ];
 
   let ok = 0; let fail = 0;

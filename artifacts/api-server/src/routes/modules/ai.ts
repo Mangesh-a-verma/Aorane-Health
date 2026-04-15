@@ -3,45 +3,19 @@ import { db, usersTable, userProfilesTable, userPreferencesTable, userMedicalCon
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { callDeepSeek } from "../../lib/nvidia";
+import { requireFeature } from "../../middlewares/feature-check";
+import { callAI } from "../../lib/ai";
 
 const router = Router();
 
-// NVIDIA (LLaMA 3.3 70B) — diet-plan, health-tip, meal-swap ke liye
-async function callNvidia(prompt: string, maxTokens = 3000): Promise<string> {
-  const nvidiaKey = process.env.NVIDIA_API_KEY;
-  if (!nvidiaKey) throw new Error("NVIDIA_API_KEY not set");
-  return callDeepSeek([{ role: "user", content: prompt }], nvidiaKey, maxTokens, 0.4);
-}
-
-// Gemini — SIRF smart-scan ke liye (image mein medical report aa sakta hai)
-async function callGemini(prompt: string, geminiKey: string): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    }
-  );
-  if (!res.ok) throw new Error(`Gemini API error: ${res.status}`);
-  const data = await res.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON in Gemini response");
-  return jsonMatch[0];
-}
-
-router.post("/ai/diet-plan", requireAuth, async (req: AuthRequest, res) => {
+router.post("/ai/diet-plan", requireAuth, requireFeature("meal_planner"), async (req: AuthRequest, res) => {
   try {
-    if (!process.env.NVIDIA_API_KEY) { res.status(503).json({ error: "AI service not configured" }); return; }
-
     const userId = req.userId!;
     const { days = 1, preferences = {} } = req.body as { days?: number; preferences?: Record<string, unknown> };
 
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, userId)).limit(1);
-    const [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId)).limit(1);
+    void await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId)).limit(1);
     const conditions = await db.select().from(userMedicalConditionsTable).where(eq(userMedicalConditionsTable.userId, userId));
 
     const now = new Date();
@@ -56,7 +30,6 @@ router.post("/ai/diet-plan", requireAuth, async (req: AuthRequest, res) => {
     const dietaryPref = (preferences.dietaryPref as string) || "vegetarian";
     const activityLevel = (preferences.activityLevel as string) || "moderate";
     const goalsList = ((preferences.healthGoals as string[]) || []).join(", ") || "general wellness";
-    void prefs;
     const language = (preferences.language as string) || user?.languageCode || "en";
 
     let bmr = 0;
@@ -68,9 +41,7 @@ router.post("/ai/diet-plan", requireAuth, async (req: AuthRequest, res) => {
     const tdee = bmr
       ? Math.round(bmr * ({ sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 }[activityLevel] || 1.55))
       : 1800;
-
     const targetCalories = goalsList.includes("weight_loss") ? Math.round(tdee * 0.8) : goalsList.includes("muscle_gain") ? Math.round(tdee * 1.1) : tdee;
-
     const planDays = Math.min(Math.max(Number(days) || 1, 1), 7);
 
     const prompt = `You are a certified Indian dietitian and nutritionist. Create a ${planDays}-day personalized Indian diet plan.
@@ -103,12 +74,7 @@ Return ONLY valid JSON (no markdown, no extra text):
       "dayName": "Day 1",
       "totalCalories": number,
       "meals": {
-        "breakfast": {
-          "items": [
-            { "name": "string", "nameHindi": "string", "quantityG": number, "quantityDesc": "string", "calories": number, "proteinG": number, "carbsG": number, "fatG": number }
-          ],
-          "totalCalories": number
-        },
+        "breakfast": { "items": [{ "name": "string", "nameHindi": "string", "quantityG": number, "quantityDesc": "string", "calories": number, "proteinG": number, "carbsG": number, "fatG": number }], "totalCalories": number },
         "lunch": { "items": [...], "totalCalories": number },
         "dinner": { "items": [...], "totalCalories": number },
         "snacks": { "items": [...], "totalCalories": number }
@@ -120,9 +86,8 @@ Return ONLY valid JSON (no markdown, no extra text):
   "generalTips": ["tip1", "tip2", "tip3"]
 }`;
 
-    const jsonStr = await callNvidia(prompt, 4000);
+    const jsonStr = await callAI("meal_planner", [{ role: "user", content: prompt }], { maxTokens: 4000 });
     const plan = JSON.parse(jsonStr);
-
     res.json({ plan, generatedAt: new Date().toISOString(), userId });
   } catch (err) {
     console.error("Diet plan error:", err);
@@ -130,10 +95,8 @@ Return ONLY valid JSON (no markdown, no extra text):
   }
 });
 
-router.post("/ai/health-tip", requireAuth, async (req: AuthRequest, res) => {
+router.post("/ai/health-tip", requireAuth, requireFeature("health_suggestions"), async (req: AuthRequest, res) => {
   try {
-    if (!process.env.NVIDIA_API_KEY) { res.status(503).json({ error: "AI service not configured" }); return; }
-
     const { context = "" } = req.body as { context?: string };
 
     const prompt = `You are a certified Indian health coach. Give ONE practical, culturally relevant daily health tip for an Indian person${context ? ` who ${context}` : ""}.
@@ -146,7 +109,7 @@ Return ONLY valid JSON:
   "emoji": "single relevant emoji"
 }`;
 
-    const jsonStr = await callNvidia(prompt, 500);
+    const jsonStr = await callAI("health_suggestions", [{ role: "user", content: prompt }], { maxTokens: 500 });
     const result = JSON.parse(jsonStr);
     res.json(result);
   } catch {
@@ -154,10 +117,8 @@ Return ONLY valid JSON:
   }
 });
 
-router.post("/ai/meal-swap", requireAuth, async (req: AuthRequest, res) => {
+router.post("/ai/meal-swap", requireAuth, requireFeature("meal_planner"), async (req: AuthRequest, res) => {
   try {
-    if (!process.env.NVIDIA_API_KEY) { res.status(503).json({ error: "AI service not configured" }); return; }
-
     const { mealName, reason, dietaryPref = "vegetarian" } = req.body as { mealName: string; reason?: string; dietaryPref?: string };
     if (!mealName) { res.status(400).json({ error: "mealName required" }); return; }
 
@@ -172,7 +133,7 @@ Return ONLY valid JSON:
   ]
 }`;
 
-    const jsonStr = await callNvidia(prompt, 800);
+    const jsonStr = await callAI("meal_planner", [{ role: "user", content: prompt }], { maxTokens: 800 });
     const result = JSON.parse(jsonStr);
     res.json(result);
   } catch {
@@ -180,13 +141,15 @@ Return ONLY valid JSON:
   }
 });
 
-router.post("/ai/smart-scan", requireAuth, async (req: AuthRequest, res) => {
+// smart-scan uses VISION (image analysis) — requires Gemini specifically
+// Admin can override provider for 'smart_scan' feature in AI Config
+router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), async (req: AuthRequest, res) => {
   try {
-    const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
-    if (!geminiKey) { res.status(503).json({ error: "AI service not configured" }); return; }
-
     const { imageBase64, mimeType = "image/jpeg" } = req.body as { imageBase64?: string; mimeType?: string };
     if (!imageBase64) { res.status(400).json({ error: "imageBase64 required" }); return; }
+
+    const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
+    if (!geminiKey) { res.status(503).json({ error: "Smart Scan requires Google Gemini API key. Set GOOGLE_GEMINI_API_KEY in environment." }); return; }
 
     const prompt = `You are an expert AI health assistant. Carefully analyze this image and determine what type of content it shows.
 
@@ -201,72 +164,30 @@ TYPE DETECTION:
 RESPONSE FORMAT (return ONLY valid JSON, no markdown):
 
 For food:
-{
-  "type": "food",
-  "foodName": "Name of the food",
-  "confidence": 0.95,
-  "calories": 250,
-  "proteinG": 8,
-  "carbsG": 35,
-  "fatG": 10,
-  "fiberG": 3,
-  "servingSize": "1 bowl (200g)",
-  "healthScore": 7,
-  "tags": ["vegetarian", "high-protein"],
-  "tip": "A brief health tip about this food",
-  "ingredients": ["main ingredient 1", "main ingredient 2"]
-}
+{ "type": "food", "foodName": "Name", "confidence": 0.95, "calories": 250, "proteinG": 8, "carbsG": 35, "fatG": 10, "fiberG": 3, "servingSize": "1 bowl (200g)", "healthScore": 7, "tags": ["vegetarian"], "tip": "Health tip", "ingredients": ["ingredient1"] }
 
 For medical_report:
-{
-  "type": "medical_report",
-  "reportType": "Blood Test / CBC / Lipid Profile / Thyroid / etc.",
-  "confidence": 0.90,
-  "patientName": "if visible, else null",
-  "date": "if visible, else null",
-  "summary": "2-3 sentence plain-language summary of the report",
-  "urgencyLevel": "normal | attention | urgent",
-  "keyFindings": [
-    { "parameter": "Hemoglobin", "value": "13.5 g/dL", "normalRange": "12-17 g/dL", "status": "normal | high | low" }
-  ],
-  "recommendations": ["Recommendation 1", "Recommendation 2"],
-  "disclaimer": "This is an AI analysis only. Please consult your doctor."
-}
+{ "type": "medical_report", "reportType": "Blood Test / CBC / etc.", "confidence": 0.90, "patientName": null, "date": null, "summary": "2-3 sentence summary", "urgencyLevel": "normal|attention|urgent", "keyFindings": [{ "parameter": "Hemoglobin", "value": "13.5 g/dL", "normalRange": "12-17 g/dL", "status": "normal|high|low" }], "recommendations": ["Rec 1"], "disclaimer": "This is an AI analysis only. Please consult your doctor." }
 
 For medicine:
-{
-  "type": "medicine",
-  "confidence": 0.88,
-  "medicineName": "Name if readable",
-  "genericName": "Generic name if known",
-  "uses": "What it is typically used for",
-  "commonDosage": "Typical adult dosage",
-  "sideEffects": ["Common side effect 1", "Common side effect 2"],
-  "warnings": ["Warning 1"],
-  "disclaimer": "Always follow your doctor's prescription."
-}
+{ "type": "medicine", "confidence": 0.88, "medicineName": "Name", "genericName": "Generic", "uses": "What it treats", "commonDosage": "Typical adult dose", "sideEffects": ["Side effect 1"], "warnings": ["Warning"], "disclaimer": "Always follow your doctor's prescription." }
 
 For unknown:
 { "type": "unknown", "message": "Could not identify health-related content in this image." }`;
 
     const geminiBody = JSON.stringify({
-      contents: [{
-        parts: [
-          { text: prompt },
-          { inline_data: { mime_type: mimeType, data: imageBase64 } }
-        ]
-      }],
-      generationConfig: { temperature: 0.2 }
+      contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: imageBase64 } }] }],
+      generationConfig: { temperature: 0.2 },
     });
 
-    let geminiRes: Response | null = null;
+    let geminiRes: globalThis.Response | null = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
       geminiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: geminiBody }
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: geminiBody },
       );
       if (geminiRes.status === 429 && attempt < 3) {
-        await new Promise(r => setTimeout(r, attempt * 2000));
+        await new Promise((r) => setTimeout(r, attempt * 2000));
         continue;
       }
       break;

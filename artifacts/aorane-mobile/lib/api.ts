@@ -133,6 +133,18 @@ export const api = {
   getFoodSummary: (date: string) =>
     request<{ summary: Record<string, unknown> }>("GET", `/food/summary/${date}`),
 
+  getWeatherFoodSuggestions: () =>
+    request<{
+      weatherContext: string;
+      season: string;
+      suggestions: Array<{
+        name: string; nameHindi: string; emoji: string; reason: string;
+        calories: number; benefit: string; category: string; isSeasonalSpecial: boolean;
+      }>;
+      weatherTip: string;
+      fallback?: boolean;
+    }>("POST", "/food/weather-suggestions", {}),
+
   // AI food scan — History → DB → Cache → Gemini (4-level, cost-optimized)
   scanFood: (data: { foodName?: string; imageBase64?: string; mimeType?: string }) =>
     request<{

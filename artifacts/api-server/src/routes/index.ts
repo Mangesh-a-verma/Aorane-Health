@@ -22,6 +22,7 @@ import wearableRouter from "./modules/wearable";
 import intelligenceRouter from "./modules/intelligence";
 import plansRouter from "./modules/plans";
 import whatsappRouter from "./modules/whatsapp";
+import sessionsRouter from "./modules/sessions";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use(wearableRouter);
 router.use(intelligenceRouter);
 router.use(plansRouter);
 router.use(whatsappRouter);
+router.use(sessionsRouter);
 
 export default router;

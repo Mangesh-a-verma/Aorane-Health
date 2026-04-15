@@ -1,7 +1,7 @@
 /**
- * NVIDIA-hosted LLaMA 3.3 70B API helper
+ * NVIDIA-hosted AI API helper (LLaMA, DeepSeek, Mixtral, etc.)
  * Non-streaming JSON output for health intelligence features
- * Updated: DeepSeek-R1 reached EOL on 2026-01-26, migrated to meta/llama-3.3-70b-instruct
+ * Now supports configurable model via parameter
  */
 
 export interface NvidiaMessage {
@@ -14,6 +14,7 @@ export async function callDeepSeek(
   apiKey: string,
   maxTokens = 4096,
   temperature = 0.6,
+  model = "meta/llama-3.3-70b-instruct",
 ): Promise<string> {
   const res = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
     method: "POST",
@@ -23,7 +24,7 @@ export async function callDeepSeek(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "meta/llama-3.3-70b-instruct",
+      model,
       messages,
       temperature,
       top_p: 0.95,
@@ -34,7 +35,7 @@ export async function callDeepSeek(
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`NVIDIA DeepSeek error ${res.status}: ${err}`);
+    throw new Error(`NVIDIA API error ${res.status}: ${err}`);
   }
 
   const data = await res.json() as {
@@ -42,13 +43,12 @@ export async function callDeepSeek(
   };
 
   let content = data.choices?.[0]?.message?.content ?? "";
-  if (!content) throw new Error("Empty response from DeepSeek");
+  if (!content) throw new Error("Empty response from NVIDIA");
 
-  // Strip <think>...</think> reasoning blocks (DeepSeek-R1 chain-of-thought)
   content = content.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 
   const jsonMatch = content.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON found in DeepSeek response");
+  if (!jsonMatch) throw new Error("No JSON found in NVIDIA response");
 
   return jsonMatch[0];
 }
