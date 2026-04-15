@@ -232,8 +232,12 @@ export default function FoodScreen() {
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       closeModal(); setFavsLoaded(false);
-      setTimeout(() => router.back(), 400);
-    } catch (e: unknown) { Alert.alert("Error", (e as Error).message || "Could not log food."); setSubmitting(false); }
+      loadLogs();
+    } catch (e: unknown) {
+      Alert.alert("Error", (e as Error).message || "Could not log food.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const deleteLog = async (id: string, name: string) => {
@@ -483,11 +487,13 @@ export default function FoodScreen() {
                   autoFocus
                 />
                 {searching && <ActivityIndicator size="small" color={P} />}
-                <TouchableOpacity onPress={listening ? stopVoice : startVoice} style={{ padding: 6 }}>
-                  <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                    <Ionicons name={listening ? "mic" : "mic-outline"} size={22} color={listening ? DS.color.red : DS.color.muted} />
-                  </Animated.View>
-                </TouchableOpacity>
+                {Platform.OS === "web" && (
+                  <TouchableOpacity onPress={listening ? stopVoice : startVoice} style={{ padding: 6 }}>
+                    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                      <Ionicons name={listening ? "mic" : "mic-outline"} size={22} color={listening ? DS.color.red : DS.color.muted} />
+                    </Animated.View>
+                  </TouchableOpacity>
+                )}
               </View>
               <View style={s.cameraRow}>
                 <TouchableOpacity onPress={takePhoto} style={s.cameraBtn}>

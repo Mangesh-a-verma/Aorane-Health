@@ -96,6 +96,7 @@ export default function ExerciseScreen() {
       loadLogs();
     } catch {
       Alert.alert("Error", "Could not log exercise. Please try again.");
+    } finally {
       setIsSubmitting(false);
     }
   };

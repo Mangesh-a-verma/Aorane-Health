@@ -13,8 +13,9 @@ import { api } from "@/lib/api";
 import QRCode from "react-native-qrcode-svg";
 
 const { width: W } = Dimensions.get("window");
-const CARD_W = Math.min(W - 32, 400);
-const PLAYSTORE_URL = "https://play.google.com/store/apps/details?id=in.aorane.app";
+const CARD_W = Math.min(W - 32, 380);
+const CARD_H = Math.round(CARD_W / 1.586);
+const AORANE_URL = "https://aorane.com";
 
 // ─── Avatar options ───────────────────────────────────────────────────────────
 const AVATARS = [
@@ -309,169 +310,98 @@ export default function ScorecardScreen() {
           </View>
         ) : card ? (
           <>
-            {/* ─── SHAREABLE CARD (captured for download/share) ─── */}
+            {/* ─── SHAREABLE ATM CARD ─── */}
             <View
               {...(Platform.OS === "web" ? { id: "aorane-scorecard-card" } : {})}
-              style={[styles.cardShell, { width: CARD_W, alignSelf: "center" }]}
+              style={[styles.cardShell, { width: CARD_W, height: CARD_H, alignSelf: "center" }]}
             >
-              {/* Card gradient background */}
               <LinearGradient
                 colors={[company.scorecardBgGradientFrom || "#023E8A", company.primaryColor || "#0077B6", company.scorecardBgGradientTo || "#1B998B"]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={styles.cardGrad}
+                style={[styles.cardGrad, { height: CARD_H }]}
               >
-                {/* Decorative circles */}
-                <View style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: "rgba(255,255,255,0.06)" }} />
-                <View style={{ position: "absolute", bottom: -60, left: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: "rgba(255,255,255,0.04)" }} />
-                <View style={{ position: "absolute", top: 60, right: -20, width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(255,255,255,0.05)" }} />
+                {/* Decorative blobs */}
+                <View style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: "rgba(255,255,255,0.06)" }} />
+                <View style={{ position: "absolute", bottom: -40, left: -20, width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(255,255,255,0.04)" }} />
 
                 {/* ── TOP ROW: Logo + Plan Badge ── */}
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     {company.companyLogoUrl ? (
-                      <Image source={{ uri: company.companyLogoUrl }} style={{ width: 28, height: 28, borderRadius: 6 }} resizeMode="contain" />
-                    ) : null}
-                    <View>
-                      <Text style={{ color: "rgba(255,255,255,0.9)", fontFamily: "Inter_700Bold", fontSize: 18, letterSpacing: 2 }} numberOfLines={1}>
-                        {company.companyName.toUpperCase()}
-                      </Text>
-                      <Text style={{ color: "rgba(255,255,255,0.55)", fontFamily: "Inter_400Regular", fontSize: 9, letterSpacing: 1.5, marginTop: 1 }}>HEALTH IDENTITY CARD</Text>
-                    </View>
-                  </View>
-                  <View style={{ alignItems: "flex-end", gap: 6 }}>
-                    <View style={[styles.planBadge, { backgroundColor: PLAN_COLORS[card.plan] || "#6B7280" }]}>
-                      <Text style={styles.planText}>{PLAN_LABELS[card.plan] || "FREE"}</Text>
-                    </View>
-                    <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 8, fontFamily: "Inter_400Regular" }}>
-                      {formatCardDate(shareDate)}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* ── AVATAR + NAME SECTION ── */}
-                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20, gap: 14 }}>
-                  {/* Avatar */}
-                  <View style={styles.avatarRing}>
-                    <LinearGradient colors={selectedAvatar.bg as [string, string]} style={styles.avatarInner}>
-                      <Text style={{ fontSize: 28 }}>{selectedAvatar.emoji}</Text>
-                    </LinearGradient>
-                  </View>
-                  {/* User info */}
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 18, marginBottom: 3 }} numberOfLines={1}>
-                      {card.name || "AORANE User"}
-                    </Text>
-                    <View style={{ flexDirection: "row", gap: 12, flexWrap: "wrap" }}>
-                      <Text style={styles.infoChip}>
-                        {card.gender === "male" ? "Male" : card.gender === "female" ? "Female" : "Other"}
-                      </Text>
-                      {card.age && <Text style={styles.infoChip}>Age {card.age}</Text>}
-                      {card.bloodGroup && <Text style={[styles.infoChip, { color: "#FFA0A0" }]}>{card.bloodGroup}</Text>}
-                    </View>
-                    {card.city && (
-                      <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 3 }}>
-                        {card.city}{card.state ? `, ${card.state}` : ""}
-                      </Text>
+                      <Image source={{ uri: company.companyLogoUrl }} style={{ width: 20, height: 20, borderRadius: 4 }} resizeMode="contain" />
+                    ) : (
+                      <View style={{ width: 20, height: 20, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" }}>
+                        <Text style={{ color: "#FFF", fontSize: 8, fontFamily: "Inter_700Bold" }}>A</Text>
+                      </View>
                     )}
+                    <Text style={{ color: "rgba(255,255,255,0.9)", fontFamily: "Inter_700Bold", fontSize: 12, letterSpacing: 2 }}>
+                      {company.companyName.toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={[styles.planBadge, { backgroundColor: PLAN_COLORS[card.plan] || "#6B7280" }]}>
+                    <Text style={styles.planText}>{PLAN_LABELS[card.plan] || "FREE"}</Text>
                   </View>
                 </View>
 
-                {/* ── AORANE ID ── */}
-                <View style={styles.idBox}>
-                  <Text style={styles.idLabel}>AORANE ID</Text>
-                  <Text style={styles.idValue}>{formatId(card.aoraneId)}</Text>
-                </View>
-
-                {/* ── HEALTH METRICS ROW ── */}
-                <View style={{ flexDirection: "row", gap: 10, marginBottom: 18 }}>
-                  {[
-                    { label: "BMI", value: card.bmi || "N/A", sub: card.bmiCategory },
-                    { label: "BLOOD", value: card.bloodGroup || "N/A", sub: "Group" },
-                    { label: "ACTIVE", value: `${card.activePercent?.overall ?? 0}%`, sub: getActiveLabel(card.activePercent?.overall ?? 0) },
-                  ].map((m) => (
-                    <View key={m.label} style={styles.metricBox}>
-                      <Text style={styles.metricLabel}>{m.label}</Text>
-                      <Text style={styles.metricVal}>{m.value}</Text>
-                      <Text style={styles.metricSub}>{m.sub}</Text>
+                {/* ── MAIN ROW: Left (user info) + Right (QR) ── */}
+                <View style={{ flexDirection: "row", flex: 1, alignItems: "center" }}>
+                  {/* Left: avatar + name + ID + metrics */}
+                  <View style={{ flex: 1 }}>
+                    {/* Avatar + Name */}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      <LinearGradient colors={selectedAvatar.bg as [string, string]} style={{ width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" }}>
+                        <Text style={{ fontSize: 18 }}>{selectedAvatar.emoji}</Text>
+                      </LinearGradient>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13 }} numberOfLines={1}>
+                          {card.name || "AORANE User"}
+                        </Text>
+                        <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 9, fontFamily: "Inter_400Regular" }}>
+                          {card.age ? `Age ${card.age}` : ""}
+                          {card.age && card.gender ? " • " : ""}
+                          {card.gender === "male" ? "Male" : card.gender === "female" ? "Female" : ""}
+                        </Text>
+                      </View>
                     </View>
-                  ))}
-                </View>
-
-                {/* ── ACTIVE PERCENTAGE BAR ── */}
-                {card.activePercent && (
-                  <View style={{ marginBottom: 18 }}>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
-                      <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 9, fontFamily: "Inter_500Medium", letterSpacing: 1 }}>ACTIVITY SCORE</Text>
-                      <Text style={{ color: "#FFF", fontSize: 9, fontFamily: "Inter_700Bold" }}>{card.activePercent.overall}% Active</Text>
-                    </View>
-                    <View style={{ height: 6, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 3, overflow: "hidden" }}>
-                      <LinearGradient
-                        colors={card.activePercent.overall >= 70 ? ["#00F5A0", "#00D9F5"] : card.activePercent.overall >= 40 ? ["#F59E0B", "#EF4444"] : ["#6B7280", "#4B5563"]}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                        style={{ height: 6, width: `${Math.max(card.activePercent.overall, 3)}%`, borderRadius: 3 }}
-                      />
-                    </View>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 5 }}>
-                      {[
-                        { icon: "🍛", val: card.activePercent.foodPct },
-                        { icon: "💧", val: card.activePercent.waterPct },
-                        { icon: "🏃", val: card.activePercent.exercisePct },
-                        { icon: "💊", val: card.activePercent.medicinePct },
-                      ].map((it) => (
-                        <View key={it.icon} style={{ alignItems: "center" }}>
-                          <Text style={{ fontSize: 11 }}>{it.icon}</Text>
-                          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 9, fontFamily: "Inter_500Medium" }}>{it.val}%</Text>
+                    {/* ID */}
+                    <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 7, fontFamily: "Inter_500Medium", letterSpacing: 1.5, marginBottom: 1 }}>AORANE ID</Text>
+                    <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 2, marginBottom: 8 }}>
+                      {formatId(card.aoraneId)}
+                    </Text>
+                    {/* Metric chips */}
+                    <View style={{ flexDirection: "row", gap: 6 }}>
+                      <View style={{ backgroundColor: "rgba(255,255,255,0.14)", borderRadius: 7, paddingHorizontal: 7, paddingVertical: 4, alignItems: "center" }}>
+                        <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 6, fontFamily: "Inter_500Medium", letterSpacing: 0.8 }}>HEALTH</Text>
+                        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13 }}>{Math.round(card.activePercent?.overall ?? 0)}%</Text>
+                      </View>
+                      <View style={{ backgroundColor: "rgba(255,255,255,0.14)", borderRadius: 7, paddingHorizontal: 7, paddingVertical: 4, alignItems: "center" }}>
+                        <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 6, fontFamily: "Inter_500Medium", letterSpacing: 0.8 }}>ACTIVE</Text>
+                        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13 }}>{Math.round(card.activePercent?.exercisePct ?? 0)}%</Text>
+                      </View>
+                      {card.bloodGroup ? (
+                        <View style={{ backgroundColor: "rgba(255,255,255,0.14)", borderRadius: 7, paddingHorizontal: 7, paddingVertical: 4, alignItems: "center" }}>
+                          <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 6, fontFamily: "Inter_500Medium", letterSpacing: 0.8 }}>BLOOD</Text>
+                          <Text style={{ color: "#FFA0A0", fontFamily: "Inter_700Bold", fontSize: 13 }}>{card.bloodGroup}</Text>
                         </View>
-                      ))}
+                      ) : null}
                     </View>
                   </View>
-                )}
 
-                {/* ── BOTTOM: QR CODE + DIVIDER ── */}
-                <View style={styles.cardBottom}>
-                  {/* Left: QR code — only if enabled in company settings */}
-                  {company.scorecardShowQr && (
-                    <View style={styles.qrBox}>
-                      <QRCode
-                        value={PLAYSTORE_URL}
-                        size={64}
-                        color="#FFFFFF"
-                        backgroundColor="transparent"
-                      />
-                      <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 7, fontFamily: "Inter_400Regular", marginTop: 4, textAlign: "center" }}>
-                        Scan to Download
-                      </Text>
+                  {/* Right: QR code */}
+                  <View style={{ alignItems: "center", marginLeft: 12 }}>
+                    <View style={{ backgroundColor: "#FFF", borderRadius: 8, padding: 5 }}>
+                      <QRCode value={AORANE_URL} size={58} color="#023E8A" backgroundColor="#FFF" />
                     </View>
-                  )}
-                  {/* Divider */}
-                  <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.15)", marginHorizontal: 14, alignSelf: "stretch" }} />
-                  {/* Right: chip + company */}
-                  <View style={{ flex: 1, justifyContent: "space-between" }}>
-                    {/* Chip simulation */}
-                    <View style={styles.chip}>
-                      {[0,1,2,3,4,5].map((i) => (
-                        <View key={i} style={{ flexDirection: "row" }}>
-                          {[0,1,2].map((j) => (
-                            <View key={j} style={{ width: 6, height: 5, borderWidth: 0.5, borderColor: "rgba(255,220,100,0.6)", margin: 0.5, borderRadius: 1 }} />
-                          ))}
-                        </View>
-                      ))}
-                    </View>
-                    <View>
-                      <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 8, fontFamily: "Inter_400Regular", marginBottom: 2 }}>VALID THRU</Text>
-                      <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>LIFETIME</Text>
-                    </View>
+                    <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 7, fontFamily: "Inter_400Regular", marginTop: 3 }}>
+                      aorane.com
+                    </Text>
                   </View>
                 </View>
 
-                {/* Company name */}
-                <View style={styles.companyRow}>
-                  <View style={{ height: 1, flex: 1, backgroundColor: "rgba(255,255,255,0.12)", marginRight: 10 }} />
-                  <Text style={styles.companyText} numberOfLines={1}>
-                    {company.companyName}{company.website ? ` · ${company.website}` : ""} · India
-                  </Text>
-                  <View style={{ height: 1, flex: 1, backgroundColor: "rgba(255,255,255,0.12)", marginLeft: 10 }} />
-                </View>
+                {/* ── BOTTOM: date footer ── */}
+                <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 6, fontFamily: "Inter_400Regular", marginTop: 6, letterSpacing: 0.5 }}>
+                  {formatCardDate(shareDate)} • स्वास्थ्य ही धन
+                </Text>
               </LinearGradient>
             </View>
 
@@ -603,9 +533,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   cardGrad: {
-    borderRadius: 22,
-    padding: 24,
+    borderRadius: 18,
+    padding: 16,
     overflow: "hidden",
+    flex: 1,
   },
   planBadge: {
     borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,

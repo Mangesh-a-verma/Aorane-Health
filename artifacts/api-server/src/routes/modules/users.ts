@@ -106,9 +106,14 @@ router.patch("/users/profile", requireAuth, async (req: AuthRequest, res) => {
 
     if (fields.length === 0) { res.json({ profile: null }); return; }
 
+    // UPSERT: create row if missing, else update existing fields
+    const colNames = fields.map((f) => f.split("=")[0]);
+    const colPlaceholders = colNames.map((_, i) => `$${i + 1}`).join(",");
+    const setClause = fields.join(",");
     vals.push(req.userId!);
     const result = await pool.query(
-      `UPDATE user_profiles SET ${fields.join(",")} WHERE user_id=$${idx} RETURNING *`,
+      `INSERT INTO user_profiles (user_id,${colNames.join(",")}) VALUES ($${idx},${colPlaceholders})
+       ON CONFLICT (user_id) DO UPDATE SET ${setClause} RETURNING *`,
       vals
     );
     res.json({ profile: result.rows[0] ?? null });
