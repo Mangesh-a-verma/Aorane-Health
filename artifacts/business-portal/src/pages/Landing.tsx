@@ -1,615 +1,667 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
-import {
-  Heart, Brain, Building2, Users, BarChart3, Shield, ArrowRight,
-  Eye, EyeOff, AlertCircle, Activity, Zap, Lock, TrendingUp,
-  CheckCircle2, ChevronLeft, ChevronRight, Star, Stethoscope,
-  Dumbbell, HandHeart, FileText, UserCheck, Globe, Leaf,
-} from "lucide-react";
 
-const SLIDES = [
-  {
-    id: "corporate",
-    badge: "🏢 Corporate Wellness",
-    color: "#0EA5E9",
-    glow: "rgba(14,165,233,0.3)",
-    gradient: "linear-gradient(135deg, #0EA5E9, #3B82F6)",
-    headline: "Apne Employees Ka Dhyan Rakho",
-    sub: "Healthy employees = productive company. AORANE se apni team ki health monitor karo aur absenteeism 40% tak kam karo.",
-    benefits: [
-      { icon: Activity, text: "Real-time employee health dashboard" },
-      { icon: BarChart3, text: "Department-wise health analytics" },
-      { icon: Brain, text: "AI stress & burnout detection" },
-      { icon: UserCheck, text: "Annual health report for each employee" },
-    ],
-    stats: [{ val: "40%", label: "Absenteeism Reduction" }, { val: "3x", label: "ROI on Health Benefits" }, { val: "92%", label: "Employee Satisfaction" }],
-    graphic: (
-      <div className="relative w-full h-64 flex items-center justify-center">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-48 h-48 rounded-full opacity-20 animate-pulse" style={{ background: "radial-gradient(circle, #0EA5E9, transparent)" }} />
-        </div>
-        <div className="relative z-10 grid grid-cols-2 gap-4">
-          {[
-            { icon: "💼", label: "HR Dashboard", color: "#0EA5E9" },
-            { icon: "📊", label: "Analytics", color: "#3B82F6" },
-            { icon: "🧠", label: "AI Insights", color: "#8B5CF6" },
-            { icon: "✅", label: "Health Score", color: "#10B981" },
-          ].map(item => (
-            <div key={item.label} className="flex flex-col items-center gap-2 p-3 rounded-2xl border"
-              style={{ background: "rgba(255,255,255,0.06)", borderColor: item.color + "30" }}>
-              <span className="text-3xl">{item.icon}</span>
-              <span className="text-xs font-medium" style={{ color: item.color }}>{item.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    ),
-  },
-  {
-    id: "hospital",
-    badge: "🏥 Hospitals & Clinics",
-    color: "#EF4444",
-    glow: "rgba(239,68,68,0.3)",
-    gradient: "linear-gradient(135deg, #EF4444, #F97316)",
-    headline: "Patient Care Ko Next Level Pe Le Jao",
-    sub: "Patients ki complete health history ek jagah. Reports, medicines, follow-ups — sab kuch digital aur secure.",
-    benefits: [
-      { icon: Stethoscope, text: "Patient health records & history" },
-      { icon: FileText, text: "AI-powered medical report scanning" },
-      { icon: Brain, text: "Post-treatment recovery tracking" },
-      { icon: Shield, text: "DPDP compliant data security" },
-    ],
-    stats: [{ val: "60%", label: "Faster Diagnosis" }, { val: "10x", label: "Record Retrieval Speed" }, { val: "0", label: "Paper Records" }],
-    graphic: (
-      <div className="relative w-full h-64 flex items-center justify-center">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-48 h-48 rounded-full opacity-20 animate-pulse" style={{ background: "radial-gradient(circle, #EF4444, transparent)" }} />
-        </div>
-        <div className="relative z-10 flex flex-col items-center gap-3">
-          <div className="text-6xl">🏥</div>
-          <div className="flex gap-3">
-            {["🩺", "💊", "📋", "🩻"].map(e => (
-              <div key={e} className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl border"
-                style={{ background: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.25)" }}>
-                {e}
-              </div>
-            ))}
-          </div>
-          <div className="px-4 py-2 rounded-full text-sm font-bold" style={{ background: "rgba(239,68,68,0.2)", color: "#FCA5A5" }}>
-            AI Report Scanner Active ✓
-          </div>
-        </div>
-      </div>
-    ),
-  },
-  {
-    id: "yoga",
-    badge: "🧘 Yoga & Fitness Centers",
-    color: "#10B981",
-    glow: "rgba(16,185,129,0.3)",
-    gradient: "linear-gradient(135deg, #10B981, #06B6D4)",
-    headline: "Members Ki Fitness Journey Track Karo",
-    sub: "Gym attendance se lekar diet plan tak — har member ki progress track karo. Member retention 40% badhao.",
-    benefits: [
-      { icon: Dumbbell, text: "Individual member fitness tracking" },
-      { icon: TrendingUp, text: "Progress charts & goal setting" },
-      { icon: Leaf, text: "AI diet & nutrition plans" },
-      { icon: Users, text: "Group class & attendance management" },
-    ],
-    stats: [{ val: "40%", label: "Better Retention" }, { val: "5x", label: "Member Engagement" }, { val: "100%", label: "Digital Records" }],
-    graphic: (
-      <div className="relative w-full h-64 flex items-center justify-center">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-48 h-48 rounded-full opacity-20 animate-pulse" style={{ background: "radial-gradient(circle, #10B981, transparent)" }} />
-        </div>
-        <div className="relative z-10 flex flex-col items-center gap-4">
-          <div className="text-7xl">🧘</div>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "Calories", val: "2,340", color: "#10B981" },
-              { label: "Steps", val: "8,200", color: "#06B6D4" },
-              { label: "Sleep", val: "7.5h", color: "#8B5CF6" },
-            ].map(s => (
-              <div key={s.label} className="text-center p-2 rounded-xl border"
-                style={{ background: "rgba(16,185,129,0.1)", borderColor: s.color + "30" }}>
-                <div className="text-sm font-bold" style={{ color: s.color }}>{s.val}</div>
-                <div className="text-xs text-white/40">{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    ),
-  },
-  {
-    id: "insurance",
-    badge: "🛡️ Insurance Companies",
-    color: "#8B5CF6",
-    glow: "rgba(139,92,246,0.3)",
-    gradient: "linear-gradient(135deg, #8B5CF6, #EC4899)",
-    headline: "Health Data Se Sahi Risk Assessment Karo",
-    sub: "Real health data se accurate premium calculation aur wellness programs. Members ko healthy rakhne ka incentive do.",
-    benefits: [
-      { icon: Shield, text: "Real-time health risk assessment" },
-      { icon: BarChart3, text: "Wellness program tracking & rewards" },
-      { icon: FileText, text: "Digital claim documentation" },
-      { icon: TrendingUp, text: "Predictive health analytics" },
-    ],
-    stats: [{ val: "35%", label: "Claim Reduction" }, { val: "2x", label: "Premium Accuracy" }, { val: "80%", label: "Member Wellness Score" }],
-    graphic: (
-      <div className="relative w-full h-64 flex items-center justify-center">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-48 h-48 rounded-full opacity-20 animate-pulse" style={{ background: "radial-gradient(circle, #8B5CF6, transparent)" }} />
-        </div>
-        <div className="relative z-10 flex flex-col items-center gap-4">
-          <div className="text-6xl">🛡️</div>
-          <div className="flex flex-col gap-2 w-52">
-            {[
-              { label: "Low Risk Members", pct: 72, color: "#10B981" },
-              { label: "Medium Risk", pct: 21, color: "#F59E0B" },
-              { label: "High Risk", pct: 7, color: "#EF4444" },
-            ].map(b => (
-              <div key={b.label}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-white/50">{b.label}</span>
-                  <span style={{ color: b.color }}>{b.pct}%</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-white/10">
-                  <div className="h-full rounded-full" style={{ width: `${b.pct}%`, background: b.color }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    ),
-  },
-  {
-    id: "ngo",
-    badge: "🤝 NGOs & Social Orgs",
-    color: "#F59E0B",
-    glow: "rgba(245,158,11,0.3)",
-    gradient: "linear-gradient(135deg, #F59E0B, #EF4444)",
-    headline: "Samaj Ki Sehat Ka Dhyan Rakho",
-    sub: "Underserved communities ke liye affordable health management. AORANE ke zariye health equity create karo.",
-    benefits: [
-      { icon: HandHeart, text: "Community health monitoring" },
-      { icon: Globe, text: "10 Indian language support" },
-      { icon: Users, text: "Bulk member enrollment" },
-      { icon: Zap, text: "Free basic plan for NGOs" },
-    ],
-    stats: [{ val: "10", label: "Indian Languages" }, { val: "Free", label: "NGO Basic Plan" }, { val: "∞", label: "Communities Reached" }],
-    graphic: (
-      <div className="relative w-full h-64 flex items-center justify-center">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-48 h-48 rounded-full opacity-20 animate-pulse" style={{ background: "radial-gradient(circle, #F59E0B, transparent)" }} />
-        </div>
-        <div className="relative z-10 flex flex-col items-center gap-4">
-          <div className="text-6xl">🤝</div>
-          <div className="grid grid-cols-2 gap-2">
-            {["हिंदी", "मराठी", "বাংলা", "தமிழ்", "తెలుగు", "ਪੰਜਾਬੀ"].map(lang => (
-              <div key={lang} className="px-3 py-1.5 rounded-full text-xs font-medium border text-center"
-                style={{ background: "rgba(245,158,11,0.12)", borderColor: "rgba(245,158,11,0.25)", color: "#FCD34D" }}>
-                {lang}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    ),
-  },
-];
+const PRIMARY = "#005d90";
+const TEAL = "#006b56";
+const TEAL_LIGHT = "#6dfad4";
+const BG = "#f7f9fe";
 
-const WHY_AORANE = [
-  { icon: Shield, title: "DPDP Compliant", desc: "India ka Data Protection law — poora compliance. Employee data 100% secure.", color: "#0EA5E9" },
-  { icon: Brain, title: "AI-Powered Insights", desc: "NVIDIA LLaMA AI se personalized health recommendations har member ke liye.", color: "#8B5CF6" },
-  { icon: Globe, title: "10 Indian Languages", desc: "Hindi, Marathi, Bengali, Tamil — har employee apni bhasha mein.", color: "#10B981" },
-  { icon: BarChart3, title: "Real-time Analytics", desc: "Live health dashboards, trend reports, aur export options.", color: "#F59E0B" },
-  { icon: Zap, title: "Easy Onboarding", desc: "5 minute mein setup. CSV se bulk member import. Koi training nahi chahiye.", color: "#EF4444" },
-  { icon: Lock, title: "256-bit Encrypted", desc: "Military-grade encryption. Har health record safe aur private.", color: "#06B6D4" },
-];
+function useCountUp(target: number, duration = 2000, start = false) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!start) return;
+    let startTime: number | null = null;
+    const step = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      setCount(Math.floor(progress * target));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [start, target, duration]);
+  return count;
+}
 
-const TESTIMONIALS = [
-  { name: "Rajesh Sharma", org: "TechCorp India, HR Head", text: "AORANE se humari team ka average health score 23 points badha. Absenteeism 38% kam hua. ROI ekdum clear hai.", stars: 5, type: "🏢" },
-  { name: "Dr. Priya Nair", org: "Nair Wellness Clinic, Pune", text: "Patient records dhundhna itna easy ho gaya. AI report scanner toh kamal ka feature hai — genuinely helpful.", stars: 5, type: "🏥" },
-  { name: "Ankit Rawat", org: "FitLife Gyms, Delhi NCR", text: "Members ab app use karte hain daily. Retention 40% improve hua hai first 6 months mein hi.", stars: 5, type: "💪" },
-];
+function Icon({ name, size = 24, color = PRIMARY }: { name: string; size?: number; color?: string }) {
+  return (
+    <span
+      className="material-symbols-outlined"
+      style={{ fontSize: size, color, lineHeight: 1, display: "inline-block", userSelect: "none" }}
+    >
+      {name}
+    </span>
+  );
+}
+
+function StatCard({ icon, value, suffix, label, started }: {
+  icon: string; value: number; suffix: string; label: string; started: boolean;
+}) {
+  const count = useCountUp(value, 2000, started);
+  return (
+    <div style={{ textAlign: "center", padding: "2rem 1rem" }}>
+      <div style={{ marginBottom: 12 }}><Icon name={icon} size={36} color={TEAL_LIGHT} /></div>
+      <div style={{ fontSize: "clamp(36px,4vw,52px)", fontWeight: 800, color: "white", fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1 }}>
+        {count}{suffix}
+      </div>
+      <div style={{ color: "rgba(255,255,255,0.75)", fontSize: 15, marginTop: 8, fontWeight: 500 }}>{label}</div>
+    </div>
+  );
+}
+
+function PricingCard({
+  plan, price, annualPrice, features, highlighted = false, billing,
+}: {
+  plan: string; price: number; annualPrice: number; features: string[]; highlighted?: boolean; billing: "monthly" | "annual";
+}) {
+  const [, navigate] = useLocation();
+  const displayPrice = billing === "annual" ? annualPrice : price;
+  return (
+    <div style={{
+      background: highlighted
+        ? `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`
+        : "rgba(255,255,255,0.9)",
+      backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+      borderRadius: 24,
+      border: highlighted ? "none" : "1.5px solid rgba(0,93,144,0.1)",
+      padding: "2.5rem 2rem",
+      display: "flex", flexDirection: "column" as const, gap: 24,
+      boxShadow: highlighted ? "0 24px 64px rgba(0,93,144,0.25)" : "0 4px 24px rgba(0,0,0,0.06)",
+      transform: highlighted ? "scale(1.04)" : "scale(1)",
+      position: "relative" as const, overflow: "hidden",
+      transition: "transform 0.2s, box-shadow 0.2s",
+    }}>
+      {highlighted && (
+        <div style={{ position: "absolute", top: 18, right: 18, background: "rgba(255,255,255,0.18)", color: "white", borderRadius: 99, padding: "4px 14px", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" as const }}>
+          Most Popular
+        </div>
+      )}
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" as const, color: highlighted ? "rgba(255,255,255,0.7)" : TEAL, marginBottom: 10 }}>{plan}</div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 4 }}>
+          <span style={{ fontSize: "clamp(36px,3.5vw,48px)", fontWeight: 800, color: highlighted ? "white" : "#181c20", fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1 }}>
+            {displayPrice === 0 ? "Free" : `₹${displayPrice}`}
+          </span>
+          {displayPrice > 0 && (
+            <span style={{ color: highlighted ? "rgba(255,255,255,0.65)" : "#6b7280", fontSize: 14, marginBottom: 8 }}>/user/mo</span>
+          )}
+        </div>
+        {billing === "annual" && displayPrice > 0 && (
+          <div style={{ fontSize: 12, color: highlighted ? "rgba(255,255,255,0.65)" : TEAL, marginTop: 4, fontWeight: 600 }}>Save 10% — billed annually</div>
+        )}
+      </div>
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column" as const, gap: 12 }}>
+        {features.map((f, i) => (
+          <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: highlighted ? "rgba(255,255,255,0.85)" : "#374151" }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18, color: highlighted ? TEAL_LIGHT : TEAL, flexShrink: 0, marginTop: 1 }}>check_circle</span>
+            {f}
+          </li>
+        ))}
+      </ul>
+      <button
+        onClick={() => navigate("/register")}
+        style={{
+          background: highlighted ? "rgba(255,255,255,0.18)" : `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`,
+          color: "white", border: highlighted ? "2px solid rgba(255,255,255,0.35)" : "none",
+          borderRadius: 99, padding: "14px 0", fontWeight: 700, fontSize: 15,
+          cursor: "pointer", width: "100%", transition: "opacity 0.2s",
+        }}
+      >
+        {displayPrice === 0 ? "Get Started Free" : "Start Free Trial"}
+      </button>
+    </div>
+  );
+}
 
 export default function Landing() {
   const [, navigate] = useLocation();
-  const { login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPass, setShowPass] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [current, setCurrent] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
+  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+  const [statsStarted, setStatsStarted] = useState(false);
+  const statsRef = useRef<HTMLDivElement>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
-  const goTo = useCallback((idx: number) => {
-    setCurrent((idx + SLIDES.length) % SLIDES.length);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
-    if (isPaused) return;
-    const t = setInterval(() => setCurrent(c => (c + 1) % SLIDES.length), 5000);
-    return () => clearInterval(t);
-  }, [isPaused]);
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setStatsStarted(true); },
+      { threshold: 0.3 }
+    );
+    if (statsRef.current) observer.observe(statsRef.current);
+    return () => observer.disconnect();
+  }, []);
 
-  const slide = SLIDES[current];
+  const segments = [
+    { icon: "corporate_fare", title: "Corporates & Enterprises", benefits: ["Real-time employee wellness dashboard", "Reduce sick leave with proactive alerts", "Export health reports for HR & insurance"] },
+    { icon: "local_hospital", title: "Hospitals & Clinics", benefits: ["Monitor staff fitness & shift readiness", "Patient follow-up & engagement tools", "Baseline health data for all staff members"] },
+    { icon: "fitness_center", title: "Gyms & Fitness Centers", benefits: ["Member activity & progress score tracking", "Automated engagement and retention nudges", "Flexible subscription seat management"] },
+    { icon: "self_improvement", title: "Yoga & Wellness Studios", benefits: ["Stress score & mindfulness trend tracking", "Personalized wellness journey per member", "Session reminders & targeted health nudges"] },
+    { icon: "school", title: "Schools & Colleges", benefits: ["Student & staff health monitoring", "Sports performance data & activity tracking", "Monthly health report cards for leadership"] },
+    { icon: "policy", title: "Insurance & TPAs", benefits: ["Verified health data for claim processing", "Proactive risk assessment by population", "Corporate portfolio health analytics"] },
+  ];
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) { setError("Email aur password required hai"); return; }
-    setIsLoading(true);
-    setError("");
-    try {
-      const res = await api.login(email, password);
-      login(res.token, res.admin, res.org);
-      navigate("/dashboard");
-    } catch (err) {
-      setError((err as Error).message || "Login failed. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const features = [
+    {
+      icon: "dashboard",
+      title: "Real-Time Health Dashboard",
+      desc: "One unified view of your entire organization's health. Track water intake, nutrition, exercise, sleep quality, and stress levels for every member — updated in real time.",
+      points: ["Live health scores for every member or employee", "Department-wise analytics and trend comparisons", "Exportable PDF health reports for HR and compliance audits"],
+      metricLabels: ["Engagement", "Completion", "Improvement", "Avg Session"],
+      metricValues: ["85%", "92%", "12%↑", "30 min"],
+    },
+    {
+      icon: "psychology",
+      title: "AI-Powered Health Insights",
+      desc: "AORANE's intelligent health engine analyzes behavioral patterns and sends proactive alerts before problems escalate — helping you act early, not just observe.",
+      points: ["Predictive burnout and absenteeism detection by AI", "Smart food and exercise recommendations per individual", "AORANE AI health scorecard with 100-point scoring system"],
+      metricLabels: ["Accuracy", "Alert Speed", "Risk Detection", "Uptime"],
+      metricValues: ["94%", "< 1min", "Early", "99.9%"],
+    },
+    {
+      icon: "manage_accounts",
+      title: "Seamless Seat Management",
+      desc: "Add or remove members in seconds. Control access, apply promo codes, and manage billing — all from one clean interface with no technical knowledge required.",
+      points: ["Add and remove members in under 30 seconds", "Promo codes and flexible monthly or annual billing", "Role-based access control for admins and HR managers"],
+      metricLabels: ["Setup Time", "Members", "Uptime", "Support"],
+      metricValues: ["5 min", "Unlimited", "99.9%", "24/7"],
+    },
+  ];
+
+  const plans = [
+    {
+      plan: "Starter",
+      price: 0, annualPrice: 0,
+      features: ["Up to 10 members", "Basic health dashboard", "Food & water logging", "Exercise tracking", "Email support"],
+    },
+    {
+      plan: "Max",
+      price: 199, annualPrice: 179,
+      features: ["Up to 500 members", "Full health analytics dashboard", "AI health scorecard", "Department-level reports", "Blood bank connections", "Priority support"],
+      highlighted: true,
+    },
+    {
+      plan: "Pro",
+      price: 249, annualPrice: 224,
+      features: ["Unlimited members", "Everything in Max", "Custom branding", "API access & integrations", "Dedicated account manager", "SLA guarantee"],
+    },
+  ];
+
+  const testimonials = [
+    { quote: "AORANE transformed how we manage our 300-employee wellness program. Sick leave dropped by 28% within 3 months of rollout.", name: "Priya Sharma", role: "HR Director", company: "TechVenture Pune", initials: "PS" },
+    { quote: "Our gym members are more engaged than ever. The health scoring and automated reminders have significantly improved member retention.", name: "Rahul Mehta", role: "Founder", company: "FitZone Mumbai", initials: "RM" },
+    { quote: "As a hospital, monitoring staff health is critical. AORANE gives us real-time visibility into our entire team's wellness that we never had before.", name: "Dr. Anita Kulkarni", role: "Chief Medical Officer", company: "LifeCare Hospital Nagpur", initials: "AK" },
+  ];
 
   return (
-    <div className="min-h-screen text-white overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif", background: "linear-gradient(135deg, #020B18 0%, #051B2C 40%, #081F30 70%, #04141F 100%)" }}>
+    <div style={{ fontFamily: "'Inter', sans-serif", background: BG, color: "#181c20", overflowX: "hidden" }}>
+      <style>{`
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes float { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-14px); } }
+        .card-lift { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card-lift:hover { transform: translateY(-8px); box-shadow: 0 32px 64px -12px rgba(0,93,144,0.13); }
+        .btn-glow:hover { opacity: 0.92; transform: scale(1.03); box-shadow: 0 8px 32px rgba(0,93,144,0.4); }
+        .nav-link { color: #404850; font-size: 14px; font-weight: 600; text-decoration: none; transition: color 0.2s; }
+        .nav-link:hover { color: ${PRIMARY}; }
+        @media (max-width: 900px) {
+          .hero-grid { grid-template-columns: 1fr !important; }
+          .hero-mockup { display: none !important; }
+          .features-grid { grid-template-columns: 1fr !important; }
+          .investor-grid { grid-template-columns: 1fr !important; }
+          .footer-grid { grid-template-columns: 1fr 1fr !important; }
+        }
+        @media (max-width: 768px) {
+          .hide-mobile { display: none !important; }
+          .show-mobile { display: flex !important; }
+          .segment-grid { grid-template-columns: 1fr 1fr !important; }
+          .pricing-grid { grid-template-columns: 1fr !important; }
+          .stats-grid { grid-template-columns: 1fr 1fr !important; }
+          .testimonial-grid { grid-template-columns: 1fr !important; }
+          .steps-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 480px) {
+          .segment-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
 
-      {/* Background Orbs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute -top-48 -right-48 w-[600px] h-[600px] rounded-full opacity-15 transition-all duration-1000"
-          style={{ background: `radial-gradient(circle, ${slide.color} 0%, transparent 70%)`, filter: "blur(60px)" }} />
-        <div className="absolute top-1/2 -left-32 w-[400px] h-[400px] rounded-full opacity-10"
-          style={{ background: "radial-gradient(circle, #10B981 0%, transparent 70%)", filter: "blur(50px)" }} />
-        <div className="absolute inset-0 opacity-[0.025]"
-          style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
-      </div>
-
-      {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b" style={{ background: "rgba(2,11,24,0.80)", backdropFilter: "blur(20px)", borderColor: "rgba(255,255,255,0.07)" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
-              style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 0 20px rgba(14,165,233,0.4)" }}>
-              <Heart size={16} className="text-white" />
+      {/* STICKY NAVIGATION */}
+      <nav style={{
+        position: "sticky", top: 0, zIndex: 50,
+        background: scrolled ? "rgba(247,249,254,0.95)" : "rgba(247,249,254,0.85)",
+        backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+        borderBottom: "1px solid rgba(191,199,209,0.25)",
+        boxShadow: scrolled ? "0 4px 24px rgba(0,0,0,0.07)" : "none",
+        transition: "all 0.3s ease",
+      }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px", height: 72, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          {/* Logo */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 36, height: 36, background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="monitor_heart" size={20} color="white" />
             </div>
-            <span className="text-xl font-bold tracking-tight"
-              style={{ background: "linear-gradient(90deg, #fff, #94d2e8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>AORANE</span>
-            <span className="text-xs px-2 py-0.5 rounded-full ml-1 hidden sm:block"
-              style={{ background: "rgba(14,165,233,0.15)", color: "#7DD3FC", border: "1px solid rgba(14,165,233,0.2)" }}>
-              Business Portal
+            <span style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.02em" }}>
+              AORANE <span style={{ color: PRIMARY }}>Business</span>
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            <a href="#login-card" className="text-sm font-semibold text-white/50 hover:text-white transition-colors hidden sm:block">
-              Sign In
-            </a>
-            <a href="/register"
-              className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl transition-all hover:scale-105"
-              style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 0 16px rgba(14,165,233,0.3)" }}>
-              Get Started Free
-            </a>
+          {/* Desktop Nav */}
+          <div className="hide-mobile" style={{ display: "flex", alignItems: "center", gap: 36 }}>
+            {["Solutions", "Features", "Pricing", "About"].map(l => (
+              <a key={l} href={`#${l.toLowerCase()}`} className="nav-link">{l}</a>
+            ))}
           </div>
+          <div className="hide-mobile" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={() => navigate("/login")} style={{ background: "none", border: "none", color: PRIMARY, fontWeight: 700, fontSize: 14, cursor: "pointer", padding: "10px 20px" }}>
+              Log In
+            </button>
+            <button
+              onClick={() => navigate("/register")}
+              className="btn-glow"
+              style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, color: "white", border: "none", borderRadius: 99, padding: "11px 26px", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 4px 16px rgba(0,93,144,0.28)", transition: "all 0.2s" }}
+            >
+              Get Started
+            </button>
+          </div>
+          {/* Mobile Hamburger */}
+          <button
+            className="show-mobile"
+            onClick={() => setMobileNavOpen(!mobileNavOpen)}
+            style={{ display: "none", background: "none", border: "none", cursor: "pointer", padding: 8, alignItems: "center", justifyContent: "center" }}
+          >
+            <Icon name={mobileNavOpen ? "close" : "menu"} size={26} color="#181c20" />
+          </button>
         </div>
+        {mobileNavOpen && (
+          <div style={{ background: "white", borderTop: "1px solid rgba(191,199,209,0.3)", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
+            {["Solutions", "Features", "Pricing", "About"].map(l => (
+              <a key={l} href={`#${l.toLowerCase()}`} className="nav-link" onClick={() => setMobileNavOpen(false)}>{l}</a>
+            ))}
+            <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+              <button onClick={() => navigate("/login")} style={{ flex: 1, background: "none", border: `2px solid ${PRIMARY}`, color: PRIMARY, fontWeight: 700, fontSize: 14, cursor: "pointer", borderRadius: 99, padding: "12px 0" }}>Log In</button>
+              <button onClick={() => navigate("/register")} style={{ flex: 1, background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, color: "white", border: "none", borderRadius: 99, padding: "12px 0", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Get Started</button>
+            </div>
+          </div>
+        )}
       </nav>
 
-      {/* ── HERO: Slider + Fixed Login ── */}
-      <section className="relative z-10 pt-12 pb-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-10 items-start">
+      {/* HERO SECTION */}
+      <section id="solutions" style={{
+        position: "relative", overflow: "hidden",
+        padding: "80px 24px 120px",
+        backgroundImage: "radial-gradient(at 0% 0%, hsla(196,100%,93%,0.9) 0, transparent 50%), radial-gradient(at 55% 0%, hsla(164,79%,92%,0.65) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(202,84%,94%,0.75) 0, transparent 50%)",
+        backgroundColor: BG,
+      }}>
+        <div style={{ position: "absolute", top: -100, right: -100, width: 500, height: 500, background: "rgba(109,250,212,0.12)", borderRadius: "50%", filter: "blur(100px)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -60, left: -60, width: 320, height: 320, background: "rgba(0,93,144,0.07)", borderRadius: "50%", filter: "blur(80px)", pointerEvents: "none" }} />
 
-            {/* LEFT: Slider */}
-            <div
-              className="relative rounded-3xl overflow-hidden border min-h-[560px] flex flex-col"
-              style={{ background: "rgba(255,255,255,0.03)", backdropFilter: "blur(16px)", borderColor: slide.color + "25", boxShadow: `0 0 40px ${slide.glow}20`, transition: "border-color 0.6s, box-shadow 0.6s" }}
-              onMouseEnter={() => setIsPaused(true)}
-              onMouseLeave={() => setIsPaused(false)}
-            >
-              {/* Slide accent bar */}
-              <div className="h-1 w-full transition-all duration-700" style={{ background: slide.gradient }} />
-
-              <div className="p-8 flex flex-col flex-1">
-                {/* Badge */}
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold mb-6 self-start border"
-                  style={{ background: slide.color + "18", borderColor: slide.color + "35", color: slide.color }}>
-                  <span>{slide.badge}</span>
-                </div>
-
-                {/* Graphic area */}
-                <div className="mb-6">
-                  {slide.graphic}
-                </div>
-
-                {/* Headline */}
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-white mb-3 leading-tight transition-all duration-500">
-                  {slide.headline}
-                </h1>
-                <p className="text-white/50 text-sm leading-relaxed mb-6">
-                  {slide.sub}
-                </p>
-
-                {/* Benefits */}
-                <div className="grid grid-cols-2 gap-2 mb-6">
-                  {slide.benefits.map((b, i) => (
-                    <div key={i} className="flex items-start gap-2 p-2.5 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.04)" }}>
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ background: slide.color + "20" }}>
-                        <b.icon size={13} style={{ color: slide.color }} />
-                      </div>
-                      <span className="text-xs text-white/70 leading-tight">{b.text}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Stats */}
-                <div className="flex gap-4 pb-2 flex-wrap">
-                  {slide.stats.map((s, i) => (
-                    <div key={i} className="text-center">
-                      <div className="text-xl font-extrabold" style={{ color: slide.color }}>{s.val}</div>
-                      <div className="text-xs text-white/35">{s.label}</div>
-                    </div>
-                  ))}
-                </div>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div className="hero-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
+            {/* Left — Text */}
+            <div style={{ animation: "fadeUp 0.8s ease forwards" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,107,86,0.09)", borderRadius: 99, padding: "8px 18px", marginBottom: 28 }}>
+                <Icon name="bolt" size={15} color={TEAL} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: TEAL, letterSpacing: 0.3 }}>India's Leading Corporate Health Platform</span>
               </div>
-
-              {/* Navigation controls */}
-              <div className="px-8 pb-6 flex items-center justify-between">
-                {/* Dots */}
-                <div className="flex gap-2">
-                  {SLIDES.map((s, i) => (
-                    <button key={i} onClick={() => goTo(i)}
-                      className="rounded-full transition-all duration-300"
-                      style={{
-                        width: i === current ? "24px" : "8px",
-                        height: "8px",
-                        background: i === current ? slide.color : "rgba(255,255,255,0.2)",
-                      }}
-                    />
-                  ))}
-                </div>
-                {/* Arrows */}
-                <div className="flex gap-2">
-                  <button onClick={() => goTo(current - 1)}
-                    className="w-9 h-9 rounded-xl flex items-center justify-center border transition-all hover:scale-110"
-                    style={{ background: "rgba(255,255,255,0.05)", borderColor: "rgba(255,255,255,0.1)" }}>
-                    <ChevronLeft size={16} className="text-white/50" />
-                  </button>
-                  <button onClick={() => goTo(current + 1)}
-                    className="w-9 h-9 rounded-xl flex items-center justify-center border transition-all hover:scale-110"
-                    style={{ background: slide.color + "25", borderColor: slide.color + "40" }}>
-                    <ChevronRight size={16} style={{ color: slide.color }} />
-                  </button>
-                </div>
+              <h1 style={{ fontSize: "clamp(36px,5vw,64px)", fontWeight: 800, lineHeight: 1.08, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.025em", margin: "0 0 24px" }}>
+                Your Team's Health Is Your Biggest{" "}
+                <span style={{ color: PRIMARY }}>Business Asset</span>
+              </h1>
+              <p style={{ fontSize: "clamp(16px,1.5vw,20px)", color: "#404850", lineHeight: 1.75, margin: "0 0 40px", maxWidth: 540 }}>
+                AORANE Business gives Corporates, Hospitals, Gyms & Wellness Centers a unified platform to monitor, motivate and manage employee & member health — in real time.
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 40 }}>
+                <button
+                  onClick={() => navigate("/register")}
+                  className="btn-glow"
+                  style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, color: "white", border: "none", borderRadius: 99, padding: "18px 40px", fontWeight: 700, fontSize: 17, cursor: "pointer", boxShadow: "0 8px 32px rgba(0,93,144,0.28)", transition: "all 0.2s" }}
+                >
+                  Get Started Free
+                </button>
+                <button
+                  style={{ background: "transparent", color: PRIMARY, border: `2px solid rgba(0,93,144,0.22)`, borderRadius: 99, padding: "18px 40px", fontWeight: 700, fontSize: 17, cursor: "pointer", transition: "all 0.2s" }}
+                >
+                  Book a Demo
+                </button>
               </div>
-
-              {/* Progress bar */}
-              <div className="h-0.5 w-full" style={{ background: "rgba(255,255,255,0.06)" }}>
-                <div key={current} className="h-full" style={{ background: slide.gradient, animation: isPaused ? "none" : "slideProgress 5s linear forwards" }} />
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                {[
+                  { label: "HIPAA-Ready", icon: "verified" },
+                  { label: "5-min Setup", icon: "timer" },
+                  { label: "Made in India", icon: "location_on" },
+                  { label: "Razorpay Secured", icon: "lock" },
+                ].map((b, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(241,244,249,0.9)", borderRadius: 99, padding: "8px 16px", border: "1px solid rgba(191,199,209,0.25)" }}>
+                    <Icon name={b.icon} size={15} color={TEAL} />
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase", color: "#404850" }}>{b.label}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* RIGHT: Fixed Login Card */}
-            <div id="login-card" className="lg:sticky lg:top-24">
-              <div className="w-full rounded-3xl p-8 border"
-                style={{ background: "rgba(255,255,255,0.04)", backdropFilter: "blur(24px)", borderColor: "rgba(255,255,255,0.10)", boxShadow: "0 32px 64px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)" }}>
-
-                <div className="flex items-center gap-3 mb-7">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                    style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 0 24px rgba(14,165,233,0.5)" }}>
-                    <Building2 size={22} className="text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white">Business Login</h2>
-                    <p className="text-xs text-white/40">Apne organization portal mein enter karo</p>
-                  </div>
+            {/* Right — Mockup */}
+            <div className="hero-mockup" style={{ position: "relative", animation: "float 6s ease-in-out infinite" }}>
+              <div style={{ borderRadius: 20, overflow: "hidden", boxShadow: "0 40px 100px rgba(0,93,144,0.18)", border: "1px solid rgba(255,255,255,0.7)", background: "white" }}>
+                <div style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, padding: "12px 20px", display: "flex", alignItems: "center", gap: 8 }}>
+                  {[1, 2, 3].map(k => <div key={k} style={{ width: 10, height: 10, borderRadius: "50%", background: "rgba(255,255,255,0.35)" }} />)}
+                  <span style={{ color: "rgba(255,255,255,0.75)", fontSize: 12, marginLeft: 8 }}>AORANE Business Dashboard</span>
                 </div>
-
-                {error && (
-                  <div className="mb-5 flex items-start gap-2.5 rounded-xl px-4 py-3 border"
-                    style={{ background: "rgba(239,68,68,0.1)", borderColor: "rgba(239,68,68,0.2)", color: "#FCA5A5" }}>
-                    <AlertCircle size={15} className="shrink-0 mt-0.5" />
-                    <span className="text-sm">{error}</span>
+                <div style={{ padding: 24, background: "#f7f9fe" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                    {[
+                      { label: "Active Members", value: "248", icon: "group", color: PRIMARY },
+                      { label: "Avg Health Score", value: "82/100", icon: "favorite", color: TEAL },
+                      { label: "Water Goals Met", value: "91%", icon: "water_drop", color: "#0077b6" },
+                      { label: "Sick Days Saved", value: "34", icon: "event_available", color: "#006b56" },
+                    ].map((m, i) => (
+                      <div key={i} style={{ background: "white", borderRadius: 14, padding: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                          <div style={{ width: 28, height: 28, borderRadius: 8, background: `${m.color}18`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <Icon name={m.icon} size={16} color={m.color} />
+                          </div>
+                          <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>{m.label}</span>
+                        </div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: "#181c20", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{m.value}</div>
+                      </div>
+                    ))}
                   </div>
-                )}
-
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-white/60 mb-1.5">Email Address</label>
-                    <input
-                      type="email" value={email} onChange={e => setEmail(e.target.value)}
-                      placeholder="admin@yourorg.com"
-                      className="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all placeholder-white/20"
-                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}
-                      onFocus={e => { e.target.style.borderColor = "rgba(14,165,233,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.1)"; }}
-                      onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.10)"; e.target.style.boxShadow = "none"; }}
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <label className="block text-sm font-medium text-white/60">Password</label>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type={showPass ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full rounded-xl px-4 py-3 pr-11 text-white text-sm focus:outline-none transition-all placeholder-white/20"
-                        style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}
-                        onFocus={e => { e.target.style.borderColor = "rgba(14,165,233,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.1)"; }}
-                        onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.10)"; e.target.style.boxShadow = "none"; }}
-                      />
-                      <button type="button" onClick={() => setShowPass(!showPass)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
-                        {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
+                  <div style={{ background: "white", borderRadius: 14, padding: "16px 20px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", marginBottom: 14, letterSpacing: 1, textTransform: "uppercase" }}>Team Health — Last 7 Days</div>
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 52 }}>
+                      {[65, 72, 68, 80, 76, 88, 82].map((h, i) => (
+                        <div key={i} style={{ flex: 1, background: i === 6 ? `linear-gradient(to top, ${PRIMARY}, ${TEAL})` : `${PRIMARY}22`, borderRadius: "4px 4px 0 0", height: `${h}%` }} />
+                      ))}
                     </div>
                   </div>
-
-                  <button type="submit" disabled={isLoading}
-                    className="w-full font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 mt-2 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
-                    style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 8px 24px rgba(14,165,233,0.35)" }}>
-                    {isLoading ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (<>Dashboard Pe Jao <ArrowRight size={16} /></>)}
-                  </button>
-                </form>
-
-                <div className="mt-5 pt-5 border-t text-center" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
-                  <p className="text-sm text-white/40">
-                    Naya organization?{" "}
-                    <a href="/register" className="font-semibold hover:text-white transition-colors" style={{ color: "#38BDF8" }}>
-                      Free mein register karo
-                    </a>
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-center gap-3 mt-4 flex-wrap">
-                  {[{ t: "🔒 Encrypted" }, { t: "🇮🇳 DPDP Act" }, { t: "✓ Secure" }].map(b => (
-                    <div key={b.t} className="text-xs rounded-full px-2.5 py-1 border"
-                      style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.35)" }}>
-                      {b.t}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Quick stats */}
-                <div className="mt-6 pt-5 border-t grid grid-cols-3 gap-3 text-center" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
-                  {[
-                    { val: "500+", label: "Organizations" },
-                    { val: "50K+", label: "Members" },
-                    { val: "10", label: "Languages" },
-                  ].map(s => (
-                    <div key={s.label}>
-                      <div className="text-base font-extrabold" style={{ color: "#38BDF8" }}>{s.val}</div>
-                      <div className="text-xs text-white/35">{s.label}</div>
-                    </div>
-                  ))}
                 </div>
               </div>
-
-              {/* CTA below login */}
-              <div className="mt-4 rounded-2xl p-5 border text-center"
-                style={{ background: "rgba(16,185,129,0.06)", borderColor: "rgba(16,185,129,0.15)" }}>
-                <p className="text-sm text-white/60 mb-3">
-                  Pehli baar? <span style={{ color: "#34D399" }}>14 din free trial</span> — koi credit card nahi chahiye
-                </p>
-                <a href="/register"
-                  className="inline-flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-xl transition-all hover:scale-105"
-                  style={{ background: "linear-gradient(135deg, #10B981, #06B6D4)", boxShadow: "0 6px 20px rgba(16,185,129,0.3)" }}>
-                  Abhi Start Karo <ArrowRight size={14} />
-                </a>
+              {/* Floating AI card */}
+              <div style={{ position: "absolute", bottom: -20, left: -28, width: "40%", background: "white", borderRadius: 16, padding: 16, boxShadow: "0 16px 48px rgba(0,0,0,0.13)", border: "2px solid #181c20" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>AI Insight</div>
+                <div style={{ fontSize: 12, color: "#181c20", lineHeight: 1.6, fontWeight: 500 }}>3 team members at burnout risk — recommend a wellness break.</div>
+                <div style={{ marginTop: 10, height: 4, background: "#f3f4f6", borderRadius: 99 }}>
+                  <div style={{ height: "100%", width: "68%", background: `linear-gradient(to right, ${PRIMARY}, ${TEAL})`, borderRadius: 99 }} />
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── WHY AORANE ── */}
-      <section className="relative z-10 py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="w-full h-px mb-16" style={{ background: "linear-gradient(90deg, transparent, rgba(14,165,233,0.4), rgba(16,185,129,0.4), transparent)" }} />
+      {/* SOCIAL PROOF TICKER */}
+      <div style={{ background: "white", borderTop: "1px solid rgba(191,199,209,0.2)", borderBottom: "1px solid rgba(191,199,209,0.2)", padding: "20px 0", overflow: "hidden" }}>
+        <div style={{ display: "flex", animation: "marquee 28s linear infinite", whiteSpace: "nowrap", width: "max-content" }}>
+          {[...Array(2)].flatMap(() => ["Corporates", "Hospitals", "Gyms", "Yoga Studios", "Wellness Clinics", "Schools & Colleges", "Insurance Companies"]).map((item, i) => (
+            <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 24, padding: "0 44px" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2.5, textTransform: "uppercase", color: "rgba(64,72,80,0.45)" }}>{item}</span>
+              <span style={{ color: "rgba(0,93,144,0.2)", fontSize: 20 }}>•</span>
+            </span>
+          ))}
+        </div>
+      </div>
 
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold mb-4 border"
-              style={{ background: "rgba(14,165,233,0.1)", borderColor: "rgba(14,165,233,0.2)", color: "#7DD3FC" }}>
-              <Zap size={12} /> AORANE Platform Advantages
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">
-              AORANE Kyu Choose Karo?
-            </h2>
-            <p className="text-white/40 max-w-xl mx-auto text-sm">
-              India-first health platform — Indian languages, Indian compliance, Indian businesses ke liye banaya gaya
-            </p>
+      {/* BUSINESS SEGMENTS */}
+      <section id="solutions-detail" style={{ padding: "96px 24px", maxWidth: 1280, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 72 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,107,86,0.09)", borderRadius: 99, padding: "8px 18px", marginBottom: 20 }}>
+            <Icon name="category" size={15} color={TEAL} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: TEAL }}>Industry Solutions</span>
           </div>
+          <h2 style={{ fontSize: "clamp(26px,4vw,48px)", fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.025em", margin: "0 0 16px" }}>
+            Built for Every Health-Focused Business
+          </h2>
+          <p style={{ fontSize: 18, color: "#6b7280", maxWidth: 580, margin: "0 auto", lineHeight: 1.75 }}>
+            No matter your industry — AORANE Business fits seamlessly into your existing ecosystem.
+          </p>
+        </div>
+        <div className="segment-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 28 }}>
+          {segments.map((seg, i) => (
+            <div key={i} className="card-lift" style={{
+              background: "rgba(255,255,255,0.82)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+              borderRadius: 20, border: "1.5px solid rgba(255,255,255,0.8)", padding: "36px 32px",
+              display: "flex", flexDirection: "column" as const, gap: 20,
+              boxShadow: "0 4px 24px rgba(0,0,0,0.055)",
+            }}>
+              <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(109,250,212,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon name={seg.icon} size={26} color={TEAL} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: 15, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", marginBottom: 16, textTransform: "uppercase" as const, letterSpacing: 0.4 }}>
+                  {seg.title}
+                </h3>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column" as const, gap: 10 }}>
+                  {seg.benefits.map((b, j) => (
+                    <li key={j} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: "#6b7280", lineHeight: 1.5 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: TEAL, flexShrink: 0, marginTop: 6 }} />
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {WHY_AORANE.map((f) => (
-              <div key={f.title}
-                className="rounded-2xl p-5 border transition-all duration-300 hover:scale-[1.03] group cursor-default"
-                style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)", backdropFilter: "blur(12px)" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = f.color + "40"; (e.currentTarget as HTMLElement).style.boxShadow = `0 0 24px ${f.color}20`; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.07)"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
-              >
-                <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110"
-                  style={{ background: f.color + "18", border: `1px solid ${f.color}30` }}>
-                  <f.icon size={20} style={{ color: f.color }} />
+      {/* PLATFORM FEATURES */}
+      <section id="features" style={{ background: "white", padding: "96px 24px" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 72 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,93,144,0.08)", borderRadius: 99, padding: "8px 18px", marginBottom: 20 }}>
+              <Icon name="auto_awesome" size={15} color={PRIMARY} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: PRIMARY }}>Platform Features</span>
+            </div>
+            <h2 style={{ fontSize: "clamp(26px,4vw,48px)", fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.025em", margin: "0 0 16px" }}>
+              Everything You Need to Run a Healthy Business
+            </h2>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 80 }}>
+            {features.map((feat, i) => (
+              <div key={i} className="features-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center", direction: i % 2 === 1 ? "rtl" : "ltr" }}>
+                <div style={{ direction: "ltr" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 14, background: `${PRIMARY}12`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Icon name={feat.icon} size={26} color={PRIMARY} />
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: PRIMARY, letterSpacing: 1.5, textTransform: "uppercase" as const }}>Feature 0{i + 1}</span>
+                  </div>
+                  <h3 style={{ fontSize: "clamp(20px,2.5vw,32px)", fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.02em", margin: "0 0 16px" }}>
+                    {feat.title}
+                  </h3>
+                  <p style={{ fontSize: 16, color: "#6b7280", lineHeight: 1.8, margin: "0 0 28px" }}>{feat.desc}</p>
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column" as const, gap: 14 }}>
+                    {feat.points.map((p, j) => (
+                      <li key={j} style={{ display: "flex", alignItems: "flex-start", gap: 12, fontSize: 15, color: "#374151", lineHeight: 1.65 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 18, color: TEAL, flexShrink: 0, marginTop: 2 }}>check_circle</span>
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <h3 className="text-sm font-bold text-white mb-2">{f.title}</h3>
-                <p className="text-xs text-white/40 leading-relaxed">{f.desc}</p>
+                <div style={{ direction: "ltr", background: i % 2 === 0 ? "linear-gradient(135deg, #eef6ff 0%, #f0fff8 100%)" : "linear-gradient(135deg, #f0fff8 0%, #eef6ff 100%)", borderRadius: 24, padding: 32, border: "1px solid rgba(191,199,209,0.2)" }}>
+                  <div style={{ background: "white", borderRadius: 16, padding: 24, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: `${PRIMARY}12`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <Icon name={feat.icon} size={20} color={PRIMARY} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#181c20" }}>{feat.title}</div>
+                        <div style={{ fontSize: 11, color: "#9ca3af" }}>Live View</div>
+                      </div>
+                    </div>
+                    {[1, 0.78, 0.58, 0.42].map((w, k) => (
+                      <div key={k} style={{ height: 9, background: k === 0 ? `linear-gradient(to right, ${PRIMARY}, ${TEAL})` : "#f3f4f6", borderRadius: 99, marginBottom: 10, width: `${w * 100}%` }} />
+                    ))}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
+                      {feat.metricValues.map((v, k) => (
+                        <div key={k} style={{ background: "#f9fafb", borderRadius: 10, padding: "12px 14px" }}>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: PRIMARY, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{v}</div>
+                          <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>{feat.metricLabels[k]}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── TRUST SECTION ── */}
-      <section className="relative z-10 py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="rounded-3xl p-10 border text-center"
-            style={{ background: "rgba(14,165,233,0.04)", borderColor: "rgba(14,165,233,0.12)", backdropFilter: "blur(20px)" }}>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-3">
-              Apne Employees Ka Dhyan Rakhna =<br />
-              <span style={{ background: "linear-gradient(90deg, #38BDF8, #34D399)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                Unka Aap Pe Bharosa
-              </span>
+      {/* STATS SECTION */}
+      <div ref={statsRef} style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, padding: "72px 24px" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+            <StatCard icon="business" value={500} suffix="+" label="Businesses Onboarded" started={statsStarted} />
+            <StatCard icon="timeline" value={50000} suffix="+" label="Health Logs Per Day" started={statsStarted} />
+            <StatCard icon="star" value={98} suffix="%" label="Satisfaction Rate" started={statsStarted} />
+            <StatCard icon="bolt" value={5} suffix=" min" label="Average Setup Time" started={statsStarted} />
+          </div>
+        </div>
+      </div>
+
+      {/* PRICING SECTION */}
+      <section id="pricing" style={{ padding: "96px 24px", background: BG }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 56 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,107,86,0.09)", borderRadius: 99, padding: "8px 18px", marginBottom: 20 }}>
+              <Icon name="payments" size={15} color={TEAL} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: TEAL }}>Transparent Pricing</span>
+            </div>
+            <h2 style={{ fontSize: "clamp(26px,4vw,48px)", fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.025em", margin: "0 0 16px" }}>
+              Simple Pricing. No Hidden Costs.
             </h2>
-            <p className="text-white/45 max-w-2xl mx-auto text-sm leading-relaxed mb-8">
-              Jab ek company apne employees ki health ka dhyan rakhti hai, toh employees company pe trust karte hain, 
-              kam leave lete hain, aur zyada productive hote hain. AORANE isi trust ko build karta hai.
-            </p>
-            <div className="flex flex-wrap justify-center gap-6 mb-8">
-              {[
-                { icon: "❤️", stat: "87%", label: "Employees feel valued" },
-                { icon: "📈", stat: "3x", label: "Higher productivity" },
-                { icon: "🏆", stat: "40%", label: "Lower attrition rate" },
-                { icon: "💰", stat: "₹2.5L", label: "Avg savings per employee/year" },
-              ].map(s => (
-                <div key={s.label} className="text-center px-6 py-4 rounded-2xl border"
-                  style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)" }}>
-                  <div className="text-2xl mb-1">{s.icon}</div>
-                  <div className="text-xl font-extrabold text-white">{s.stat}</div>
-                  <div className="text-xs text-white/40">{s.label}</div>
-                </div>
+            <p style={{ fontSize: 18, color: "#6b7280", margin: "0 0 32px" }}>Start free, scale as you grow. Cancel anytime.</p>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 0, background: "white", borderRadius: 99, padding: 4, boxShadow: "0 2px 14px rgba(0,0,0,0.08)", border: "1px solid rgba(191,199,209,0.3)" }}>
+              {(["monthly", "annual"] as const).map(b => (
+                <button
+                  key={b}
+                  onClick={() => setBilling(b)}
+                  style={{
+                    background: billing === b ? `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)` : "transparent",
+                    color: billing === b ? "white" : "#6b7280",
+                    border: "none", borderRadius: 99, padding: "10px 28px",
+                    fontWeight: 700, fontSize: 14, cursor: "pointer", transition: "all 0.25s",
+                  }}
+                >
+                  {b === "monthly" ? "Monthly" : "Annual (Save 10%)"}
+                </button>
               ))}
             </div>
-            <a href="/register"
-              className="inline-flex items-center gap-2 font-bold px-8 py-4 rounded-2xl transition-all hover:scale-105 text-sm"
-              style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 12px 32px rgba(14,165,233,0.4)" }}>
-              Apni Organization Register Karo <ArrowRight size={16} />
-            </a>
+          </div>
+          <div className="pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, alignItems: "center" }}>
+            {plans.map((p, i) => <PricingCard key={i} {...p} billing={billing} />)}
+          </div>
+          <p style={{ textAlign: "center", color: "#9ca3af", fontSize: 13, marginTop: 24 }}>
+            Promo codes accepted at checkout.{" "}
+            <span style={{ color: PRIMARY, cursor: "pointer", fontWeight: 600 }}>Contact Sales</span>{" "}
+            for enterprise plans.
+          </p>
+        </div>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section style={{ background: "white", padding: "96px 24px" }}>
+        <div style={{ maxWidth: 960, margin: "0 auto", textAlign: "center" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,93,144,0.08)", borderRadius: 99, padding: "8px 18px", marginBottom: 20 }}>
+            <Icon name="route" size={15} color={PRIMARY} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: PRIMARY }}>Quick Onboarding</span>
+          </div>
+          <h2 style={{ fontSize: "clamp(26px,4vw,48px)", fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.025em", margin: "0 0 16px" }}>
+            Get Your Team Healthy in 3 Simple Steps
+          </h2>
+          <p style={{ fontSize: 18, color: "#6b7280", marginBottom: 64 }}>From signup to full team visibility in under 10 minutes.</p>
+          <div className="steps-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 28, position: "relative" }}>
+            <div className="hide-mobile" style={{ position: "absolute", top: 36, left: "22%", right: "22%", height: 2, background: `linear-gradient(to right, ${PRIMARY}, ${TEAL})`, opacity: 0.2, zIndex: 0 }} />
+            {[
+              { step: "01", icon: "how_to_reg", title: "Register & Set Up", desc: "Create your business account and add your organization details in under 5 minutes." },
+              { step: "02", icon: "group_add", title: "Invite Your Team", desc: "Share a unique join code. Employees download the AORANE app and connect instantly." },
+              { step: "03", icon: "insights", title: "Track & Improve", desc: "Monitor health scores, send wellness nudges, and receive AI-powered insights every day." },
+            ].map((s, i) => (
+              <div key={i} className="card-lift" style={{ background: BG, borderRadius: 20, padding: 32, position: "relative", zIndex: 1, border: "1.5px solid rgba(191,199,209,0.3)" }}>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+                  <Icon name={s.icon} size={28} color="white" />
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", letterSpacing: 2, marginBottom: 10, textTransform: "uppercase" as const }}>Step {s.step}</div>
+                <h3 style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", margin: "0 0 12px" }}>{s.title}</h3>
+                <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.75, margin: 0 }}>{s.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ── */}
-      <section className="relative z-10 py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl font-extrabold text-white mb-2">Jo Log Use Kar Rahe Hain, Woh Kya Kehte Hain</h2>
-            <p className="text-white/35 text-sm">India bhar ke businesses ka bharosa</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-5">
-            {TESTIMONIALS.map((t, i) => (
-              <div key={i} className="rounded-2xl p-6 border"
-                style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.08)", backdropFilter: "blur(12px)" }}>
-                <div className="flex items-center gap-1 mb-3">
-                  {Array.from({ length: t.stars }).map((_, j) => (
-                    <Star key={j} size={13} fill="#F59E0B" style={{ color: "#F59E0B" }} />
-                  ))}
+      {/* INVESTOR / MARKET SECTION */}
+      <section id="about" style={{ padding: "96px 24px", background: BG }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ background: "white", borderRadius: 28, padding: "clamp(32px,5vw,64px)", boxShadow: "0 8px 48px rgba(0,0,0,0.06)", border: "1.5px solid rgba(191,199,209,0.2)" }}>
+            <div className="investor-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
+              <div>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,93,144,0.08)", borderRadius: 99, padding: "8px 18px", marginBottom: 24 }}>
+                  <Icon name="trending_up" size={15} color={PRIMARY} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: PRIMARY }}>Market Opportunity</span>
                 </div>
-                <p className="text-white/65 text-sm leading-relaxed mb-5 italic">"{t.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg border"
-                    style={{ background: "rgba(255,255,255,0.06)", borderColor: "rgba(255,255,255,0.1)" }}>
-                    {t.type}
+                <h2 style={{ fontSize: "clamp(22px,3.5vw,42px)", fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.025em", margin: "0 0 20px" }}>
+                  The ₹35,000 Crore Opportunity in Corporate Wellness
+                </h2>
+                <p style={{ fontSize: 16, color: "#6b7280", lineHeight: 1.85, margin: "0 0 32px" }}>
+                  India's workplace wellness market is growing at 12% CAGR. AORANE is positioned to capture the digital health management segment for 6.5 crore+ organized workforce employees — a market largely untapped by mobile-first platforms.
+                </p>
+                <blockquote style={{ borderLeft: `3px solid ${TEAL_LIGHT}`, paddingLeft: 20, margin: "0 0 32px", fontStyle: "italic", color: "#6b7280", fontSize: 15, lineHeight: 1.8 }}>
+                  "Digital health platforms serving B2B segments show 3–5x better retention than B2C health apps."
+                  <footer style={{ marginTop: 8, fontStyle: "normal", fontWeight: 600, fontSize: 13, color: "#9ca3af" }}>— Industry Research Report, 2024</footer>
+                </blockquote>
+                <button style={{ background: "transparent", border: `2px solid ${PRIMARY}`, color: PRIMARY, borderRadius: 99, padding: "14px 28px", fontWeight: 700, fontSize: 15, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <Icon name="download" size={18} color={PRIMARY} />
+                  Download Investor Deck
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column" as const, gap: 20 }}>
+                {[
+                  { icon: "groups", value: "6.5 Cr+", label: "Organized workforce in India", color: PRIMARY },
+                  { icon: "show_chart", value: "12% CAGR", label: "Corporate wellness market growth", color: TEAL },
+                  { icon: "currency_rupee", value: "₹35,000 Cr", label: "Total addressable market by 2028", color: "#7c3aed" },
+                ].map((stat, i) => (
+                  <div key={i} className="card-lift" style={{ background: BG, borderRadius: 18, padding: "24px 28px", display: "flex", alignItems: "center", gap: 20, border: "1.5px solid rgba(191,199,209,0.28)" }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 14, background: `${stat.color}10`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Icon name={stat.icon} size={26} color={stat.color} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "clamp(22px,2.5vw,30px)", fontWeight: 800, color: stat.color, fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1 }}>{stat.value}</div>
+                      <div style={{ fontSize: 14, color: "#6b7280", marginTop: 4 }}>{stat.label}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* TESTIMONIALS */}
+      <section style={{ background: "white", padding: "96px 24px" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 64 }}>
+            <h2 style={{ fontSize: "clamp(26px,4vw,48px)", fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.025em", margin: "0 0 16px" }}>
+              What Our Business Partners Say
+            </h2>
+          </div>
+          <div className="testimonial-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 28 }}>
+            {testimonials.map((t, i) => (
+              <div key={i} className="card-lift" style={{ background: BG, borderRadius: 20, padding: 36, border: "1.5px solid rgba(191,199,209,0.3)" }}>
+                <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
+                  {[...Array(5)].map((_, k) => <Icon key={k} name="star" size={18} color="#f59e0b" />)}
+                </div>
+                <p style={{ fontSize: 15, color: "#374151", lineHeight: 1.8, margin: "0 0 28px", fontStyle: "italic" }}>"{t.quote}"</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+                    {t.initials}
                   </div>
                   <div>
-                    <div className="text-sm font-bold text-white">{t.name}</div>
-                    <div className="text-xs text-white/35">{t.org}</div>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: "#181c20" }}>{t.name}</div>
+                    <div style={{ fontSize: 13, color: "#9ca3af" }}>{t.role} · {t.company}</div>
                   </div>
                 </div>
               </div>
@@ -618,44 +670,88 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
-      <footer className="relative z-10 border-t py-10 px-4"
-        style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(2,11,24,0.5)" }}>
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)" }}>
-              <Heart size={14} className="text-white" />
+      {/* CTA BANNER */}
+      <section style={{ padding: "80px 24px" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, borderRadius: 28, padding: "clamp(48px,6vw,80px) clamp(24px,5vw,60px)", textAlign: "center", position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: -80, right: -80, width: 280, height: 280, background: "rgba(255,255,255,0.06)", borderRadius: "50%", pointerEvents: "none" }} />
+            <div style={{ position: "absolute", bottom: -50, left: -50, width: 200, height: 200, background: "rgba(255,255,255,0.06)", borderRadius: "50%", pointerEvents: "none" }} />
+            <h2 style={{ fontSize: "clamp(26px,4vw,52px)", fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "white", letterSpacing: "-0.025em", margin: "0 0 20px", position: "relative", zIndex: 1 }}>
+              Ready to Transform Your Organization's Health Culture?
+            </h2>
+            <p style={{ fontSize: 18, color: "rgba(255,255,255,0.8)", margin: "0 0 44px", position: "relative", zIndex: 1 }}>
+              Join 500+ businesses already prioritizing their biggest asset — their people.
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 16, position: "relative", zIndex: 1 }}>
+              <button
+                onClick={() => navigate("/register")}
+                className="btn-glow"
+                style={{ background: "white", color: PRIMARY, border: "none", borderRadius: 99, padding: "18px 44px", fontWeight: 700, fontSize: 17, cursor: "pointer", boxShadow: "0 8px 32px rgba(0,0,0,0.15)", transition: "all 0.2s" }}
+              >
+                Get Started for Free
+              </button>
+              <button
+                style={{ background: "rgba(255,255,255,0.14)", color: "white", border: "2px solid rgba(255,255,255,0.3)", borderRadius: 99, padding: "18px 44px", fontWeight: 700, fontSize: 17, cursor: "pointer", backdropFilter: "blur(10px)", transition: "all 0.2s" }}
+              >
+                Talk to an Expert
+              </button>
             </div>
-            <span className="font-bold text-white">AORANE</span>
-            <span className="text-white/30 text-xs">Business Portal</span>
           </div>
-          <div className="flex items-center gap-5 text-xs text-white/30">
-            <span>🇮🇳 Made in India</span>
-            <span>•</span>
-            <span>DPDP Compliant</span>
-            <span>•</span>
-            <span>© 2026 AORANE Health Tech</span>
-          </div>
-          <div className="flex flex-col items-end gap-1 text-xs text-white/30">
-            <div className="flex gap-3">
-              <a href="https://aorane.com" className="hover:text-white/60 transition-colors">Main Website</a>
-              <span className="text-white/15">•</span>
-              <a href="mailto:support@aorane.com" className="hover:text-white/60 transition-colors">support@aorane.com</a>
-              <span className="text-white/15">•</span>
-              <a href="tel:+917307826291" className="hover:text-white/60 transition-colors">+91 73078 26291</a>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer style={{ background: "#f1f4f9", borderTop: "1px solid rgba(191,199,209,0.3)", padding: "72px 24px 32px" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 56 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <div style={{ width: 32, height: 32, background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Icon name="monitor_heart" size={18} color="white" />
+                </div>
+                <span style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20" }}>AORANE</span>
+              </div>
+              <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.85, maxWidth: 280, margin: "0 0 24px" }}>
+                The unified intelligence platform for managing health and wellness at scale across any organization.
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                {["language", "alternate_email", "phone_in_talk"].map((icon, i) => (
+                  <div key={i} style={{ width: 38, height: 38, borderRadius: 10, background: "white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: "1px solid rgba(191,199,209,0.4)" }}>
+                    <Icon name={icon} size={18} color="#6b7280" />
+                  </div>
+                ))}
+              </div>
             </div>
-            <span>Indra Nagar, Near Lekhraj Metro, Lucknow, UP 226016</span>
+            {[
+              { title: "Product", links: ["Enterprise Dashboard", "Employee Portal", "AI Health Insights", "API & Integrations"] },
+              { title: "Company", links: ["About Us", "Careers", "Security & Privacy", "Press"] },
+              { title: "Support", links: ["Help Center", "Contact Sales", "Status Page", "Feedback"] },
+            ].map((col, i) => (
+              <div key={i}>
+                <h4 style={{ fontSize: 13, fontWeight: 800, color: "#181c20", marginBottom: 20, letterSpacing: 0.5, textTransform: "uppercase" as const }}>{col.title}</h4>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column" as const, gap: 12 }}>
+                  {col.links.map((link, j) => (
+                    <li key={j}>
+                      <a href="#" style={{ fontSize: 14, color: "#6b7280", textDecoration: "none", transition: "color 0.2s" }}
+                        onMouseOver={e => (e.currentTarget.style.color = PRIMARY)}
+                        onMouseOut={e => (e.currentTarget.style.color = "#6b7280")}
+                      >{link}</a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div style={{ borderTop: "1px solid rgba(191,199,209,0.35)", paddingTop: 24, display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+            <p style={{ fontSize: 13, color: "#9ca3af", margin: 0 }}>© 2025 AORANE Health Technologies Pvt. Ltd. All rights reserved.</p>
+            <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+              {["ISO 27001 Certified", "GDPR Compliant", "Made in India 🇮🇳"].map((badge, i) => (
+                <span key={i} style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase" as const, letterSpacing: 1 }}>{badge}</span>
+              ))}
+            </div>
           </div>
         </div>
       </footer>
-
-      <style>{`
-        @keyframes slideProgress {
-          from { width: 0% }
-          to { width: 100% }
-        }
-      `}</style>
     </div>
   );
 }
