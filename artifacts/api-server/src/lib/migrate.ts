@@ -607,7 +607,9 @@ export async function runStartupMigrations(): Promise<void> {
       ('business_portal',    'Business Portal',      'Corporate wellness dashboard', true),
       ('ai_health_coach',    'AI Health Coach',      'Personalized AI recommendations', true),
       ('whatsapp_bot',       'WhatsApp Bot',         'WhatsApp health assistant', false),
-      ('razorpay_payments',  'Razorpay Payments',    'Live payment processing', false)
+      ('razorpay_payments',  'Razorpay Payments',    'Live payment processing', false),
+      ('blood_emergency',    'Blood Emergency',      'Emergency blood request system', true),
+      ('weather_suggestions','Weather Suggestions',  'Seasonal food suggestions by weather', true)
      ON CONFLICT (key) DO NOTHING`,
 
     // Seed default AI config

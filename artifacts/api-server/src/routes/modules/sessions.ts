@@ -11,6 +11,7 @@ import { db, appSessionsTable } from "@workspace/db";
 import { eq, desc, and, gte } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { requireAdmin } from "../../middlewares/admin-auth";
 import crypto from "crypto";
 
 const router = Router();
@@ -112,7 +113,7 @@ router.get("/sessions/me", requireAuth, async (req: AuthRequest, res) => {
 });
 
 // ── Admin: DAU/MAU stats (last 30 days, grouped by date) ─────────────────────
-router.get("/sessions/dau", async (_req, res) => {
+router.get("/sessions/dau", requireAdmin, async (_req, res) => {
   try {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
