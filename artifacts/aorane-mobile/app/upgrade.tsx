@@ -409,7 +409,7 @@ export default function UpgradeScreen() {
       </ScrollView>
 
       {success && (
-        <SuccessOverlay plan={selectedPlan} inviteCode={familyInviteCode} onDone={() => { setSuccess(false); setFamilyInviteCode(null); router.replace(selectedPlan === "family" ? "/(tabs)/family" : "/(tabs)"); }} />
+        <SuccessOverlay plan={selectedPlan} inviteCode={familyInviteCode} onDone={() => { setSuccess(false); setFamilyInviteCode(null); router.replace((selectedPlan === "family" ? "/family" : "/(tabs)") as never); }} />
       )}
     </View>
   );

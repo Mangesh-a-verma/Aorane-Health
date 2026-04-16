@@ -327,6 +327,9 @@ export default function LoginScreen() {
               <TouchableOpacity
                 onPress={loginMode === "pin" ? handlePinLogin : handleSendOtp}
                 disabled={anyLoading || !isActive || (loginMode === "pin" && pin.length < 4)}
+                accessibilityState={{ disabled: anyLoading || !isActive || (loginMode === "pin" && pin.length < 4) }}
+                accessibilityRole="button"
+                accessibilityLabel={loginMode === "pin" ? "Login with PIN" : "Send SMS OTP"}
                 activeOpacity={0.88}
                 style={s.ctaWrap}
               >
