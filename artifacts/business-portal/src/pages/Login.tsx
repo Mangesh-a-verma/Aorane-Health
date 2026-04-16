@@ -221,11 +221,11 @@ export default function Login() {
                 {isLoading ? (
                   <>
                     <div style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTop: "2px solid white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                    Signing in...
+                    Logging in...
                   </>
                 ) : (
                   <>
-                    Sign In
+                    Log In
                     <Icon name="arrow_forward" size={18} color="white" />
                   </>
                 )}

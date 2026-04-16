@@ -260,7 +260,7 @@ export default function Landing() {
               className="btn-glow"
               style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, color: "white", border: "none", borderRadius: 99, padding: "11px 26px", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 4px 16px rgba(0,93,144,0.28)", transition: "all 0.2s" }}
             >
-              Get Started
+              Get Started Free
             </button>
           </div>
           {/* Mobile Hamburger */}
@@ -279,7 +279,7 @@ export default function Landing() {
             ))}
             <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
               <button onClick={() => navigate("/login")} style={{ flex: 1, background: "none", border: `2px solid ${PRIMARY}`, color: PRIMARY, fontWeight: 700, fontSize: 14, cursor: "pointer", borderRadius: 99, padding: "12px 0" }}>Log In</button>
-              <button onClick={() => navigate("/register")} style={{ flex: 1, background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, color: "white", border: "none", borderRadius: 99, padding: "12px 0", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Get Started</button>
+              <button onClick={() => navigate("/register")} style={{ flex: 1, background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, color: "white", border: "none", borderRadius: 99, padding: "12px 0", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Get Started Free</button>
             </div>
           </div>
         )}
@@ -686,7 +686,7 @@ export default function Landing() {
                 className="btn-glow"
                 style={{ background: "white", color: PRIMARY, border: "none", borderRadius: 99, padding: "18px 44px", fontWeight: 700, fontSize: 17, cursor: "pointer", boxShadow: "0 8px 32px rgba(0,0,0,0.15)", transition: "all 0.2s" }}
               >
-                Get Started for Free
+                Get Started Free
               </button>
               <button
                 style={{ background: "rgba(255,255,255,0.14)", color: "white", border: "2px solid rgba(255,255,255,0.3)", borderRadius: 99, padding: "18px 44px", fontWeight: 700, fontSize: 17, cursor: "pointer", backdropFilter: "blur(10px)", transition: "all 0.2s" }}
@@ -704,9 +704,7 @@ export default function Landing() {
           <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 56 }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <div style={{ width: 32, height: 32, background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Icon name="monitor_heart" size={18} color="white" />
-                </div>
+                <img src="/logo.png" alt="AORANE" style={{ width: 32, height: 32, objectFit: "contain" }} />
                 <span style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20" }}>AORANE</span>
               </div>
               <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.85, maxWidth: 280, margin: "0 0 24px" }}>
