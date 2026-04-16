@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { storage } from "@/lib/storage";
+import { getConfirmationResult, clearConfirmationResult } from "@/lib/firebase";
 import type { LangCode } from "@/lib/translations";
 
 const { width: W } = Dimensions.get("window");
@@ -32,7 +33,7 @@ export default function VerifyOtpScreen() {
   const insets = useSafeAreaInsets();
   const { loginWithToken } = useAuth();
   const { t } = useLanguage();
-  const { phone, lang: langParam = "en" } = useLocalSearchParams<{ phone: string; lang: string }>();
+  const { phone, lang: langParam = "en", mode } = useLocalSearchParams<{ phone: string; lang: string; mode?: string }>();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
@@ -77,10 +78,33 @@ export default function VerifyOtpScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsLoading(true);
     try {
-      const res = await api.verifyOtp(phone || "", otpValue, langParam as string);
-      await loginWithToken(res.accessToken, res.refreshToken, res.user, res.isNewUser);
+      let accessToken: string;
+      let refreshToken: string;
+      let user: { id: string; phone: string; plan: string; languageCode: string };
+      let isNewUser: boolean;
 
-      if (res.isNewUser) {
+      if (mode === "firebase") {
+        const confirmation = getConfirmationResult();
+        if (!confirmation) throw new Error("Session expired — please request OTP again");
+        const credential = await confirmation.confirm(otpValue);
+        clearConfirmationResult();
+        const idToken = await credential.user.getIdToken();
+        const res = await api.firebaseLogin(idToken, phone || "", langParam as string);
+        accessToken = res.accessToken;
+        refreshToken = res.refreshToken;
+        user = res.user;
+        isNewUser = res.isNewUser;
+      } else {
+        const res = await api.verifyOtp(phone || "", otpValue, langParam as string);
+        accessToken = res.accessToken;
+        refreshToken = res.refreshToken;
+        user = res.user;
+        isNewUser = res.isNewUser;
+      }
+
+      await loginWithToken(accessToken, refreshToken, user, isNewUser);
+
+      if (isNewUser) {
         router.replace("/(onboarding)/" as never);
       } else {
         const pinSetAlready = await storage.isPinSet();

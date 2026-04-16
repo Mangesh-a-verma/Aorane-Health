@@ -10,6 +10,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
+import { signInWithPhoneNumber } from "firebase/auth";
+import { auth, firebaseConfig, setConfirmationResult } from "@/lib/firebase";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -64,6 +67,8 @@ export default function LoginScreen() {
   const [pinFocused, setPinFocused] = useState(false);
   const [devOtp, setDevOtp] = useState<string | null>(null);
 
+  const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
   const logoScale = useRef(new Animated.Value(0.8)).current;
@@ -103,10 +108,20 @@ export default function LoginScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsLoading(true);
     try {
-      const res = await api.sendOtp(phone);
-      goToOtpScreen(res?.devOtp);
+      const confirmation = await signInWithPhoneNumber(
+        auth,
+        `+91${phone}`,
+        recaptchaVerifier.current!
+      );
+      setConfirmationResult(confirmation);
+      router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang, mode: "firebase" } });
     } catch (err: unknown) {
-      Alert.alert(t("otpError"), err instanceof Error ? err.message : t("otpError"));
+      const msg = err instanceof Error ? err.message : t("otpError");
+      if (msg.includes("auth/")) {
+        Alert.alert("Firebase Error", "Phone Auth enable karo: Firebase Console → Authentication → Sign-in method → Phone");
+      } else {
+        Alert.alert(t("otpError"), msg);
+      }
     } finally { setIsLoading(false); }
   };
 
@@ -146,6 +161,15 @@ export default function LoginScreen() {
 
   return (
     <View style={s.root}>
+      {/* Firebase reCAPTCHA verifier - invisible, opens only when needed */}
+      <FirebaseRecaptchaVerifierModal
+        ref={recaptchaVerifier}
+        firebaseConfig={firebaseConfig}
+        attemptInvisibleVerification
+        title="Verify you are human"
+        cancelLabel="Cancel"
+      />
+
       {/* Warm gradient background */}
       <LinearGradient
         colors={["#FFF0E6", "#FFE5D0", "#FFF8F3", "#FFFAF7", "#FFFFFF"]}

@@ -84,3 +84,6 @@ channel = "stable-25_05"
 [userenv.shared]
 APP_URL = "https://aorane.onrender.com"
 EXPO_PUBLIC_GOOGLE_CLIENT_ID = "145783039315-m1vgfekobq5nkkf90rns4nb9khh6amcv.apps.googleusercontent.com"
+EXPO_PUBLIC_FIREBASE_API_KEY = "AIzaSyCKyvmW9BTn1ZLhFdXyHjHUQPCmgeuH87A"
+EXPO_PUBLIC_FIREBASE_APP_ID = "1:294648735770:web:76c6a1856f829ac316c9a3"
+FIREBASE_API_KEY = "AIzaSyCKyvmW9BTn1ZLhFdXyHjHUQPCmgeuH87A"

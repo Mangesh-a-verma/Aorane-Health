@@ -186,6 +186,91 @@ router.post("/auth/verify-otp", async (req, res) => {
   }
 });
 
+router.post("/auth/firebase-login", async (req, res) => {
+  try {
+    const { idToken, phone: rawPhone, languageCode = "hi", countryCode = "IN" } = req.body as {
+      idToken: string; phone?: string; languageCode?: string; countryCode?: string;
+    };
+    if (!idToken) {
+      res.status(400).json({ error: "Firebase ID token required" });
+      return;
+    }
+
+    const firebaseApiKey = process.env.FIREBASE_API_KEY;
+    if (!firebaseApiKey) {
+      res.status(500).json({ error: "Firebase not configured on server" });
+      return;
+    }
+
+    const verifyRes = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      }
+    );
+    const verifyData = await verifyRes.json() as { users?: Array<{ localId: string; phoneNumber?: string }>; error?: { message: string } };
+
+    if (!verifyRes.ok || !verifyData.users?.[0]) {
+      logger.warn({ error: verifyData.error?.message }, "[Firebase] token verification failed");
+      res.status(401).json({ error: "Invalid or expired Firebase token" });
+      return;
+    }
+
+    const firebaseUser = verifyData.users[0];
+    const phone = firebaseUser.phoneNumber
+      ? firebaseUser.phoneNumber.replace(/^\+91/, "")
+      : (rawPhone || "").replace(/^\+91/, "");
+
+    if (!phone || !/^\d{10}$/.test(phone)) {
+      res.status(400).json({ error: "Could not extract valid phone number from Firebase token" });
+      return;
+    }
+
+    let [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+    let isNewUser = false;
+
+    if (!user) {
+      const [newUser] = await db.insert(usersTable).values({
+        phone,
+        countryCode,
+        languageCode,
+        referralCode: generateReferralCode(),
+      }).returning();
+      user = newUser;
+      isNewUser = true;
+    }
+
+    await pool.query(`INSERT INTO user_preferences (user_id, language_code) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [user.id, languageCode]).catch(() => {});
+    await pool.query(`INSERT INTO user_privacy_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
+    await pool.query(`INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
+    await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]).catch(() => {});
+
+    const payload = { userId: user.id, phone, plan: user.plan };
+    const accessToken = signUserToken(payload);
+    const refreshToken = signRefreshToken(payload);
+
+    logger.info({ phone, isNewUser }, "[Firebase] login success");
+
+    res.json({
+      accessToken,
+      refreshToken,
+      isNewUser,
+      user: {
+        id: user.id,
+        phone: user.phone,
+        plan: user.plan,
+        languageCode: user.languageCode || languageCode,
+      },
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error({ err: msg }, "[Firebase] login error");
+    res.status(500).json({ error: "Firebase login failed", detail: msg });
+  }
+});
+
 router.post("/auth/refresh", async (req, res) => {
   try {
     const { refreshToken } = req.body as { refreshToken: string };

@@ -83,6 +83,11 @@ export const api = {
       "POST", "/auth/google", { idToken }, false
     ),
 
+  firebaseLogin: (idToken: string, phone: string, languageCode = "hi") =>
+    request<{ accessToken: string; refreshToken: string; isNewUser: boolean; user: { id: string; phone: string; plan: string; languageCode: string } }>(
+      "POST", "/auth/firebase-login", { idToken, phone, languageCode }, false
+    ),
+
   getMe: () =>
     request<{ user: { id: string; phone: string; email: string; plan: string; languageCode: string } }>("GET", "/auth/me"),
 
