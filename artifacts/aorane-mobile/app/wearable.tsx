@@ -8,6 +8,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import { api } from "@/lib/api";
 
 const { width: W } = Dimensions.get("window");
@@ -209,12 +211,39 @@ export default function WearableScreen() {
   const connectGoogleFit = async () => {
     setConnectingGoogle(true);
     try {
-      const d = await api.getGoogleFitAuthUrl();
-      const { authUrl } = d as { authUrl: string };
       if (Platform.OS === "web" && typeof window !== "undefined") {
+        const d = await api.getGoogleFitAuthUrl();
+        const { authUrl } = d as { authUrl: string };
         window.location.href = authUrl;
-      } else {
-        Alert.alert("Open Browser", "Google Fit connection requires browser. Opening...");
+        return;
+      }
+      // Native: use expo-web-browser with deep link return
+      const returnUrl = Linking.createURL("wearable");
+      const d = await api.getGoogleFitAuthUrl(returnUrl);
+      const { authUrl } = d as { authUrl: string };
+      await WebBrowser.warmUpAsync();
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl);
+      await WebBrowser.coolDownAsync();
+      if (result.type === "success") {
+        try {
+          const parsed = new URL(result.url);
+          const connected = parsed.searchParams.get("connected");
+          const err = parsed.searchParams.get("error");
+          if (connected) {
+            Alert.alert("✅ Connected!", `${PROVIDER_META[connected]?.name || connected} connected! Syncing initial data...`);
+            await loadAll();
+          } else if (err) {
+            const msgs: Record<string, string> = {
+              google_fit_denied: "Google Fit access was denied.",
+              token_failed: "Failed to get access token. Please try again.",
+              callback_failed: "Connection failed. Please try again.",
+              invalid_state: "Session expired. Please try again.",
+            };
+            Alert.alert("Connection Failed", msgs[err] || "Unknown error occurred.");
+          }
+        } catch { }
+      } else if (result.type === "cancel") {
+        // User cancelled — do nothing
       }
     } catch (e: unknown) {
       const msg = (e as Error)?.message || "";

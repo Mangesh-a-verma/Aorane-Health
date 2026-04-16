@@ -187,7 +187,8 @@ router.get("/wearable/oauth/google-fit/url", requireAuth, async (req: AuthReques
     res.status(503).json({ error: "Google Fit not configured. Please set GOOGLE_FIT_CLIENT_ID and GOOGLE_FIT_CLIENT_SECRET in environment." });
     return;
   }
-  const state = Buffer.from(JSON.stringify({ userId: req.userId, ts: Date.now() })).toString("base64url");
+  const { returnUrl } = req.query as { returnUrl?: string };
+  const state = Buffer.from(JSON.stringify({ userId: req.userId, ts: Date.now(), returnUrl: returnUrl || null })).toString("base64url");
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: GOOGLE_REDIRECT_URI,
@@ -203,16 +204,19 @@ router.get("/wearable/oauth/google-fit/url", requireAuth, async (req: AuthReques
 // Google Fit OAuth callback
 router.get("/wearable/oauth/google-fit/callback", async (req, res) => {
   const { code, state, error } = req.query as Record<string, string>;
+  const webBase = process.env.APP_URL || "https://api.aorane.com";
   if (error) {
-    res.redirect(`${process.env.APP_URL || "https://aorane.onrender.com"}/wearable?error=google_fit_denied`);
+    res.redirect(`${webBase}/wearable?error=google_fit_denied`);
     return;
   }
   let userId: string;
+  let returnUrl: string | null = null;
   try {
     const decoded = JSON.parse(Buffer.from(state, "base64url").toString());
     userId = decoded.userId;
+    returnUrl = decoded.returnUrl || null;
   } catch {
-    res.redirect(`${process.env.APP_URL || "https://aorane.onrender.com"}/wearable?error=invalid_state`);
+    res.redirect(`${process.env.APP_URL || "https://api.aorane.com"}/wearable?error=invalid_state`);
     return;
   }
   // Exchange code for tokens
@@ -230,7 +234,8 @@ router.get("/wearable/oauth/google-fit/callback", async (req, res) => {
     });
     const tokens = await tokenRes.json() as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
     if (!tokens.access_token) {
-      res.redirect(`${process.env.APP_URL || "https://aorane.onrender.com"}/wearable?error=token_failed`);
+      const errDest = returnUrl ? `${returnUrl}?error=token_failed` : `${webBase}/wearable?error=token_failed`;
+      res.redirect(errDest);
       return;
     }
     const expiresAt = new Date(Date.now() + ((tokens.expires_in || 3600) * 1000));
@@ -274,10 +279,12 @@ router.get("/wearable/oauth/google-fit/callback", async (req, res) => {
       await db.update(wearableConnectionsTable)
         .set({ lastSyncedAt: new Date() }).where(eq(wearableConnectionsTable.id, conn.id));
     }
-    res.redirect(`${process.env.APP_URL || "https://aorane.onrender.com"}/wearable?connected=google_fit`);
+    const successDest = returnUrl ? `${returnUrl}?connected=google_fit` : `${webBase}/wearable?connected=google_fit`;
+    res.redirect(successDest);
   } catch (e) {
     console.error("Google Fit callback error:", e);
-    res.redirect(`${process.env.APP_URL || "https://aorane.onrender.com"}/wearable?error=callback_failed`);
+    const errDest = returnUrl ? `${returnUrl}?error=callback_failed` : `${webBase}/wearable?error=callback_failed`;
+    res.redirect(errDest);
   }
 });
 

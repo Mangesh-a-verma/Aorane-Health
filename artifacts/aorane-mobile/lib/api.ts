@@ -407,8 +407,8 @@ export const api = {
     request<{ connections: unknown[] }>("GET", "/wearable/connections"),
   getWearableData: (params?: { provider?: string; limit?: number }) =>
     request<{ latest: unknown; history: unknown[]; summary: unknown }>("GET", `/wearable/data${params?.limit ? `?limit=${params.limit}` : ""}`),
-  getGoogleFitAuthUrl: () =>
-    request<{ authUrl: string }>("GET", "/wearable/oauth/google-fit/url"),
+  getGoogleFitAuthUrl: (returnUrl?: string) =>
+    request<{ authUrl: string }>("GET", `/wearable/oauth/google-fit/url${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ""}`),
   syncWearableProvider: (provider: string) =>
     request<{ success: boolean; data: unknown }>("POST", `/wearable/sync/${provider}`, {}),
   addManualWearableData: (data: Record<string, unknown>) =>
