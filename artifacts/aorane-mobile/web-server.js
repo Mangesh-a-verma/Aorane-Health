@@ -58,11 +58,24 @@ function proxyToLocalApi(req, res, urlPath) {
   });
 }
 
+// The app is built with experiments.baseUrl="/aorane-mobile" so asset paths
+// are prefixed with /aorane-mobile. We strip this prefix regardless of how
+// the server is accessed (via Replit proxy or via the Expo dev domain directly).
+const STATIC_BASE_PREFIX = "/aorane-mobile";
+
 const server = http.createServer((req, res) => {
   let urlPath = req.url.split("?")[0];
 
-  if (BASE_PATH && urlPath.startsWith(BASE_PATH)) {
+  if (BASE_PATH && BASE_PATH !== "/" && urlPath.startsWith(BASE_PATH)) {
     urlPath = urlPath.slice(BASE_PATH.length) || "/";
+  }
+
+  // Strip the static base prefix if present (handles direct Expo dev domain access)
+  if (STATIC_BASE_PREFIX && urlPath.startsWith(STATIC_BASE_PREFIX)) {
+    const after = urlPath.slice(STATIC_BASE_PREFIX.length);
+    if (after === "" || after.startsWith("/")) {
+      urlPath = after || "/";
+    }
   }
 
   // Proxy /api/* to local API server in dev mode

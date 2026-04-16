@@ -161,14 +161,16 @@ export default function LoginScreen() {
 
   return (
     <View style={s.root}>
-      {/* Firebase reCAPTCHA verifier - invisible, opens only when needed */}
-      <FirebaseRecaptchaVerifierModal
-        ref={recaptchaVerifier}
-        firebaseConfig={firebaseConfig}
-        attemptInvisibleVerification
-        title="Verify you are human"
-        cancelLabel="Cancel"
-      />
+      {/* Firebase reCAPTCHA verifier - native only (web uses inline reCAPTCHA) */}
+      {Platform.OS !== "web" && (
+        <FirebaseRecaptchaVerifierModal
+          ref={recaptchaVerifier}
+          firebaseConfig={firebaseConfig}
+          attemptInvisibleVerification
+          title="Verify you are human"
+          cancelLabel="Cancel"
+        />
+      )}
 
       {/* Warm gradient background */}
       <LinearGradient
