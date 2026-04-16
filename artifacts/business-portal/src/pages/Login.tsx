@@ -236,12 +236,12 @@ export default function Login() {
           {/* Footer links */}
           <div style={{ marginTop: 24, textAlign: "center" }}>
             <span style={{ fontSize: 14, color: "#9ca3af" }}>Don't have an account? </span>
-            <a
-              href="/business-portal/register"
-              style={{ fontSize: 14, color: PRIMARY, fontWeight: 600, textDecoration: "none" }}
+            <button
+              onClick={() => navigate("/register")}
+              style={{ fontSize: 14, color: PRIMARY, fontWeight: 600, textDecoration: "none", background: "none", border: "none", cursor: "pointer", padding: 0 }}
             >
               Register your organization
-            </a>
+            </button>
           </div>
 
           {/* Trust */}
@@ -261,9 +261,9 @@ export default function Login() {
           </div>
 
           <p style={{ textAlign: "center", marginTop: 16 }}>
-            <a href="/business-portal/" style={{ fontSize: 13, color: "#9ca3af", textDecoration: "none" }}>
+            <button onClick={() => navigate("/")} style={{ fontSize: 13, color: "#9ca3af", textDecoration: "none", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
               ← Back to home
-            </a>
+            </button>
           </p>
         </div>
       </div>

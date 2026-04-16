@@ -378,9 +378,9 @@ export default function Register() {
 
           <p style={{ textAlign: "center", color: "#9ca3af", fontSize: 13, marginTop: 20 }}>
             Already registered?{" "}
-            <a href="/business-portal/login" style={{ color: PRIMARY, fontWeight: 600, textDecoration: "none" }}>
+            <button onClick={() => navigate("/login")} style={{ color: PRIMARY, fontWeight: 600, textDecoration: "none", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
               Log in here
-            </a>
+            </button>
           </p>
           <p style={{ textAlign: "center", color: "#9ca3af", fontSize: 12, marginTop: 12 }}>
             Protected by DPDP Act 2023 · 256-bit SSL · Made in India 🇮🇳
