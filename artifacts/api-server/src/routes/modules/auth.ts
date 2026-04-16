@@ -295,20 +295,20 @@ router.post("/auth/refresh", async (req, res) => {
 
 router.post("/auth/google", async (req, res) => {
   try {
-    const { idToken, accessToken, languageCode = "hi", countryCode = "IN" } = req.body as {
+    const { idToken, accessToken: googleAccessToken, languageCode = "hi", countryCode = "IN" } = req.body as {
       idToken?: string; accessToken?: string; languageCode?: string; countryCode?: string;
     };
-    if (!idToken && !accessToken) {
+    if (!idToken && !googleAccessToken) {
       res.status(400).json({ error: "Google ID token or access token required" });
       return;
     }
 
     let googleData: { sub?: string; email: string; name?: string; picture?: string; aud?: string; error_description?: string };
 
-    if (accessToken) {
+    if (googleAccessToken) {
       // Verify access token via Google userinfo endpoint
       const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${googleAccessToken}` },
       });
       if (!userInfoRes.ok) {
         res.status(401).json({ error: "Invalid Google access token" });
