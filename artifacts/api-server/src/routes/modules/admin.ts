@@ -7,8 +7,26 @@ import type { AdminRequest } from "../../middlewares/admin-auth";
 import { invalidateAICache } from "../../lib/ai";
 import { invalidateFeatureCache } from "../../middlewares/feature-check";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
 const router = Router();
+
+// Secure password verification with lazy bcrypt migration from SHA-256
+async function verifyAndMigratePassword(
+  plain: string,
+  stored: string,
+  updateHash: (h: string) => Promise<void>
+): Promise<boolean> {
+  if (stored.startsWith("$2b$") || stored.startsWith("$2a$")) {
+    return bcrypt.compare(plain, stored);
+  }
+  // Legacy SHA-256 — verify then silently upgrade to bcrypt
+  const sha = crypto.createHash("sha256").update(plain).digest("hex");
+  if (sha !== stored) return false;
+  const newHash = await bcrypt.hash(plain, 12);
+  await updateHash(newHash);
+  return true;
+}
 
 router.post("/admin/login", async (req, res) => {
   try {
@@ -26,8 +44,12 @@ router.post("/admin/login", async (req, res) => {
 
     const [admin] = await db.select().from(adminUsersTable).where(eq(adminUsersTable.email, email));
     if (!admin || !admin.isActive) { res.status(401).json({ error: "Invalid credentials" }); return; }
-    const passwordHash = crypto.createHash("sha256").update(password).digest("hex");
-    if (admin.passwordHash !== passwordHash) { res.status(401).json({ error: "Invalid credentials" }); return; }
+
+    const valid = await verifyAndMigratePassword(password, admin.passwordHash, async (h) => {
+      await db.update(adminUsersTable).set({ passwordHash: h }).where(eq(adminUsersTable.id, admin.id));
+    });
+    if (!valid) { res.status(401).json({ error: "Invalid credentials" }); return; }
+
     await db.update(adminUsersTable).set({ lastLoginAt: new Date() }).where(eq(adminUsersTable.id, admin.id));
     const token = signAdminToken({ adminId: admin.id, role: admin.role });
     res.json({ token, admin: { id: admin.id, fullName: admin.fullName, role: admin.role } });
@@ -561,9 +583,11 @@ router.post("/admin/change-password", requireAdmin, async (req: AdminRequest, re
     if (newPassword.length < 8) { res.status(400).json({ error: "New password must be at least 8 characters" }); return; }
     const [admin] = await db.select().from(adminUsersTable).where(eq(adminUsersTable.id, req.adminId!));
     if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
-    const currentHash = crypto.createHash("sha256").update(currentPassword).digest("hex");
-    if (admin.passwordHash !== currentHash) { res.status(401).json({ error: "Current password is incorrect" }); return; }
-    const newHash = crypto.createHash("sha256").update(newPassword).digest("hex");
+    const valid = await verifyAndMigratePassword(currentPassword, admin.passwordHash, async (h) => {
+      await db.update(adminUsersTable).set({ passwordHash: h }).where(eq(adminUsersTable.id, admin.id));
+    });
+    if (!valid) { res.status(401).json({ error: "Current password is incorrect" }); return; }
+    const newHash = await bcrypt.hash(newPassword, 12);
     await db.update(adminUsersTable).set({ passwordHash: newHash }).where(eq(adminUsersTable.id, req.adminId!));
     res.json({ success: true, message: "Password changed successfully" });
   } catch { res.status(500).json({ error: "Failed to change password" }); }

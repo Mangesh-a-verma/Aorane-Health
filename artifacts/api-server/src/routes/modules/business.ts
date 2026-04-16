@@ -6,6 +6,23 @@ import { requireAuth } from "../../middlewares/user-auth";
 import { signBusinessToken } from "../../lib/jwt";
 import type { BusinessRequest } from "../../middlewares/business-auth";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
+
+// Secure password verification with lazy bcrypt migration from SHA-256
+async function verifyAndMigratePassword(
+  plain: string,
+  stored: string,
+  updateHash: (h: string) => Promise<void>
+): Promise<boolean> {
+  if (stored.startsWith("$2b$") || stored.startsWith("$2a$")) {
+    return bcrypt.compare(plain, stored);
+  }
+  const sha = crypto.createHash("sha256").update(plain).digest("hex");
+  if (sha !== stored) return false;
+  const newHash = await bcrypt.hash(plain, 12);
+  await updateHash(newHash);
+  return true;
+}
 import {
   isLiveMode, createPlan, createSubscription, cancelSubscription,
   verifySubscriptionSignature, verifyPaymentSignature, createOrder,
@@ -44,7 +61,7 @@ router.post("/business/register", async (req, res) => {
       totalSeats: Number(totalSeats),
     }).returning();
 
-    const passwordHash = crypto.createHash("sha256").update(adminPassword as string).digest("hex");
+    const passwordHash = await bcrypt.hash(adminPassword as string, 12);
     const [admin] = await db.insert(orgAdminsTable).values({
       orgId: org.id,
       fullName: adminName as string,
@@ -82,8 +99,10 @@ router.post("/business/login", async (req, res) => {
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
-    const passwordHash = crypto.createHash("sha256").update(password).digest("hex");
-    if (admin.passwordHash !== passwordHash) {
+    const valid = await verifyAndMigratePassword(password, admin.passwordHash, async (h) => {
+      await db.update(orgAdminsTable).set({ passwordHash: h }).where(eq(orgAdminsTable.id, admin.id));
+    });
+    if (!valid) {
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
@@ -528,9 +547,11 @@ router.patch("/business/admin/password", requireBusinessAuth, async (req: Busine
     if (newPassword.length < 6) { res.status(400).json({ error: "New password must be at least 6 characters" }); return; }
     const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.id, req.orgAdminId!));
     if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
-    const currentHash = crypto.createHash("sha256").update(currentPassword).digest("hex");
-    if (admin.passwordHash !== currentHash) { res.status(401).json({ error: "Current password is incorrect" }); return; }
-    const newHash = crypto.createHash("sha256").update(newPassword).digest("hex");
+    const valid = await verifyAndMigratePassword(currentPassword, admin.passwordHash, async (h) => {
+      await db.update(orgAdminsTable).set({ passwordHash: h }).where(eq(orgAdminsTable.id, admin.id));
+    });
+    if (!valid) { res.status(401).json({ error: "Current password is incorrect" }); return; }
+    const newHash = await bcrypt.hash(newPassword, 12);
     await db.update(orgAdminsTable).set({ passwordHash: newHash }).where(eq(orgAdminsTable.id, req.orgAdminId!));
     res.json({ success: true });
   } catch { res.status(500).json({ error: "Failed to change password" }); }

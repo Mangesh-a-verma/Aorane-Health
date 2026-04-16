@@ -118,7 +118,7 @@ router.patch("/users/profile", requireAuth, async (req: AuthRequest, res) => {
     );
     res.json({ profile: result.rows[0] ?? null });
   } catch (e) {
-    res.status(500).json({ error: "Failed to update profile", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to update profile" });
   }
 });
 
@@ -128,7 +128,7 @@ router.patch("/users/onboarding/step", requireAuth, async (req: AuthRequest, res
     await pool.query(`UPDATE user_profiles SET onboarding_step=$1 WHERE user_id=$2`, [step, req.userId!]);
     res.json({ success: true, step });
   } catch (e) {
-    res.status(500).json({ error: "Failed to update onboarding step", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to update onboarding step" });
   }
 });
 
@@ -147,7 +147,7 @@ router.post("/users/medical-conditions", requireAuth, async (req: AuthRequest, r
     const saved = await pool.query(`SELECT * FROM user_medical_conditions WHERE user_id=$1`, [req.userId!]);
     res.json({ conditions: saved.rows });
   } catch (e) {
-    res.status(500).json({ error: "Failed to save conditions", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to save conditions" });
   }
 });
 
@@ -170,7 +170,7 @@ router.post("/users/health-goals", requireAuth, async (req: AuthRequest, res) =>
     );
     res.json({ goals: result.rows[0] });
   } catch (e) {
-    res.status(500).json({ error: "Failed to save goals", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to save goals" });
   }
 });
 
@@ -179,7 +179,7 @@ router.get("/users/preferences", requireAuth, async (req: AuthRequest, res) => {
     const r = await pool.query(`SELECT * FROM user_preferences WHERE user_id=$1`, [req.userId!]);
     res.json({ preferences: r.rows[0] ?? null });
   } catch (e) {
-    res.status(500).json({ error: "Failed to fetch preferences", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to fetch preferences" });
   }
 });
 
@@ -203,7 +203,7 @@ router.patch("/users/preferences", requireAuth, async (req: AuthRequest, res) =>
     const result = await pool.query(`UPDATE user_preferences SET ${fields.join(",")} WHERE user_id=$${idx} RETURNING *`, vals);
     res.json({ preferences: result.rows[0] ?? null });
   } catch (e) {
-    res.status(500).json({ error: "Failed to update preferences", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to update preferences" });
   }
 });
 
@@ -212,7 +212,7 @@ router.get("/users/privacy", requireAuth, async (req: AuthRequest, res) => {
     const r = await pool.query(`SELECT * FROM user_privacy_settings WHERE user_id=$1`, [req.userId!]);
     res.json({ privacy: r.rows[0] ?? null });
   } catch (e) {
-    res.status(500).json({ error: "Failed to fetch privacy settings", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to fetch privacy settings" });
   }
 });
 
@@ -236,7 +236,7 @@ router.patch("/users/privacy", requireAuth, async (req: AuthRequest, res) => {
     const result = await pool.query(`UPDATE user_privacy_settings SET ${fields.join(",")} WHERE user_id=$${idx} RETURNING *`, vals);
     res.json({ privacy: result.rows[0] ?? null });
   } catch (e) {
-    res.status(500).json({ error: "Failed to update privacy settings", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to update privacy settings" });
   }
 });
 
@@ -305,7 +305,7 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
     });
   } catch (e) {
     console.error("[SCORECARD ERROR]", (e as Error).message);
-    res.status(500).json({ error: "Failed to fetch scorecard", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to fetch scorecard" });
   }
 });
 
@@ -354,7 +354,7 @@ router.get("/notifications/settings", requireAuth, async (req: AuthRequest, res)
       }
     });
   } catch (e) {
-    res.status(500).json({ error: "Failed to fetch notification settings", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to fetch notification settings" });
   }
 });
 
@@ -377,7 +377,7 @@ router.put("/notifications/settings", requireAuth, async (req: AuthRequest, res)
     await pool.query(`UPDATE user_preferences SET ${fields.join(",")} WHERE user_id=$${idx}`, vals);
     res.json({ success: true });
   } catch (e) {
-    res.status(500).json({ error: "Failed to update notification settings", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to update notification settings" });
   }
 });
 

@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -43,6 +44,13 @@ app.use(
         };
       },
     },
+  }),
+);
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false,
   }),
 );
 
@@ -134,7 +142,7 @@ app.use("/api", router);
 const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
 if (RENDER_URL) {
   setInterval(() => {
-    fetch(`${RENDER_URL}/api/db-debug`).catch(() => {});
+    fetch(`${RENDER_URL}/health`).catch(() => {});
   }, 10 * 60 * 1000);
   logger.info({ url: RENDER_URL }, "Keep-alive ping scheduled (every 10 min)");
 }
@@ -144,10 +152,11 @@ app.use((_req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-// Global error handler — always returns JSON, never empty body
+// Global error handler — never leaks internal details in production
 app.use((err: Error, _req: import("express").Request, res: import("express").Response, _next: import("express").NextFunction) => {
   logger.error({ err }, "Unhandled error");
-  res.status(500).json({ error: err.message || "Internal server error" });
+  const message = process.env.NODE_ENV === "production" ? "Internal server error" : (err.message || "Internal server error");
+  res.status(500).json({ error: message });
 });
 
 export default app;
