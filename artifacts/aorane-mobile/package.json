@@ -57,7 +57,6 @@
     "expo-auth-session": "^7.0.10",
     "expo-build-properties": "^1.0.10",
     "expo-crypto": "^15.0.8",
-    "expo-firebase-recaptcha": "^2.3.1",
     "expo-local-authentication": "^17.0.8",
     "expo-notifications": "^0.32.16",
     "expo-print": "^15.0.8",
