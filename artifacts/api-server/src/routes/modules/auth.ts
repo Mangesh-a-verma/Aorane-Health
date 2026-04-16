@@ -295,32 +295,48 @@ router.post("/auth/refresh", async (req, res) => {
 
 router.post("/auth/google", async (req, res) => {
   try {
-    const { idToken, languageCode = "hi", countryCode = "IN" } = req.body as {
-      idToken: string; languageCode?: string; countryCode?: string;
+    const { idToken, accessToken, languageCode = "hi", countryCode = "IN" } = req.body as {
+      idToken?: string; accessToken?: string; languageCode?: string; countryCode?: string;
     };
-    if (!idToken) {
-      res.status(400).json({ error: "Google ID token required" });
+    if (!idToken && !accessToken) {
+      res.status(400).json({ error: "Google ID token or access token required" });
       return;
     }
 
-    const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
-    if (!googleRes.ok) {
-      res.status(401).json({ error: "Invalid Google token" });
-      return;
-    }
-    const googleData = await googleRes.json() as {
-      sub: string; email: string; name: string; picture: string; aud: string; error_description?: string;
-    };
+    let googleData: { sub?: string; email: string; name?: string; picture?: string; aud?: string; error_description?: string };
 
-    if (!googleData.sub || googleData.error_description) {
-      res.status(401).json({ error: "Invalid Google token" });
-      return;
+    if (accessToken) {
+      // Verify access token via Google userinfo endpoint
+      const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!userInfoRes.ok) {
+        res.status(401).json({ error: "Invalid Google access token" });
+        return;
+      }
+      googleData = await userInfoRes.json() as typeof googleData;
+    } else {
+      // Verify ID token via tokeninfo endpoint
+      const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+      if (!googleRes.ok) {
+        res.status(401).json({ error: "Invalid Google token" });
+        return;
+      }
+      googleData = await googleRes.json() as typeof googleData;
+      if (googleData.error_description) {
+        res.status(401).json({ error: "Invalid Google token" });
+        return;
+      }
+      // Verify the token was issued for this app
+      const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+      if (GOOGLE_CLIENT_ID && googleData.aud && googleData.aud !== GOOGLE_CLIENT_ID) {
+        res.status(401).json({ error: "Google token audience mismatch" });
+        return;
+      }
     }
 
-    // Verify the token was issued for this app
-    const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-    if (GOOGLE_CLIENT_ID && googleData.aud !== GOOGLE_CLIENT_ID) {
-      res.status(401).json({ error: "Google token audience mismatch" });
+    if (!googleData.email) {
+      res.status(401).json({ error: "Could not get email from Google" });
       return;
     }
 

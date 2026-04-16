@@ -78,9 +78,9 @@ export const api = {
       "POST", "/auth/verify-otp", { phone, otp, languageCode }, false
     ),
 
-  googleLogin: (idToken: string) =>
+  googleLogin: (accessToken: string) =>
     request<{ accessToken: string; refreshToken: string; isNewUser: boolean; user: { id: string; plan: string } }>(
-      "POST", "/auth/google", { idToken }, false
+      "POST", "/auth/google", { accessToken }, false
     ),
 
   firebaseLogin: (idToken: string, phone: string, languageCode = "hi") =>

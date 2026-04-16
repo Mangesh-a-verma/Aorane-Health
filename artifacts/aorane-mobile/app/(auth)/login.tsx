@@ -10,9 +10,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Google from "expo-auth-session/providers/google";
+import * as WebBrowser from "expo-web-browser";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+
+WebBrowser.maybeCompleteAuthSession();
 
 const { width: W, height: H } = Dimensions.get("window");
 
@@ -58,11 +62,19 @@ export default function LoginScreen() {
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [loginMode, setLoginMode] = useState<"otp" | "pin">("otp");
   const [pin, setPin] = useState("");
   const [pinFocused, setPinFocused] = useState(false);
   const [devOtp, setDevOtp] = useState<string | null>(null);
+
+  const [, googleResponse, googlePromptAsync] = Google.useAuthRequest({
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    scopes: ["openid", "email", "profile"],
+  });
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
@@ -70,6 +82,35 @@ export default function LoginScreen() {
   const glowAnim = useRef(new Animated.Value(0)).current;
   const orb1Anim = useRef(new Animated.Value(0)).current;
   const orb2Anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (googleResponse?.type === "success") {
+      const accessToken = googleResponse.authentication?.accessToken;
+      if (accessToken) handleGoogleLogin(accessToken);
+      else Alert.alert("Google Login Failed", "Could not get access token from Google.");
+    } else if (googleResponse?.type === "error") {
+      Alert.alert("Google Login Error", googleResponse.error?.message || "Google sign-in failed.");
+    }
+  }, [googleResponse]);
+
+  const handleGoogleLogin = async (accessToken: string) => {
+    setGoogleLoading(true);
+    try {
+      const result = await api.googleLogin(accessToken);
+      const userData = result.user as { id: string; plan: string };
+      await loginWithToken(
+        result.accessToken,
+        result.refreshToken,
+        { id: userData.id, phone: "", plan: userData.plan || "free", languageCode: lang },
+        result.isNewUser
+      );
+      router.replace("/(tabs)/" as never);
+    } catch (err: unknown) {
+      Alert.alert("Google Login Failed", err instanceof Error ? err.message : "Please try again.");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   useEffect(() => {
     Animated.parallel([
@@ -338,6 +379,30 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
+              {/* Google Sign-In — Primary alternative */}
+              <View style={s.dividerRow}>
+                <View style={s.dividerLine} />
+                <Text style={s.dividerText}>ya</Text>
+                <View style={s.dividerLine} />
+              </View>
+
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); googlePromptAsync(); }}
+                disabled={anyLoading || googleLoading}
+                activeOpacity={0.88}
+                style={[s.googleBtn, (anyLoading || googleLoading) && { opacity: 0.65 }]}
+              >
+                {googleLoading
+                  ? <ActivityIndicator color="#4285F4" size="small" />
+                  : <>
+                      <View style={s.googleIcon}>
+                        <Text style={{ fontSize: 17 }}>G</Text>
+                      </View>
+                      <Text style={s.googleText}>Google se continue karo</Text>
+                    </>
+                }
+              </TouchableOpacity>
+
               {/* Social Buttons */}
               {loginMode === "otp" && (
                 <View style={s.socialRow}>
@@ -501,6 +566,24 @@ const s = StyleSheet.create({
   devOtpCode: { fontSize: 42, fontFamily: "Inter_700Bold", color: "#B45309", textAlign: "center", letterSpacing: 10, marginVertical: 8 },
   devOtpHint: { fontSize: 11, color: "#92400E", fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 12, lineHeight: 16 },
   devOtpBtn: { backgroundColor: "#F59E0B", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
+
+  dividerRow: { flexDirection: "row", alignItems: "center", marginVertical: 14, gap: 10 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: "rgba(200,215,230,0.7)" },
+  dividerText: { fontSize: 12, color: "#9CB8C8", fontFamily: "Inter_500Medium" },
+
+  googleBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    height: 52, borderRadius: 16, gap: 10, marginBottom: 10,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5, borderColor: "rgba(66,133,244,0.35)",
+    shadowColor: "#4285F4", shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
+  },
+  googleIcon: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: "#4285F4", alignItems: "center", justifyContent: "center",
+  },
+  googleText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#1A1A1A" },
   devOtpBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#FFF" },
 
   badgeRow: { flexDirection: "row", gap: 8, justifyContent: "center", flexWrap: "wrap", marginTop: 8, marginBottom: 10 },
