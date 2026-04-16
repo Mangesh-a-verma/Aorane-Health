@@ -41,9 +41,9 @@ export default function Navbar({ audience, onAudienceChange, onSignIn, onSignUp 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "glass shadow-md" : "bg-transparent"}`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between py-2">
+        <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2.5">
-            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ width: 180, height: 180, objectFit: "contain" }} />
+            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ height: 52, width: "auto", objectFit: "contain" }} />
             <span className="text-xl font-bold text-[#0747A6]">AORANE</span>
             <span className="hidden sm:inline-block text-xs font-semibold bg-[#10B981]/10 text-[#059669] px-2 py-0.5 rounded-full ml-1">Health+</span>
           </div>

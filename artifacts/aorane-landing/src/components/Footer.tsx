@@ -42,7 +42,7 @@ export default function Footer() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-8">
           <div className="lg:col-span-2">
             <div className="flex items-center gap-2.5 mb-4">
-              <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ width: 180, height: 180, objectFit: "contain" }} />
+              <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ height: 52, width: "auto", objectFit: "contain" }} />
               <span className="text-xl font-bold">AORANE</span>
             </div>
             <p className="text-sm text-gray-400 leading-relaxed max-w-xs mb-6">
