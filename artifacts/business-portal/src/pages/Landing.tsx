@@ -240,9 +240,7 @@ export default function Landing() {
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px", height: 72, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 36, height: 36, background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="monitor_heart" size={20} color="white" />
-            </div>
+            <img src="/logo.png" alt="AORANE" style={{ width: 36, height: 36, objectFit: "contain" }} />
             <span style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.02em" }}>
               AORANE <span style={{ color: PRIMARY }}>Business</span>
             </span>

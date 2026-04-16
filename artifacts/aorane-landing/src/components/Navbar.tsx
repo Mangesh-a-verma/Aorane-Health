@@ -43,9 +43,7 @@ export default function Navbar({ audience, onAudienceChange, onSignIn, onSignUp 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 blue-gradient rounded-xl flex items-center justify-center shadow-md">
-              <Activity className="w-5 h-5 text-white" />
-            </div>
+            <img src="/logo.png" alt="AORANE" className="w-9 h-9 object-contain" />
             <span className="text-xl font-bold text-[#0747A6]">AORANE</span>
             <span className="hidden sm:inline-block text-xs font-semibold bg-[#10B981]/10 text-[#059669] px-2 py-0.5 rounded-full ml-1">Health+</span>
           </div>

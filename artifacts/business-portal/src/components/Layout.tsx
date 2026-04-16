@@ -59,9 +59,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div className="px-6 pt-6 pb-4 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Building2 size={16} className="text-white" />
-            </div>
+            <img src="/logo.png" alt="AORANE" className="w-8 h-8 object-contain" />
             <div>
               <div className="text-white font-bold text-sm tracking-wide">AORANE</div>
               <div className="text-sidebar-foreground/50 text-xs">Business Portal</div>

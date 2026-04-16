@@ -42,9 +42,7 @@ export default function Footer() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-8">
           <div className="lg:col-span-2">
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 blue-gradient rounded-xl flex items-center justify-center">
-                <Activity className="w-5 h-5 text-white" />
-              </div>
+              <img src="/logo.png" alt="AORANE" className="w-9 h-9 object-contain" />
               <span className="text-xl font-bold">AORANE</span>
             </div>
             <p className="text-sm text-gray-400 leading-relaxed max-w-xs mb-6">

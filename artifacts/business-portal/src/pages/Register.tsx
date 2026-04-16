@@ -112,9 +112,7 @@ export default function Register() {
       }} className="hide-on-mobile">
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 56 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="monitor_heart" size={22} color="white" />
-            </div>
+            <img src="/logo.png" alt="AORANE" style={{ width: 40, height: 40, objectFit: "contain" }} />
             <span style={{ color: "white", fontSize: 20, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>AORANE Business</span>
           </div>
           <h2 style={{ fontSize: 32, fontWeight: 800, color: "white", lineHeight: 1.25, margin: "0 0 16px", fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
@@ -147,9 +145,7 @@ export default function Register() {
 
           {/* Mobile logo */}
           <div style={{ display: "none", alignItems: "center", gap: 10, marginBottom: 32 }} className="mobile-logo">
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="monitor_heart" size={20} color="white" />
-            </div>
+            <img src="/logo.png" alt="AORANE" style={{ width: 36, height: 36, objectFit: "contain" }} />
             <span style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20" }}>AORANE Business</span>
           </div>
 

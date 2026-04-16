@@ -66,10 +66,7 @@ export default function Login() {
         {/* Logo */}
         <div className="relative">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
-                 style={{ background: "linear-gradient(135deg, #0077B6, #1B998B)" }}>
-              <ShieldAlert size={20} className="text-white" />
-            </div>
+            <img src="/logo.png" alt="AORANE" className="w-10 h-10 object-contain" />
             <div>
               <div className="font-black text-base tracking-widest"
                    style={{
@@ -162,10 +159,7 @@ export default function Login() {
 
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
-            <div className="inline-flex w-14 h-14 rounded-2xl items-center justify-center mb-4"
-                 style={{ background: "linear-gradient(135deg, #0077B6, #1B998B)" }}>
-              <ShieldAlert size={24} className="text-white" />
-            </div>
+            <img src="/logo.png" alt="AORANE" className="w-14 h-14 object-contain mx-auto mb-4" />
             <div className="font-black text-lg tracking-widest gradient-text">AORANE</div>
             <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>Admin Console</div>
           </div>
