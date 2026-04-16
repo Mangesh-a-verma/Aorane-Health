@@ -66,7 +66,7 @@ export default function Login() {
         {/* Logo */}
         <div className="relative">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="AORANE" className="w-10 h-10 object-contain" />
+            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ width: 200, height: 200, objectFit: "contain" }} />
             <div>
               <div className="font-black text-base tracking-widest"
                    style={{
@@ -159,7 +159,7 @@ export default function Login() {
 
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
-            <img src="/logo.png" alt="AORANE" className="w-14 h-14 object-contain mx-auto mb-4" />
+            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ width: 280, height: 280, objectFit: "contain", margin: "0 auto 16px" }} />
             <div className="font-black text-lg tracking-widest gradient-text">AORANE</div>
             <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>Admin Console</div>
           </div>

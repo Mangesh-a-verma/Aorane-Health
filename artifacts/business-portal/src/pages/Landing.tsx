@@ -237,10 +237,10 @@ export default function Landing() {
         boxShadow: scrolled ? "0 4px 24px rgba(0,0,0,0.07)" : "none",
         transition: "all 0.3s ease",
       }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px", height: 72, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "8px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <img src="/logo.png" alt="AORANE" style={{ width: 36, height: 36, objectFit: "contain" }} />
+            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ width: 180, height: 180, objectFit: "contain" }} />
             <span style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.02em" }}>
               AORANE <span style={{ color: PRIMARY }}>Business</span>
             </span>
@@ -704,7 +704,7 @@ export default function Landing() {
           <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 56 }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <img src="/logo.png" alt="AORANE" style={{ width: 32, height: 32, objectFit: "contain" }} />
+                <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ width: 160, height: 160, objectFit: "contain" }} />
                 <span style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20" }}>AORANE</span>
               </div>
               <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.85, maxWidth: 280, margin: "0 0 24px" }}>
