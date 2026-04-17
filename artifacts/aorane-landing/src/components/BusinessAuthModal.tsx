@@ -34,13 +34,8 @@ const BUSINESS_PORTAL_URL = import.meta.env.VITE_BUSINESS_URL ||
     ? window.location.origin + "/business-portal"
     : "https://business.aorane.com");
 
-function redirectToBusiness(token: string, admin: object, org: object) {
-  const params = new URLSearchParams({
-    t: token,
-    a: JSON.stringify(admin),
-    o: JSON.stringify(org),
-  });
-  window.location.href = `${BUSINESS_PORTAL_URL}/auth?${params.toString()}`;
+function redirectToBusiness(token: string) {
+  window.location.href = `${BUSINESS_PORTAL_URL}/auth?t=${encodeURIComponent(token)}`;
 }
 
 async function apiPost<T>(path: string, body: object): Promise<T> {
@@ -176,7 +171,7 @@ function SignInForm({ onClose }: { onClose: () => void }) {
     setLoading(true); setError("");
     try {
       const res = await apiPost<{ token: string; admin: object; org: object }>("/business/login", { email, password });
-      redirectToBusiness(res.token, res.admin, res.org);
+      redirectToBusiness(res.token);
     } catch (err) {
       setError((err as Error).message || "Login failed");
     } finally {
@@ -263,7 +258,7 @@ function SignUpForm({ onClose }: { onClose: () => void }) {
         adminName: form.adminName, adminPassword: form.adminPassword,
         totalSeats: parseInt(form.totalSeats),
       });
-      redirectToBusiness(res.token, res.admin || { fullName: form.adminName, role: "owner" }, res.org);
+      redirectToBusiness(res.token);
     } catch (err) {
       setError((err as Error).message || "Registration failed");
       setLoading(false);

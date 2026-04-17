@@ -133,6 +133,9 @@ export const api = {
   sendBusinessEmailOtp: (email: string) =>
     request<{ success: boolean; message: string; devOtp?: string; sent: boolean }>("/business/login/send-email-otp", { method: "POST", body: JSON.stringify({ email }) }),
 
+  getMe: (token: string) =>
+    request<{ admin: Admin; org: Org }>("/business/me", { headers: { Authorization: `Bearer ${token}` } }),
+
   sendEmailOtp: (email: string) =>
     request<{ success: boolean; message: string; devOtp?: string; sent: boolean }>("/auth/send-email-otp", { method: "POST", body: JSON.stringify({ email }) }),
 

@@ -201,6 +201,17 @@ router.post("/business/login/send-email-otp", async (req, res) => {
   }
 });
 
+router.get("/business/me", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.id, req.orgAdminId!));
+    const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
+    if (!admin || !org) return res.status(404).json({ error: "Account not found" });
+    res.json({ admin: { id: admin.id, fullName: admin.fullName, role: admin.role }, org });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch account" });
+  }
+});
+
 router.get("/business/overview", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));

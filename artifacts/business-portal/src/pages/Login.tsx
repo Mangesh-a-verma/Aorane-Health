@@ -29,7 +29,7 @@ export default function Login() {
   const [loginOtpLoading, setLoginOtpLoading] = useState(false);
 
   // OTP tab state
-  const [loginTab, setLoginTab] = useState<"password" | "otp">("password");
+  const [loginTab, setLoginTab] = useState<"password" | "otp">("otp");
   const [otpEmail, setOtpEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpStep, setOtpStep] = useState<"send" | "verify">("send");
@@ -210,7 +210,7 @@ export default function Login() {
             {/* Tab switcher — only show when not in OTP verify step */}
             {passwordStep === "form" && (
               <div style={{ display: "flex", gap: 0, marginBottom: 24, background: "#f3f4f6", borderRadius: 12, padding: 4 }}>
-                {([["password", "lock", "Password"], ["otp", "mail", "Email OTP"]] as const).map(([tab, icon, label]) => (
+                {([["otp", "mail", "Email OTP"], ["password", "lock", "Password"]] as const).map(([tab, icon, label]) => (
                   <button key={tab} type="button"
                     onClick={() => { setLoginTab(tab); setError(""); setDevOtp(null); }}
                     style={{
@@ -316,9 +316,14 @@ export default function Login() {
               ) : (
                 /* Email OTP tab */
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                    {otpStep === "send" ? "Your Email Address" : `OTP sent to ${otpEmail}`}
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                    {otpStep === "send" ? "Your registered email" : `Verification code sent to ${otpEmail}`}
                   </label>
+                  {otpStep === "send" && (
+                    <p style={{ fontSize: 12, color: "#9ca3af", margin: "0 0 10px" }}>
+                      We'll send a 6-digit sign-in code — no password needed.
+                    </p>
+                  )}
                   {otpStep === "send" ? (
                     <div style={{ position: "relative" }}>
                       <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}>
@@ -326,7 +331,8 @@ export default function Login() {
                       </div>
                       <input
                         type="email" value={otpEmail} onChange={e => setOtpEmail(e.target.value)}
-                        placeholder="aapka@email.com"
+                        placeholder="admin@yourcompany.com"
+                        autoFocus
                         onFocus={() => setFocusedField("otpEmail")} onBlur={() => setFocusedField(null)}
                         style={{ width: "100%", boxSizing: "border-box", padding: "12px 16px 12px 44px", borderRadius: 12, border: `2px solid ${focusedField === "otpEmail" ? PRIMARY : otpEmail ? PRIMARY + "40" : "#e5e7eb"}`, background: "white", color: "#181c20", fontSize: 14, outline: "none", transition: "border-color 0.2s", boxShadow: focusedField === "otpEmail" ? `0 0 0 3px ${PRIMARY}18` : "none", fontFamily: "'Inter', sans-serif" }}
                       />
