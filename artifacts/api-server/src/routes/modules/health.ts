@@ -77,7 +77,7 @@ router.post("/health/exercise/calculate", requireAuth, async (req: AuthRequest, 
 
 router.post("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { exerciseType, durationMinutes, intensity, caloriesBurned, inputMethod, notes, loggedAt } = req.body as Record<string, unknown>;
+    const { exerciseType, durationMinutes, intensity, caloriesBurned, inputMethod, notes } = req.body as Record<string, unknown>;
 
     const profRes = await pool.query(`SELECT weight_kg, gender FROM user_profiles WHERE user_id=$1`, [req.userId!]);
     const weightKg = Number(profRes.rows[0]?.weight_kg || 70);
@@ -99,12 +99,11 @@ router.post("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
       finalMet = calc.met;
     }
 
-    const logTime = loggedAt ? new Date(loggedAt as string) : new Date();
     const result = await pool.query(
       `INSERT INTO exercise_logs (user_id, exercise_type, duration_minutes, intensity, calories_burned, met_value, input_method, notes, logged_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING *`,
       [req.userId!, exerciseType, Number(durationMinutes), intensity || "moderate",
-       String(finalCalories), String(finalMet), inputMethod || "manual", notes || null, logTime]
+       String(finalCalories), String(finalMet), inputMethod || "manual", notes || null]
     );
     res.status(201).json({
       log: result.rows[0],
@@ -148,15 +147,14 @@ router.get("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
 
 router.post("/health/water", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { glassesCount = 1, mlAmount = 250, drinkType = "water", loggedAt } = req.body as Record<string, unknown>;
+    const { glassesCount = 1, mlAmount = 250, drinkType = "water" } = req.body as Record<string, unknown>;
     if (Number(mlAmount) <= 0) {
       res.status(400).json({ error: "Water amount must be greater than 0ml" });
       return;
     }
-    const logTime = loggedAt ? new Date(loggedAt as string) : new Date();
     const result = await pool.query(
-      `INSERT INTO water_logs (user_id, glasses_count, ml_amount, drink_type, logged_at) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [req.userId!, Number(glassesCount), Number(mlAmount), drinkType, logTime]
+      `INSERT INTO water_logs (user_id, glasses_count, ml_amount, drink_type, logged_at) VALUES ($1,$2,$3,$4,NOW()) RETURNING *`,
+      [req.userId!, Number(glassesCount), Number(mlAmount), drinkType]
     );
     res.status(201).json({ log: result.rows[0] });
   } catch (e) {

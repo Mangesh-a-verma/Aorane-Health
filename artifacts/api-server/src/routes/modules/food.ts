@@ -33,7 +33,7 @@ router.get("/food/logs", requireAuth, async (req: AuthRequest, res) => {
 
 router.post("/food/log", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { foodNameEn, mealType, quantityG, quantityDescription, calories, proteinG, carbsG, fatG, fiberG, inputMethod, foodItemId, loggedAt } = req.body as Record<string, unknown>;
+    const { foodNameEn, mealType, quantityG, quantityDescription, calories, proteinG, carbsG, fatG, fiberG, inputMethod, foodItemId } = req.body as Record<string, unknown>;
     if (!foodNameEn || !calories) {
       res.status(400).json({ error: "foodNameEn and calories are required" });
       return;
@@ -51,7 +51,7 @@ router.post("/food/log", requireAuth, async (req: AuthRequest, res) => {
       fiberG: fiberG ? String(fiberG) : undefined,
       inputMethod: (inputMethod as "photo" | "text" | "voice" | "manual") || "text",
       foodItemId: foodItemId as string | undefined,
-      loggedAt: loggedAt ? new Date(loggedAt as string) : new Date(),
+      loggedAt: new Date(),
     }).returning();
     res.status(201).json({ log });
   } catch {
