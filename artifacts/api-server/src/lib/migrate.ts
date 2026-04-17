@@ -718,6 +718,9 @@ export async function runStartupMigrations(): Promise<void> {
     `UPDATE plan_pricing SET monthly_price='0', yearly_price=NULL, sort_order=0 WHERE plan_key='free'`,
     `UPDATE plan_pricing SET monthly_price='199', yearly_price='1990', badge_text='Popular', sort_order=1 WHERE plan_key='max'`,
     `UPDATE plan_pricing SET monthly_price='249', yearly_price='2490', badge_text='Best Value', sort_order=2 WHERE plan_key='pro'`,
+
+    // ── subscriptions: add 'pending' status for in-flight Razorpay subscription creation ──
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='pending' AND enumtypid=(SELECT oid FROM pg_type WHERE typname='subscription_status')) THEN ALTER TYPE subscription_status ADD VALUE 'pending'; END IF; END$$`,
   ];
 
   let ok = 0; let fail = 0;

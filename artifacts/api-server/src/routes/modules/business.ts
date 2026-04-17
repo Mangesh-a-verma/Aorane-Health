@@ -256,9 +256,9 @@ router.get("/business/me", requireBusinessAuth, async (req: BusinessRequest, res
     const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.id, req.orgAdminId!));
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
     if (!admin || !org) return res.status(404).json({ error: "Account not found" });
-    res.json({ admin: { id: admin.id, fullName: admin.fullName, role: admin.role }, org });
+    return res.json({ admin: { id: admin.id, fullName: admin.fullName, role: admin.role }, org });
   } catch {
-    res.status(500).json({ error: "Failed to fetch account" });
+    return res.status(500).json({ error: "Failed to fetch account" });
   }
 });
 
@@ -514,14 +514,14 @@ router.post("/business/billing/subscription/create", requireBusinessAuth, async 
       currency: "INR", status: "pending", paymentType: "recurring",
       autoRenew: true, nextRenewalAt: expiresAt, razorpaySubscriptionId: rzSub.id,
     }).returning();
-    res.json({
+    return res.json({
       isTestMode: false, paymentId: payment.id, razorpaySubscriptionId: rzSub.id,
       razorpayKeyId: process.env["RAZORPAY_KEY_ID"],
       plan, planLabel: planInfo.label, amount, seats: planInfo.seats,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create subscription";
-    res.status(500).json({ error: msg });
+    return res.status(500).json({ error: msg });
   }
 });
 
@@ -909,8 +909,8 @@ router.post("/business/billing/seat-verify", requireBusinessAuth, async (req: Bu
     if (!paymentId) { res.status(400).json({ error: "paymentId required" }); return; }
 
     if (!isTestMode) {
-      const { verifyOrderSignature } = await import("../../lib/razorpay.js");
-      const valid = verifyOrderSignature(String(razorpayOrderId), String(razorpayPaymentId), String(razorpaySignature));
+      const { verifyPaymentSignature } = await import("../../lib/razorpay.js");
+      const valid = verifyPaymentSignature(String(razorpayOrderId), String(razorpayPaymentId), String(razorpaySignature));
       if (!valid) { res.status(400).json({ error: "Payment verification failed" }); return; }
     }
 

@@ -15,7 +15,7 @@ import { usersTable } from "./users";
 import { organizationsTable } from "./business";
 
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "success", "failed", "refunded"]);
-export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "expired", "cancelled"]);
+export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "expired", "cancelled", "pending"]);
 
 export const subscriptionsTable = pgTable("subscriptions", {
   id: uuid("id").primaryKey().defaultRandom(),

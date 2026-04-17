@@ -183,7 +183,7 @@ router.post("/payment/subscription/create", requireAuth, async (req: AuthRequest
       nextRenewalAt: expiresAt, razorpaySubscriptionId: rzSub.id,
     }).returning();
 
-    res.json({
+    return res.json({
       isTestMode: false, razorpaySubscriptionId: rzSub.id,
       razorpayKeyId: process.env["RAZORPAY_KEY_ID"],
       subscriptionId: sub.id, plan, amount: finalAmount, discount, promoUsed,
@@ -191,7 +191,7 @@ router.post("/payment/subscription/create", requireAuth, async (req: AuthRequest
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create subscription";
-    res.status(500).json({ error: msg });
+    return res.status(500).json({ error: msg });
   }
 });
 

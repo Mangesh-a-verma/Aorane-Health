@@ -214,9 +214,9 @@ export default function Dashboard() {
                       </PieChart>
                       <div className="flex flex-col gap-2.5 flex-1">
                         {[
-                          { label: "Healthy", count: analytics.healthyCount, color: "#10B981", icon: UserCheck },
-                          { label: "At Risk", count: analytics.atRiskCount, color: "#F59E0B", icon: AlertTriangle },
-                          { label: "Inactive", count: analytics.inactiveCount, color: "#9CA3AF", icon: UserX },
+                          { label: "Healthy", count: analytics?.healthyCount ?? 0, color: "#10B981", icon: UserCheck },
+                          { label: "At Risk", count: analytics?.atRiskCount ?? 0, color: "#F59E0B", icon: AlertTriangle },
+                          { label: "Inactive", count: analytics?.inactiveCount ?? 0, color: "#9CA3AF", icon: UserX },
                         ].map(({ label, count, color, icon: Icon }) => (
                           <div key={label} className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
