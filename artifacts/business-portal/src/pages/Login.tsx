@@ -76,15 +76,15 @@ export default function Login() {
     }
   };
 
-  // Email OTP tab handlers
+  // Email OTP tab handlers (business-admin specific)
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otpEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(otpEmail)) {
       setError("Please enter a valid email address."); return;
     }
-    setOtpLoading(true); setError("");
+    setOtpLoading(true); setError(""); setDevOtp(null);
     try {
-      const res = await api.sendEmailOtp(otpEmail);
+      const res = await api.sendBusinessEmailOtp(otpEmail);
       if (res.devOtp) setDevOtp(res.devOtp);
       setOtpStep("verify");
     } catch (err) {
@@ -97,7 +97,8 @@ export default function Login() {
     if (!otpCode || otpCode.length < 6) { setError("Enter the 6-digit OTP."); return; }
     setOtpLoading(true); setError("");
     try {
-      await api.verifyEmailOtp(otpEmail, otpCode);
+      const res = await api.verifyLoginOtp(otpEmail, otpCode);
+      login(res.token, res.admin, res.org);
       navigate("/dashboard");
     } catch (err) {
       setError((err as Error).message || "Invalid or expired OTP.");
