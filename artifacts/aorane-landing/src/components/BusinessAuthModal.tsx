@@ -5,7 +5,11 @@ import {
   AlertCircle, CheckCircle2, Heart, Loader2, ArrowRight
 } from "lucide-react";
 
-const API_BASE = (import.meta.env.VITE_API_URL ?? "") + "/api";
+// In dev: use BASE_URL so Vite proxy routes /aorane-landing/api → localhost:8080
+// In production: VITE_API_URL is set to https://aorane.onrender.com via Vercel env vars
+const API_BASE = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL.replace(/\/$/, "") + "/api"
+  : import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
 
 const ORG_TYPES = [
   { value: "corporate", label: "Corporate", icon: "🏢" },
@@ -23,7 +27,12 @@ interface Props {
   onClose: () => void;
 }
 
-const BUSINESS_PORTAL_URL = import.meta.env.VITE_BUSINESS_URL ?? "https://business.aorane.com";
+// In dev: redirect to /business-portal on the same Replit domain
+// In production: use VITE_BUSINESS_URL env var (set in Vercel) or fall back to the production domain
+const BUSINESS_PORTAL_URL = import.meta.env.VITE_BUSINESS_URL ||
+  (import.meta.env.DEV
+    ? window.location.origin + "/business-portal"
+    : "https://business.aorane.com");
 
 function redirectToBusiness(token: string, admin: object, org: object) {
   const params = new URLSearchParams({

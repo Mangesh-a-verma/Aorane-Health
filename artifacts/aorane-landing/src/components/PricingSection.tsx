@@ -13,7 +13,9 @@ interface Plan {
   color: string;
 }
 
-const API_BASE = (import.meta.env.VITE_API_URL as string) || "";
+const API_BASE = import.meta.env.VITE_API_URL
+  ? (import.meta.env.VITE_API_URL as string).replace(/\/$/, "")
+  : import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const defaultIndividual: Plan[] = [
   { planKey: "free", displayName: "Free", type: "individual", monthlyPrice: "0", yearlyPrice: "0",

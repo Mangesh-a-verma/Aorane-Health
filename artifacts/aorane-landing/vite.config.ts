@@ -21,6 +21,7 @@ if (!isProduction) {
 }
 
 const basePath = process.env.BASE_PATH ?? "/";
+const apiProxyPath = basePath === "/" ? "/api" : `${basePath.replace(/\/$/, "")}/api`;
 
 export default defineConfig({
   base: basePath,
@@ -62,6 +63,15 @@ export default defineConfig({
     headers: {
       "Cache-Control": "no-store, no-cache, must-revalidate",
       "Pragma": "no-cache",
+    },
+    proxy: {
+      [apiProxyPath]: {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        rewrite: basePath === "/"
+          ? undefined
+          : (reqPath: string) => reqPath.replace(new RegExp(`^${basePath.replace(/\/$/, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`), ""),
+      },
     },
     fs: {
       strict: true,

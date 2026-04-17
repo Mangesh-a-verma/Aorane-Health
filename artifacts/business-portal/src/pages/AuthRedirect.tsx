@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/context/AuthContext";
+import type { Admin, Org } from "@/lib/api";
 
 export default function AuthRedirect() {
   const [, navigate] = useLocation();
+  const { login } = useAuth();
   const [status, setStatus] = useState<"loading" | "error">("loading");
 
   useEffect(() => {
@@ -17,15 +20,20 @@ export default function AuthRedirect() {
         return;
       }
 
-      localStorage.setItem("bp_token", token);
-      localStorage.setItem("bp_admin", adminStr);
-      localStorage.setItem("bp_org", orgStr);
+      const admin = JSON.parse(adminStr) as Admin;
+      const org = JSON.parse(orgStr) as Org;
 
+      if (!admin?.id || !org?.id) {
+        setStatus("error");
+        return;
+      }
+
+      login(token, admin, org);
       navigate("/dashboard");
     } catch {
       setStatus("error");
     }
-  }, [navigate]);
+  }, []);
 
   if (status === "error") {
     return (
