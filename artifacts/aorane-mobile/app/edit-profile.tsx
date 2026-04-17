@@ -178,9 +178,7 @@ export default function EditProfileScreen() {
 
       await api.updateProfile(payload);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      Alert.alert("✅ Saved!", "Your profile has been updated successfully.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      router.back();
     } catch (e: unknown) {
       Alert.alert("Error", (e as Error).message || "Could not save profile. Please try again.");
     } finally {
@@ -399,34 +397,14 @@ export default function EditProfileScreen() {
             value={foodPref}
             onChange={setFoodPref}
             options={[
-              { value: "vegetarian",   label: "Vegetarian",   icon: "🥦" },
-              { value: "non_vegetarian", label: "Non-Veg",    icon: "🍗" },
+              { value: "veg",          label: "Vegetarian",   icon: "🥦" },
+              { value: "nonveg",       label: "Non-Veg",      icon: "🍗" },
               { value: "vegan",        label: "Vegan",        icon: "🌱" },
               { value: "eggetarian",   label: "Eggetarian",   icon: "🥚" },
               { value: "jain",         label: "Jain",         icon: "🙏" },
             ]}
           />
         </SectionCard>
-
-        {/* ── Save button ── */}
-        <TouchableOpacity
-          onPress={handleSave}
-          disabled={saving}
-          activeOpacity={0.85}
-          style={{ marginTop: 4 }}
-        >
-          <LinearGradient
-            colors={["#C0392B", "#E8622A"]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={ss.saveBlock}
-          >
-            {saving
-              ? <ActivityIndicator size="small" color="#FFF" />
-              : <Ionicons name="checkmark-circle" size={22} color="#FFF" />
-            }
-            <Text style={ss.saveBlockText}>{saving ? "Saving..." : "Save Profile"}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
 
         <Text style={{ textAlign: "center", color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>
           Your data is encrypted and stored securely. Only you can see it.

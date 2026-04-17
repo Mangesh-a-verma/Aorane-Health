@@ -258,50 +258,68 @@ function StressCard({ data, onPress }: { data: StressToday | null; onPress: () =
   const col      = hasScore ? stressScoreColor(score) : "#8B5CF6";
   const label    = hasScore ? stressScoreLabel(score) : "Not checked in";
 
+  const gradColors: [string, string] = hasScore
+    ? (score < 26  ? ["#10B981", "#059669"]
+      : score < 51 ? ["#F59E0B", "#D97706"]
+      : score < 76 ? ["#F97316", "#EA580C"]
+      : ["#EF4444", "#DC2626"])
+    : ["#7C3AED", "#6D28D9"];
+
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.88} style={sc.wrap}>
-      {/* Left: icon + title */}
-      <View style={[sc.iconBox, { backgroundColor: col + "18" }]}>
-        <Brain size={20} color={col} strokeWidth={2} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={sc.title}>Stress Check-In</Text>
-        {data?.burnoutRisk && (
-          <View style={sc.burnoutBadge}>
-            <Text style={sc.burnoutTxt}>⚠️ Burnout Risk</Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.88} style={{ borderRadius: 20, overflow: "hidden" }}>
+      <LinearGradient colors={gradColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={sc.wrap}>
+        <View style={sc.shine1} />
+        <View style={sc.shine2} />
+        {/* Header row */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View style={sc.badge}>
+            <Brain size={12} color="#FFF" strokeWidth={2.5} />
+            <Text style={sc.badgeTxt}> MENTAL WELLNESS</Text>
           </View>
-        )}
-        <Text style={[sc.status, { color: col }]}>
-          {hasScore
-            ? `Score ${score} · ${label}${data!.count > 1 ? ` (${data!.count} today)` : ""}`
-            : "Tap to check in now"
-          }
-        </Text>
-      </View>
-      {/* Right: score ring or plus */}
-      {hasScore ? (
-        <View style={[sc.ring, { borderColor: col }]}>
-          <Text style={[sc.ringNum, { color: col }]}>{score}</Text>
+          {data?.burnoutRisk && (
+            <View style={sc.burnoutBadge}>
+              <Text style={sc.burnoutTxt}>⚠️ Burnout Risk</Text>
+            </View>
+          )}
         </View>
-      ) : (
-        <View style={[sc.addBtn, { backgroundColor: "#8B5CF6" + "15", borderColor: "#8B5CF6" + "30" }]}>
-          <Plus size={16} color="#8B5CF6" strokeWidth={2.5} />
+        {/* Content row */}
+        <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginTop: 10 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={sc.title}>Stress Check-In</Text>
+            <Text style={sc.status}>
+              {hasScore ? `${label} · ${data!.count} check-in${data!.count !== 1 ? "s" : ""} today` : "Tap to log your stress level"}
+            </Text>
+          </View>
+          {hasScore ? (
+            <View style={sc.ring}>
+              <Text style={sc.ringNum}>{score}</Text>
+              <Text style={sc.ringLabel}>/100</Text>
+            </View>
+          ) : (
+            <View style={sc.addBtn}>
+              <Plus size={20} color="#FFF" strokeWidth={2.5} />
+            </View>
+          )}
         </View>
-      )}
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
 
 const sc = StyleSheet.create({
-  wrap:        { backgroundColor: "#FFF", borderRadius: 20, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 },
-  iconBox:     { width: 46, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  title:       { fontSize: 14, fontFamily: "Inter_700Bold", color: DS.color.text, marginBottom: 2 },
-  status:      { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
-  burnoutBadge:{ backgroundColor: "#FEE2E2", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, alignSelf: "flex-start", marginBottom: 2 },
-  burnoutTxt:  { color: "#EF4444", fontSize: 9.5, fontFamily: "Inter_700Bold" },
-  ring:        { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  ringNum:     { fontSize: 14, fontFamily: "Inter_700Bold" },
-  addBtn:      { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", borderWidth: 1.5 },
+  wrap:        { borderRadius: 20, padding: 16, overflow: "hidden", minHeight: 100 },
+  shine1:      { position: "absolute", top: -30, right: -20, width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(255,255,255,0.1)" },
+  shine2:      { position: "absolute", bottom: -20, left: -10, width: 70, height: 70, borderRadius: 35, backgroundColor: "rgba(255,255,255,0.06)" },
+  badge:       { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.22)", borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4, alignSelf: "flex-start" },
+  badgeTxt:    { color: "#FFF", fontSize: 8.5, fontFamily: "Inter_700Bold", letterSpacing: 0.4 },
+  burnoutBadge:{ backgroundColor: "rgba(0,0,0,0.25)", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
+  burnoutTxt:  { color: "#FFF", fontSize: 9, fontFamily: "Inter_700Bold" },
+  title:       { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFF", marginBottom: 3 },
+  status:      { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.85)" },
+  ring:        { width: 52, height: 52, borderRadius: 26, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
+  ringNum:     { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFF", lineHeight: 18 },
+  ringLabel:   { fontSize: 8, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)" },
+  addBtn:      { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
 });
 
 // ── MEDICINE ROW ───────────────────────────────────────────────────────────────
@@ -564,10 +582,10 @@ export default function DashboardScreen() {
                 style={s.aiCard}
               >
                 <View style={s.aiShine} />
-                <View style={s.aiBadge}><Sparkles size={10} color="#FFF" strokeWidth={2} /><Text style={s.aiBadgeTxt}> GEMINI AI</Text></View>
-                <View style={s.aiIconBox}><Sparkles size={22} color="#FFF" strokeWidth={1.8} /></View>
-                <Text style={s.aiTitle}>Daily AI Coach</Text>
-                <Text style={s.aiSub}>Get your personalized nutrition insight.</Text>
+                <View style={s.aiBadge}><Sparkles size={9} color="#FFF" strokeWidth={2} /><Text style={s.aiBadgeTxt}> AI</Text></View>
+                <View style={s.aiIconBox}><Sparkles size={18} color="#FFF" strokeWidth={1.8} /></View>
+                <Text style={s.aiTitle}>Daily Coach</Text>
+                <Text style={s.aiSub}>AI nutrition insights</Text>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -582,10 +600,30 @@ export default function DashboardScreen() {
                 style={s.aiCard}
               >
                 <View style={s.aiShine} />
-                <View style={s.aiBadge}><Text style={s.aiBadgeTxt}>🔬 DEEPSEEK AI</Text></View>
-                <View style={s.aiIconBox}><Brain size={22} color="#FFF" strokeWidth={1.8} /></View>
+                <View style={s.aiBadge}><Text style={s.aiBadgeTxt}>🔬 AI</Text></View>
+                <View style={s.aiIconBox}><Brain size={18} color="#FFF" strokeWidth={1.8} /></View>
                 <Text style={s.aiTitle}>Intelligence</Text>
-                <Text style={s.aiSub}>Deep analysis of your health markers.</Text>
+                <Text style={s.aiSub}>Deep health analysis</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={() => router.push("/blood" as never)}
+              activeOpacity={0.88}
+            >
+              <LinearGradient
+                colors={["#E53E3E", "#FC8181"]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={s.aiCard}
+              >
+                <View style={s.aiShine} />
+                <View style={[s.aiBadge, { backgroundColor: "rgba(255,255,255,0.25)" }]}><Text style={s.aiBadgeTxt}>🩸 SOS</Text></View>
+                <View style={[s.aiIconBox, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+                  <Text style={{ fontSize: 18 }}>🆘</Text>
+                </View>
+                <Text style={s.aiTitle}>Blood{"\n"}Emergency</Text>
+                <Text style={s.aiSub}>Find donors fast</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -623,12 +661,12 @@ const s = StyleSheet.create({
   medName:  { fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.text },
   medSub:   { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: 1 },
 
-  aiGrid:    { flexDirection: "row", gap: 10 },
-  aiCard:    { borderRadius: 20, padding: 14, minHeight: 140, overflow: "hidden", gap: 8 },
+  aiGrid:    { flexDirection: "row", gap: 8 },
+  aiCard:    { borderRadius: 18, padding: 11, minHeight: 108, overflow: "hidden", gap: 6 },
   aiShine:   { position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(255,255,255,0.1)" },
   aiBadge:   { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20, paddingHorizontal: 7, paddingVertical: 3, alignSelf: "flex-start" },
   aiBadgeTxt:{ color: "#FFF", fontSize: 8.5, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
-  aiIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
+  aiIconBox: { width: 36, height: 36, borderRadius: 11, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
   aiTitle:   { fontSize: 14, fontFamily: "Inter_700Bold", color: "#FFF", lineHeight: 18 },
   aiSub:     { fontSize: 10.5, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.82)", lineHeight: 14 },
 });
