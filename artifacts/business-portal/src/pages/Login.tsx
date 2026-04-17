@@ -68,7 +68,7 @@ export default function Login() {
     try {
       const res = await api.verifyLoginOtp(email, loginOtpCode);
       login(res.token, res.admin, res.org);
-      navigate("/dashboard");
+      // Navigate is handled by PublicOnlyRoute watching token state change
     } catch (err) {
       setError((err as Error).message || "Invalid or expired OTP.");
     } finally {
@@ -99,7 +99,7 @@ export default function Login() {
     try {
       const res = await api.verifyLoginOtp(otpEmail, otpCode);
       login(res.token, res.admin, res.org);
-      navigate("/dashboard");
+      // Navigate is handled by PublicOnlyRoute watching token state change
     } catch (err) {
       setError((err as Error).message || "Invalid or expired OTP.");
     } finally { setOtpLoading(false); }
