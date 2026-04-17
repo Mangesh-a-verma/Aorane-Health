@@ -164,6 +164,43 @@ router.post("/business/login/verify-otp", async (req, res) => {
   }
 });
 
+router.post("/business/login/send-email-otp", async (req, res) => {
+  try {
+    const { email } = req.body as { email: string };
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ error: "Valid email required" });
+      return;
+    }
+    const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.email, email));
+    if (!admin || !admin.isActive) {
+      res.status(200).json({ success: true, message: "Agar yeh email registered hai to OTP bheja jayega", sent: false });
+      return;
+    }
+    const { cache } = await import("../../lib/redis");
+    const rlKey = `biz_email_otp:${email.toLowerCase()}`;
+    const attempts = cache.incrementRateLimitFixed(rlKey, 3600);
+    if (attempts > 5) {
+      res.status(429).json({ error: "Too many OTP requests. Try after 1 hour." });
+      return;
+    }
+    const otp = generateOtp(6);
+    const hashed = hashOtp(otp);
+    cache.setOtp(`biz_login_otp:${email.toLowerCase()}`, hashed);
+    const sent = await sendEmailOtp(email, otp);
+    const isDev = process.env.NODE_ENV !== "production";
+    const testEmails = (process.env.TEST_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+    const returnDevOtp = !sent && (isDev || testEmails.includes(email.toLowerCase()));
+    res.json({
+      success: true,
+      message: sent ? "OTP aapke email pe bheja gaya" : (isDev ? "Dev mode — OTP neeche hai" : "Email service unavailable"),
+      ...(returnDevOtp ? { devOtp: otp } : {}),
+      sent,
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to send OTP" });
+  }
+});
+
 router.get("/business/overview", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
