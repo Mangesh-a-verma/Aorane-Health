@@ -32,6 +32,79 @@ const GOOGLE_ENABLED =
 const { width: W, height: H } = Dimensions.get("window");
 
 const PRIMARY = "#E8622A";
+
+// ─── Google Sign-In sub-component ────────────────────────────────────────────
+// Isolated so the hook is only called when this component is mounted,
+// which happens only when GOOGLE_ENABLED is true.
+function GoogleSignInButton({ disabled, loginWithToken, lang }: {
+  disabled: boolean;
+  loginWithToken: (accessToken: string, refreshToken: string, user: { id: string; phone: string; plan: string; languageCode: string }, isNewUser: boolean) => Promise<void>;
+  lang: string;
+}) {
+  const [googleLoading, setGoogleLoading] = React.useState(false);
+  const [, googleResponse, googlePromptAsync] = Google.useAuthRequest({
+    clientId: GOOGLE_CLIENT_ID || undefined,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
+    iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
+    scopes: ["openid", "email", "profile"],
+  });
+
+  React.useEffect(() => {
+    if (googleResponse?.type === "success") {
+      const accessToken = googleResponse.authentication?.accessToken;
+      if (accessToken) handleGoogleLogin(accessToken);
+      else Alert.alert("Google Login Failed", "Could not get access token from Google.");
+    } else if (googleResponse?.type === "error") {
+      Alert.alert("Google Login Error", googleResponse.error?.message || "Google sign-in failed.");
+    }
+  }, [googleResponse]);
+
+  const handleGoogleLogin = async (accessToken: string) => {
+    setGoogleLoading(true);
+    try {
+      const result = await api.googleLogin(accessToken);
+      const userData = result.user as { id: string; plan: string };
+      await loginWithToken(
+        result.accessToken,
+        result.refreshToken,
+        { id: userData.id, phone: "", plan: userData.plan || "free", languageCode: lang },
+        result.isNewUser
+      );
+      router.replace("/(tabs)/" as never);
+    } catch (err: unknown) {
+      Alert.alert("Google Login Failed", err instanceof Error ? err.message : "Please try again.");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <View style={s.dividerRow}>
+        <View style={s.dividerLine} />
+        <Text style={s.dividerText}>or</Text>
+        <View style={s.dividerLine} />
+      </View>
+      <TouchableOpacity
+        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); googlePromptAsync(); }}
+        disabled={disabled || googleLoading}
+        activeOpacity={0.88}
+        style={[s.googleBtn, (disabled || googleLoading) && { opacity: 0.65 }]}
+      >
+        {googleLoading
+          ? <ActivityIndicator color="#4285F4" size="small" />
+          : <>
+              <View style={s.googleIcon}>
+                <Text style={{ fontSize: 17 }}>G</Text>
+              </View>
+              <Text style={s.googleText}>Continue with Google</Text>
+            </>
+        }
+      </TouchableOpacity>
+    </>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
 const SKY = "#F5A623";
 const ACCENT = "#27AE60";
 
@@ -75,21 +148,12 @@ export default function LoginScreen() {
   const [emailFocused, setEmailFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [loginMode, setLoginMode] = useState<"otp" | "email" | "pin">("otp");
   const [pin, setPin] = useState("");
   const [pinFocused, setPinFocused] = useState(false);
   const [devOtp, setDevOtp] = useState<string | null>(null);
 
-  const [, googleResponse, googlePromptAsync] = Google.useAuthRequest(
-    GOOGLE_ENABLED ? {
-      clientId: GOOGLE_CLIENT_ID || undefined,
-      androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
-      iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
-      scopes: ["openid", "email", "profile"],
-    } : null
-  );
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
@@ -97,35 +161,6 @@ export default function LoginScreen() {
   const glowAnim = useRef(new Animated.Value(0)).current;
   const orb1Anim = useRef(new Animated.Value(0)).current;
   const orb2Anim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (googleResponse?.type === "success") {
-      const accessToken = googleResponse.authentication?.accessToken;
-      if (accessToken) handleGoogleLogin(accessToken);
-      else Alert.alert("Google Login Failed", "Could not get access token from Google.");
-    } else if (googleResponse?.type === "error") {
-      Alert.alert("Google Login Error", googleResponse.error?.message || "Google sign-in failed.");
-    }
-  }, [googleResponse]);
-
-  const handleGoogleLogin = async (accessToken: string) => {
-    setGoogleLoading(true);
-    try {
-      const result = await api.googleLogin(accessToken);
-      const userData = result.user as { id: string; plan: string };
-      await loginWithToken(
-        result.accessToken,
-        result.refreshToken,
-        { id: userData.id, phone: "", plan: userData.plan || "free", languageCode: lang },
-        result.isNewUser
-      );
-      router.replace("/(tabs)/" as never);
-    } catch (err: unknown) {
-      Alert.alert("Google Login Failed", err instanceof Error ? err.message : "Please try again.");
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
 
   useEffect(() => {
     Animated.parallel([
@@ -450,32 +485,13 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
-              {/* Google Sign-In — only shown when platform-specific OAuth client ID is configured */}
+              {/* Google Sign-In — only mounted when platform-specific OAuth client ID is configured */}
               {GOOGLE_ENABLED && (
-                <>
-                  <View style={s.dividerRow}>
-                    <View style={s.dividerLine} />
-                    <Text style={s.dividerText}>or</Text>
-                    <View style={s.dividerLine} />
-                  </View>
-
-                  <TouchableOpacity
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); googlePromptAsync(); }}
-                    disabled={anyLoading || googleLoading}
-                    activeOpacity={0.88}
-                    style={[s.googleBtn, (anyLoading || googleLoading) && { opacity: 0.65 }]}
-                  >
-                    {googleLoading
-                      ? <ActivityIndicator color="#4285F4" size="small" />
-                      : <>
-                          <View style={s.googleIcon}>
-                            <Text style={{ fontSize: 17 }}>G</Text>
-                          </View>
-                          <Text style={s.googleText}>Continue with Google</Text>
-                        </>
-                    }
-                  </TouchableOpacity>
-                </>
+                <GoogleSignInButton
+                  disabled={anyLoading}
+                  loginWithToken={loginWithToken}
+                  lang={lang}
+                />
               )}
 
               {/* Social Buttons */}
