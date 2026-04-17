@@ -130,6 +130,9 @@ export const api = {
   verifyLoginOtp: (email: string, otp: string) =>
     request<{ token: string; admin: Admin; org: Org }>("/business/login/verify-otp", { method: "POST", body: JSON.stringify({ email, otp }) }),
 
+  sendBusinessEmailOtp: (email: string) =>
+    request<{ success: boolean; message: string; devOtp?: string; sent: boolean }>("/business/login/send-email-otp", { method: "POST", body: JSON.stringify({ email }) }),
+
   sendEmailOtp: (email: string) =>
     request<{ success: boolean; message: string; devOtp?: string; sent: boolean }>("/auth/send-email-otp", { method: "POST", body: JSON.stringify({ email }) }),
 
