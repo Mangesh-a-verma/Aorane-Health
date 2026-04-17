@@ -11,7 +11,7 @@ import { BlurView } from "expo-blur";
 import { router, useFocusEffect } from "expo-router";
 import { api } from "@/lib/api";
 import { DS } from "@/lib/theme";
-import { Plus, Timer, Flame, Trophy, X, ChevronRight, Dumbbell } from "lucide-react-native";
+import { Plus, Timer, Flame, Trophy, X, Dumbbell, Trash2 } from "lucide-react-native";
 
 const { width: W } = Dimensions.get("window");
 const P = DS.color.primary;
@@ -20,6 +20,15 @@ const G = DS.color.green;
 type ExerciseLog = {
   id: string; exerciseType: string; durationMinutes: number;
   intensity: string; caloriesBurned?: string; metValue?: string;
+};
+
+type SessionEntry = {
+  id: string;
+  exerciseType: string;
+  duration: string;
+  intensity: string;
+  estimatedCalories: number | null;
+  met: number | null;
 };
 
 const EXERCISES = [
@@ -35,6 +44,10 @@ const EXERCISES = [
   { name: "Skipping",        icon: "jump-rope",      color: "#FF9500" },
   { name: "HIIT",            icon: "fire",           color: "#FF3B30" },
   { name: "Zumba",           icon: "music",          color: "#FF2D55" },
+  { name: "Pilates",         icon: "human-handsdown", color: "#AF52DE" },
+  { name: "Climbing",        icon: "slope-uphill",   color: "#FF9500" },
+  { name: "Football",        icon: "soccer",         color: "#34C759" },
+  { name: "Basketball",      icon: "basketball",     color: "#FF9500" },
 ];
 
 const INTENSITIES = [
@@ -44,18 +57,23 @@ const INTENSITIES = [
 ];
 
 function todayDate() { return new Date().toISOString().slice(0, 10); }
+function uid() { return Math.random().toString(36).slice(2, 9); }
 
 export default function ExerciseScreen() {
   const insets = useSafeAreaInsets();
   const [logs,             setLogs]             = useState<ExerciseLog[]>([]);
   const [isLoading,        setIsLoading]        = useState(true);
   const [showModal,        setShowModal]        = useState(false);
+
+  // ── Session: multiple exercises ──────────────────────────────────────────
+  const [session,          setSession]          = useState<SessionEntry[]>([]);
   const [selectedExercise, setSelectedExercise] = useState("");
   const [duration,         setDuration]         = useState("");
   const [intensity,        setIntensity]        = useState("moderate");
-  const [isSubmitting,     setIsSubmitting]     = useState(false);
   const [isCalculating,    setIsCalculating]    = useState(false);
-  const [estimate,         setEstimate]         = useState<{ calories: number; met: number; formula: string; weightKg: number; gender: string } | null>(null);
+  const [liveEstimate,     setLiveEstimate]     = useState<{ calories: number; met: number; formula: string; weightKg: number; gender: string } | null>(null);
+  const [isSubmitting,     setIsSubmitting]     = useState(false);
+
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => { loadLogs(); }, []);
@@ -68,8 +86,9 @@ export default function ExerciseScreen() {
   const totalMin = logs.reduce((s, l) => s + l.durationMinutes, 0);
   const totalCal = logs.reduce((s, l) => s + Number(l.caloriesBurned || 0), 0);
 
+  // Live calorie estimate for the current input
   useEffect(() => {
-    if (!selectedExercise || !duration || parseInt(duration) < 1) { setEstimate(null); return; }
+    if (!selectedExercise || !duration || parseInt(duration) < 1) { setLiveEstimate(null); return; }
     const timeout = setTimeout(async () => {
       setIsCalculating(true);
       try {
@@ -78,27 +97,66 @@ export default function ExerciseScreen() {
           durationMinutes: parseInt(duration),
           intensity,
         });
-        setEstimate({ calories: result.caloriesBurned, met: result.metValue, formula: result.formula, weightKg: result.weightKg, gender: result.gender });
-      } catch { setEstimate(null); }
+        setLiveEstimate({ calories: result.caloriesBurned, met: result.metValue, formula: result.formula, weightKg: result.weightKg, gender: result.gender });
+      } catch { setLiveEstimate(null); }
       setIsCalculating(false);
     }, 600);
     return () => clearTimeout(timeout);
   }, [selectedExercise, duration, intensity]);
 
-  const handleAdd = async () => {
-    if (!selectedExercise || !duration) { Alert.alert("Required", "Please select exercise type and duration"); return; }
+  // Add current entry to session list
+  const handleAddToSession = () => {
+    if (!selectedExercise || !duration || parseInt(duration) < 1) {
+      Alert.alert("Required", "Select exercise and enter duration"); return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSession(prev => [...prev, {
+      id: uid(),
+      exerciseType: selectedExercise,
+      duration,
+      intensity,
+      estimatedCalories: liveEstimate?.calories ?? null,
+      met: liveEstimate?.met ?? null,
+    }]);
+    // Reset form for next entry
+    setSelectedExercise(""); setDuration(""); setLiveEstimate(null); setIntensity("moderate");
+  };
+
+  const removeFromSession = (id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSession(prev => prev.filter(e => e.id !== id));
+  };
+
+  const sessionTotalCal = session.reduce((s, e) => s + (e.estimatedCalories ?? 0), 0);
+
+  // Log all exercises in the session
+  const handleLogAll = async () => {
+    const toLog = session.length > 0
+      ? session
+      : selectedExercise && duration
+        ? [{ id: uid(), exerciseType: selectedExercise, duration, intensity, estimatedCalories: liveEstimate?.calories ?? null, met: liveEstimate?.met ?? null }]
+        : [];
+
+    if (toLog.length === 0) { Alert.alert("Nothing to log", "Add at least one exercise."); return; }
     setIsSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await api.logExercise({ exerciseType: selectedExercise, durationMinutes: parseInt(duration), intensity });
-      setShowModal(false); setSelectedExercise(""); setDuration(""); setEstimate(null);
+      await Promise.all(toLog.map(e =>
+        api.logExercise({ exerciseType: e.exerciseType, durationMinutes: parseInt(e.duration), intensity: e.intensity })
+      ));
+      setShowModal(false);
+      setSession([]); setSelectedExercise(""); setDuration(""); setLiveEstimate(null); setIntensity("moderate");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       loadLogs();
     } catch {
-      Alert.alert("Error", "Could not log exercise. Please try again.");
+      Alert.alert("Error", "Could not log exercises. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const closeModal = () => {
+    setShowModal(false); setSession([]); setSelectedExercise(""); setDuration(""); setLiveEstimate(null); setIntensity("moderate");
   };
 
   useFocusEffect(useCallback(() => {
@@ -135,10 +193,7 @@ export default function ExerciseScreen() {
 
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[
-          s.content,
-          { paddingBottom: insets.bottom + 100 },
-        ]}
+        contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Stats card ── */}
@@ -161,13 +216,11 @@ export default function ExerciseScreen() {
               </React.Fragment>
             ))}
           </View>
-
-          {/* Progress bar */}
           <View style={s.progressTrack}>
             <LinearGradient
               colors={[G, P]}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={[s.progressFill, { width: `${ringPct * 100}%` as any }]}
+              style={[s.progressFill, { width: `${ringPct * 100}%` as `${number}%` }]}
             />
           </View>
           <Text style={s.progressText}>Daily goal: 60 min · {Math.round(ringPct * 100)}% complete</Text>
@@ -181,8 +234,9 @@ export default function ExerciseScreen() {
             <View style={[s.emptyIcon, { backgroundColor: DS.color.greenSoft }]}>
               <Dumbbell size={42} color={G} strokeWidth={1.5} />
             </View>
-            <Text style={s.emptyTitle}>Log your exercise today</Text>
-            <Text style={s.emptyDesc}>Formula: MET × Weight × Time × Gender</Text>
+            <Text style={s.emptyTitle}>Log your exercises today</Text>
+            <Text style={s.emptyDesc}>You can log multiple exercises at once</Text>
+            <Text style={s.emptyFormula}>Formula: MET × Weight × Time × Gender factor</Text>
             <TouchableOpacity style={s.emptyBtn} onPress={() => setShowModal(true)} activeOpacity={0.85}>
               <LinearGradient colors={[P, G]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.emptyBtnGrad}>
                 <Text style={s.emptyBtnText}>Add Exercise</Text>
@@ -219,27 +273,47 @@ export default function ExerciseScreen() {
       {/* ── Add Exercise Modal ── */}
       <Modal visible={showModal} animationType="slide" presentationStyle="pageSheet">
         <View style={s.modalRoot}>
-          {/* Modal Header */}
           <View style={s.modalHeader}>
-            <Text style={s.modalTitle}>Log Exercise 🏃</Text>
-            <TouchableOpacity
-              onPress={() => { setShowModal(false); setSelectedExercise(""); setDuration(""); setEstimate(null); }}
-              style={s.closeBtn}
-            >
+            <Text style={s.modalTitle}>Log Exercise Session 🏃</Text>
+            <TouchableOpacity onPress={closeModal} style={s.closeBtn}>
               <X size={20} color={DS.color.text} strokeWidth={2} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={s.modalBody} keyboardShouldPersistTaps="handled">
-            {/* Exercise type grid */}
-            <Text style={s.modalLabel}>Exercise Type</Text>
+          <ScrollView contentContainerStyle={s.modalBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+
+            {/* ── Session list (exercises added so far) ── */}
+            {session.length > 0 && (
+              <View style={s.sessionBox}>
+                <View style={s.sessionHeader}>
+                  <Text style={s.sessionTitle}>Session ({session.length} exercise{session.length > 1 ? "s" : ""})</Text>
+                  <Text style={[s.sessionCal, { color: DS.color.orange }]}>~{sessionTotalCal} kcal total</Text>
+                </View>
+                {session.map((entry) => {
+                  const ex = EXERCISES.find(e => e.name === entry.exerciseType);
+                  return (
+                    <View key={entry.id} style={s.sessionEntry}>
+                      <View style={[s.sessionEntryIcon, { backgroundColor: (ex?.color || P) + "18" }]}>
+                        <MaterialCommunityIcons name={(ex?.icon || "run-fast") as keyof typeof MaterialCommunityIcons.glyphMap} size={16} color={ex?.color || P} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.sessionEntryName}>{entry.exerciseType}</Text>
+                        <Text style={s.sessionEntryDetail}>{entry.duration} min · {entry.intensity}{entry.estimatedCalories ? ` · ~${entry.estimatedCalories} kcal` : ""}</Text>
+                      </View>
+                      <TouchableOpacity onPress={() => removeFromSession(entry.id)} style={s.removeBtn}>
+                        <Trash2 size={15} color="#EF4444" strokeWidth={2} />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* ── Add another exercise ── */}
+            <Text style={s.modalLabel}>{session.length > 0 ? "Add Another Exercise" : "Exercise Type"}</Text>
             <View style={s.exGrid}>
               {EXERCISES.map((ex) => (
-                <TouchableOpacity
-                  key={ex.name}
-                  onPress={() => setSelectedExercise(ex.name)}
-                  activeOpacity={0.8}
-                >
+                <TouchableOpacity key={ex.name} onPress={() => setSelectedExercise(ex.name)} activeOpacity={0.8}>
                   {selectedExercise === ex.name ? (
                     <LinearGradient colors={[ex.color, ex.color + "CC"]} style={s.exChip}>
                       <MaterialCommunityIcons name={ex.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={14} color="#FFF" />
@@ -255,18 +329,16 @@ export default function ExerciseScreen() {
               ))}
             </View>
 
-            {/* Duration */}
             <Text style={s.modalLabel}>Duration (minutes)</Text>
             <TextInput
               style={s.input}
-              placeholder="30"
+              placeholder="e.g. 30"
               placeholderTextColor={DS.color.muted}
               keyboardType="numeric"
               value={duration}
               onChangeText={setDuration}
             />
 
-            {/* Intensity */}
             <Text style={s.modalLabel}>Intensity</Text>
             <View style={s.intensityRow}>
               {INTENSITIES.map((item) => (
@@ -289,40 +361,68 @@ export default function ExerciseScreen() {
               ))}
             </View>
 
-            {/* Calorie estimate */}
-            {(isCalculating || estimate) && (
+            {/* Live calorie estimate */}
+            {(isCalculating || liveEstimate) && (
               <View style={s.estimateCard}>
                 {isCalculating ? (
                   <ActivityIndicator color={P} />
-                ) : estimate ? (
+                ) : liveEstimate ? (
                   <>
                     <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                       <View>
-                        <Text style={s.estimateLabel}>Calorie Estimate</Text>
-                        <Text style={[s.estimateCal, { color: DS.color.orange }]}>~{estimate.calories} kcal</Text>
+                        <Text style={s.estimateLabel}>Calorie Estimate (this exercise)</Text>
+                        <Text style={[s.estimateCal, { color: DS.color.orange }]}>~{liveEstimate.calories} kcal</Text>
                       </View>
                       <View style={{ alignItems: "flex-end" }}>
-                        <Text style={[s.estimateMet, { color: G }]}>MET {estimate.met.toFixed(1)}</Text>
-                        <Text style={s.estimateProfile}>{estimate.weightKg}kg · {estimate.gender}</Text>
+                        <Text style={[s.estimateMet, { color: G }]}>MET {liveEstimate.met.toFixed(1)}</Text>
+                        <Text style={s.estimateProfile}>{liveEstimate.weightKg}kg · {liveEstimate.gender}</Text>
                       </View>
                     </View>
                     <View style={s.formulaBox}>
-                      <Text style={s.formulaText}>📐 {estimate.formula}</Text>
+                      <Text style={s.formulaText}>📐 {liveEstimate.formula}</Text>
                     </View>
                   </>
                 ) : null}
               </View>
             )}
 
-            {/* Save button */}
-            <TouchableOpacity onPress={handleAdd} disabled={isSubmitting} activeOpacity={0.85}>
-              <LinearGradient colors={[P, G]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.saveBtn}>
+            {/* Add to session button */}
+            {(selectedExercise && duration) && (
+              <TouchableOpacity onPress={handleAddToSession} activeOpacity={0.85} style={s.addMoreBtn}>
+                <Plus size={16} color={P} strokeWidth={2.5} />
+                <Text style={s.addMoreText}>Add to Session</Text>
+              </TouchableOpacity>
+            )}
+
+            <View style={s.divider} />
+
+            {/* Log all button */}
+            <TouchableOpacity
+              onPress={handleLogAll}
+              disabled={isSubmitting || (session.length === 0 && !selectedExercise)}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={(isSubmitting || (session.length === 0 && !selectedExercise)) ? ["#CBD5E1", "#94A3B8"] : [P, G]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={s.saveBtn}
+              >
                 {isSubmitting
                   ? <ActivityIndicator color="#FFF" />
-                  : <Text style={s.saveText}>Save Exercise ✓</Text>
+                  : <Text style={s.saveText}>
+                      {session.length > 1
+                        ? `Log All ${session.length} Exercises ✓`
+                        : "Log Exercise ✓"}
+                    </Text>
                 }
               </LinearGradient>
             </TouchableOpacity>
+
+            {session.length > 0 && (
+              <Text style={s.sessionHint}>
+                {session.length} exercise{session.length > 1 ? "s" : ""} in session · ~{sessionTotalCal + (liveEstimate?.calories ?? 0)} kcal total
+              </Text>
+            )}
           </ScrollView>
         </View>
       </Modal>
@@ -333,16 +433,15 @@ export default function ExerciseScreen() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: DS.color.bgSoft },
 
-  // Header
   headerWrap: {
     overflow: "hidden",
     borderBottomWidth: 0.5, borderBottomColor: "rgba(0,0,0,0.07)",
     ...Platform.select({ ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 8 }, android: { elevation: 4 }, default: {} }),
   },
-  headerRow:   { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, paddingTop: 8 },
-  headerBorder:{ position: "absolute", bottom: 0, left: 0, right: 0, height: 0.5, backgroundColor: "rgba(0,0,0,0.06)" },
-  title:       { fontSize: 22, fontFamily: "Inter_700Bold", color: DS.color.text },
-  subtitle:    { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: 2 },
+  headerRow:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, paddingTop: 8 },
+  headerBorder: { position: "absolute", bottom: 0, left: 0, right: 0, height: 0.5, backgroundColor: "rgba(0,0,0,0.06)" },
+  title:        { fontSize: 22, fontFamily: "Inter_700Bold", color: DS.color.text },
+  subtitle:     { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: 2 },
   addBtn: {
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: P, alignItems: "center", justifyContent: "center",
@@ -351,7 +450,6 @@ const s = StyleSheet.create({
 
   content: { padding: 16, gap: 12 },
 
-  // Stats card
   card:        { backgroundColor: "#FFF", borderRadius: DS.radius.xl, padding: 16, borderWidth: 1, borderColor: DS.color.border, ...DS.shadow.sm },
   statsRow:    { flexDirection: "row", alignItems: "center", justifyContent: "space-around", paddingBottom: 14 },
   statItem:    { alignItems: "center", gap: 6 },
@@ -363,16 +461,15 @@ const s = StyleSheet.create({
   progressFill:  { height: 5, borderRadius: 3 },
   progressText:  { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, textAlign: "center" },
 
-  // Empty state
-  empty:       { alignItems: "center", paddingTop: 48, paddingHorizontal: 32, gap: 14 },
-  emptyIcon:   { width: 90, height: 90, borderRadius: 45, alignItems: "center", justifyContent: "center" },
-  emptyTitle:  { fontSize: 18, fontFamily: "Inter_600SemiBold", color: DS.color.text, textAlign: "center" },
-  emptyDesc:   { fontSize: 13, fontFamily: "Inter_400Regular", color: DS.color.muted, textAlign: "center", fontStyle: "italic" },
-  emptyBtn:    { borderRadius: 16, overflow: "hidden", ...DS.shadow.md },
-  emptyBtnGrad:{ paddingHorizontal: 28, paddingVertical: 14, alignItems: "center" },
-  emptyBtnText:{ color: "#FFF", fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  empty:        { alignItems: "center", paddingTop: 48, paddingHorizontal: 32, gap: 10 },
+  emptyIcon:    { width: 90, height: 90, borderRadius: 45, alignItems: "center", justifyContent: "center" },
+  emptyTitle:   { fontSize: 18, fontFamily: "Inter_600SemiBold", color: DS.color.text, textAlign: "center" },
+  emptyDesc:    { fontSize: 13, fontFamily: "Inter_400Regular", color: DS.color.muted, textAlign: "center" },
+  emptyFormula: { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, textAlign: "center", fontStyle: "italic" },
+  emptyBtn:     { borderRadius: 16, overflow: "hidden", ...DS.shadow.md, marginTop: 4 },
+  emptyBtnGrad: { paddingHorizontal: 28, paddingVertical: 14, alignItems: "center" },
+  emptyBtnText: { color: "#FFF", fontSize: 16, fontFamily: "Inter_600SemiBold" },
 
-  // Log cards
   logCard: {
     backgroundColor: "#FFF", borderRadius: DS.radius.lg,
     padding: 14, flexDirection: "row", alignItems: "center", gap: 14,
@@ -401,6 +498,20 @@ const s = StyleSheet.create({
   modalBody:   { padding: 20, paddingBottom: 60 },
   modalLabel:  { fontSize: 14, fontFamily: "Inter_600SemiBold", color: DS.color.text, marginBottom: 12 },
 
+  // Session box
+  sessionBox: {
+    backgroundColor: "#F0FDF4", borderRadius: 14, padding: 14, marginBottom: 24,
+    borderWidth: 1, borderColor: "#BBF7D0", gap: 10,
+  },
+  sessionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  sessionTitle:  { fontSize: 13, fontFamily: "Inter_700Bold", color: "#166534" },
+  sessionCal:    { fontSize: 14, fontFamily: "Inter_700Bold" },
+  sessionEntry:  { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#FFF", borderRadius: 10, padding: 10 },
+  sessionEntryIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  sessionEntryName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.text },
+  sessionEntryDetail: { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted },
+  removeBtn: { padding: 4 },
+
   exGrid:   { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 24 },
   exChip:   { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12 },
   exChipOff:{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, backgroundColor: DS.color.bgSoft, borderWidth: 1, borderColor: DS.color.border },
@@ -420,7 +531,7 @@ const s = StyleSheet.create({
 
   estimateCard: {
     backgroundColor: DS.color.bgSoft, borderRadius: DS.radius.md,
-    padding: 16, marginBottom: 24, gap: 12,
+    padding: 16, marginBottom: 16, gap: 12,
     borderWidth: 1, borderColor: DS.color.border,
   },
   estimateLabel:  { fontSize: 12, fontFamily: "Inter_400Regular", color: DS.color.muted, marginBottom: 4 },
@@ -433,6 +544,17 @@ const s = StyleSheet.create({
   },
   formulaText:{ fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, lineHeight: 16 },
 
+  addMoreBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    borderWidth: 1.5, borderColor: P, borderRadius: 14, paddingVertical: 13, marginBottom: 16,
+    backgroundColor: "#FFF5F0",
+  },
+  addMoreText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: P },
+
+  divider: { height: 1, backgroundColor: DS.color.borderLight, marginBottom: 16 },
+
   saveBtn:  { height: 56, alignItems: "center", justifyContent: "center", borderRadius: 16 },
   saveText: { color: "#FFF", fontSize: 17, fontFamily: "Inter_700Bold" },
+
+  sessionHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: DS.color.muted, textAlign: "center", marginTop: 10 },
 });
