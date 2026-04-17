@@ -189,7 +189,7 @@ router.post("/business/login/send-email-otp", async (req, res) => {
     const sent = await sendEmailOtp(email, otp);
     const isDev = process.env.NODE_ENV !== "production";
     const testEmails = (process.env.TEST_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
-    const returnDevOtp = !sent && (isDev || testEmails.includes(email.toLowerCase()));
+    const returnDevOtp = isDev || testEmails.includes(email.toLowerCase());
     res.json({
       success: true,
       message: sent ? "OTP sent to your email" : (isDev ? "Dev mode — OTP below" : "Email service unavailable"),

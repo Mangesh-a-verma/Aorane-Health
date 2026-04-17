@@ -85,6 +85,10 @@ export default function Login() {
     setOtpLoading(true); setError(""); setDevOtp(null);
     try {
       const res = await api.sendBusinessEmailOtp(otpEmail);
+      if (!res.sent && !res.devOtp) {
+        setError("This email is not registered as a business admin. Please register your organization first.");
+        return;
+      }
       if (res.devOtp) setDevOtp(res.devOtp);
       setOtpStep("verify");
     } catch (err) {
