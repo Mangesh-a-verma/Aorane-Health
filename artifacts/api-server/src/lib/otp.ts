@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { Resend } from "resend";
 
 export function generateOtp(length = 6): string {
   const digits = "0123456789";
@@ -78,6 +79,49 @@ export async function sendSmsOtp(phone: string, otp: string): Promise<boolean> {
 
   console.warn("All SMS providers failed — devOtp:", otp);
   return false;
+}
+
+export async function sendEmailOtp(email: string, otp: string): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "otp@aorane.com";
+  if (!apiKey) {
+    console.warn("[Email OTP] RESEND_API_KEY not set — skipping email send");
+    return false;
+  }
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: `AORANE <${fromEmail}>`,
+      to: [email],
+      subject: `${otp} — Aapka AORANE Login OTP`,
+      html: `
+        <div style="font-family:'Inter',Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#f9fafb;border-radius:16px;">
+          <div style="text-align:center;margin-bottom:24px;">
+            <h1 style="font-size:22px;font-weight:800;color:#005d90;margin:0;letter-spacing:-0.02em;">AORANE</h1>
+            <p style="font-size:12px;color:#9ca3af;margin:4px 0 0;">Your Health, In Your Hands 🇮🇳</p>
+          </div>
+          <div style="background:white;border-radius:14px;padding:28px;border:1.5px solid #e5e7eb;text-align:center;">
+            <p style="font-size:14px;color:#374151;margin:0 0 16px;">Aapka login OTP hai:</p>
+            <div style="font-size:48px;font-weight:900;letter-spacing:14px;color:#005d90;margin:0 0 16px;font-family:monospace;">${otp}</div>
+            <p style="font-size:12px;color:#6b7280;margin:0 0 8px;">Yeh OTP <strong>5 minute</strong> mein expire ho jaayega.</p>
+            <p style="font-size:12px;color:#ef4444;margin:0;">Kisi ke saath share mat karein.</p>
+          </div>
+          <p style="font-size:11px;color:#9ca3af;text-align:center;margin:20px 0 0;">
+            Agar aapne yeh request nahin ki, toh ignore karein.<br/>
+            &copy; ${new Date().getFullYear()} AORANE Health Technologies
+          </p>
+        </div>
+      `,
+    });
+    if (error) {
+      console.warn("[Email OTP] Resend error:", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[Email OTP] Failed:", err);
+    return false;
+  }
 }
 
 export async function sendWhatsappOtp(phone: string, otp: string): Promise<{ success: boolean; fallback?: boolean }> {

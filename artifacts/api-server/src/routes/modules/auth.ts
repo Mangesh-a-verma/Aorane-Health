@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, pool, usersTable, userPreferencesTable, userPrivacySettingsTable, userProfilesTable, otpStoreTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
-import { generateOtp, hashOtp, verifyOtpHash, sendSmsOtp, sendWhatsappOtp } from "../../lib/otp";
+import { generateOtp, hashOtp, verifyOtpHash, sendSmsOtp, sendWhatsappOtp, sendEmailOtp } from "../../lib/otp";
 import { cache } from "../../lib/redis";
 import { signUserToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -387,6 +387,92 @@ router.get("/auth/me", requireAuth, async (req: AuthRequest, res) => {
     res.json({ user: { id: user.id, phone: user.phone, email: user.email, plan: user.plan, languageCode: user.languageCode } });
   } catch {
     res.status(500).json({ error: "Failed to fetch user" });
+  }
+});
+
+// ─── Email OTP ───────────────────────────────────────────────────────────────
+router.post("/auth/send-email-otp", async (req, res) => {
+  try {
+    const { email } = req.body as { email: string };
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ error: "Valid email address required" });
+      return;
+    }
+    const rateLimitKey = `email_otp:${email.toLowerCase()}`;
+    const attempts = cache.incrementRateLimitFixed(rateLimitKey, 3600);
+    if (attempts > 5) {
+      res.status(429).json({ error: "Too many OTP requests. Try after 1 hour." });
+      return;
+    }
+    const otp = generateOtp(6);
+    const hashed = hashOtp(otp);
+    cache.setOtp(`email:${email.toLowerCase()}`, hashed);
+
+    const sent = await sendEmailOtp(email, otp);
+    const isDev = process.env.NODE_ENV !== "production";
+    const testEmails = (process.env.TEST_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+    const isTestEmail = testEmails.includes(email.toLowerCase());
+    const returnDevOtp = !sent && (isDev || isTestEmail);
+
+    res.json({
+      success: true,
+      message: sent ? "OTP aapke email pe bheja gaya" : (isDev ? "Dev mode — OTP response mein hai" : "Email service unavailable"),
+      ...(returnDevOtp ? { devOtp: otp } : {}),
+      sent,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Failed to send email OTP", detail: msg });
+  }
+});
+
+router.post("/auth/verify-email-otp", async (req, res) => {
+  try {
+    const { email, otp, languageCode = "hi", countryCode = "IN" } = req.body as {
+      email: string; otp: string; languageCode?: string; countryCode?: string;
+    };
+    if (!email || !otp) {
+      res.status(400).json({ error: "Email and OTP required" });
+      return;
+    }
+    const storedHash = cache.getOtp(`email:${email.toLowerCase()}`);
+    if (!storedHash) {
+      res.status(400).json({ error: "OTP expired ya nahin mila. Dobara bhejein." });
+      return;
+    }
+    if (!verifyOtpHash(otp, storedHash as string)) {
+      res.status(400).json({ error: "Galat OTP" });
+      return;
+    }
+    cache.deleteOtp(`email:${email.toLowerCase()}`);
+
+    let [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase()));
+    let isNewUser = false;
+    if (!user) {
+      const [newUser] = await db.insert(usersTable).values({
+        email: email.toLowerCase(),
+        countryCode,
+        languageCode,
+        referralCode: generateReferralCode(),
+      }).returning();
+      user = newUser;
+      isNewUser = true;
+    }
+    await pool.query(`INSERT INTO user_preferences (user_id, language_code) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [user.id, languageCode]).catch(() => {});
+    await pool.query(`INSERT INTO user_privacy_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
+    await pool.query(`INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
+    await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]).catch(() => {});
+
+    const payload = { userId: user.id, email: email.toLowerCase(), plan: user.plan };
+    const accessToken = signUserToken(payload);
+    const refreshToken = signRefreshToken(payload);
+
+    res.json({
+      accessToken, refreshToken, isNewUser,
+      user: { id: user.id, email: user.email, plan: user.plan, languageCode: user.languageCode },
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Email OTP verification failed" });
   }
 });
 

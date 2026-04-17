@@ -60,11 +60,13 @@ export default function LoginScreen() {
   const { lang, t } = useLanguage();
 
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [emailFocused, setEmailFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [loginMode, setLoginMode] = useState<"otp" | "pin">("otp");
+  const [loginMode, setLoginMode] = useState<"otp" | "email" | "pin">("otp");
   const [pin, setPin] = useState("");
   const [pinFocused, setPinFocused] = useState(false);
   const [devOtp, setDevOtp] = useState<string | null>(null);
@@ -139,6 +141,24 @@ export default function LoginScreen() {
     else router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } });
   };
 
+  const handleSendEmailOtp = async () => {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      Alert.alert("Invalid Email", "Sahi email address daalo."); return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsLoading(true);
+    try {
+      const res = await api.sendEmailOtp(email);
+      if (res?.devOtp) {
+        setDevOtp(res.devOtp);
+      } else {
+        router.push({ pathname: "/(auth)/verify-otp", params: { email, lang, mode: "email" } });
+      }
+    } catch (err: unknown) {
+      Alert.alert("Email Error", err instanceof Error ? err.message : "OTP bhejne mein problem aayi.");
+    } finally { setIsLoading(false); }
+  };
+
   const handleSendOtp = async () => {
     if (phone.length !== 10) { Alert.alert(t("invalidNumber"), t("invalidNumberMsg")); return; }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -182,7 +202,9 @@ export default function LoginScreen() {
     } finally { setIsLoading(false); }
   };
 
-  const isActive = phone.length === 10;
+  const isPhoneActive = phone.length === 10;
+  const isEmailActive = email.length > 5 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isActive = loginMode === "email" ? isEmailActive : isPhoneActive;
   const anyLoading = isLoading || whatsappLoading;
 
   const orb1Y = orb1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -24] });
@@ -220,9 +242,16 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
               <Text style={s.devOtpCode}>{devOtp}</Text>
-              <Text style={s.devOtpHint}>SMS delivery unavailable. Enter this code on OTP screen.</Text>
+              <Text style={s.devOtpHint}>{loginMode === "email" ? "Email delivery unavailable." : "SMS delivery unavailable."} Enter this code on OTP screen.</Text>
               <TouchableOpacity
-                onPress={() => { setDevOtp(null); router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } }); }}
+                onPress={() => {
+                  setDevOtp(null);
+                  if (loginMode === "email") {
+                    router.push({ pathname: "/(auth)/verify-otp", params: { email, lang, mode: "email" } });
+                  } else {
+                    router.push({ pathname: "/(auth)/verify-otp", params: { phone, lang } });
+                  }
+                }}
                 style={s.devOtpBtn}
               >
                 <Text style={s.devOtpBtnText}>Enter OTP →</Text>
@@ -278,9 +307,9 @@ export default function LoginScreen() {
                 </View>
               </View>
 
-              {/* OTP / PIN Toggle */}
+              {/* OTP / Email / PIN Toggle */}
               <View style={s.toggle}>
-                {(["otp", "pin"] as const).map(mode => (
+                {(["otp", "email", "pin"] as const).map(mode => (
                   <TouchableOpacity
                     key={mode}
                     onPress={() => { setLoginMode(mode); setPin(""); Haptics.selectionAsync(); }}
@@ -290,36 +319,65 @@ export default function LoginScreen() {
                       <LinearGradient colors={[PRIMARY, SKY]} style={StyleSheet.absoluteFill} />
                     )}
                     <Text style={[s.toggleText, loginMode === mode && s.toggleTextActive]}>
-                      {mode === "otp" ? `📱 ${t("otpTab")}` : `🔒 ${t("pinTab")}`}
+                      {mode === "otp" ? `📱 SMS` : mode === "email" ? `📧 Email` : `🔒 PIN`}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              {/* Phone Input */}
-              <View style={[s.inputRow, isFocused && s.inputFocused]}>
-                <View style={s.ccBox}>
-                  <Text style={{ fontSize: 18 }}>🇮🇳</Text>
-                  <Text style={s.ccText}>+91</Text>
-                </View>
-                <TextInput
-                  style={s.input}
-                  placeholder={t("phonePlaceholder")}
-                  placeholderTextColor="#9CB8C8"
-                  keyboardType="numeric"
-                  maxLength={10}
-                  value={phone}
-                  onChangeText={setPhone}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  autoFocus
-                />
-                {isActive && (
-                  <View style={s.checkBadge}>
-                    <Ionicons name="checkmark" size={14} color="#FFF" />
+              {/* Phone Input — shown for OTP & PIN modes */}
+              {loginMode !== "email" && (
+                <View style={[s.inputRow, isFocused && s.inputFocused]}>
+                  <View style={s.ccBox}>
+                    <Text style={{ fontSize: 18 }}>🇮🇳</Text>
+                    <Text style={s.ccText}>+91</Text>
                   </View>
-                )}
-              </View>
+                  <TextInput
+                    style={s.input}
+                    placeholder={t("phonePlaceholder")}
+                    placeholderTextColor="#9CB8C8"
+                    keyboardType="numeric"
+                    maxLength={10}
+                    value={phone}
+                    onChangeText={setPhone}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
+                    autoFocus={loginMode !== "email"}
+                  />
+                  {isPhoneActive && (
+                    <View style={s.checkBadge}>
+                      <Ionicons name="checkmark" size={14} color="#FFF" />
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* Email Input — shown only for email mode */}
+              {loginMode === "email" && (
+                <View style={[s.inputRow, emailFocused && s.inputFocused]}>
+                  <View style={s.ccBox}>
+                    <Ionicons name="mail-outline" size={20} color={emailFocused ? PRIMARY : "#9CB8C8"} />
+                  </View>
+                  <TextInput
+                    style={s.input}
+                    placeholder="aapka@email.com"
+                    placeholderTextColor="#9CB8C8"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    value={email}
+                    onChangeText={setEmail}
+                    onFocus={() => setEmailFocused(true)}
+                    onBlur={() => setEmailFocused(false)}
+                    autoFocus
+                  />
+                  {isEmailActive && (
+                    <View style={s.checkBadge}>
+                      <Ionicons name="checkmark" size={14} color="#FFF" />
+                    </View>
+                  )}
+                </View>
+              )}
 
               {/* PIN Input */}
               {loginMode === "pin" && (
@@ -344,15 +402,15 @@ export default function LoginScreen() {
 
               {/* CTA Button */}
               <TouchableOpacity
-                onPress={loginMode === "pin" ? handlePinLogin : handleSendOtp}
+                onPress={loginMode === "pin" ? handlePinLogin : loginMode === "email" ? handleSendEmailOtp : handleSendOtp}
                 disabled={anyLoading || !isActive || (loginMode === "pin" && pin.length < 4)}
                 accessibilityState={{ disabled: anyLoading || !isActive || (loginMode === "pin" && pin.length < 4) }}
                 accessibilityRole="button"
-                accessibilityLabel={loginMode === "pin" ? "Login with PIN" : "Send SMS OTP"}
+                accessibilityLabel={loginMode === "pin" ? "Login with PIN" : loginMode === "email" ? "Send Email OTP" : "Send SMS OTP"}
                 activeOpacity={0.88}
                 style={s.ctaWrap}
               >
-                {isActive && (loginMode === "otp" || pin.length >= 4) ? (
+                {isActive && (loginMode === "otp" || loginMode === "email" || pin.length >= 4) ? (
                   <LinearGradient
                     colors={loginMode === "pin" ? ["#5B21B6", "#7C3AED", PRIMARY] : [PRIMARY, SKY, ACCENT]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -362,7 +420,7 @@ export default function LoginScreen() {
                       ? <ActivityIndicator color="#FFF" />
                       : <>
                           <Text style={s.ctaText}>
-                            {loginMode === "pin" ? t("pinLogin") : t("sendSmsOtp")}
+                            {loginMode === "pin" ? t("pinLogin") : loginMode === "email" ? "📧 Email OTP Bhejo" : t("sendSmsOtp")}
                           </Text>
                           <View style={s.ctaArrow}>
                             <Ionicons name="arrow-forward" size={16} color={loginMode === "pin" ? "#7C3AED" : PRIMARY} />
@@ -373,7 +431,7 @@ export default function LoginScreen() {
                 ) : (
                   <View style={s.ctaBtnDisabled}>
                     <Text style={s.ctaTextDisabled}>
-                      {loginMode === "pin" ? t("pinLogin") : t("sendSmsOtp")}
+                      {loginMode === "pin" ? t("pinLogin") : loginMode === "email" ? "📧 Email OTP Bhejo" : t("sendSmsOtp")}
                     </Text>
                   </View>
                 )}

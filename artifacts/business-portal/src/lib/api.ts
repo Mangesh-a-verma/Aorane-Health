@@ -127,6 +127,12 @@ export const api = {
   login: (email: string, password: string) =>
     request<{ token: string; admin: Admin; org: Org }>("/business/login", { method: "POST", body: JSON.stringify({ email, password }) }),
 
+  sendEmailOtp: (email: string) =>
+    request<{ success: boolean; message: string; devOtp?: string; sent: boolean }>("/auth/send-email-otp", { method: "POST", body: JSON.stringify({ email }) }),
+
+  verifyEmailOtp: (email: string, otp: string) =>
+    request<{ accessToken: string; refreshToken: string; isNewUser: boolean; user: { id: string; email: string; plan: string } }>("/auth/verify-email-otp", { method: "POST", body: JSON.stringify({ email, otp }) }),
+
   register: (data: Record<string, unknown>) =>
     request<{ success: boolean; org: Org; token: string; orgCode: string }>("/business/register", { method: "POST", body: JSON.stringify(data) }),
 

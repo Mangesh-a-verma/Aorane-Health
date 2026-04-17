@@ -78,6 +78,16 @@ export const api = {
       "POST", "/auth/verify-otp", { phone, otp, languageCode }, false
     ),
 
+  sendEmailOtp: (email: string) =>
+    request<{ success: boolean; message: string; devOtp?: string; sent: boolean }>(
+      "POST", "/auth/send-email-otp", { email }, false
+    ),
+
+  verifyEmailOtp: (email: string, otp: string, languageCode = "hi") =>
+    request<{ accessToken: string; refreshToken: string; isNewUser: boolean; user: { id: string; email: string; plan: string; languageCode: string } }>(
+      "POST", "/auth/verify-email-otp", { email, otp, languageCode }, false
+    ),
+
   googleLogin: (accessToken: string) =>
     request<{ accessToken: string; refreshToken: string; isNewUser: boolean; user: { id: string; plan: string } }>(
       "POST", "/auth/google", { accessToken }, false

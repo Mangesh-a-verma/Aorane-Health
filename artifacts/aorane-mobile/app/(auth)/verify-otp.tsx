@@ -33,7 +33,8 @@ export default function VerifyOtpScreen() {
   const insets = useSafeAreaInsets();
   const { loginWithToken } = useAuth();
   const { t } = useLanguage();
-  const { phone, lang: langParam = "en", mode } = useLocalSearchParams<{ phone: string; lang: string; mode?: string }>();
+  const { phone, email, lang: langParam = "en", mode } = useLocalSearchParams<{ phone: string; email?: string; lang: string; mode?: string }>();
+  const isEmailMode = mode === "email";
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
@@ -80,10 +81,16 @@ export default function VerifyOtpScreen() {
     try {
       let accessToken: string;
       let refreshToken: string;
-      let user: { id: string; phone: string; plan: string; languageCode: string };
+      let user: { id: string; phone?: string; email?: string; plan: string; languageCode: string };
       let isNewUser: boolean;
 
-      if (mode === "firebase") {
+      if (mode === "email") {
+        const res = await api.verifyEmailOtp(email || "", otpValue, langParam as string);
+        accessToken = res.accessToken;
+        refreshToken = res.refreshToken;
+        user = res.user;
+        isNewUser = res.isNewUser;
+      } else if (mode === "firebase") {
         const confirmation = getConfirmationResult();
         if (!confirmation) throw new Error("Session expired — please request OTP again");
         const credential = await confirmation.confirm(otpValue);
@@ -128,7 +135,11 @@ export default function VerifyOtpScreen() {
   const handleResend = async () => {
     if (resendTimer > 0) return;
     try {
-      await api.sendOtp(phone || "");
+      if (isEmailMode) {
+        await api.sendEmailOtp(email || "");
+      } else {
+        await api.sendOtp(phone || "");
+      }
       setResendTimer(30);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch { }
@@ -153,13 +164,15 @@ export default function VerifyOtpScreen() {
         <Animated.View style={[s.body, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           <Animated.View style={[s.iconWrap, { transform: [{ scale: pulseAnim }] }]}>
             <LinearGradient colors={C.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.iconGrad}>
-              <Ionicons name="chatbubble-ellipses" size={32} color="#FFF" />
+              <Ionicons name={isEmailMode ? "mail" : "chatbubble-ellipses"} size={32} color="#FFF" />
             </LinearGradient>
             <View style={s.iconGlowRing} />
           </Animated.View>
 
           <Text style={s.title}>{t("enterOtp")}</Text>
-          <Text style={s.subtitle}>{t("otpSentTo")} {phone}</Text>
+          <Text style={s.subtitle}>
+            {isEmailMode ? `OTP bheja gaya: ${email}` : `${t("otpSentTo")} ${phone}`}
+          </Text>
 
           <View style={s.card}>
             <View style={s.progressTrack}>

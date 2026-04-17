@@ -24,6 +24,12 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [loginTab, setLoginTab] = useState<"password" | "otp">("password");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpStep, setOtpStep] = useState<"send" | "verify">("send");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +47,33 @@ export default function Login() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(otpEmail)) {
+      setError("Please enter a valid email address."); return;
+    }
+    setOtpLoading(true); setError("");
+    try {
+      const res = await api.sendEmailOtp(otpEmail);
+      if (res.devOtp) setDevOtp(res.devOtp);
+      setOtpStep("verify");
+    } catch (err) {
+      setError((err as Error).message || "Failed to send OTP.");
+    } finally { setOtpLoading(false); }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode || otpCode.length < 6) { setError("Enter the 6-digit OTP."); return; }
+    setOtpLoading(true); setError("");
+    try {
+      await api.verifyEmailOtp(otpEmail, otpCode);
+      navigate("/dashboard");
+    } catch (err) {
+      setError((err as Error).message || "Invalid or expired OTP.");
+    } finally { setOtpLoading(false); }
   };
 
   return (
@@ -137,95 +170,141 @@ export default function Login() {
 
           {/* Form Card */}
           <div style={{ background: "white", borderRadius: 24, border: "1.5px solid rgba(191,199,209,0.3)", boxShadow: "0 8px 40px rgba(0,0,0,0.07)", padding: "36px 32px" }}>
-            <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-              {/* Email */}
-              <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                  Email Address
-                </label>
-                <div style={{ position: "relative" }}>
-                  <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}>
-                    <Icon name="mail" size={18} color={focusedField === "email" ? PRIMARY : "#9ca3af"} />
-                  </div>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="admin@yourcompany.com"
-                    onFocus={() => setFocusedField("email")}
-                    onBlur={() => setFocusedField(null)}
-                    style={{
-                      width: "100%", boxSizing: "border-box",
-                      padding: "12px 16px 12px 44px", borderRadius: 12,
-                      border: `2px solid ${focusedField === "email" ? PRIMARY : email ? PRIMARY + "40" : "#e5e7eb"}`,
-                      background: "white", color: "#181c20", fontSize: 14,
-                      outline: "none", transition: "border-color 0.2s, box-shadow 0.2s",
-                      boxShadow: focusedField === "email" ? `0 0 0 3px ${PRIMARY}18` : "none",
-                      fontFamily: "'Inter', sans-serif",
-                    }}
-                  />
-                </div>
-              </div>
+            {/* Tab switcher */}
+            <div style={{ display: "flex", gap: 0, marginBottom: 24, background: "#f3f4f6", borderRadius: 12, padding: 4 }}>
+              {([["password", "lock", "Password"], ["otp", "mail", "Email OTP"]] as const).map(([tab, icon, label]) => (
+                <button key={tab} type="button"
+                  onClick={() => { setLoginTab(tab); setError(""); setDevOtp(null); }}
+                  style={{
+                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    padding: "9px 0", borderRadius: 9, border: "none", cursor: "pointer",
+                    background: loginTab === tab ? "white" : "transparent",
+                    color: loginTab === tab ? PRIMARY : "#6b7280",
+                    fontWeight: loginTab === tab ? 700 : 500, fontSize: 13,
+                    boxShadow: loginTab === tab ? "0 1px 6px rgba(0,0,0,0.10)" : "none",
+                    transition: "all 0.18s",
+                  }}
+                >
+                  <Icon name={icon} size={16} color={loginTab === tab ? PRIMARY : "#9ca3af"} />
+                  {label}
+                </button>
+              ))}
+            </div>
 
-              {/* Password */}
-              <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                  Password
-                </label>
-                <div style={{ position: "relative" }}>
-                  <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}>
-                    <Icon name="lock" size={18} color={focusedField === "password" ? PRIMARY : "#9ca3af"} />
-                  </div>
-                  <input
-                    type={showPass ? "text" : "password"}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    onFocus={() => setFocusedField("password")}
-                    onBlur={() => setFocusedField(null)}
-                    style={{
-                      width: "100%", boxSizing: "border-box",
-                      padding: "12px 48px 12px 44px", borderRadius: 12,
-                      border: `2px solid ${focusedField === "password" ? PRIMARY : password ? PRIMARY + "40" : "#e5e7eb"}`,
-                      background: "white", color: "#181c20", fontSize: 14,
-                      outline: "none", transition: "border-color 0.2s, box-shadow 0.2s",
-                      boxShadow: focusedField === "password" ? `0 0 0 3px ${PRIMARY}18` : "none",
-                      fontFamily: "'Inter', sans-serif",
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPass(!showPass)}
-                    style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}
-                  >
-                    <Icon name={showPass ? "visibility_off" : "visibility"} size={18} color="#9ca3af" />
-                  </button>
-                </div>
+            {/* Dev OTP banner */}
+            {devOtp && (
+              <div style={{ background: "#fef3c7", border: "2px solid #f59e0b", borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e", marginBottom: 8 }}>🔧 Dev Mode — Aapka OTP:</div>
+                <div style={{ fontSize: 32, fontWeight: 900, color: "#b45309", letterSpacing: 10, textAlign: "center", fontFamily: "monospace" }}>{devOtp}</div>
+                <div style={{ fontSize: 11, color: "#92400e", marginTop: 6, textAlign: "center" }}>Email delivery unavailable. Copy this code below.</div>
               </div>
+            )}
+
+            <form onSubmit={loginTab === "password" ? handleLogin : (otpStep === "send" ? handleSendOtp : handleVerifyOtp)} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+              {loginTab === "password" ? (
+                <>
+                  {/* Email */}
+                  <div>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                      Email Address
+                    </label>
+                    <div style={{ position: "relative" }}>
+                      <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}>
+                        <Icon name="mail" size={18} color={focusedField === "email" ? PRIMARY : "#9ca3af"} />
+                      </div>
+                      <input
+                        type="email" value={email} onChange={e => setEmail(e.target.value)}
+                        placeholder="admin@yourcompany.com"
+                        onFocus={() => setFocusedField("email")} onBlur={() => setFocusedField(null)}
+                        style={{ width: "100%", boxSizing: "border-box", padding: "12px 16px 12px 44px", borderRadius: 12, border: `2px solid ${focusedField === "email" ? PRIMARY : email ? PRIMARY + "40" : "#e5e7eb"}`, background: "white", color: "#181c20", fontSize: 14, outline: "none", transition: "border-color 0.2s", boxShadow: focusedField === "email" ? `0 0 0 3px ${PRIMARY}18` : "none", fontFamily: "'Inter', sans-serif" }}
+                      />
+                    </div>
+                  </div>
+                  {/* Password */}
+                  <div>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Password</label>
+                    <div style={{ position: "relative" }}>
+                      <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}>
+                        <Icon name="lock" size={18} color={focusedField === "password" ? PRIMARY : "#9ca3af"} />
+                      </div>
+                      <input
+                        type={showPass ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
+                        placeholder="Enter your password"
+                        onFocus={() => setFocusedField("password")} onBlur={() => setFocusedField(null)}
+                        style={{ width: "100%", boxSizing: "border-box", padding: "12px 48px 12px 44px", borderRadius: 12, border: `2px solid ${focusedField === "password" ? PRIMARY : password ? PRIMARY + "40" : "#e5e7eb"}`, background: "white", color: "#181c20", fontSize: 14, outline: "none", transition: "border-color 0.2s", boxShadow: focusedField === "password" ? `0 0 0 3px ${PRIMARY}18` : "none", fontFamily: "'Inter', sans-serif" }}
+                      />
+                      <button type="button" onClick={() => setShowPass(!showPass)} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}>
+                        <Icon name={showPass ? "visibility_off" : "visibility"} size={18} color="#9ca3af" />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Email OTP form */}
+                  <div>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                      {otpStep === "send" ? "Your Email Address" : `OTP sent to ${otpEmail}`}
+                    </label>
+                    {otpStep === "send" ? (
+                      <div style={{ position: "relative" }}>
+                        <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}>
+                          <Icon name="mail" size={18} color={focusedField === "otpEmail" ? PRIMARY : "#9ca3af"} />
+                        </div>
+                        <input
+                          type="email" value={otpEmail} onChange={e => setOtpEmail(e.target.value)}
+                          placeholder="aapka@email.com"
+                          onFocus={() => setFocusedField("otpEmail")} onBlur={() => setFocusedField(null)}
+                          style={{ width: "100%", boxSizing: "border-box", padding: "12px 16px 12px 44px", borderRadius: 12, border: `2px solid ${focusedField === "otpEmail" ? PRIMARY : otpEmail ? PRIMARY + "40" : "#e5e7eb"}`, background: "white", color: "#181c20", fontSize: 14, outline: "none", transition: "border-color 0.2s", boxShadow: focusedField === "otpEmail" ? `0 0 0 3px ${PRIMARY}18` : "none", fontFamily: "'Inter', sans-serif" }}
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ position: "relative" }}>
+                        <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}>
+                          <Icon name="pin" size={18} color={focusedField === "otpCode" ? PRIMARY : "#9ca3af"} />
+                        </div>
+                        <input
+                          type="text" inputMode="numeric" maxLength={6} value={otpCode} onChange={e => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                          placeholder="6-digit OTP"
+                          onFocus={() => setFocusedField("otpCode")} onBlur={() => setFocusedField(null)}
+                          style={{ width: "100%", boxSizing: "border-box", padding: "12px 16px 12px 44px", borderRadius: 12, border: `2px solid ${focusedField === "otpCode" ? PRIMARY : otpCode ? PRIMARY + "40" : "#e5e7eb"}`, background: "white", color: "#181c20", fontSize: 18, outline: "none", letterSpacing: 8, fontFamily: "monospace", fontWeight: 700, transition: "border-color 0.2s", boxShadow: focusedField === "otpCode" ? `0 0 0 3px ${PRIMARY}18` : "none" }}
+                        />
+                      </div>
+                    )}
+                    {otpStep === "verify" && (
+                      <button type="button" onClick={() => { setOtpStep("send"); setOtpCode(""); setDevOtp(null); }}
+                        style={{ fontSize: 12, color: PRIMARY, background: "none", border: "none", cursor: "pointer", marginTop: 6, padding: 0, fontWeight: 600 }}>
+                        ← Change email / Resend OTP
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
 
               {/* Submit */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || otpLoading}
                 style={{
                   width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
                   background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`,
-                  color: "white", fontWeight: 700, fontSize: 15, cursor: isLoading ? "not-allowed" : "pointer",
+                  color: "white", fontWeight: 700, fontSize: 15, cursor: (isLoading || otpLoading) ? "not-allowed" : "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                  opacity: isLoading ? 0.75 : 1,
+                  opacity: (isLoading || otpLoading) ? 0.75 : 1,
                   boxShadow: "0 4px 20px rgba(0,93,144,0.28)",
                   transition: "all 0.2s", marginTop: 4,
                 }}
               >
-                {isLoading ? (
+                {(isLoading || otpLoading) ? (
                   <>
                     <div style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTop: "2px solid white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                    Logging in...
+                    {loginTab === "otp" ? (otpStep === "send" ? "Sending OTP..." : "Verifying...") : "Logging in..."}
                   </>
                 ) : (
                   <>
-                    Log In
+                    {loginTab === "otp" ? (otpStep === "send" ? "📧 Send OTP" : "✓ Verify OTP") : "Log In"}
                     <Icon name="arrow_forward" size={18} color="white" />
                   </>
                 )}
