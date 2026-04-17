@@ -13,3 +13,4 @@ replit.nix
 .local/
 coverage/
 .turbo/
+.github/workflows/eas-build-android.yml
