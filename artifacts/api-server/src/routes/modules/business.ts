@@ -7,6 +7,7 @@ import { signBusinessToken } from "../../lib/jwt";
 import type { BusinessRequest } from "../../middlewares/business-auth";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import { generateOtp, hashOtp, verifyOtpHash, sendEmailOtp } from "../../lib/otp";
 
 // Secure password verification with lazy bcrypt migration from SHA-256
 async function verifyAndMigratePassword(
@@ -106,12 +107,60 @@ router.post("/business/login", async (req, res) => {
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
+
+    // Password verified — now require email OTP as 2nd factor
+    const otp = generateOtp(6);
+    const hashed = hashOtp(otp);
+    cache.setOtp(`biz_login_otp:${email.toLowerCase()}`, hashed);
+    const sent = await sendEmailOtp(email, otp);
+    const isDev = process.env.NODE_ENV !== "production";
+    const testEmails = (process.env.TEST_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+    const isTestEmail = testEmails.includes(email.toLowerCase());
+    const returnDevOtp = !sent && (isDev || isTestEmail);
+
+    res.json({
+      requiresOtp: true,
+      message: sent ? "OTP aapke email pe bheja gaya" : (isDev ? "Dev mode — OTP neeche hai" : "Email service unavailable"),
+      ...(returnDevOtp ? { devOtp: otp } : {}),
+      sent,
+    });
+  } catch {
+    res.status(500).json({ error: "Login failed" });
+  }
+});
+
+router.post("/business/login/verify-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body as { email: string; otp: string };
+    if (!email || !otp) {
+      res.status(400).json({ error: "Email and OTP required" });
+      return;
+    }
+
+    const { cache } = await import("../../lib/redis");
+    const storedHash = cache.getOtp(`biz_login_otp:${email.toLowerCase()}`);
+    if (!storedHash) {
+      res.status(400).json({ error: "OTP expired ya nahin mila. Dobara login karein." });
+      return;
+    }
+    if (!verifyOtpHash(otp, storedHash as string)) {
+      res.status(400).json({ error: "Galat OTP. Dobara try karein." });
+      return;
+    }
+    cache.deleteOtp(`biz_login_otp:${email.toLowerCase()}`);
+
+    const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.email, email));
+    if (!admin || !admin.isActive) {
+      res.status(401).json({ error: "Account not found" });
+      return;
+    }
+
     await db.update(orgAdminsTable).set({ lastLoginAt: new Date() }).where(eq(orgAdminsTable.id, admin.id));
     const token = signBusinessToken({ orgAdminId: admin.id, orgId: admin.orgId, role: admin.role });
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, admin.orgId));
     res.json({ token, admin: { id: admin.id, fullName: admin.fullName, role: admin.role }, org });
   } catch {
-    res.status(500).json({ error: "Login failed" });
+    res.status(500).json({ error: "OTP verification failed" });
   }
 });
 
