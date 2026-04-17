@@ -125,7 +125,10 @@ export interface MemberDetail {
 
 export const api = {
   login: (email: string, password: string) =>
-    request<{ token: string; admin: Admin; org: Org }>("/business/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+    request<{ requiresOtp: boolean; message: string; devOtp?: string; sent: boolean }>("/business/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+
+  verifyLoginOtp: (email: string, otp: string) =>
+    request<{ token: string; admin: Admin; org: Org }>("/business/login/verify-otp", { method: "POST", body: JSON.stringify({ email, otp }) }),
 
   sendEmailOtp: (email: string) =>
     request<{ success: boolean; message: string; devOtp?: string; sent: boolean }>("/auth/send-email-otp", { method: "POST", body: JSON.stringify({ email }) }),
