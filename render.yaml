@@ -1,12 +1,13 @@
 services:
-  - type: web
-    name: aorane-api
-    runtime: node
-    region: singapore
-    plan: free
-    buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile --ignore-scripts && npx pnpm@10 --filter @workspace/api-server build
-    startCommand: npx pnpm@10 --filter @workspace/api-server start
-    envVars:
-      - key: NODE_ENV
-        value: production
-    autoDeploy: true
+    - type: web
+      name: aorane-api
+      runtime: node
+      region: singapore
+      plan: free
+      buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile && npx pnpm@10 --filter @workspace/api-server build
+      startCommand: npx pnpm@10 --filter @workspace/api-server start
+      envVars:
+        - key: NODE_ENV
+          value: production
+      autoDeploy: true
+  
