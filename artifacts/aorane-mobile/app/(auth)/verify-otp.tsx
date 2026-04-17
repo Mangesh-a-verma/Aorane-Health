@@ -39,6 +39,7 @@ export default function VerifyOtpScreen() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(30);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const inputs = useRef<Array<TextInput | null>>([]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -64,6 +65,7 @@ export default function VerifyOtpScreen() {
     const newOtp = [...otp];
     newOtp[index] = text.slice(-1);
     setOtp(newOtp);
+    setErrorMsg(null);
     Haptics.selectionAsync();
     if (text && index < 5) inputs.current[index + 1]?.focus();
     if (newOtp.every((d) => d !== "")) handleVerify(newOtp.join(""));
@@ -123,7 +125,7 @@ export default function VerifyOtpScreen() {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t("wrongOtp");
-      Alert.alert(t("wrongOtp"), msg);
+      setErrorMsg(msg);
       setOtp(["", "", "", "", "", ""]);
       inputs.current[0]?.focus();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -205,11 +207,37 @@ export default function VerifyOtpScreen() {
             </Text>
           </View>
 
-          {isLoading && (
+          {errorMsg && (
+            <View style={s.errorWrap}>
+              <Ionicons name="alert-circle" size={16} color="#DC2626" />
+              <Text style={s.errorText}>{errorMsg}</Text>
+            </View>
+          )}
+
+          {isLoading ? (
             <View style={s.loadingWrap}>
               <ActivityIndicator color={C.primary} size="small" />
               <Text style={s.loadingText}>{t("verifying")}</Text>
             </View>
+          ) : (
+            <TouchableOpacity
+              onPress={() => { if (filled === 6) handleVerify(otp.join("")); }}
+              activeOpacity={filled === 6 ? 0.8 : 1}
+              style={[s.verifyBtn, filled < 6 && s.verifyBtnDisabled]}
+              accessibilityLabel="Verify OTP"
+              accessibilityRole="button"
+            >
+              <LinearGradient
+                colors={filled === 6 ? C.gradient : ["#C0D8E8", "#B0D4C8"] as [string, string]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={s.verifyBtnGrad}
+              >
+                <Ionicons name="checkmark-circle" size={20} color="#FFF" />
+                <Text style={s.verifyBtnText}>
+                  {filled < 6 ? `${filled}/6 digits` : "Verify OTP"}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
           )}
 
           <TouchableOpacity onPress={handleResend} disabled={resendTimer > 0} activeOpacity={0.75} style={s.resendWrap}>
@@ -259,8 +287,16 @@ const s = StyleSheet.create({
 
   countText: { fontSize: 12, textAlign: "center", fontFamily: "Inter_400Regular", color: C.muted },
 
+  errorWrap: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FECACA", borderRadius: 12, padding: 12, marginBottom: 12, width: "100%" as const },
+  errorText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#DC2626", lineHeight: 18 },
+
   loadingWrap: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16 },
   loadingText: { fontSize: 14, fontFamily: "Inter_500Medium", color: C.primary },
+
+  verifyBtn: { width: "100%" as const, marginBottom: 14, borderRadius: 16, overflow: "hidden" },
+  verifyBtnDisabled: { opacity: 0.65 },
+  verifyBtnGrad: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 16, paddingHorizontal: 24 },
+  verifyBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#FFF" },
 
   resendWrap: { marginBottom: 20 },
   resendPill: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 18, paddingVertical: 11, borderRadius: 22, borderWidth: 1, borderColor: C.border, backgroundColor: C.card },
