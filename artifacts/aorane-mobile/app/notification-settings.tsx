@@ -9,6 +9,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { api } from "@/lib/api";
+import {
+  scheduleWaterReminders, cancelWaterReminders,
+  schedulePeriodReminders, cancelPeriodReminders,
+  requestNotificationPermissions,
+} from "@/lib/notifications";
 
 const C = {
   bg: "#F0FAFB", card: "#FFFFFF", primary: "#0077B6", accent: "#00B896",
@@ -132,7 +137,32 @@ export default function NotificationSettingsScreen() {
     try {
       await api.updateNotificationSettings(settings as unknown as Record<string, unknown>);
       setIsDirty(false);
-      Alert.alert("Saved! ✅", "Notification settings saved successfully!");
+
+      const notifEnabled = settings.notificationsEnabled;
+
+      // Request permission if needed
+      if (notifEnabled) await requestNotificationPermissions();
+
+      // Water reminders
+      if (notifEnabled && settings.waterReminders) {
+        await scheduleWaterReminders(settings.wakeUpTime, settings.bedTime, settings.waterGoalGlasses);
+      } else {
+        await cancelWaterReminders();
+      }
+
+      // Period reminders — fetch next period date and schedule
+      if (notifEnabled && settings.periodReminders) {
+        try {
+          const periodData = await api.getPeriodLogs() as { prediction?: { nextPeriodDate?: string } };
+          if (periodData?.prediction?.nextPeriodDate) {
+            await schedulePeriodReminders(periodData.prediction.nextPeriodDate);
+          }
+        } catch { }
+      } else {
+        await cancelPeriodReminders();
+      }
+
+      Alert.alert("Saved! ✅", "Notification settings saved. Reminders are now active.");
     } catch {
       Alert.alert("Error", "Could not save settings. Please try again.");
     }
@@ -227,6 +257,54 @@ export default function NotificationSettingsScreen() {
           />
         </View>
 
+        {/* Daily Schedule — drives water reminder spacing */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>⏰ Daily Schedule</Text>
+          <View style={styles.row}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
+              <View style={[styles.iconBox, { backgroundColor: "#FFF7ED" }]}>
+                <Text style={{ fontSize: 18 }}>🌅</Text>
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Wake-Up Time</Text>
+                <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>Water reminders start from here</Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {["05:00","06:00","07:00","08:00","09:00"].map(t => (
+                <TouchableOpacity key={t} onPress={() => { Haptics.selectionAsync(); update("wakeUpTime", t); }}
+                  style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1.5,
+                    borderColor: settings.wakeUpTime === t ? C.primary : C.border,
+                    backgroundColor: settings.wakeUpTime === t ? C.primary + "15" : "transparent" }}>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: settings.wakeUpTime === t ? C.primary : C.muted }}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.row}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
+              <View style={[styles.iconBox, { backgroundColor: "#F0F0FF" }]}>
+                <Text style={{ fontSize: 18 }}>🌙</Text>
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Bedtime</Text>
+                <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>Water reminders stop before here</Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {["20:00","21:00","22:00","22:30","23:00"].map(t => (
+                <TouchableOpacity key={t} onPress={() => { Haptics.selectionAsync(); update("bedTime", t); }}
+                  style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1.5,
+                    borderColor: settings.bedTime === t ? C.primary : C.border,
+                    backgroundColor: settings.bedTime === t ? C.primary + "15" : "transparent" }}>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: settings.bedTime === t ? C.primary : C.muted }}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
         {/* Daily Goals */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>🎯 Daily Goals</Text>
@@ -269,7 +347,7 @@ export default function NotificationSettingsScreen() {
         <View style={{ backgroundColor: "#EFF9FF", borderRadius: 14, borderWidth: 1, borderColor: "#BAE6FD", padding: 14, flexDirection: "row", gap: 10 }}>
           <Ionicons name="information-circle-outline" size={20} color={C.primary} />
           <Text style={{ color: C.primary, fontFamily: "Inter_400Regular", fontSize: 12, flex: 1, lineHeight: 18 }}>
-            Aorane notifications help you maintain healthy habits. In-app notifications are available now. Push notifications coming soon!
+            Water reminders are scheduled between your Wake-Up and Bedtime. Period reminders fire 2 days before, 1 day before, and on your predicted cycle date. Medicine reminders are set when you add a medicine schedule.
           </Text>
         </View>
       </ScrollView>

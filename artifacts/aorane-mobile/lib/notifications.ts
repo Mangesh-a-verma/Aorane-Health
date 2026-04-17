@@ -164,3 +164,117 @@ export async function getAllScheduledMedicineReminders(): Promise<
     return [];
   }
 }
+
+// ─── Cancel all notifications of a given type ─────────────────────────────────
+async function cancelByType(type: string): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const all = await Notifications.getAllScheduledNotificationsAsync();
+    for (const n of all) {
+      if ((n.content.data as Record<string, unknown>)?.type === type) {
+        await Notifications.cancelScheduledNotificationAsync(n.identifier);
+      }
+    }
+  } catch { }
+}
+
+// ─── Water Reminders ──────────────────────────────────────────────────────────
+// Schedules one notification every ~2 hours between wakeUpTime and bedTime.
+export async function scheduleWaterReminders(
+  wakeUpTime = "07:00",
+  bedTime = "22:30",
+  goalGlasses = 8,
+): Promise<string[]> {
+  if (Platform.OS === "web") return [];
+  const granted = await checkNotificationPermissions();
+  if (!granted) return [];
+
+  await cancelByType("water_reminder");
+
+  const [wakeH, wakeM] = wakeUpTime.split(":").map(Number);
+  const [bedH, bedM] = bedTime.split(":").map(Number);
+  const wakeMinutes = wakeH * 60 + wakeM;
+  const bedMinutes = bedH * 60 + bedM;
+  const spanMinutes = Math.max(bedMinutes - wakeMinutes, 60);
+
+  const count = Math.min(Math.max(goalGlasses, 4), 12);
+  const intervalMinutes = Math.floor(spanMinutes / count);
+
+  const ids: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const totalMins = wakeMinutes + intervalMinutes * i + 30;
+    const hour = Math.floor(totalMins / 60) % 24;
+    const minute = totalMins % 60;
+    if (hour >= bedH) break;
+
+    try {
+      const id = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "💧 Water Reminder",
+          body: `Time to drink water! Stay hydrated — ${i + 1} of ${count} glasses today.`,
+          sound: true,
+          data: { type: "water_reminder", glass: i + 1 },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour,
+          minute,
+        },
+      });
+      ids.push(id);
+    } catch { }
+  }
+  return ids;
+}
+
+export async function cancelWaterReminders(): Promise<void> {
+  await cancelByType("water_reminder");
+}
+
+// ─── Period Reminders ─────────────────────────────────────────────────────────
+// Schedules 3 one-time notifications: 2 days before, 1 day before, and on the predicted period date.
+export async function schedulePeriodReminders(nextPeriodDateStr: string): Promise<string[]> {
+  if (Platform.OS === "web") return [];
+  const granted = await checkNotificationPermissions();
+  if (!granted) return [];
+
+  await cancelByType("period_reminder");
+
+  const ids: string[] = [];
+  const nextDate = new Date(nextPeriodDateStr + "T09:00:00");
+  if (isNaN(nextDate.getTime())) return [];
+
+  const alerts: Array<{ daysOffset: number; title: string; body: string }> = [
+    { daysOffset: -2, title: "🌸 Period Expected Soon", body: "Your period is expected in 2 days. Stay comfortable and prepared." },
+    { daysOffset: -1, title: "🌸 Period Expected Tomorrow", body: "Your period is likely starting tomorrow. Take care of yourself!" },
+    { daysOffset:  0, title: "🌸 Period May Start Today",  body: "Your cycle may begin today. Remember to stay hydrated and rest well." },
+  ];
+
+  const now = new Date();
+  for (const alert of alerts) {
+    const fireDate = new Date(nextDate);
+    fireDate.setDate(fireDate.getDate() + alert.daysOffset);
+    if (fireDate <= now) continue;
+
+    try {
+      const id = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: alert.title,
+          body: alert.body,
+          sound: true,
+          data: { type: "period_reminder", daysOffset: alert.daysOffset },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: fireDate,
+        },
+      });
+      ids.push(id);
+    } catch { }
+  }
+  return ids;
+}
+
+export async function cancelPeriodReminders(): Promise<void> {
+  await cancelByType("period_reminder");
+}

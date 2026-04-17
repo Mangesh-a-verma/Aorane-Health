@@ -29,6 +29,8 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS medicine_reminder_time TEXT DEFAULT '08:00,14:00,21:00'`,
     `ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS wake_up_time TEXT DEFAULT '07:00'`,
     `ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS bed_time TEXT DEFAULT '22:30'`,
+    `ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS food_reminders BOOLEAN NOT NULL DEFAULT TRUE`,
+    `ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS water_goal_glasses INTEGER NOT NULL DEFAULT 8`,
 
     // user_health_goals unique constraint
     `DO $$ BEGIN

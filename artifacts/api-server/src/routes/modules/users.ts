@@ -343,14 +343,27 @@ function getActiveLabel(pct: number): string {
 // ─── Notification Settings (GET + PUT) ───────────────────────────────────────
 router.get("/notifications/settings", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const r = await pool.query(`SELECT notifications_enabled, medicine_reminders, water_reminders, weekly_report_email FROM user_preferences WHERE user_id=$1`, [req.userId!]);
+    const r = await pool.query(
+      `SELECT notifications_enabled, medicine_reminders, water_reminders, food_reminders,
+              period_reminders, suggestion_notifications, weekly_report_email,
+              wake_up_time, bed_time, calorie_goal, water_goal_glasses
+       FROM user_preferences WHERE user_id=$1`,
+      [req.userId!]
+    );
     const row = r.rows[0] ?? {};
     res.json({
       settings: {
-        notificationsEnabled: row.notifications_enabled ?? true,
-        medicineReminders:    row.medicine_reminders    ?? true,
-        waterReminders:       row.water_reminders       ?? true,
-        weeklyReportEmail:    row.weekly_report_email   ?? false,
+        notificationsEnabled:      row.notifications_enabled      ?? true,
+        medicineReminders:         row.medicine_reminders         ?? true,
+        waterReminders:            row.water_reminders            ?? true,
+        foodReminders:             row.food_reminders             ?? true,
+        periodReminders:           row.period_reminders           ?? true,
+        suggestionNotifications:   row.suggestion_notifications   ?? true,
+        weeklyReportEmail:         row.weekly_report_email        ?? false,
+        wakeUpTime:                row.wake_up_time               ?? "07:00",
+        bedTime:                   row.bed_time                   ?? "22:30",
+        calorieGoal:               row.calorie_goal               ?? 2000,
+        waterGoalGlasses:          row.water_goal_glasses         ?? 8,
       }
     });
   } catch (e) {
@@ -361,10 +374,17 @@ router.get("/notifications/settings", requireAuth, async (req: AuthRequest, res)
 router.put("/notifications/settings", requireAuth, async (req: AuthRequest, res) => {
   try {
     const colMap: Record<string, string> = {
-      notificationsEnabled: "notifications_enabled",
-      medicineReminders:    "medicine_reminders",
-      waterReminders:       "water_reminders",
-      weeklyReportEmail:    "weekly_report_email",
+      notificationsEnabled:    "notifications_enabled",
+      medicineReminders:       "medicine_reminders",
+      waterReminders:          "water_reminders",
+      foodReminders:           "food_reminders",
+      periodReminders:         "period_reminders",
+      suggestionNotifications: "suggestion_notifications",
+      weeklyReportEmail:       "weekly_report_email",
+      wakeUpTime:              "wake_up_time",
+      bedTime:                 "bed_time",
+      calorieGoal:             "calorie_goal",
+      waterGoalGlasses:        "water_goal_glasses",
     };
     const fields: string[] = []; const vals: unknown[] = []; let idx = 1;
     for (const [jsKey, col] of Object.entries(colMap)) {
