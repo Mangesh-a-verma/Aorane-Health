@@ -13,8 +13,6 @@ import { GradientBackground } from "@/components/GradientBackground";
 import { api } from "@/lib/api";
 import { useLanguage } from "@/context/LanguageContext";
 
-const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-", "Unknown"];
-
 function StepBar({ current }: { current: number }) {
   const scheme = useColorScheme();
   const isDark = scheme === "dark";
@@ -46,7 +44,6 @@ export default function OnboardingPhysical() {
 
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
-  const [bloodGroup, setBloodGroup] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const bmi = height && weight
@@ -68,7 +65,6 @@ export default function OnboardingPhysical() {
       const data: Record<string, unknown> = {};
       if (height) data.heightCm = parseFloat(height);
       if (weight) data.weightKg = parseFloat(weight);
-      if (bloodGroup) data.bloodGroup = bloodGroup;
       await api.updateProfile(data);
       await api.updateOnboardingStep(2);
       router.push("/(onboarding)/health");
@@ -152,30 +148,6 @@ export default function OnboardingPhysical() {
                 );
               })()}
 
-              {/* Blood Group */}
-              <Text style={[styles.label, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_600SemiBold", marginTop: 8 }]}>{t("bloodGroup")}</Text>
-              <View style={styles.bloodGrid}>
-                {BLOOD_GROUPS.map((bg) => {
-                  const selected = bloodGroup === bg;
-                  return (
-                    <TouchableOpacity
-                      key={bg}
-                      onPress={() => { setBloodGroup(bg); Haptics.selectionAsync(); }}
-                      activeOpacity={0.8}
-                    >
-                      {selected ? (
-                        <LinearGradient colors={["#EF4444", "#DC2626"]} style={styles.bloodChipActive}>
-                          <Text style={[styles.bloodText, { color: "#FFF", fontFamily: "Inter_700Bold" }]}>{bg}</Text>
-                        </LinearGradient>
-                      ) : (
-                        <View style={[styles.bloodChip, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,119,182,0.05)", borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.15)" }]}>
-                          <Text style={[styles.bloodText, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>{bg}</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
             </GlassCard>
           </View>
         </ScrollView>
@@ -220,10 +192,6 @@ const styles = StyleSheet.create({
   bmiTitle: { fontSize: 13, marginBottom: 2 },
   bmiStatus: { fontSize: 15 },
   bmiValue: { fontSize: 32 },
-  bloodGrid: { flexDirection: "row", flexWrap: "wrap", gap: 9, marginTop: 4 },
-  bloodChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, borderWidth: 1.5 },
-  bloodChipActive: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10 },
-  bloodText: { fontSize: 14 },
   footer: { paddingHorizontal: 20, paddingTop: 12 },
   ctaBtn: { height: 54, borderRadius: 16, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 10 },
   ctaText: { color: "#FFF", fontSize: 17 },

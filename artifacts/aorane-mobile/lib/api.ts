@@ -148,6 +148,9 @@ export const api = {
   getFoodSummary: (date: string) =>
     request<{ summary: Record<string, unknown> }>("GET", `/food/summary/${date}`),
 
+  getWeeklyActivity: () =>
+    request<{ activeDays: number; totalDays: number; percentage: number }>("GET", "/health/weekly-activity"),
+
   getWeatherFoodSuggestions: () =>
     request<{
       weatherContext: string;

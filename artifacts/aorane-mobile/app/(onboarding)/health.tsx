@@ -76,12 +76,12 @@ export default function OnboardingHealth() {
         api.updateProfile({ foodPreference: foodPref, foodAllergies: selectedAllergies }),
       ]);
       await api.updateOnboardingStep(3);
-      router.push("/(onboarding)/lifestyle");
     } catch {
-      Alert.alert("Error", "Failed to save.");
+      /* ignore — navigate anyway */
     } finally {
       setIsLoading(false);
     }
+    router.push("/(onboarding)/lifestyle");
   };
 
   return (
@@ -183,7 +183,7 @@ export default function OnboardingHealth() {
             <LinearGradient colors={["#0077B6", "#1B998B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaBtn}>
               {isLoading
                 ? <ActivityIndicator color="#FFF" />
-                : <><Text style={[styles.ctaText, { fontFamily: "Inter_700Bold" }]}>Aage Barein</Text><Ionicons name="arrow-forward" size={18} color="#FFF" /></>
+                : <><Text style={[styles.ctaText, { fontFamily: "Inter_700Bold" }]}>Continue</Text><Ionicons name="arrow-forward" size={18} color="#FFF" /></>
               }
             </LinearGradient>
           </TouchableOpacity>

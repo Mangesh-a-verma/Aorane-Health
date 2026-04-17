@@ -12,19 +12,28 @@ import { useAuth } from "@/context/AuthContext";
 import * as Haptics from "expo-haptics";
 import { DS } from "@/lib/theme";
 import {
-  Bell, Flame, Droplets, Dumbbell, Heart,
+  Flame, Droplets, Dumbbell, Heart,
   Utensils, Pill, ScanLine, Brain, FileText,
-  ChevronRight, Sparkles, Plus,
+  ChevronRight, Sparkles, Plus, Beef, Wheat,
 } from "lucide-react-native";
 
 function todayDate() { return new Date().toISOString().slice(0, 10); }
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 5)  return "Good Night 🌙";
+  if (h < 12) return "Good Morning ☀️";
+  if (h < 17) return "Good Afternoon 🌤️";
+  return "Good Evening 🌆";
+}
+
 // ── SUMMARY BANNER ─────────────────────────────────────────────────────────────
-function SummaryBanner({ userName, greeting, healthScore, calories, water, exerciseMin }: {
-  userName: string; greeting: string; healthScore: number;
+function SummaryBanner({ greeting, healthScore, calories, water, exerciseMin, activityPct }: {
+  greeting: string; healthScore: number;
   calories: { eaten: number; burned: number };
   water: { current: number; goal: number };
   exerciseMin: number;
+  activityPct: number;
 }) {
   return (
     <LinearGradient
@@ -36,11 +45,17 @@ function SummaryBanner({ userName, greeting, healthScore, calories, water, exerc
       <View style={bn.topRow}>
         <View style={{ flex: 1 }}>
           <Text style={bn.greet}>{greeting}</Text>
-          <Text style={bn.name} numberOfLines={1}>{(userName || "User").toUpperCase()}</Text>
+          <Text style={bn.sub}>Today's health overview</Text>
         </View>
-        <View style={bn.badge}>
-          <Text style={bn.badgeNum}>{healthScore}</Text>
-          <Text style={bn.badgeLbl}>HEALTH</Text>
+        <View style={bn.scoreBlock}>
+          <View style={bn.badge}>
+            <Text style={bn.badgeNum}>{healthScore}</Text>
+            <Text style={bn.badgeLbl}>HEALTH</Text>
+          </View>
+          <View style={bn.actBadge}>
+            <Text style={bn.actNum}>{activityPct}%</Text>
+            <Text style={bn.actLbl}>ACTIVE</Text>
+          </View>
         </View>
       </View>
       <View style={bn.divider} />
@@ -65,16 +80,79 @@ const bn = StyleSheet.create({
   card:     { borderRadius: 20, padding: 16, overflow: "hidden" },
   shine1:   { position: "absolute", width: 160, height: 160, borderRadius: 80, backgroundColor: "rgba(255,255,255,0.07)", top: -50, right: -30 },
   topRow:   { flexDirection: "row", alignItems: "flex-start", marginBottom: 12 },
-  greet:    { color: "rgba(255,255,255,0.78)", fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 3 },
-  name:     { color: "#FFF", fontSize: 16, fontFamily: "Inter_700Bold", letterSpacing: 0.4 },
-  badge:    { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 50, paddingHorizontal: 14, paddingVertical: 7, alignItems: "center" },
+  greet:    { color: "#FFF", fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 2 },
+  sub:      { color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_400Regular" },
+  scoreBlock: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
+  badge:    { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 50, paddingHorizontal: 12, paddingVertical: 6, alignItems: "center" },
   badgeNum: { color: "#FFF", fontSize: 22, fontFamily: "Inter_700Bold", lineHeight: 26 },
   badgeLbl: { color: "rgba(255,255,255,0.85)", fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
+  actBadge: { backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)" },
+  actNum:   { color: "#FFF", fontSize: 14, fontFamily: "Inter_700Bold", lineHeight: 18 },
+  actLbl:   { color: "rgba(255,255,255,0.8)", fontSize: 8, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 },
   divider:  { height: 0.8, backgroundColor: "rgba(255,255,255,0.18)", marginBottom: 12 },
   statsRow: { flexDirection: "row" },
   stat:     { flex: 1, alignItems: "center", gap: 4 },
   statVal:  { color: "#FFF", fontSize: 14, fontFamily: "Inter_700Bold" },
   statLbl:  { color: "rgba(255,255,255,0.72)", fontSize: 9.5, fontFamily: "Inter_400Regular" },
+});
+
+// ── NUTRITION CARD ─────────────────────────────────────────────────────────────
+function NutritionCard({ calories, protein, carbs, fat }: {
+  calories: number; protein: number; carbs: number; fat: number;
+}) {
+  const total = protein + carbs + fat || 1;
+  const pctP = Math.round((protein / total) * 100);
+  const pctC = Math.round((carbs / total) * 100);
+  const pctF = 100 - pctP - pctC;
+
+  const items = [
+    { label: "Calories", value: `${calories}`, unit: "kcal", color: "#E8622A", icon: <Flame size={16} color="#E8622A" strokeWidth={2} />, width: "100%" as const },
+    { label: "Protein",  value: `${protein}`,  unit: "g",    color: "#6366F1", icon: <Beef  size={16} color="#6366F1" strokeWidth={2} />, width: `${pctP}%` as `${number}%` },
+    { label: "Carbs",    value: `${carbs}`,    unit: "g",    color: "#10B981", icon: <Wheat size={16} color="#10B981" strokeWidth={2} />, width: `${pctC}%` as `${number}%` },
+    { label: "Fat",      value: `${fat}`,      unit: "g",    color: "#F59E0B", icon: <Droplets size={16} color="#F59E0B" strokeWidth={2} />, width: `${pctF}%` as `${number}%` },
+  ];
+
+  return (
+    <View style={nc.card}>
+      <View style={nc.header}>
+        <Text style={nc.title}>Today's Nutrition</Text>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/food" as never)}>
+          <Text style={nc.viewAll}>Log Food</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={nc.grid}>
+        {items.map((item, i) => (
+          <View key={i} style={nc.item}>
+            <View style={nc.itemTop}>
+              {item.icon}
+              <View style={nc.itemTextWrap}>
+                <Text style={nc.itemVal}>{item.value}<Text style={nc.itemUnit}> {item.unit}</Text></Text>
+                <Text style={nc.itemLabel}>{item.label}</Text>
+              </View>
+            </View>
+            <View style={nc.barBg}>
+              <View style={[nc.barFill, { backgroundColor: item.color, width: item.width }]} />
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+const nc = StyleSheet.create({
+  card:      { backgroundColor: "#FFF", borderRadius: 20, padding: 16 },
+  header:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
+  title:     { fontSize: 15, fontFamily: "Inter_700Bold", color: DS.color.text },
+  viewAll:   { fontSize: 12, fontFamily: "Inter_600SemiBold", color: DS.color.primary },
+  grid:      { gap: 10 },
+  item:      { gap: 5 },
+  itemTop:   { flexDirection: "row", alignItems: "center", gap: 8 },
+  itemTextWrap: { flex: 1, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
+  itemVal:   { fontSize: 15, fontFamily: "Inter_700Bold", color: DS.color.text },
+  itemUnit:  { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted },
+  itemLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted },
+  barBg:     { height: 5, borderRadius: 3, backgroundColor: "#F1F5F9" },
+  barFill:   { height: 5, borderRadius: 3 },
 });
 
 // ── SERVICE TILE ───────────────────────────────────────────────────────────────
@@ -174,10 +252,11 @@ export default function DashboardScreen() {
   const [healthScore, setHealthScore] = useState(0);
   const [water,       setWater]       = useState({ current: 0, goal: 8 });
   const [calories,    setCalories]    = useState({ eaten: 0, burned: 0 });
+  const [nutrition,   setNutrition]   = useState({ protein: 0, carbs: 0, fat: 0 });
   const [exerciseMin, setExerciseMin] = useState(0);
+  const [activityPct, setActivityPct] = useState(0);
   const [isLoading,   setIsLoading]   = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
-  const [greeting,    setGreeting]    = useState("Good Morning");
   const [userName,    setUserName]    = useState("");
   const [medicines,   setMedicines]   = useState<Array<{
     id: string; medicineName: string; dosage?: string;
@@ -188,18 +267,15 @@ export default function DashboardScreen() {
   const slideAnim = useRef(new Animated.Value(20)).current;
   const scrollRef = useRef<ScrollView>(null);
 
-  useEffect(() => {
-    const h = new Date().getHours();
-    setGreeting(h < 5 ? "Good Night 🌙" : h < 12 ? "Good Morning ☀️" : h < 17 ? "Good Afternoon 🌤️" : "Good Evening 🌆");
-    loadData();
-  }, []);
+  const greeting = getGreeting();
 
   const loadData = useCallback(async () => {
     try {
       const date = todayDate();
-      const [scoreRes, waterRes, foodRes, exerciseRes, profileRes, medRes] = await Promise.allSettled([
+      const [scoreRes, waterRes, foodRes, exerciseRes, profileRes, medRes, activityRes] = await Promise.allSettled([
         api.getHealthScore(date), api.getWaterLog(date), api.getFoodSummary(date),
         api.getExerciseLogs(date), api.getProfile(), api.getMedicineSchedules(),
+        api.getWeeklyActivity(),
       ]);
       if (scoreRes.status === "fulfilled") {
         const sc = scoreRes.value.score as Record<string, number>;
@@ -210,6 +286,11 @@ export default function DashboardScreen() {
       if (foodRes.status === "fulfilled") {
         const summ = foodRes.value.summary as Record<string, number>;
         setCalories((c) => ({ ...c, eaten: Math.round(summ.totalCalories || 0) }));
+        setNutrition({
+          protein: Math.round(Number(summ.totalProteinG || 0)),
+          carbs:   Math.round(Number(summ.totalCarbsG   || 0)),
+          fat:     Math.round(Number(summ.totalFatG     || 0)),
+        });
       }
       if (exerciseRes.status === "fulfilled") {
         const logs = exerciseRes.value.logs as Array<{ durationMinutes: number; caloriesBurned?: string }>;
@@ -226,6 +307,9 @@ export default function DashboardScreen() {
           (medRes.value.schedules as typeof medicines).filter((m) => m.isActive)
         );
       }
+      if (activityRes.status === "fulfilled") {
+        setActivityPct(activityRes.value.percentage ?? 0);
+      }
     } catch (err) {
       if (process.env.NODE_ENV !== "production") {
         console.warn("[Dashboard] Data load error:", err);
@@ -239,6 +323,8 @@ export default function DashboardScreen() {
       Animated.spring(slideAnim, { toValue: 0, damping: 18,   useNativeDriver: true }),
     ]).start();
   }, []);
+
+  useEffect(() => { loadData(); }, []);
 
   useFocusEffect(useCallback(() => {
     loadData();
@@ -267,7 +353,6 @@ export default function DashboardScreen() {
 
   return (
     <View style={s.root}>
-      {/* Cream bg gradient */}
       <LinearGradient
         colors={["#FFF8F3", "#F9F2ED", "#FFF8F3"]}
         style={StyleSheet.absoluteFill}
@@ -293,13 +378,13 @@ export default function DashboardScreen() {
               <Text style={s.greetTxt}>{greeting}</Text>
               <Text style={s.dateTxt}>{today}</Text>
             </View>
-            <TouchableOpacity
-              style={s.bellBtn}
-              onPress={() => router.push("/notification-settings" as never)}
-              activeOpacity={0.8}
-            >
-              <Bell size={20} color="#FFF" strokeWidth={2} />
-            </TouchableOpacity>
+            {/* User name where bell used to be */}
+            {userName !== "" && (
+              <View style={s.namePill}>
+                <Heart size={11} color={DS.color.primary} strokeWidth={2.5} fill={DS.color.primary} />
+                <Text style={s.namePillTxt} numberOfLines={1}>{userName}</Text>
+              </View>
+            )}
           </View>
         </LinearGradient>
 
@@ -308,18 +393,26 @@ export default function DashboardScreen() {
 
           {/* 1. SUMMARY BANNER */}
           <SummaryBanner
-            userName={userName}
             greeting={greeting}
             healthScore={healthScore}
             calories={calories}
             water={water}
             exerciseMin={exerciseMin}
+            activityPct={activityPct}
           />
 
-          {/* 2. ADS SLIDER */}
+          {/* 2. NUTRITION CARD */}
+          <NutritionCard
+            calories={calories.eaten}
+            protein={nutrition.protein}
+            carbs={nutrition.carbs}
+            fat={nutrition.fat}
+          />
+
+          {/* 3. ADS SLIDER */}
           <AdsSlider />
 
-          {/* 3. QUICK SERVICES */}
+          {/* 4. QUICK SERVICES */}
           <View style={s.surfaceCard}>
             <Text style={s.secTitle}>Quick Services</Text>
             <View style={s.grid}>
@@ -341,10 +434,10 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          {/* 4. WATER INTAKE */}
+          {/* 5. WATER INTAKE */}
           <WaterDots current={water.current} goal={Math.max(water.goal, 6)} onAdd={handleAddWater} />
 
-          {/* 5. TODAY'S MEDICINES */}
+          {/* 6. TODAY'S MEDICINES */}
           <View style={s.surfaceCard}>
             <View style={s.cardHeader}>
               <Text style={s.secTitle}>Today's Medicines 💊</Text>
@@ -383,9 +476,8 @@ export default function DashboardScreen() {
             )}
           </View>
 
-          {/* 6. AI FEATURES — 2-column layout (Stitch design) */}
+          {/* 7. AI FEATURES — 2-column layout */}
           <View style={s.aiGrid}>
-            {/* Daily AI Coach */}
             <TouchableOpacity
               style={{ flex: 1 }}
               onPress={() => router.push("/suggestions" as never)}
@@ -404,7 +496,6 @@ export default function DashboardScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Health Intelligence */}
             <TouchableOpacity
               style={{ flex: 1 }}
               onPress={() => router.push("/intelligence" as never)}
@@ -434,27 +525,22 @@ const s = StyleSheet.create({
   root:   { flex: 1 },
   scroll: { gap: 0 },
 
-  // Header
   header:    { borderBottomLeftRadius: 24, borderBottomRightRadius: 24, overflow: "hidden" },
-  headerRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 10, paddingBottom: 16 },
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 10, paddingBottom: 16 },
   greetTxt:  { fontSize: 17, fontFamily: "Inter_700Bold", color: "#FFF" },
   dateTxt:   { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.7)", marginTop: 2 },
-  bellBtn:   { width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
-  bellDot:   { position: "absolute", top: 7, right: 7, width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#FFF", borderWidth: 1.5, borderColor: DS.color.primary },
+  namePill:  { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(255,255,255,0.92)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, maxWidth: 130 },
+  namePillTxt: { fontSize: 13, fontFamily: "Inter_700Bold", color: DS.color.primary },
 
-  // Body
   body:     { paddingHorizontal: 14, paddingTop: 14, gap: 12 },
 
-  // Cards (surface container — no border, just white on cream)
   surfaceCard: { backgroundColor: "#FFF", borderRadius: 20, padding: 16 },
   cardHeader:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
   secTitle:    { fontSize: 15, fontFamily: "Inter_700Bold", color: DS.color.text, marginBottom: 14 },
   viewAll:     { fontSize: 12, fontFamily: "Inter_600SemiBold", color: DS.color.primary },
 
-  // Grid
   grid: { flexDirection: "row", flexWrap: "wrap" },
 
-  // Medicine
   emptyRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: DS.color.purple + "0D", borderRadius: 12, padding: 12 },
   emptyTxt: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: DS.color.muted },
   medRow:   { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#F3EDE8" },
@@ -462,7 +548,6 @@ const s = StyleSheet.create({
   medName:  { fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.text },
   medSub:   { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: 1 },
 
-  // AI 2-column
   aiGrid:    { flexDirection: "row", gap: 10 },
   aiCard:    { borderRadius: 20, padding: 14, minHeight: 140, overflow: "hidden", gap: 8 },
   aiShine:   { position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(255,255,255,0.1)" },

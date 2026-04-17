@@ -214,6 +214,26 @@ router.get("/health/scores/history", requireAuth, async (req: AuthRequest, res) 
   }
 });
 
+router.get("/health/weekly-activity", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.userId!;
+    const result = await pool.query(
+      `SELECT COUNT(DISTINCT day) AS active_days FROM (
+        SELECT DATE(logged_at) AS day FROM food_logs WHERE user_id=$1 AND logged_at >= NOW() - INTERVAL '7 days'
+        UNION
+        SELECT DATE(logged_at) AS day FROM exercise_logs WHERE user_id=$1 AND logged_at >= NOW() - INTERVAL '7 days'
+        UNION
+        SELECT DATE(logged_at) AS day FROM water_logs WHERE user_id=$1 AND logged_at >= NOW() - INTERVAL '7 days'
+      ) sub`,
+      [userId]
+    );
+    const activeDays = parseInt(result.rows[0]?.active_days || "0");
+    res.json({ activeDays, totalDays: 7, percentage: Math.round((activeDays / 7) * 100) });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch weekly activity", detail: (e as Error).message });
+  }
+});
+
 async function computeDailyScore(userId: string, date: string): Promise<Record<string, unknown>> {
   const s = await computeScientificScore(userId, date);
   return {
