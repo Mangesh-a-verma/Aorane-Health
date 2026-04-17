@@ -136,6 +136,12 @@ export const api = {
   getMe: (token: string) =>
     request<{ admin: Admin; org: Org }>("/business/me", { headers: { Authorization: `Bearer ${token}` } }),
 
+  sendRegOtp: (email: string) =>
+    request<{ success: boolean; message: string; devOtp?: string; sent: boolean }>("/business/send-reg-otp", { method: "POST", body: JSON.stringify({ email }) }),
+
+  verifyRegOtp: (email: string, otp: string) =>
+    request<{ success: boolean; verified: boolean }>("/business/verify-reg-otp", { method: "POST", body: JSON.stringify({ email, otp }) }),
+
   sendEmailOtp: (email: string) =>
     request<{ success: boolean; message: string; devOtp?: string; sent: boolean }>("/auth/send-email-otp", { method: "POST", body: JSON.stringify({ email }) }),
 

@@ -18,7 +18,7 @@ const ORG_TYPES = [
   { value: "other", label: "Other", icon: "business" },
 ];
 
-const STEP_LABELS = ["Organization Type", "Organization Details", "Admin Account"];
+const STEP_LABELS = ["Organization Type", "Organization Details", "Verify Email", "Admin Account"];
 
 function Icon({ name, size = 20, color = PRIMARY }: { name: string; size?: number; color?: string }) {
   return (
@@ -29,9 +29,10 @@ function Icon({ name, size = 20, color = PRIMARY }: { name: string; size?: numbe
 }
 
 function Input({
-  label, type = "text", value, onChange, placeholder, required,
+  label, type = "text", value, onChange, placeholder, required, autoFocus,
 }: {
-  label: string; type?: string; value: string; onChange: (v: string) => void; placeholder?: string; required?: boolean;
+  label: string; type?: string; value: string; onChange: (v: string) => void;
+  placeholder?: string; required?: boolean; autoFocus?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   return (
@@ -44,6 +45,7 @@ function Input({
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
+        autoFocus={autoFocus}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={{
@@ -75,7 +77,49 @@ export default function Register() {
     confirmPassword: "", totalSeats: "50",
   });
 
+  const [otpCode, setOtpCode] = useState("");
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [otpFocused, setOtpFocused] = useState(false);
+
   const set = (field: string, val: string) => setForm(f => ({ ...f, [field]: val }));
+
+  const handleSendOtp = async () => {
+    if (!form.name || !form.contactEmail) { setError("Organization name and email are required."); return; }
+    setIsLoading(true); setError(""); setDevOtp(null);
+    try {
+      const res = await api.sendRegOtp(form.contactEmail);
+      if (res.devOtp) setDevOtp(res.devOtp);
+      setStep(3);
+    } catch (err) {
+      setError((err as Error).message || "Could not send verification code.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otpCode || otpCode.length < 6) { setError("Please enter the 6-digit verification code."); return; }
+    setIsLoading(true); setError("");
+    try {
+      await api.verifyRegOtp(form.contactEmail, otpCode);
+      setDevOtp(null);
+      setStep(4);
+    } catch (err) {
+      setError((err as Error).message || "Incorrect or expired code. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setError(""); setDevOtp(null); setOtpCode("");
+    try {
+      const res = await api.sendRegOtp(form.contactEmail);
+      if (res.devOtp) setDevOtp(res.devOtp);
+    } catch (err) {
+      setError((err as Error).message || "Failed to resend code.");
+    }
+  };
 
   const handleSubmit = async () => {
     if (form.adminPassword !== form.confirmPassword) { setError("Passwords do not match"); return; }
@@ -88,8 +132,8 @@ export default function Register() {
         adminName: form.adminName, adminPassword: form.adminPassword,
         totalSeats: parseInt(form.totalSeats) || 50,
       });
-      const admin = { id: "", fullName: form.adminName, role: "owner", email: form.contactEmail };
-      login(res.token, admin, res.org);
+      const { admin, org } = await api.getMe(res.token);
+      login(res.token, admin, org);
       navigate("/dashboard");
     } catch (err) {
       setError((err as Error).message || "Registration failed. Please try again.");
@@ -102,10 +146,15 @@ export default function Register() {
     <div style={{ minHeight: "100vh", background: BG, fontFamily: "'Inter', sans-serif", display: "flex" }}>
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .org-btn:hover { transform: translateY(-2px); }
+        @media (max-width: 900px) {
+          .hide-on-mobile { display: none !important; }
+          .mobile-logo { display: flex !important; }
+        }
       `}</style>
 
-      {/* Left branding panel — desktop only */}
+      {/* Left branding panel */}
       <div style={{
         width: 420, flexShrink: 0, background: `linear-gradient(160deg, ${PRIMARY} 0%, ${TEAL} 100%)`,
         display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "48px 40px",
@@ -127,7 +176,7 @@ export default function Register() {
             { icon: "dashboard", text: "Real-time health dashboard for your entire team" },
             { icon: "psychology", text: "AI-powered burnout and wellness insights" },
             { icon: "manage_accounts", text: "Simple seat management and flexible billing" },
-            { icon: "verified", text: "HIPAA-ready and DPDP Act 2023 compliant" },
+            { icon: "verified_user", text: "Email verified — secure by design" },
           ].map((item, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -165,11 +214,8 @@ export default function Register() {
                   }}>
                     {i + 1 < step ? <Icon name="check" size={16} color="white" /> : i + 1}
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: i + 1 === step ? PRIMARY : "#9ca3af", display: "none", whiteSpace: "nowrap" }} className="step-label">
-                    {label}
-                  </span>
                 </div>
-                {i < 2 && (
+                {i < 3 && (
                   <div style={{ flex: 1, height: 2, background: i + 1 < step ? `linear-gradient(to right, ${PRIMARY}, ${TEAL})` : "#e5e7eb", margin: "0 8px", transition: "background 0.3s" }} />
                 )}
               </React.Fragment>
@@ -241,7 +287,7 @@ export default function Register() {
                   <h2 style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", margin: "0 0 6px", letterSpacing: "-0.02em" }}>
                     Organization Details
                   </h2>
-                  <p style={{ fontSize: 14, color: "#6b7280", margin: 0 }}>Tell us about your organization</p>
+                  <p style={{ fontSize: 14, color: "#6b7280", margin: 0 }}>Tell us about your organization. We'll verify your email next.</p>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 }}>
                   <Input label="Organization Name" value={form.name} onChange={v => set("name", v)} placeholder="e.g., Sunrise Health Clinic" required />
@@ -255,40 +301,139 @@ export default function Register() {
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
                   <button
-                    onClick={() => setStep(1)}
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "13px 20px", borderRadius: 12, border: "2px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: 600, fontSize: 14, cursor: "pointer", transition: "all 0.2s" }}
+                    onClick={() => { setStep(1); setError(""); }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "13px 20px", borderRadius: 12, border: "2px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
                   >
                     <Icon name="arrow_back" size={16} color="#6b7280" /> Back
                   </button>
                   <button
-                    onClick={() => form.name && form.contactEmail && setStep(3)}
-                    disabled={!form.name || !form.contactEmail}
+                    onClick={handleSendOtp}
+                    disabled={isLoading || !form.name || !form.contactEmail}
                     style={{
                       flex: 1, padding: "13px 0", borderRadius: 12, border: "none",
                       background: form.name && form.contactEmail ? `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)` : "#e5e7eb",
                       color: form.name && form.contactEmail ? "white" : "#9ca3af",
-                      fontWeight: 700, fontSize: 15, cursor: form.name && form.contactEmail ? "pointer" : "not-allowed",
+                      fontWeight: 700, fontSize: 15, cursor: isLoading || !form.name || !form.contactEmail ? "not-allowed" : "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                       boxShadow: form.name && form.contactEmail ? "0 4px 16px rgba(0,93,144,0.25)" : "none",
+                      opacity: isLoading ? 0.75 : 1,
                     }}
                   >
-                    Continue <Icon name="arrow_forward" size={18} color={form.name && form.contactEmail ? "white" : "#9ca3af"} />
+                    {isLoading ? (
+                      <>
+                        <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.3)", borderTop: "2px solid white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                        Sending code...
+                      </>
+                    ) : (
+                      <>Verify Email <Icon name="send" size={16} color={form.name && form.contactEmail ? "white" : "#9ca3af"} /></>
+                    )}
                   </button>
                 </div>
               </div>
             )}
 
-            {/* STEP 3: Admin Account */}
+            {/* STEP 3: Email Verification */}
             {step === 3 && (
               <div style={{ animation: "fadeUp 0.3s ease" }}>
+                <div style={{ textAlign: "center", marginBottom: 28 }}>
+                  <div style={{ width: 64, height: 64, borderRadius: 18, background: `${PRIMARY}12`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                    <Icon name="mark_email_read" size={32} color={PRIMARY} />
+                  </div>
+                  <h2 style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", margin: "0 0 8px", letterSpacing: "-0.02em" }}>
+                    Verify your email
+                  </h2>
+                  <p style={{ fontSize: 14, color: "#6b7280", margin: 0, lineHeight: 1.6 }}>
+                    We sent a 6-digit code to<br />
+                    <strong style={{ color: PRIMARY }}>{form.contactEmail}</strong>
+                  </p>
+                </div>
+
+                {devOtp && (
+                  <div style={{ background: "#fef3c7", border: "2px solid #f59e0b", borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e", marginBottom: 8 }}>Dev Mode — Your verification code:</div>
+                    <div style={{ fontSize: 32, fontWeight: 900, color: "#b45309", letterSpacing: 10, textAlign: "center", fontFamily: "monospace" }}>{devOtp}</div>
+                    <div style={{ fontSize: 11, color: "#92400e", marginTop: 6, textAlign: "center" }}>Also sent to your email. Copy this code below.</div>
+                  </div>
+                )}
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>6-digit verification code</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={e => { setOtpCode(e.target.value.replace(/\D/g, "")); setError(""); }}
+                    placeholder="_ _ _ _ _ _"
+                    autoFocus
+                    onFocus={() => setOtpFocused(true)}
+                    onBlur={() => setOtpFocused(false)}
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      padding: "16px", borderRadius: 12, textAlign: "center",
+                      fontSize: 28, fontFamily: "monospace", fontWeight: 700, letterSpacing: 12,
+                      border: `2px solid ${otpFocused ? PRIMARY : otpCode.length === 6 ? TEAL : "#e5e7eb"}`,
+                      background: "white", color: "#181c20", outline: "none",
+                      boxShadow: otpFocused ? `0 0 0 3px ${PRIMARY}18` : "none",
+                      transition: "border-color 0.2s",
+                    }}
+                  />
+                </div>
+
+                <button
+                  onClick={handleVerifyOtp}
+                  disabled={isLoading || otpCode.length < 6}
+                  style={{
+                    width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
+                    background: otpCode.length === 6 ? `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)` : "#e5e7eb",
+                    color: otpCode.length === 6 ? "white" : "#9ca3af",
+                    fontWeight: 700, fontSize: 15, cursor: isLoading || otpCode.length < 6 ? "not-allowed" : "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                    opacity: isLoading ? 0.75 : 1,
+                    boxShadow: otpCode.length === 6 ? "0 4px 20px rgba(0,93,144,0.28)" : "none",
+                    marginBottom: 16,
+                  }}
+                >
+                  {isLoading ? (
+                    <>
+                      <div style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTop: "2px solid white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                      Verifying...
+                    </>
+                  ) : (
+                    <><Icon name="verified" size={18} color={otpCode.length === 6 ? "white" : "#9ca3af"} /> Verify & Continue</>
+                  )}
+                </button>
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <button type="button" onClick={() => { setStep(2); setOtpCode(""); setDevOtp(null); setError(""); }}
+                    style={{ fontSize: 13, color: "#9ca3af", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                    ← Change email
+                  </button>
+                  <button type="button" onClick={handleResendOtp}
+                    style={{ fontSize: 13, color: PRIMARY, fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                    Resend code
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 4: Admin Account */}
+            {step === 4 && (
+              <div style={{ animation: "fadeUp 0.3s ease" }}>
                 <div style={{ marginBottom: 24 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: `linear-gradient(135deg, ${PRIMARY}, ${TEAL})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Icon name="check" size={16} color="white" />
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: TEAL }}>Email verified — {form.contactEmail}</span>
+                  </div>
                   <h2 style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", margin: "0 0 6px", letterSpacing: "-0.02em" }}>
-                    Create Your Admin Account
+                    Create your admin account
                   </h2>
                   <p style={{ fontSize: 14, color: "#6b7280", margin: 0 }}>Set up login credentials for your portal</p>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 }}>
-                  <Input label="Full Name" value={form.adminName} onChange={v => set("adminName", v)} placeholder="Dr. Rajesh Kumar" required />
+                  <Input label="Full Name" value={form.adminName} onChange={v => set("adminName", v)} placeholder="Dr. Rajesh Kumar" required autoFocus />
                   <div>
                     <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                       Password <span style={{ color: PRIMARY }}>*</span>
@@ -326,7 +471,6 @@ export default function Register() {
                       <p style={{ fontSize: 12, color: "#ef4444", marginTop: 4 }}>Passwords do not match</p>
                     )}
                   </div>
-                  {/* Summary */}
                   <div style={{ background: "#f7f9fe", borderRadius: 12, padding: "14px 16px", border: "1.5px solid rgba(191,199,209,0.3)" }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Registration Summary</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -345,7 +489,7 @@ export default function Register() {
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
                   <button
-                    onClick={() => setStep(2)}
+                    onClick={() => { setStep(3); setError(""); }}
                     style={{ display: "flex", alignItems: "center", gap: 6, padding: "13px 20px", borderRadius: 12, border: "2px solid #e5e7eb", background: "white", color: "#6b7280", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
                   >
                     <Icon name="arrow_back" size={16} color="#6b7280" /> Back
@@ -368,7 +512,7 @@ export default function Register() {
                         Creating account...
                       </>
                     ) : (
-                      <>Create Account <Icon name="check_circle" size={18} color="white" /></>
+                      <><Icon name="check_circle" size={18} color="white" /> Create Account</>
                     )}
                   </button>
                 </div>
@@ -387,14 +531,6 @@ export default function Register() {
           </p>
         </div>
       </div>
-
-      <style>{`
-        @media (max-width: 900px) {
-          .hide-on-mobile { display: none !important; }
-          .mobile-logo { display: flex !important; }
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }

@@ -164,6 +164,59 @@ router.post("/business/login/verify-otp", async (req, res) => {
   }
 });
 
+router.post("/business/send-reg-otp", async (req, res) => {
+  try {
+    const { email } = req.body as { email: string };
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ error: "Valid email required" });
+      return;
+    }
+    const [existing] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.email, email));
+    if (existing) {
+      res.status(409).json({ error: "An account with this email already exists. Please log in instead." });
+      return;
+    }
+    const { cache } = await import("../../lib/redis");
+    const otp = generateOtp(6);
+    const hashed = hashOtp(otp);
+    cache.setOtp(`biz_reg_otp:${email.toLowerCase()}`, hashed);
+    const sent = await sendEmailOtp(email, otp);
+    const isDev = process.env.NODE_ENV !== "production";
+    res.json({
+      success: true,
+      message: sent ? "Verification code sent to your email" : (isDev ? "Dev mode — code below" : "Email service unavailable"),
+      ...(isDev ? { devOtp: otp } : {}),
+      sent,
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to send verification code" });
+  }
+});
+
+router.post("/business/verify-reg-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body as { email: string; otp: string };
+    if (!email || !otp) {
+      res.status(400).json({ error: "Email and OTP required" });
+      return;
+    }
+    const { cache } = await import("../../lib/redis");
+    const storedHash = cache.getOtp(`biz_reg_otp:${email.toLowerCase()}`);
+    if (!storedHash) {
+      res.status(400).json({ error: "Verification code expired. Please request a new one." });
+      return;
+    }
+    if (!verifyOtpHash(otp, storedHash as string)) {
+      res.status(400).json({ error: "Incorrect verification code. Please try again." });
+      return;
+    }
+    cache.deleteOtp(`biz_reg_otp:${email.toLowerCase()}`);
+    res.json({ success: true, verified: true });
+  } catch {
+    res.status(500).json({ error: "Verification failed" });
+  }
+});
+
 router.post("/business/login/send-email-otp", async (req, res) => {
   try {
     const { email } = req.body as { email: string };
