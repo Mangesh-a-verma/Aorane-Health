@@ -167,7 +167,7 @@ export default function FamilyScreen() {
                 <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 15, marginBottom: 12 }}>Join with Invite Code</Text>
                 <TextInput
                   value={joinCode} onChangeText={setJoinCode}
-                  placeholder="FAM123456 (code daalo)" placeholderTextColor={isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.35)"}
+                  placeholder="FAM123456 (enter code)" placeholderTextColor={isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.35)"}
                   style={{ backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,119,182,0.06)", borderRadius: 12, padding: 14, color: isDark ? "#FFF" : "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 16, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.15)", marginBottom: 12, letterSpacing: 1, textTransform: "uppercase" }}
                   autoCapitalize="characters" maxLength={9}
                 />

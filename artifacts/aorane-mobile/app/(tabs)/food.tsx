@@ -322,7 +322,7 @@ export default function FoodScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, marginBottom: 8, gap: 6 }}>
             <Text style={{ fontSize: 14 }}>🌤️</Text>
             <Text style={{ color: DS.color.text, fontSize: 12, fontFamily: "Inter_600SemiBold", flex: 1 }}>
-              {weatherData.season ? `${weatherData.season} ke liye` : "Mausam ke anusar"}
+              {weatherData.season ? `Best for ${weatherData.season}` : "Seasonal picks for you"}
             </Text>
             {weatherData.weatherTip && (
               <Text style={{ color: DS.color.muted, fontSize: 10, fontFamily: "Inter_400Regular", maxWidth: 180 }} numberOfLines={1}>

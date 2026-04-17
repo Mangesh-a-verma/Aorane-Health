@@ -21,14 +21,14 @@ const upcomingFeatures: FeatureCard[] = [
   {
     icon: MessageSquare,
     title: "WhatsApp Bot Integration",
-    description: "Users can log food, exercise, and water directly via WhatsApp. Bot sends personalized reminders like a health companion — meal reminders, medicine alerts, exercise nudges, and weekly health reports. India mein har koi WhatsApp use karta hai!",
+    description: "Users can log food, exercise, and water directly via WhatsApp. Bot sends personalized reminders like a health companion — meal reminders, medicine alerts, exercise nudges, and weekly health reports. WhatsApp is the most-used platform in India!",
     status: "coming_soon",
     eta: "Q2 2026 (Next Month)",
     plan: "Pro / Max",
     planColor: "#7C3AED",
     highlights: [
       "Food logging via natural language (Hindi/English)",
-      "Medicine & meal reminders — mom ki tarah yaad dilata hai",
+      "Medicine & meal reminders — just like having a personal health companion",
       "Weekly health report on WhatsApp",
       "Exercise & water tracking via chat",
       "Gemini AI parses user messages automatically",
@@ -70,7 +70,7 @@ const upcomingFeatures: FeatureCard[] = [
   {
     icon: Building2,
     title: "Corporate Health Insurance Integration",
-    description: "Partner with Indian health insurers (Star Health, Niva Bupa). Users earn insurance benefits based on their AORANE health score. Win-win for corporate wellness.",
+    description: "Partner with Indian health insurers (Star Health, Niva Bupa). Users earn insurance benefits based on their Aorane health score. Win-win for corporate wellness.",
     status: "planned",
     eta: "Q3 2026",
     plan: "Business / Enterprise",
@@ -144,7 +144,7 @@ export default function UpcomingFeatures() {
             Upcoming Features
           </h1>
           <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.4)" }}>
-            Product roadmap — features in pipeline for AORANE platform
+            Product roadmap — features in pipeline for Aorane platform
           </p>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"

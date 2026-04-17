@@ -94,7 +94,7 @@ export default function FeaturesPage() {
               Powerful Features.<br />Simple to Use.
             </h1>
             <p className="text-white/70 text-lg max-w-2xl mx-auto">
-              Every feature in AORANE is designed with one goal — to make your health journey effortless and intelligent.
+              Every feature in Aorane is designed with one goal — to make your health journey effortless and intelligent.
             </p>
           </motion.div>
         </div>

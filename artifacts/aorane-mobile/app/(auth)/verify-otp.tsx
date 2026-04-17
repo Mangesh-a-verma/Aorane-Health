@@ -173,7 +173,7 @@ export default function VerifyOtpScreen() {
 
           <Text style={s.title}>{t("enterOtp")}</Text>
           <Text style={s.subtitle}>
-            {isEmailMode ? `OTP bheja gaya: ${email}` : `${t("otpSentTo")} ${phone}`}
+            {isEmailMode ? `OTP sent to: ${email}` : `${t("otpSentTo")} ${phone}`}
           </Text>
 
           <View style={s.card}>

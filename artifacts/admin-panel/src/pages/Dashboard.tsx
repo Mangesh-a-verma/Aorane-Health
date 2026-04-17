@@ -187,7 +187,7 @@ export default function Dashboard() {
                  color: "#94ccff",
                }}>
             <Brain size={12} />
-            AORANE AI · Active
+            Aorane AI · Active
           </div>
         </div>
 

@@ -131,7 +131,7 @@ router.post("/payment/verify", requireAuth, async (req: AuthRequest, res) => {
     await db.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, req.userId!));
     let inviteCode: string | null = null;
     if (plan === "family") inviteCode = await autoCreateFamilyGroup(req.userId!);
-    res.json({ success: true, message: `${plan} plan activate ho gaya!`, expiresAt, inviteCode });
+    res.json({ success: true, message: `${plan} plan activated successfully!`, expiresAt, inviteCode });
   } catch {
     res.status(500).json({ error: "Failed to verify payment" });
   }
@@ -172,7 +172,7 @@ router.post("/payment/subscription/create", requireAuth, async (req: AuthRequest
       });
     }
 
-    const rzPlan = await createPlan({ name: `AORANE ${planData.displayName} Monthly`, amount: finalAmount, period: "monthly" });
+    const rzPlan = await createPlan({ name: `Aorane ${planData.displayName} Monthly`, amount: finalAmount, period: "monthly" });
     const rzSub = await createSubscription({ planId: rzPlan.id, totalCount: 120, notes: { userId: req.userId!, plan } });
 
     const expiresAt = new Date();
@@ -271,7 +271,7 @@ router.post("/payment/rzp-callback", async (req, res) => {
        <div style="background:#0D2040;border-radius:24px;padding:40px 32px;text-align:center;max-width:340px;border:1px solid rgba(16,185,129,0.3)">
          <div style="font-size:64px;margin-bottom:16px">✅</div>
          <h2 style="color:#34d399;margin:0 0 8px">Payment Successful!</h2>
-         <p style="color:rgba(255,255,255,0.6);margin:0 0 24px;font-size:14px">Your AORANE Premium plan is now active. Close this window and return to the app.</p>
+         <p style="color:rgba(255,255,255,0.6);margin:0 0 24px;font-size:14px">Your Aorane Premium plan is now active. Close this window and return to the app.</p>
          <div style="background:rgba(16,185,129,0.1);border-radius:12px;padding:12px;font-size:12px;color:rgba(255,255,255,0.4)">
            Payment ID: ${razorpay_payment_id}
          </div>
@@ -291,11 +291,11 @@ router.post("/payment/rzp-callback", async (req, res) => {
 // Also handle GET (Razorpay sometimes redirects with GET for cancel)
 router.get("/payment/rzp-callback", (_req, res) => {
   res.setHeader("Content-Type", "text/html");
-  res.send(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/><title>AORANE Pay</title></head>
+  res.send(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Aorane Pay</title></head>
     <body style="margin:0;background:#0A1628;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif">
     <div style="background:#0D2040;border-radius:24px;padding:40px 32px;text-align:center;max-width:340px">
       <div style="font-size:48px;margin-bottom:16px">💙</div>
-      <h2 style="color:#94ccff;margin:0 0 8px">Return to AORANE App</h2>
+      <h2 style="color:#94ccff;margin:0 0 8px">Return to Aorane App</h2>
       <p style="color:rgba(255,255,255,0.5);font-size:14px">Close this window and check your plan status in the app.</p>
     </div></body></html>`);
 });

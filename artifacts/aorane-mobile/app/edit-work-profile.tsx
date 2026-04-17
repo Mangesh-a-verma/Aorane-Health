@@ -148,7 +148,7 @@ export default function EditWorkProfileScreen() {
         {/* Info Banner */}
         <View style={{ marginTop: 12, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 12, padding: 12 }}>
           <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 13, lineHeight: 19 }}>
-            🎯 A field worker needs more calories than an office worker — 1.725× vs 1.2× BMR. Select the right profile for exact AORANE calculations!
+            🎯 A field worker needs more calories than an office worker — 1.725× vs 1.2× BMR. Select the right profile for exact Aorane calculations!
           </Text>
         </View>
       </LinearGradient>

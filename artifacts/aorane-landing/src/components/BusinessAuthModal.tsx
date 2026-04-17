@@ -98,7 +98,7 @@ export default function BusinessAuthModal({ defaultTab = "signin", onClose }: Pr
               <div>
                 <span className="font-bold text-lg"
                   style={{ background: "linear-gradient(90deg,#38BDF8,#34D399)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                  AORANE
+                  Aorane
                 </span>
                 <span className="text-white/35 text-xs ml-1.5">Business</span>
               </div>
@@ -128,7 +128,7 @@ export default function BusinessAuthModal({ defaultTab = "signin", onClose }: Pr
             )}
             <div className="mt-5 text-center text-xs text-white/25">
               {tab === "signin" ? (
-                <>New to AORANE Business?{" "}
+                <>New to Aorane Business?{" "}
                   <button onClick={() => setTab("signup")} className="font-semibold" style={{ color: "#38BDF8" }}>
                     Create free account
                   </button>

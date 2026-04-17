@@ -18,7 +18,7 @@ const metrics = [
   { val: "31%", label: "Absenteeism Reduction", sub: "vs industry avg" },
   { val: "₹2.4L", label: "Saved per 100 Employees", sub: "annually" },
   { val: "18%", label: "Productivity Gain", sub: "measured avg" },
-  { val: "500+", label: "Companies Trust AORANE", sub: "across India" },
+  { val: "500+", label: "Companies Trust Aorane", sub: "across India" },
 ];
 
 function ROICalculator() {
@@ -43,7 +43,7 @@ function ROICalculator() {
         </div>
         <div>
           <h3 className="font-extrabold text-gray-900">ROI Calculator</h3>
-          <p className="text-xs text-gray-500">Estimate your AORANE Business return</p>
+          <p className="text-xs text-gray-500">Estimate your Aorane Business return</p>
         </div>
       </div>
 
@@ -88,7 +88,7 @@ function ROICalculator() {
           <p className="text-xs text-gray-400 mt-1">from absenteeism reduction</p>
         </div>
         <div className="bg-[#EEF4FF] rounded-2xl p-4 border border-[#0747A6]/20">
-          <p className="text-xs text-gray-500 mb-1">AORANE Cost</p>
+          <p className="text-xs text-gray-500 mb-1">Aorane Cost</p>
           <p className="text-2xl font-extrabold text-[#0747A6]">{fmt(annualCost)}</p>
           <p className="text-xs text-gray-400 mt-1">annual plan cost</p>
         </div>
@@ -139,7 +139,7 @@ export default function BusinessPage() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }}>
               <span className="inline-block text-xs font-bold text-[#10B981] bg-[#10B981]/15 px-3 py-1.5 rounded-full uppercase tracking-widest mb-6">
-                AORANE Business · Enterprise Health
+                Aorane Business · Enterprise Health
               </span>
               <h1 className="text-4xl sm:text-5xl lg:text-[3.2rem] font-extrabold text-white leading-tight mb-6">
                 Population Health Management for{" "}

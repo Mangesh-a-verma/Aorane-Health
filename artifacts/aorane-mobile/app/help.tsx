@@ -11,40 +11,40 @@ import { Ionicons } from "@expo/vector-icons";
 import { Mail, MessageCircle, ChevronLeft, HelpCircle, Clock, Shield, MapPin, ChevronDown, ChevronUp } from "lucide-react-native";
 
 const CONTACT_EMAIL = "support@aorane.com";
-const WHATSAPP_URL = "https://wa.me/917307826291?text=Namaste%20AORANE%20Support%2C%20mujhe%20madad%20chahiye.";
-const ADDRESS = "Indra Nagar, Lekhraj Metro ke paas,\nLucknow, Uttar Pradesh 226016";
+const WHATSAPP_URL = "https://wa.me/917307826291?text=Hello%20Aorane%20Support%2C%20I%20need%20help.";
+const ADDRESS = "Indra Nagar, Near Lekhraj Metro,\nLucknow, Uttar Pradesh 226016";
 
 const FAQS = [
   {
-    q: "OTP nahi aa raha?",
-    a: "Apna number dobara check karein. OTP 5 minute mein expire ho jaata hai. Agar phir bhi problem ho toh WhatsApp pe ya support@aorane.com pe email karein.",
+    q: "Not receiving OTP?",
+    a: "Double-check your phone number. OTP expires in 5 minutes. If the issue persists, reach out on WhatsApp or email support@aorane.com.",
   },
   {
-    q: "Health score kaise banta hai?",
-    a: "Aapka score 5 cheezein se banta hai — khaana, exercise, paani, neend aur stress. Yeh roz update hota hai aur aapki progress track karta hai.",
+    q: "How is the health score calculated?",
+    a: "Your score is based on 5 factors — food, exercise, water, sleep, and stress. It updates daily and tracks your overall progress.",
   },
   {
-    q: "Kya mera data safe hai?",
-    a: "Bilkul. Hum 256-bit encryption use karte hain aur India ka DPDP Act 2023 follow karte hain. Aapka data sirf aapka hai — kisi ke saath share nahi hota.",
+    q: "Is my data safe?",
+    a: "Absolutely. We use 256-bit encryption and comply with India's DPDP Act 2023. Your data is yours alone — we never share it with anyone.",
   },
   {
-    q: "Plan upgrade kaise karein?",
-    a: "Profile → Upgrade Plan pe jaayein. UPI, debit card, credit card aur net banking sab accept hote hain.",
+    q: "How do I upgrade my plan?",
+    a: "Go to Profile → Upgrade Plan. We accept UPI, debit card, credit card, and net banking.",
   },
   {
-    q: "Account delete karna ho toh?",
-    a: "support@aorane.com pe email karein. 7 working days mein aapka account permanently delete kar diya jaayega.",
+    q: "How do I delete my account?",
+    a: "Email support@aorane.com. Your account will be permanently deleted within 7 working days.",
   },
   {
-    q: "Family members ko kaise jodhein?",
-    a: "Profile → Family Health pe jaayein aur invite code se family members ko add karein. Ek group mein 6 log aa sakte hain.",
+    q: "How do I add family members?",
+    a: "Go to Profile → Family Health and add members using an invite code. Up to 6 people can be in one group.",
   },
 ];
 
 function openLink(url: string) {
   Linking.canOpenURL(url).then(ok => {
     if (ok) Linking.openURL(url);
-    else Alert.alert("Error", "Link open nahi ho saka. Dobara try karein.");
+    else Alert.alert("Error", "Could not open the link. Please try again.");
   });
 }
 
@@ -89,8 +89,8 @@ export default function HelpScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1, alignItems: "center" }}>
           <HelpCircle size={28} color="#FFF" strokeWidth={2} style={{ marginBottom: 6 }} />
-          <Text style={s.headerTitle}>Madad aur Sahayata</Text>
-          <Text style={s.headerSub}>Hum yahan hain — jaldi jawab milega</Text>
+          <Text style={s.headerTitle}>Help & Support</Text>
+          <Text style={s.headerSub}>We're here — quick responses guaranteed</Text>
         </View>
         <View style={{ width: 40 }} />
       </LinearGradient>
@@ -99,23 +99,23 @@ export default function HelpScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Sampark Karein */}
+        {/* Contact Us */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Hamse Sampark Karein</Text>
+          <Text style={s.sectionTitle}>Contact Us</Text>
 
           {/* Email */}
           <TouchableOpacity
             style={s.contactCard}
-            onPress={() => openLink(`mailto:${CONTACT_EMAIL}?subject=AORANE App Support`)}
+            onPress={() => openLink(`mailto:${CONTACT_EMAIL}?subject=Aorane App Support`)}
             activeOpacity={0.8}
           >
             <LinearGradient colors={[DS.color.primary + "20", DS.color.primary + "08"]} style={s.contactIcon}>
               <Mail size={22} color={DS.color.primary} strokeWidth={2} />
             </LinearGradient>
             <View style={{ flex: 1 }}>
-              <Text style={s.contactLabel}>Email Karein</Text>
+              <Text style={s.contactLabel}>Email Us</Text>
               <Text style={s.contactValue}>{CONTACT_EMAIL}</Text>
-              <Text style={s.contactHint}>24 ghante mein jawab milega</Text>
+              <Text style={s.contactHint}>Response within 24 hours</Text>
             </View>
             <Ionicons name="open-outline" size={16} color={DS.color.muted} />
           </TouchableOpacity>
@@ -130,9 +130,9 @@ export default function HelpScreen() {
               <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.contactLabel}>WhatsApp pe Message Karein</Text>
+              <Text style={s.contactLabel}>Message on WhatsApp</Text>
               <Text style={s.contactValue}>WhatsApp Support</Text>
-              <Text style={s.contactHint}>Seedha chat karein — jaldi reply milega</Text>
+              <Text style={s.contactHint}>Chat directly — quick response guaranteed</Text>
             </View>
             <Ionicons name="open-outline" size={16} color={DS.color.muted} />
           </TouchableOpacity>
@@ -144,18 +144,18 @@ export default function HelpScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.contactLabel}>Live Chat</Text>
-              <Text style={s.contactValue}>Jald Aayega</Text>
-              <Text style={s.contactHint}>App ke andar seedha chat — abhi aa raha hai</Text>
+              <Text style={s.contactValue}>Coming Soon</Text>
+              <Text style={s.contactHint}>In-app live chat — coming soon</Text>
             </View>
             <View style={s.comingSoonBadge}>
-              <Text style={s.comingSoonText}>Jald</Text>
+              <Text style={s.comingSoonText}>Soon</Text>
             </View>
           </View>
         </View>
 
-        {/* Hamara Pata */}
+        {/* Our Office */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Hamara Karyalay</Text>
+          <Text style={s.sectionTitle}>Our Office</Text>
           <TouchableOpacity
             style={s.addressCard}
             onPress={() => openLink("https://maps.google.com/?q=Indra+Nagar+Lekhraj+Metro+Lucknow")}
@@ -164,27 +164,27 @@ export default function HelpScreen() {
             <MapPin size={20} color={DS.color.orange} strokeWidth={2} style={{ marginTop: 2 }} />
             <View style={{ flex: 1 }}>
               <Text style={s.addressText}>{ADDRESS}</Text>
-              <Text style={[s.contactHint, { marginTop: 4 }]}>Map pe dekhne ke liye tap karein</Text>
+              <Text style={[s.contactHint, { marginTop: 4 }]}>Tap to view on map</Text>
             </View>
             <Ionicons name="map-outline" size={16} color={DS.color.muted} />
           </TouchableOpacity>
         </View>
 
-        {/* Samay */}
+        {/* Support Hours */}
         <View style={s.section}>
           <View style={s.hoursCard}>
             <Clock size={18} color={DS.color.sky} strokeWidth={2} />
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={[s.contactLabel, { marginBottom: 4 }]}>Sahayata ka Samay</Text>
-              <Text style={s.hoursText}>Somvaar – Shanivaar: Subah 10 baje – Shaam 6 baje</Text>
-              <Text style={s.hoursText}>Ravivar: Band (Email check karte hain)</Text>
+              <Text style={[s.contactLabel, { marginBottom: 4 }]}>Support Hours</Text>
+              <Text style={s.hoursText}>Monday – Saturday: 10 AM – 6 PM</Text>
+              <Text style={s.hoursText}>Sunday: Closed (we check emails)</Text>
             </View>
           </View>
         </View>
 
         {/* FAQs */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Aksar Puche Jane Wale Sawaal</Text>
+          <Text style={s.sectionTitle}>Frequently Asked Questions</Text>
           {FAQS.map((faq, i) => (
             <View key={i} style={i > 0 ? { marginTop: 8 } : {}}>
               <FaqItem q={faq.q} a={faq.a} />
@@ -197,7 +197,7 @@ export default function HelpScreen() {
           <View style={s.privacyNote}>
             <Shield size={15} color={DS.color.green} strokeWidth={2} />
             <Text style={s.privacyText}>
-              Aapka data 100% surakshit hai. DPDP Act 2023 ka poora paalon. Koi bhi jaankari bina aapki anumati ke kabhi share nahi hogi.
+              Your data is 100% secure. We fully comply with the DPDP Act 2023. No information is ever shared without your consent.
             </Text>
           </View>
         </View>

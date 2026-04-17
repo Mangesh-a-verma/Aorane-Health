@@ -110,7 +110,7 @@ router.post("/admin/ads", requireAdmin, async (req: AdminRequest, res) => {
     } = req.body as Record<string, unknown>;
 
     if (!adType || !title) {
-      res.status(400).json({ error: "adType aur title required hain" });
+      res.status(400).json({ error: "adType and title are required." });
       return;
     }
 

@@ -30,7 +30,7 @@ async function sendViaTwilio(phone: string, otp: string): Promise<boolean> {
     const body = new URLSearchParams({
       To:   `+91${phone}`,
       From: from,
-      Body: `Your AORANE OTP is: ${otp}\n\nValid for 5 minutes. Do not share with anyone.\n- Team AORANE`,
+      Body: `Your Aorane OTP is: ${otp}\n\nValid for 5 minutes. Do not share with anyone.\n- Team Aorane`,
     });
     const res = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
@@ -91,24 +91,24 @@ export async function sendEmailOtp(email: string, otp: string): Promise<boolean>
   try {
     const resend = new Resend(apiKey);
     const { error } = await resend.emails.send({
-      from: `AORANE <${fromEmail}>`,
+      from: `Aorane <${fromEmail}>`,
       to: [email],
-      subject: `${otp} — Aapka AORANE Login OTP`,
+      subject: `${otp} — Your Aorane Login OTP`,
       html: `
         <div style="font-family:'Inter',Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#f9fafb;border-radius:16px;">
           <div style="text-align:center;margin-bottom:24px;">
-            <h1 style="font-size:22px;font-weight:800;color:#005d90;margin:0;letter-spacing:-0.02em;">AORANE</h1>
+            <h1 style="font-size:22px;font-weight:800;color:#005d90;margin:0;letter-spacing:-0.02em;">Aorane</h1>
             <p style="font-size:12px;color:#9ca3af;margin:4px 0 0;">Your Health, In Your Hands 🇮🇳</p>
           </div>
           <div style="background:white;border-radius:14px;padding:28px;border:1.5px solid #e5e7eb;text-align:center;">
-            <p style="font-size:14px;color:#374151;margin:0 0 16px;">Aapka login OTP hai:</p>
+            <p style="font-size:14px;color:#374151;margin:0 0 16px;">Your login OTP is:</p>
             <div style="font-size:48px;font-weight:900;letter-spacing:14px;color:#005d90;margin:0 0 16px;font-family:monospace;">${otp}</div>
-            <p style="font-size:12px;color:#6b7280;margin:0 0 8px;">Yeh OTP <strong>5 minute</strong> mein expire ho jaayega.</p>
-            <p style="font-size:12px;color:#ef4444;margin:0;">Kisi ke saath share mat karein.</p>
+            <p style="font-size:12px;color:#6b7280;margin:0 0 8px;">This OTP expires in <strong>5 minutes</strong>.</p>
+            <p style="font-size:12px;color:#ef4444;margin:0;">Do not share this with anyone.</p>
           </div>
           <p style="font-size:11px;color:#9ca3af;text-align:center;margin:20px 0 0;">
-            Agar aapne yeh request nahin ki, toh ignore karein.<br/>
-            &copy; ${new Date().getFullYear()} AORANE Health Technologies
+            If you did not request this, please ignore this email.<br/>
+            &copy; ${new Date().getFullYear()} Aorane Health Technologies
           </p>
         </div>
       `,
@@ -131,7 +131,7 @@ export async function sendWhatsappOtp(phone: string, otp: string): Promise<{ suc
     return { success: smsSent, fallback: true };
   }
   try {
-    const message = encodeURIComponent(`Aapka AORANE OTP hai: *${otp}*\n\nYeh code 5 minute mein expire ho jaayega.\nKisi ke saath share mat karein.\n\n- Team AORANE`);
+    const message = encodeURIComponent(`Your Aorane OTP is: *${otp}*\n\nThis code expires in 5 minutes.\nDo not share it with anyone.\n\n- Team Aorane`);
     const url     = `https://www.fast2sms.com/dev/wa?authorization=${apiKey}&message=${message}&language=english&route=q&numbers=${phone}`;
     const res     = await fetch(url);
     const data    = await res.json() as { return: boolean; message?: string[] };

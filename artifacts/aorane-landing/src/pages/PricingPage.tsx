@@ -26,8 +26,8 @@ const faqs = [
   { q: "Is my health data secure?", a: "Absolutely. All data is encrypted with AES-256 at rest and in transit. We are DPDPA 2023 compliant and store all data on Indian servers. We never sell your data." },
   { q: "What payment methods are supported?", a: "We accept UPI (GPay, PhonePe, Paytm), debit/credit cards, and net banking — all via Razorpay. GST is included in all prices." },
   { q: "Is there a free trial for paid plans?", a: "Yes! Every paid plan comes with a 14-day free trial. No credit card required to start. Cancel before 14 days and you will not be charged." },
-  { q: "Can family members use their own devices?", a: "Yes. Each family member gets their own login and profile. They can use AORANE independently on their own device — all under your one Family plan." },
-  { q: "Does AORANE work offline?", a: "Basic health logging (food, exercise, water) works completely offline. Data syncs automatically when internet is restored. AI features require connectivity." },
+  { q: "Can family members use their own devices?", a: "Yes. Each family member gets their own login and profile. They can use Aorane independently on their own device — all under your one Family plan." },
+  { q: "Does Aorane work offline?", a: "Basic health logging (food, exercise, water) works completely offline. Data syncs automatically when internet is restored. AI features require connectivity." },
 ];
 
 function Cell({ val }: { val: boolean | string }) {

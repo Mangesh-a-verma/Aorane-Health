@@ -98,9 +98,9 @@ router.post("/auth/send-otp-whatsapp", async (req, res) => {
     const isTestPhoneWa = testPhonesWa.includes(phone);
     const returnDevOtpWa = !result.success && (isDevWa || isTestPhoneWa);
     if (result.fallback) {
-      res.json({ success: true, message: "OTP SMS se bheja gaya (WhatsApp unavailable)", channel: "sms", ...(returnDevOtpWa ? { devOtp: otp } : {}), smsSent: result.success });
+      res.json({ success: true, message: "OTP sent via SMS (WhatsApp unavailable)", channel: "sms", ...(returnDevOtpWa ? { devOtp: otp } : {}), smsSent: result.success });
     } else {
-      res.json({ success: true, message: "OTP WhatsApp pe bheja gaya", channel: "whatsapp", ...(returnDevOtpWa ? { devOtp: otp } : {}), smsSent: result.success });
+      res.json({ success: true, message: "OTP sent via WhatsApp", channel: "whatsapp", ...(returnDevOtpWa ? { devOtp: otp } : {}), smsSent: result.success });
     }
   } catch {
     res.status(500).json({ error: "Failed to send WhatsApp OTP" });
@@ -416,7 +416,7 @@ router.post("/auth/send-email-otp", async (req, res) => {
 
     res.json({
       success: true,
-      message: sent ? "OTP aapke email pe bheja gaya" : (isDev ? "Dev mode — OTP response mein hai" : "Email service unavailable"),
+      message: sent ? "OTP sent to your email" : (isDev ? "Dev mode — OTP in response" : "Email service unavailable"),
       ...(returnDevOtp ? { devOtp: otp } : {}),
       sent,
     });
@@ -437,11 +437,11 @@ router.post("/auth/verify-email-otp", async (req, res) => {
     }
     const storedHash = cache.getOtp(`email:${email.toLowerCase()}`);
     if (!storedHash) {
-      res.status(400).json({ error: "OTP expired ya nahin mila. Dobara bhejein." });
+      res.status(400).json({ error: "OTP expired or not found. Please request a new one." });
       return;
     }
     if (!verifyOtpHash(otp, storedHash as string)) {
-      res.status(400).json({ error: "Galat OTP" });
+      res.status(400).json({ error: "Incorrect OTP. Please try again." });
       return;
     }
     cache.deleteOtp(`email:${email.toLowerCase()}`);
@@ -481,11 +481,11 @@ router.post("/auth/pin/set", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { pin } = req.body as { pin: string };
     if (!pin || !/^\d{4,6}$/.test(pin)) {
-      res.status(400).json({ error: "PIN 4-6 digits ka hona chahiye" }); return;
+      res.status(400).json({ error: "PIN must be 4–6 digits" }); return;
     }
     const pinHash = hashOtp(pin);
     cache.set(`pin:${req.userId}`, pinHash, 86400 * 365);
-    res.json({ success: true, message: "PIN set ho gaya" });
+    res.json({ success: true, message: "PIN set successfully." });
   } catch {
     res.status(500).json({ error: "Failed to set PIN" });
   }
@@ -497,14 +497,14 @@ router.post("/auth/pin/login", async (req, res) => {
     if (!phone || !pin) { res.status(400).json({ error: "Phone and PIN required" }); return; }
     const [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
     if (!user || !user.isActive || user.isBanned) {
-      res.status(401).json({ error: "User nahi mila ya ban hai" }); return;
+      res.status(401).json({ error: "User not found or account is banned." }); return;
     }
     const storedPinHash = cache.get(`pin:${user.id}`);
     if (!storedPinHash) {
-      res.status(400).json({ error: "PIN set nahi kiya gaya. OTP se login karo." }); return;
+      res.status(400).json({ error: "PIN not set. Please log in via OTP." }); return;
     }
     if (!verifyOtpHash(pin, storedPinHash as string)) {
-      res.status(401).json({ error: "Galat PIN" }); return;
+      res.status(401).json({ error: "Incorrect PIN." }); return;
     }
     await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
     const payload = { userId: user.id, phone: phone, plan: user.plan };

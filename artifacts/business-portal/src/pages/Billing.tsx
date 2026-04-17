@@ -148,7 +148,7 @@ export default function Billing() {
     try {
       const order = await api.createSeatOrder(selectedPlan, seatCount, billing, orgGstin, orgState);
       if (order.isTestMode || !order.razorpayOrderId) {
-        setError("Payment gateway is not configured. Please contact AORANE support to activate your plan.");
+        setError("Payment gateway is not configured. Please contact Aorane support to activate your plan.");
         return;
       } else {
         const ok = await loadRazorpay();
@@ -159,7 +159,7 @@ export default function Billing() {
             amount: order.totalAmount * 100,
             currency: "INR",
             order_id: order.razorpayOrderId,
-            name: "AORANE Business",
+            name: "Aorane Business",
             description: `${planInfo.label} Plan — ${seatCount} seats (${billing})`,
             handler: async (resp: Record<string, string>) => {
               try {
@@ -384,7 +384,7 @@ export default function Billing() {
                   {orgState && (
                     <p className="text-[11px] mt-1 text-[#6B7280]">
                       {orgState === AORANE_STATE
-                        ? "Same state as AORANE → CGST + SGST (9% + 9%)"
+                        ? "Same state as Aorane → CGST + SGST (9% + 9%)"
                         : "Different state → IGST (18%)"}
                     </p>
                   )}

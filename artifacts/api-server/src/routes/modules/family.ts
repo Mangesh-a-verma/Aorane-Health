@@ -36,7 +36,7 @@ router.post("/family/create", requireAuth, async (req: AuthRequest, res) => {
   try {
     const existing = await db.select().from(familyMembersTable).where(eq(familyMembersTable.userId, req.userId!));
     if (existing.length) {
-      res.status(400).json({ error: "Pehle se kisi family group mein ho. Pehle leave karo." });
+      res.status(400).json({ error: "You are already in a family group. Please leave it first." });
       return;
     }
     const inviteCode = generateInviteCode();
@@ -54,11 +54,11 @@ router.post("/family/join", requireAuth, async (req: AuthRequest, res) => {
     if (!inviteCode) { res.status(400).json({ error: "Invite code required" }); return; }
     const [group] = await db.select().from(familyGroupsTable).where(eq(familyGroupsTable.inviteCode, inviteCode.toUpperCase().trim()));
     if (!group) { res.status(404).json({ error: "Invalid invite code" }); return; }
-    if (!group.isActive) { res.status(400).json({ error: "Yeh group active nahi hai" }); return; }
+    if (!group.isActive) { res.status(400).json({ error: "This group is no longer active." }); return; }
     const existing = await db.select().from(familyMembersTable).where(eq(familyMembersTable.userId, req.userId!));
-    if (existing.length) { res.status(400).json({ error: "Pehle se ek group mein ho" }); return; }
+    if (existing.length) { res.status(400).json({ error: "You are already a member of a group." }); return; }
     const members = await db.select().from(familyMembersTable).where(eq(familyMembersTable.groupId, group.id));
-    if (members.length >= (group.maxMembers || 6)) { res.status(400).json({ error: "Group full ho gaya hai" }); return; }
+    if (members.length >= (group.maxMembers || 6)) { res.status(400).json({ error: "This group is full." }); return; }
     await db.insert(familyMembersTable).values({ groupId: group.id, userId: req.userId!, role: "member" });
 
     // Sync member's plan to "family" with owner's subscription expiry
@@ -72,7 +72,7 @@ router.post("/family/join", requireAuth, async (req: AuthRequest, res) => {
     });
     await db.update(usersTable).set({ plan: "family" }).where(eq(usersTable.id, req.userId!));
 
-    res.json({ success: true, group, message: "Family group mein join ho gaye! Family plan active hai." });
+    res.json({ success: true, group, message: "Successfully joined the family group! Family plan is now active." });
   } catch {
     res.status(500).json({ error: "Failed to join family group" });
   }
@@ -81,12 +81,12 @@ router.post("/family/join", requireAuth, async (req: AuthRequest, res) => {
 router.delete("/family/leave", requireAuth, async (req: AuthRequest, res) => {
   try {
     const [membership] = await db.select().from(familyMembersTable).where(eq(familyMembersTable.userId, req.userId!));
-    if (!membership) { res.status(404).json({ error: "Kisi group mein nahi ho" }); return; }
+    if (!membership) { res.status(404).json({ error: "You are not a member of any group." }); return; }
     const [group] = await db.select().from(familyGroupsTable).where(eq(familyGroupsTable.id, membership.groupId));
     if (group.ownerId === req.userId) {
       const allMembers = await db.select().from(familyMembersTable).where(eq(familyMembersTable.groupId, group.id));
       if (allMembers.length > 1) {
-        res.status(400).json({ error: "Owner hote hue group nahi chod sakte jab tak members hain. Pehle group dissolve karo." });
+        res.status(400).json({ error: "As the group owner, you cannot leave while members remain. Please dissolve the group first." });
         return;
       }
       await db.delete(familyGroupsTable).where(eq(familyGroupsTable.id, group.id));

@@ -131,7 +131,7 @@ router.get("/stress/insight", requireAuth, aiRateLimit("stress_insight", 5), asy
         `${l.loggedAt.toISOString().split("T")[0]}: score=${l.stressScore}, type=${l.stressType}${l.mood ? `, mood=${l.mood}` : ""}${l.pillars ? `, pillars=${JSON.stringify(l.pillars)}` : ""}`
       ).join("\n");
 
-      const prompt = `You are an Indian health AI assistant for AORANE app. Analyze this user's stress data and give personalized advice in Hinglish (mix of Hindi + English).
+      const prompt = `You are an Indian health AI assistant for the Aorane app. Analyze this user's stress data and give personalized advice in English.
 
 Stress logs (last 7 entries):
 ${logSummary}
@@ -139,8 +139,8 @@ ${logSummary}
 Average stress score: ${avg}/100 (0=no stress, 100=extreme stress)
 
 Give:
-1. One SHORT insight sentence (1-2 lines) in Hinglish about their stress pattern
-2. Three specific actionable tips in Hinglish (each tip max 1 line, Indian context)
+1. One SHORT insight sentence (1-2 lines) in English about their stress pattern
+2. Three specific actionable tips in English (each tip max 1 line, Indian health context)
 
 Format your response as JSON exactly like this:
 {"insight": "...", "tips": ["tip1", "tip2", "tip3"]}`;
@@ -157,15 +157,15 @@ Format your response as JSON exactly like this:
     }
 
     if (!insight) {
-      if (avg < 30) insight = "Bahut achha! Aapka stress level kaafi low hai. Isi routine ko maintain karo.";
-      else if (avg < 55) insight = "Stress moderate hai. Thoda dhyan do — roz 10 min breathing ya meditation try karo.";
-      else if (avg < 75) insight = "Stress high hai. Neend aur exercise pe focus karo. Mann ki baat kisi se share karo.";
-      else insight = "Stress bahut high hai! Ek doctor ya counselor se milein. Daily 4-7-8 breathing zaroor karein.";
+      if (avg < 30) insight = "Great work! Your stress level is quite low. Keep up this healthy routine.";
+      else if (avg < 55) insight = "Your stress is moderate. Try 10 minutes of breathing or meditation daily.";
+      else if (avg < 75) insight = "Your stress is elevated. Focus on sleep and exercise, and talk to someone you trust.";
+      else insight = "Your stress is very high. Please consult a doctor or counselor. Practice 4-7-8 breathing daily.";
     }
     if (!aiTips.length) {
-      if (avg < 30) aiTips = ["Roz 15 min walk ya yoga karo", "7-8 ghante ki neend lo", "Khana samay pe khao"];
-      else if (avg < 55) aiTips = ["4-7-8 breathing roz 5 min karo", "Paani 8 glass pina mat bhoolo", "Mobile screen time kam karo"];
-      else aiTips = ["Abhi 4-7-8 breathing shuru karo", "Aaj exercise zaroor karo, chahe 15 min walking ho", "Kisi dost ya family se baat karo"];
+      if (avg < 30) aiTips = ["Take a 15-minute walk or yoga session daily", "Aim for 7–8 hours of sleep", "Eat meals at regular times"];
+      else if (avg < 55) aiTips = ["Practice 4-7-8 breathing for 5 minutes daily", "Drink at least 8 glasses of water", "Reduce screen time before bed"];
+      else aiTips = ["Start 4-7-8 breathing right now", "Get at least 15 minutes of exercise today", "Talk to a friend or family member about how you feel"];
     }
 
     res.json({ avgScore: avg, insight, tips: aiTips, logsCount: recentLogs.length, aiPowered: recentLogs.length > 0 });

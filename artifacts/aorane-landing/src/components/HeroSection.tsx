@@ -276,7 +276,7 @@ export default function HeroSection({ audience, onSignUp }: HeroSectionProps) {
                   <div className="w-3 h-3 rounded-full bg-yellow-400" />
                   <div className="w-3 h-3 rounded-full bg-green-400" />
                   <span className="ml-2 text-xs text-gray-400 font-mono">
-                    {audience === "b2c" ? "AORANE Personal" : "AORANE Business Dashboard"}
+                    {audience === "b2c" ? "Aorane Personal" : "Aorane Business Dashboard"}
                   </span>
                 </div>
                 <AnimatePresence mode="wait">

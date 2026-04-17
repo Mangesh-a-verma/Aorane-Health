@@ -317,7 +317,7 @@ export default function SetupPinScreen() {
 
         <View style={s.secNote}>
           <Ionicons name="lock-closed" size={12} color={C.primary} />
-          <Text style={s.secTxt}>PIN is stored locally on your device — not on AORANE servers</Text>
+          <Text style={s.secTxt}>PIN is stored locally on your device — not on Aorane servers</Text>
         </View>
       </Animated.View>
     </View>

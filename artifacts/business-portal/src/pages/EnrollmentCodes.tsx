@@ -92,7 +92,7 @@ export default function EnrollmentCodes() {
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Enrollment Codes</h1>
-            <p className="text-muted-foreground text-sm mt-0.5">Members ko invite karne ke liye codes banayein</p>
+            <p className="text-muted-foreground text-sm mt-0.5">Generate codes to invite members to your organization</p>
           </div>
           <button
             onClick={() => setShowModal(true)}
@@ -116,8 +116,8 @@ export default function EnrollmentCodes() {
         ) : codes.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <QrCode size={40} className="text-muted-foreground/40 mb-3" />
-            <p className="text-muted-foreground font-medium">Abhi tak koi enrollment code nahi banaya</p>
-            <p className="text-muted-foreground/60 text-sm mt-1">New Code button click kar ke pehla code banayein</p>
+            <p className="text-muted-foreground font-medium">No enrollment codes created yet</p>
+            <p className="text-muted-foreground/60 text-sm mt-1">Click the New Code button to create your first enrollment code</p>
             <button
               onClick={() => setShowModal(true)}
               className="mt-4 flex items-center gap-2 bg-primary/10 hover:bg-primary/15 text-primary px-4 py-2 rounded-xl text-sm font-medium transition-all"

@@ -41,7 +41,7 @@ export default function Organizations() {
         ) : orgs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Building2 size={36} className="text-muted-foreground/30 mb-3" />
-            <p className="text-muted-foreground">Koi organization nahi mili</p>
+            <p className="text-muted-foreground">No organizations found</p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 gap-3">

@@ -263,17 +263,17 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
 
     // ── Validation — compulsory fields ────────────────────────────────────────
     const missing: string[] = [];
-    if (!patientName) missing.push("Patient ka naam");
+    if (!patientName) missing.push("Patient name");
     if (!bloodGroup) missing.push("Blood group");
-    if (!hospitalName) missing.push("Hospital ka naam");
-    if (!hospitalAddress) missing.push("Hospital ka address");
+    if (!hospitalName) missing.push("Hospital name");
+    if (!hospitalAddress) missing.push("Hospital address");
     if (!hospitalCity) missing.push("Hospital city");
     if (!hospitalPhone) missing.push("Hospital contact number");
-    if (!contactPhone) missing.push("Aapka contact number");
+    if (!contactPhone) missing.push("Your contact number");
 
     if (missing.length) {
       res.status(400).json({
-        error: `Yeh fields compulsory hain: ${missing.join(", ")}`,
+        error: `The following fields are required: ${missing.join(", ")}`,
         missingFields: missing,
       });
       return;
@@ -283,7 +283,7 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
     const monthKey = `blood_direct:${req.userId as string}:${new Date().toISOString().slice(0, 7)}`;
     const monthCount = cache.getRateLimit(monthKey);
     if (monthCount >= 3) {
-      res.status(429).json({ error: "Is mahine maximum 3 blood requests allowed hain" });
+      res.status(429).json({ error: "Maximum 3 blood requests are allowed per month." });
       return;
     }
 
@@ -343,7 +343,7 @@ router.post("/blood/donate/confirm", requireAuth, async (req: AuthRequest, res) 
     if (donor?.donorInactiveUntil && donor.donorInactiveUntil > new Date()) {
       const daysLeft = Math.ceil((donor.donorInactiveUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
       res.status(409).json({
-        error: `Aap ${daysLeft} din baad dobara donate kar sakte hain. Blood donation ke baad 90-day rest compulsory hai.`,
+        error: `You can donate again in ${daysLeft} days. A 90-day rest period is required after blood donation.`,
         daysLeft,
         inactiveUntil: donor.donorInactiveUntil,
       });
@@ -383,7 +383,7 @@ router.post("/blood/donate/confirm", requireAuth, async (req: AuthRequest, res) 
     res.status(201).json({
       success: true,
       donation,
-      message: "Donation recorded! 90-din ki cooldown shuru ho gayi. Aap logo ki jaan bache hain — bahut shukriya! 🙏",
+      message: "Donation recorded! A 90-day rest period has begun. Thank you for saving lives! 🙏",
       inactiveUntil,
       daysInactive: 90,
     });

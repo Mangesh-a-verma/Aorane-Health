@@ -120,9 +120,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
           <div className="flex items-center gap-3">
-            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ height: 48, width: "auto", objectFit: "contain" }} />
+            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="Aorane" style={{ height: 48, width: "auto", objectFit: "contain" }} />
             <div>
-              <div className="font-black text-sm tracking-widest gradient-text">AORANE</div>
+              <div className="font-black text-sm tracking-widest gradient-text">Aorane</div>
               <div className="text-[9px] font-mono tracking-[0.25em] mt-0.5"
                    style={{ color: "rgba(255,255,255,0.28)" }}>
                 SUPER ADMIN

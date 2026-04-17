@@ -66,7 +66,7 @@ export default function Login() {
         {/* Logo */}
         <div className="relative">
           <div className="flex items-center gap-3">
-            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ height: 52, width: "auto", objectFit: "contain" }} />
+            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="Aorane" style={{ height: 52, width: "auto", objectFit: "contain" }} />
             <div>
               <div className="font-black text-base tracking-widest"
                    style={{
@@ -75,7 +75,7 @@ export default function Login() {
                      WebkitTextFillColor: "transparent",
                      backgroundClip: "text",
                    }}>
-                AORANE
+                Aorane
               </div>
               <div className="text-[9px] font-mono tracking-[0.3em]"
                    style={{ color: "rgba(255,255,255,0.25)" }}>
@@ -159,8 +159,8 @@ export default function Login() {
 
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
-            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ height: 72, width: "auto", objectFit: "contain", margin: "0 auto 16px" }} />
-            <div className="font-black text-lg tracking-widest gradient-text">AORANE</div>
+            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="Aorane" style={{ height: 72, width: "auto", objectFit: "contain", margin: "0 auto 16px" }} />
+            <div className="font-black text-lg tracking-widest gradient-text">Aorane</div>
             <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>Admin Console</div>
           </div>
 

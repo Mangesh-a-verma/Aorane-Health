@@ -287,7 +287,7 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
 
     res.json({
       aoraneId,
-      name: profile?.full_name || "AORANE User",
+      name: profile?.full_name || "Aorane User",
       bloodGroup: profile?.blood_group || "Unknown",
       bmi: bmi || "N/A",
       bmiCategory,

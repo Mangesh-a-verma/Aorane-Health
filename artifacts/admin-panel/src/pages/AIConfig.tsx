@@ -200,7 +200,7 @@ function FeatureCard({
               rows={3}
               value={form.systemPrompt ?? ""}
               onChange={e => setForm(f => ({ ...f, systemPrompt: e.target.value || null }))}
-              placeholder="You are a helpful health assistant for AORANE..."
+              placeholder="You are a helpful health assistant for Aorane..."
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 outline-none resize-none font-mono text-xs"
             />
           </div>

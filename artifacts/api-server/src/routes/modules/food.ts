@@ -271,7 +271,7 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
     "zinc_mg": number
   },
   "glycemicIndex": number or null,
-  "healthTip": "1 sentence health tip in Hinglish"
+  "healthTip": "1 sentence health tip in English"
 }`;
 
       const jsonStr = await callAI("food_ai", [{ role: "user", content: prompt }], { maxTokens: 1500, temperature: 0.3 });
@@ -375,14 +375,14 @@ Return ONLY valid JSON:
       "name": "Food name in English",
       "nameHindi": "Hindi name",
       "emoji": "single food emoji",
-      "reason": "Why this food is ideal right now (1 sentence in Hinglish)",
+      "reason": "Why this food is ideal right now (1 sentence in English)",
       "calories": number,
       "benefit": "Main health benefit",
       "category": "breakfast|lunch|dinner|snack|beverage",
       "isSeasonalSpecial": true
     }
   ],
-  "weatherTip": "1 practical weather-appropriate health tip in Hinglish"
+  "weatherTip": "1 practical weather-appropriate health tip in English"
 }`;
 
     try {
@@ -399,42 +399,42 @@ Return ONLY valid JSON:
       if ([12, 1, 2].includes(month)) {
         season = "Winter";
         suggestions = [
-          { name: "Sarson Ka Saag", nameHindi: "सरसों का साग", emoji: "🥬", reason: "Sardiyon mein body ko warm rakhta hai", calories: 120, benefit: "Iron & Vitamin A", category: "lunch", isSeasonalSpecial: true },
-          { name: "Makki Di Roti", nameHindi: "मक्की की रोटी", emoji: "🌽", reason: "Winter mein energy deta hai", calories: 180, benefit: "Complex carbs", category: "lunch", isSeasonalSpecial: true },
-          { name: "Tilgud Laddoo", nameHindi: "तिलगुड लड्डू", emoji: "🍡", reason: "Sesame body ko warm karta hai", calories: 220, benefit: "Calcium & healthy fats", category: "snack", isSeasonalSpecial: true },
-          { name: "Masala Chai", nameHindi: "मसाला चाय", emoji: "☕", reason: "Adrak aur elaichi sardiyon mein best hain", calories: 60, benefit: "Anti-inflammatory ginger", category: "beverage", isSeasonalSpecial: true },
-          { name: "Gajar Halwa", nameHindi: "गाजर का हलवा", emoji: "🥕", reason: "Carrots are peak in winter, Vitamin A se bhare", calories: 300, benefit: "Vitamin A & antioxidants", category: "snack", isSeasonalSpecial: true },
-          { name: "Moong Dal Khichdi", nameHindi: "मूंग दाल खिचड़ी", emoji: "🍲", reason: "Easy to digest, winter mein body ko sustain karta hai", calories: 280, benefit: "Protein & minerals", category: "dinner", isSeasonalSpecial: false },
+          { name: "Sarson Ka Saag", nameHindi: "सरसों का साग", emoji: "🥬", reason: "Keeps the body warm during winter", calories: 120, benefit: "Iron & Vitamin A", category: "lunch", isSeasonalSpecial: true },
+          { name: "Makki Di Roti", nameHindi: "मक्की की रोटी", emoji: "🌽", reason: "Provides sustained energy during winter", calories: 180, benefit: "Complex carbs", category: "lunch", isSeasonalSpecial: true },
+          { name: "Tilgud Laddoo", nameHindi: "तिलगुड लड्डू", emoji: "🍡", reason: "Sesame seeds help warm the body", calories: 220, benefit: "Calcium & healthy fats", category: "snack", isSeasonalSpecial: true },
+          { name: "Masala Chai", nameHindi: "मसाला चाय", emoji: "☕", reason: "Ginger and cardamom are ideal for winter", calories: 60, benefit: "Anti-inflammatory ginger", category: "beverage", isSeasonalSpecial: true },
+          { name: "Gajar Halwa", nameHindi: "गाजर का हलवा", emoji: "🥕", reason: "Carrots peak in winter and are rich in Vitamin A", calories: 300, benefit: "Vitamin A & antioxidants", category: "snack", isSeasonalSpecial: true },
+          { name: "Moong Dal Khichdi", nameHindi: "मूंग दाल खिचड़ी", emoji: "🍲", reason: "Easy to digest, helps sustain energy in winter", calories: 280, benefit: "Protein & minerals", category: "dinner", isSeasonalSpecial: false },
         ];
       } else if ([3, 4, 5].includes(month)) {
         season = "Summer";
         suggestions = [
-          { name: "Aam Panna", nameHindi: "आम पन्ना", emoji: "🥭", reason: "Garmi mein heatstroke se bachata hai", calories: 80, benefit: "Electrolytes & Vitamin C", category: "beverage", isSeasonalSpecial: true },
-          { name: "Lassi", nameHindi: "लस्सी", emoji: "🥛", reason: "Body ko cool rakhti hai", calories: 150, benefit: "Probiotics & calcium", category: "beverage", isSeasonalSpecial: true },
-          { name: "Watermelon / Tarbuz", nameHindi: "तरबूज", emoji: "🍉", reason: "95% paani, body hydrated rakhta hai", calories: 30, benefit: "Hydration & lycopene", category: "snack", isSeasonalSpecial: true },
-          { name: "Coconut Water", nameHindi: "नारियल पानी", emoji: "🥥", reason: "Natural electrolytes, garmi mein best", calories: 45, benefit: "Potassium & hydration", category: "beverage", isSeasonalSpecial: true },
-          { name: "Raita", nameHindi: "रायता", emoji: "🥗", reason: "Dahi body ko andar se thanda karta hai", calories: 90, benefit: "Probiotics & cooling", category: "lunch", isSeasonalSpecial: true },
-          { name: "Sattu Sharbat", nameHindi: "सत्तू शर्बत", emoji: "🧊", reason: "Bihar-UP mein garmi ka traditional drink", calories: 120, benefit: "Protein & energy", category: "beverage", isSeasonalSpecial: true },
+          { name: "Aam Panna", nameHindi: "आम पन्ना", emoji: "🥭", reason: "Helps prevent heatstroke during summer", calories: 80, benefit: "Electrolytes & Vitamin C", category: "beverage", isSeasonalSpecial: true },
+          { name: "Lassi", nameHindi: "लस्सी", emoji: "🥛", reason: "Keeps the body cool and refreshed", calories: 150, benefit: "Probiotics & calcium", category: "beverage", isSeasonalSpecial: true },
+          { name: "Watermelon / Tarbuz", nameHindi: "तरबूज", emoji: "🍉", reason: "95% water content, keeps the body hydrated", calories: 30, benefit: "Hydration & lycopene", category: "snack", isSeasonalSpecial: true },
+          { name: "Coconut Water", nameHindi: "नारियल पानी", emoji: "🥥", reason: "Natural electrolytes, ideal for summer", calories: 45, benefit: "Potassium & hydration", category: "beverage", isSeasonalSpecial: true },
+          { name: "Raita", nameHindi: "रायता", emoji: "🥗", reason: "Yogurt cools the body from within", calories: 90, benefit: "Probiotics & cooling", category: "lunch", isSeasonalSpecial: true },
+          { name: "Sattu Sharbat", nameHindi: "सत्तू शर्बत", emoji: "🧊", reason: "A traditional summer drink from Bihar and UP", calories: 120, benefit: "Protein & energy", category: "beverage", isSeasonalSpecial: true },
         ];
       } else if ([6, 7, 8, 9].includes(month)) {
         season = "Monsoon";
         suggestions = [
-          { name: "Khichdi", nameHindi: "खिचड़ी", emoji: "🍲", reason: "Monsoon mein digestive system ke liye best", calories: 280, benefit: "Easy to digest & warming", category: "dinner", isSeasonalSpecial: true },
-          { name: "Ginger Tea", nameHindi: "अदरक की चाय", emoji: "☕", reason: "Immunity boost karta hai barsaat mein", calories: 50, benefit: "Anti-inflammatory", category: "beverage", isSeasonalSpecial: true },
-          { name: "Haldi Doodh", nameHindi: "हल्दी दूध", emoji: "🥛", reason: "Infection se bachata hai monsoon mein", calories: 120, benefit: "Immunity & anti-bacterial", category: "beverage", isSeasonalSpecial: true },
-          { name: "Corn Bhutta", nameHindi: "भुट्टा", emoji: "🌽", reason: "Barsaat aur bhutta — classic Indian combo!", calories: 130, benefit: "Fiber & antioxidants", category: "snack", isSeasonalSpecial: true },
-          { name: "Pakora", nameHindi: "पकोड़ा", emoji: "🍘", reason: "Baarish mein pakoda — ultimate comfort food", calories: 200, benefit: "Energy boost (occasionally)", category: "snack", isSeasonalSpecial: true },
-          { name: "Moong Dal Soup", nameHindi: "मूंग दाल सूप", emoji: "🍵", reason: "Light aur nutritious, monsoon mein digestion easy", calories: 150, benefit: "Protein & easy digestion", category: "dinner", isSeasonalSpecial: true },
+          { name: "Khichdi", nameHindi: "खिचड़ी", emoji: "🍲", reason: "Best for the digestive system during monsoon", calories: 280, benefit: "Easy to digest & warming", category: "dinner", isSeasonalSpecial: true },
+          { name: "Ginger Tea", nameHindi: "अदरक की चाय", emoji: "☕", reason: "Boosts immunity during the monsoon season", calories: 50, benefit: "Anti-inflammatory", category: "beverage", isSeasonalSpecial: true },
+          { name: "Haldi Doodh", nameHindi: "हल्दी दूध", emoji: "🥛", reason: "Protects against infections during monsoon", calories: 120, benefit: "Immunity & anti-bacterial", category: "beverage", isSeasonalSpecial: true },
+          { name: "Corn Bhutta", nameHindi: "भुट्टा", emoji: "🌽", reason: "A classic Indian monsoon-season snack!", calories: 130, benefit: "Fiber & antioxidants", category: "snack", isSeasonalSpecial: true },
+          { name: "Pakora", nameHindi: "पकोड़ा", emoji: "🍘", reason: "The ultimate Indian comfort food during rain", calories: 200, benefit: "Energy boost (occasionally)", category: "snack", isSeasonalSpecial: true },
+          { name: "Moong Dal Soup", nameHindi: "मूंग दाल सूप", emoji: "🍵", reason: "Light and nutritious, easy on digestion during monsoon", calories: 150, benefit: "Protein & easy digestion", category: "dinner", isSeasonalSpecial: true },
         ];
       } else {
         season = "Autumn";
         suggestions = [
-          { name: "Pomegranate", nameHindi: "अनार", emoji: "🍎", reason: "Sharad mein blood purifier, peak season", calories: 80, benefit: "Iron & antioxidants", category: "snack", isSeasonalSpecial: true },
-          { name: "Guava", nameHindi: "अमरूद", emoji: "🍐", reason: "Vitamin C se bhara, immunity badhata hai", calories: 60, benefit: "Vitamin C & fiber", category: "snack", isSeasonalSpecial: true },
-          { name: "Apple", nameHindi: "सेब", emoji: "🍏", reason: "Sharad mein fresh apples available, ek roz ka doctor dur", calories: 80, benefit: "Fiber & quercetin", category: "snack", isSeasonalSpecial: true },
-          { name: "Pumpkin Sabzi", nameHindi: "कद्दू की सब्जी", emoji: "🎃", reason: "Seasonal vegetable, kaafi nutritious hai", calories: 90, benefit: "Beta-carotene & fiber", category: "dinner", isSeasonalSpecial: true },
-          { name: "Bajra Roti", nameHindi: "बाजरे की रोटी", emoji: "🫓", reason: "Winter shuru hoti hai, bajra body warm rakhta hai", calories: 170, benefit: "Iron & magnesium", category: "lunch", isSeasonalSpecial: false },
-          { name: "Moong Dal Khichdi", nameHindi: "मूंग दाल खिचड़ी", emoji: "🍲", reason: "Light aur nutritious, autumn mein digestive health", calories: 250, benefit: "Protein & minerals", category: "lunch", isSeasonalSpecial: false },
+          { name: "Pomegranate", nameHindi: "अनार", emoji: "🍎", reason: "Peak season in autumn, excellent blood purifier", calories: 80, benefit: "Iron & antioxidants", category: "snack", isSeasonalSpecial: true },
+          { name: "Guava", nameHindi: "अमरूद", emoji: "🍐", reason: "Rich in Vitamin C, great for boosting immunity", calories: 60, benefit: "Vitamin C & fiber", category: "snack", isSeasonalSpecial: true },
+          { name: "Apple", nameHindi: "सेब", emoji: "🍏", reason: "Fresh autumn apples — an apple a day keeps the doctor away", calories: 80, benefit: "Fiber & quercetin", category: "snack", isSeasonalSpecial: true },
+          { name: "Pumpkin Sabzi", nameHindi: "कद्दू की सब्जी", emoji: "🎃", reason: "Highly nutritious seasonal vegetable", calories: 90, benefit: "Beta-carotene & fiber", category: "dinner", isSeasonalSpecial: true },
+          { name: "Bajra Roti", nameHindi: "बाजरे की रोटी", emoji: "🫓", reason: "As winter begins, bajra helps keep the body warm", calories: 170, benefit: "Iron & magnesium", category: "lunch", isSeasonalSpecial: false },
+          { name: "Moong Dal Khichdi", nameHindi: "मूंग दाल खिचड़ी", emoji: "🍲", reason: "Light and nutritious, supports digestion in autumn", calories: 250, benefit: "Protein & minerals", category: "lunch", isSeasonalSpecial: false },
         ];
       }
 
@@ -442,7 +442,7 @@ Return ONLY valid JSON:
         weatherContext: weather,
         season,
         suggestions,
-        weatherTip: "Mausam ke hisaab se khana khao — seasonal foods sabse zyada nutritious hote hain! 🌿",
+        weatherTip: "Eat according to the season — seasonal foods are the most nutritious! 🌿",
         fallback: true,
       });
     }

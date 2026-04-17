@@ -174,7 +174,7 @@ export default function Dashboard() {
               {(!analytics || analytics.totalMembers === 0) && (
                 <div className="flex items-center gap-2 text-xs text-[#9CA3AF] justify-center mb-4 bg-[#F8FAFC] rounded-lg px-3 py-2 border border-[#E5E7EB]">
                   <Heart size={12} className="text-[#D1D5DB]" />
-                  Data appears when employees log health activities in the AORANE app
+                  Data appears when employees log health activities in the Aorane app
                 </div>
               )}
 

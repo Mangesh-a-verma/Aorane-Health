@@ -307,7 +307,7 @@ export default function PlanPricing() {
   };
 
   const handleReset = async () => {
-    if (!confirm("Sab plans ko default pricing pe reset karein?")) return;
+    if (!confirm("Reset all plans to default pricing?")) return;
     setResetting(true);
     try {
       const result = await api.resetPlanPricing();
@@ -334,7 +334,7 @@ export default function PlanPricing() {
             </div>
             <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#dee1f7" }}>Plan Pricing</h1>
             <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.38)" }}>
-              Price seedha input mein type karo → Save dabao — sab jagah auto-update
+              Type the price directly in the input → click Save — updates everywhere automatically
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -390,8 +390,8 @@ export default function PlanPricing() {
              style={{ background: "rgba(0,119,182,0.07)", border: "1px solid rgba(0,119,182,0.15)" }}>
           <Sparkles size={16} style={{ color: "#0077B6", flexShrink: 0, marginTop: 2 }} />
           <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-            <span className="text-white/70 font-semibold">Kaise kaam karta hai?</span>{" "}
-            Neeche diye gaye cards mein seedha price field mein naya amount type karo — <span className="text-white/60">Save Changes</span> button aa jayega. Click karo — Mobile App, Landing Page, Business Portal sab ek dum update ho jayenge.
+            <span className="text-white/70 font-semibold">How it works:</span>{" "}
+            Type the new amount directly in the price field on each card below — a <span className="text-white/60">Save Changes</span> button will appear. Click it — Mobile App, Landing Page, and Business Portal all update instantly.
           </div>
         </div>
 

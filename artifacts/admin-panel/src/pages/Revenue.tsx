@@ -353,8 +353,8 @@ export default function Revenue() {
           ) : !data?.recentPayments?.length ? (
             <div className="p-12 text-center">
               <Receipt size={36} className="mx-auto mb-3" style={{ color: "rgba(255,255,255,0.1)" }} />
-              <div className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Koi transactions nahi abhi tak</div>
-              <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.25)" }}>Jab users pay karenge, yahan dikhega</div>
+              <div className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>No transactions yet</div>
+              <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.25)" }}>Transactions will appear here when users make payments</div>
             </div>
           ) : (
             <div className="overflow-x-auto">

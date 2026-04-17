@@ -135,8 +135,8 @@ export default function FeaturesSection({ audience }: FeaturesSectionProps) {
           </h2>
           <p className="mt-3 text-gray-500 max-w-xl mx-auto">
             {audience === "b2c"
-              ? "From AI food scanning to family health tracking — AORANE covers every aspect of your wellness journey."
-              : "AORANE Business gives HR teams and leadership the tools to build a healthier, more productive workforce."}
+              ? "From AI food scanning to family health tracking — Aorane covers every aspect of your wellness journey."
+              : "Aorane Business gives HR teams and leadership the tools to build a healthier, more productive workforce."}
           </p>
         </motion.div>
 
@@ -199,8 +199,8 @@ export default function FeaturesSection({ audience }: FeaturesSectionProps) {
               WhatsApp Health Bot
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              India mein sabse easy health tracking — sirf WhatsApp pe message karo.
-              Khana, exercise, paani — sab kuch log ho jaayega. Bot yaad bhi dilaayega!
+              The easiest health tracking in India — just message on WhatsApp.
+              Log food, exercise, and water instantly. The bot will remind you too!
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">

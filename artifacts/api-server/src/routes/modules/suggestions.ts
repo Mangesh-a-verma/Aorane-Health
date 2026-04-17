@@ -127,7 +127,7 @@ function buildPrompt(data: {
     ? `${workProfile} (${WORK_PROFILE_ACTIVITY[workProfile] || "moderate"} activity job)`
     : "unknown";
 
-  return `You are AORANE, a certified Indian health coach and nutritionist. Give personalized daily health suggestions in HINDI + English mix (Hinglish).
+  return `You are Aorane, a certified Indian health coach and nutritionist. Give personalized daily health suggestions in English.
 
 USER PROFILE:
 - Age: ${age || "unknown"}, Gender: ${gender}
@@ -168,12 +168,12 @@ RULES:
 6. Calorie numbers should be realistic for Indian serving sizes
 7. If diabetes: avoid high-GI foods, suggest low-GI options
 8. If high BP: suggest low-sodium options, avoid pickles/papad
-9. Language: Mix Hindi and English naturally (Hinglish)
-10. Work profile se related specific advice do (e.g. Army ke liye stamina foods, Office ke liye screen fatigue tips)
+9. Language: Respond entirely in English
+10. Give work-profile-specific advice (e.g. Army: stamina foods; Office: screen fatigue tips)
 
 Return ONLY valid JSON (no markdown):
 {
-  "greeting": "Personalized morning/afternoon/evening greeting in Hinglish",
+  "greeting": "Personalized morning/afternoon/evening greeting in English",
   "calorieStatus": {
     "goal": ${calorieGoal},
     "eaten": ${caloriesToday},
@@ -189,7 +189,7 @@ Return ONLY valid JSON (no markdown):
       "carbsG": number,
       "fatG": number,
       "portion": "1 katori / 2 roti etc.",
-      "reason": "Why this is good for you (Hinglish, 1 sentence)",
+      "reason": "Why this is good for you (English, 1 sentence)",
       "mealType": "breakfast|lunch|dinner|snack",
       "isSeasonalSpecial": boolean
     }
@@ -198,35 +198,35 @@ Return ONLY valid JSON (no markdown):
     "type": "Exercise name",
     "durationMinutes": number,
     "caloriesToBurn": number,
-    "description": "Short description in Hinglish",
+    "description": "Short description in English",
     "intensity": "light|moderate|intense"
   },
   "waterReminder": {
     "current": ${waterToday},
     "goal": ${waterGoal},
-    "message": "Water reminder message in Hinglish",
+    "message": "Water reminder message in English",
     "tipsForDrinkingMore": ["tip1", "tip2"]
   },
   "healthTip": {
-    "tip": "Today's health tip in Hinglish (2 sentences max)",
+    "tip": "Today's health tip in English (2 sentences max)",
     "category": "nutrition|exercise|sleep|stress|hydration|ayurveda|seasonal",
     "emoji": "single emoji"
   },
   "medicalWarnings": [
     {
       "condition": "condition name",
-      "warning": "specific warning in Hinglish",
+      "warning": "specific warning in English",
       "foodsToAvoid": ["food1", "food2"],
       "foodsToPrefer": ["food1", "food2"]
     }
   ],
-  "motivation": "Personalized motivational message for their goal in Hinglish",
+  "motivation": "Personalized motivational message for their goal in English",
   "targetProgress": {
     "currentWeight": ${weightKg || 0},
     "targetWeight": ${targetWeightKg || 0},
     "weightGap": ${weightKg && targetWeightKg ? Math.abs(weightKg - targetWeightKg).toFixed(1) : 0},
     "estimatedWeeks": number,
-    "weeklyMessage": "Progress update in Hinglish"
+    "weeklyMessage": "Progress update in English"
   }
 }`;
 }
@@ -319,19 +319,19 @@ router.get("/suggestions/daily", requireAuth, aiRateLimit("daily_suggestions", 3
     } catch {
       // Fallback if Gemini fails
       suggestions = {
-        greeting: "Namaste! Aaj ka din acha ho aapka! 🙏",
-        calorieStatus: { goal: calorieGoal, eaten: caloriesToday, remaining: Math.max(0, calorieGoal - caloriesToday), message: "Apna calorie goal track karo!" },
+        greeting: "Hello! Wishing you a wonderful and healthy day ahead! 🙏",
+        calorieStatus: { goal: calorieGoal, eaten: caloriesToday, remaining: Math.max(0, calorieGoal - caloriesToday), message: "Keep tracking your calorie goal!" },
         foodSuggestions: [
-          { name: "Dal Chawal", nameHindi: "दाल चावल", calories: 350, proteinG: 12, carbsG: 58, fatG: 4, portion: "1 katori dal + 1 katori chawal", reason: "Protein + carbs ka achha balance", mealType: "lunch", isSeasonalSpecial: false },
-          { name: "Moong Dal Cheela", nameHindi: "मूंग दाल चीला", calories: 180, proteinG: 9, carbsG: 22, fatG: 5, portion: "2 cheele", reason: "High protein, low calorie breakfast", mealType: "breakfast", isSeasonalSpecial: false },
-          { name: "Mixed Vegetable Sabzi", nameHindi: "मिक्स सब्जी", calories: 120, proteinG: 4, carbsG: 15, fatG: 5, portion: "1 katori", reason: "Vitamins aur fiber se bhara", mealType: "dinner", isSeasonalSpecial: false },
+          { name: "Dal Chawal", nameHindi: "दाल चावल", calories: 350, proteinG: 12, carbsG: 58, fatG: 4, portion: "1 bowl dal + 1 bowl rice", reason: "Great balance of protein and carbohydrates", mealType: "lunch", isSeasonalSpecial: false },
+          { name: "Moong Dal Cheela", nameHindi: "मूंग दाल चीला", calories: 180, proteinG: 9, carbsG: 22, fatG: 5, portion: "2 cheelas", reason: "High protein, low calorie breakfast option", mealType: "breakfast", isSeasonalSpecial: false },
+          { name: "Mixed Vegetable Sabzi", nameHindi: "मिक्स सब्जी", calories: 120, proteinG: 4, carbsG: 15, fatG: 5, portion: "1 bowl", reason: "Packed with vitamins and fiber", mealType: "dinner", isSeasonalSpecial: false },
         ],
-        exerciseSuggestion: { type: "Brisk Walk", durationMinutes: 30, caloriesToBurn: 150, description: "Subah ya shaam 30 minute tej chalna bahut faydemand hai", intensity: "moderate" },
-        waterReminder: { current: waterToday, goal: prefs?.waterGoalGlasses || 8, message: "Paani peena mat bhoolo! 💧", tipsForDrinkingMore: ["Har ghante ek glass peeyein", "Khana khane se pehle 1 glass"] },
-        healthTip: { tip: "Subah uthte hi 2 glass paani peeyein — metabolism badhta hai aur toxins flush hote hain", category: "hydration", emoji: "💧" },
+        exerciseSuggestion: { type: "Brisk Walk", durationMinutes: 30, caloriesToBurn: 150, description: "A 30-minute brisk walk in the morning or evening is highly beneficial", intensity: "moderate" },
+        waterReminder: { current: waterToday, goal: prefs?.waterGoalGlasses || 8, message: "Don't forget to stay hydrated! 💧", tipsForDrinkingMore: ["Drink one glass every hour", "Have 1 glass of water before meals"] },
+        healthTip: { tip: "Drink 2 glasses of water right after waking up — it boosts metabolism and flushes toxins", category: "hydration", emoji: "💧" },
         medicalWarnings: [],
-        motivation: "Har kadam aapko apne goal ke paas le jaata hai! Chaltey raho! 💪",
-        targetProgress: { currentWeight: weightKg || 0, targetWeight: goals?.targetWeightKg ? Number(goals.targetWeightKg) : 0, weightGap: 0, estimatedWeeks: 0, weeklyMessage: "Data load ho raha hai..." },
+        motivation: "Every step brings you closer to your goal. Keep going! 💪",
+        targetProgress: { currentWeight: weightKg || 0, targetWeight: goals?.targetWeightKg ? Number(goals.targetWeightKg) : 0, weightGap: 0, estimatedWeeks: 0, weeklyMessage: "Loading your progress data..." },
       };
     }
 

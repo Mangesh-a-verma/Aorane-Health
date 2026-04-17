@@ -156,8 +156,8 @@ export default function Landing() {
     {
       icon: "psychology",
       title: "AI-Powered Health Insights",
-      desc: "AORANE's intelligent health engine analyzes behavioral patterns and sends proactive alerts before problems escalate — helping you act early, not just observe.",
-      points: ["Predictive burnout and absenteeism detection by AI", "Smart food and exercise recommendations per individual", "AORANE AI health scorecard with 100-point scoring system"],
+      desc: "Aorane's intelligent health engine analyzes behavioral patterns and sends proactive alerts before problems escalate — helping you act early, not just observe.",
+      points: ["Predictive burnout and absenteeism detection by AI", "Smart food and exercise recommendations per individual", "Aorane AI health scorecard with 100-point scoring system"],
       metricLabels: ["Accuracy", "Alert Speed", "Risk Detection", "Uptime"],
       metricValues: ["94%", "< 1min", "Early", "99.9%"],
     },
@@ -191,9 +191,9 @@ export default function Landing() {
   ];
 
   const testimonials = [
-    { quote: "AORANE transformed how we manage our 300-employee wellness program. Sick leave dropped by 28% within 3 months of rollout.", name: "Priya Sharma", role: "HR Director", company: "TechVenture Pune", initials: "PS" },
+    { quote: "Aorane transformed how we manage our 300-employee wellness program. Sick leave dropped by 28% within 3 months of rollout.", name: "Priya Sharma", role: "HR Director", company: "TechVenture Pune", initials: "PS" },
     { quote: "Our gym members are more engaged than ever. The health scoring and automated reminders have significantly improved member retention.", name: "Rahul Mehta", role: "Founder", company: "FitZone Mumbai", initials: "RM" },
-    { quote: "As a hospital, monitoring staff health is critical. AORANE gives us real-time visibility into our entire team's wellness that we never had before.", name: "Dr. Anita Kulkarni", role: "Chief Medical Officer", company: "LifeCare Hospital Nagpur", initials: "AK" },
+    { quote: "As a hospital, monitoring staff health is critical. Aorane gives us real-time visibility into our entire team's wellness that we never had before.", name: "Dr. Anita Kulkarni", role: "Chief Medical Officer", company: "LifeCare Hospital Nagpur", initials: "AK" },
   ];
 
   return (
@@ -240,9 +240,9 @@ export default function Landing() {
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px", height: 72, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ height: 52, width: "auto", objectFit: "contain" }} />
+            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="Aorane" style={{ height: 52, width: "auto", objectFit: "contain" }} />
             <span style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.02em" }}>
-              AORANE <span style={{ color: PRIMARY }}>Business</span>
+              Aorane <span style={{ color: PRIMARY }}>Business</span>
             </span>
           </div>
           {/* Desktop Nav */}
@@ -308,7 +308,7 @@ export default function Landing() {
                 <span style={{ color: PRIMARY }}>Business Asset</span>
               </h1>
               <p style={{ fontSize: "clamp(16px,1.5vw,20px)", color: "#404850", lineHeight: 1.75, margin: "0 0 40px", maxWidth: 540 }}>
-                AORANE Business gives Corporates, Hospitals, Gyms & Wellness Centers a unified platform to monitor, motivate and manage employee & member health — in real time.
+                Aorane Business gives Corporates, Hospitals, Gyms & Wellness Centers a unified platform to monitor, motivate and manage employee & member health — in real time.
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 40 }}>
                 <button
@@ -344,7 +344,7 @@ export default function Landing() {
               <div style={{ borderRadius: 20, overflow: "hidden", boxShadow: "0 40px 100px rgba(0,93,144,0.18)", border: "1px solid rgba(255,255,255,0.7)", background: "white" }}>
                 <div style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, padding: "12px 20px", display: "flex", alignItems: "center", gap: 8 }}>
                   {[1, 2, 3].map(k => <div key={k} style={{ width: 10, height: 10, borderRadius: "50%", background: "rgba(255,255,255,0.35)" }} />)}
-                  <span style={{ color: "rgba(255,255,255,0.75)", fontSize: 12, marginLeft: 8 }}>AORANE Business Dashboard</span>
+                  <span style={{ color: "rgba(255,255,255,0.75)", fontSize: 12, marginLeft: 8 }}>Aorane Business Dashboard</span>
                 </div>
                 <div style={{ padding: 24, background: "#f7f9fe" }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
@@ -411,7 +411,7 @@ export default function Landing() {
             Built for Every Health-Focused Business
           </h2>
           <p style={{ fontSize: 18, color: "#6b7280", maxWidth: 580, margin: "0 auto", lineHeight: 1.75 }}>
-            No matter your industry — AORANE Business fits seamlessly into your existing ecosystem.
+            No matter your industry — Aorane Business fits seamlessly into your existing ecosystem.
           </p>
         </div>
         <div className="segment-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 28 }}>
@@ -575,7 +575,7 @@ export default function Landing() {
             <div className="hide-mobile" style={{ position: "absolute", top: 36, left: "22%", right: "22%", height: 2, background: `linear-gradient(to right, ${PRIMARY}, ${TEAL})`, opacity: 0.2, zIndex: 0 }} />
             {[
               { step: "01", icon: "how_to_reg", title: "Register & Set Up", desc: "Create your business account and add your organization details in under 5 minutes." },
-              { step: "02", icon: "group_add", title: "Invite Your Team", desc: "Share a unique join code. Employees download the AORANE app and connect instantly." },
+              { step: "02", icon: "group_add", title: "Invite Your Team", desc: "Share a unique join code. Employees download the Aorane app and connect instantly." },
               { step: "03", icon: "insights", title: "Track & Improve", desc: "Monitor health scores, send wellness nudges, and receive AI-powered insights every day." },
             ].map((s, i) => (
               <div key={i} className="card-lift" style={{ background: BG, borderRadius: 20, padding: 32, position: "relative", zIndex: 1, border: "1.5px solid rgba(191,199,209,0.3)" }}>
@@ -605,7 +605,7 @@ export default function Landing() {
                   The ₹35,000 Crore Opportunity in Corporate Wellness
                 </h2>
                 <p style={{ fontSize: 16, color: "#6b7280", lineHeight: 1.85, margin: "0 0 32px" }}>
-                  India's workplace wellness market is growing at 12% CAGR. AORANE is positioned to capture the digital health management segment for 6.5 crore+ organized workforce employees — a market largely untapped by mobile-first platforms.
+                  India's workplace wellness market is growing at 12% CAGR. Aorane is positioned to capture the digital health management segment for 6.5 crore+ organized workforce employees — a market largely untapped by mobile-first platforms.
                 </p>
                 <blockquote style={{ borderLeft: `3px solid ${TEAL_LIGHT}`, paddingLeft: 20, margin: "0 0 32px", fontStyle: "italic", color: "#6b7280", fontSize: 15, lineHeight: 1.8 }}>
                   "Digital health platforms serving B2B segments show 3–5x better retention than B2C health apps."
@@ -704,8 +704,8 @@ export default function Landing() {
           <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 56 }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ height: 52, width: "auto", objectFit: "contain" }} />
-                <span style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20" }}>AORANE</span>
+                <img src={import.meta.env.BASE_URL + 'logo.png'} alt="Aorane" style={{ height: 52, width: "auto", objectFit: "contain" }} />
+                <span style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20" }}>Aorane</span>
               </div>
               <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.85, maxWidth: 280, margin: "0 0 24px" }}>
                 The unified intelligence platform for managing health and wellness at scale across any organization.
@@ -739,7 +739,7 @@ export default function Landing() {
             ))}
           </div>
           <div style={{ borderTop: "1px solid rgba(191,199,209,0.35)", paddingTop: 24, display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-            <p style={{ fontSize: 13, color: "#9ca3af", margin: 0 }}>© 2025 AORANE Health Technologies Pvt. Ltd. All rights reserved.</p>
+            <p style={{ fontSize: 13, color: "#9ca3af", margin: 0 }}>© 2025 Aorane Health Technologies Pvt. Ltd. All rights reserved.</p>
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
               {["ISO 27001 Certified", "GDPR Compliant", "Made in India 🇮🇳"].map((badge, i) => (
                 <span key={i} style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase" as const, letterSpacing: 1 }}>{badge}</span>

@@ -126,7 +126,7 @@ export default function OnboardingGoals() {
               >
                 <Ionicons name="sparkles" size={18} color="#0077B6" />
                 <Text style={[styles.readyText, { color: isDark ? "#38BDF8" : "#0077B6", fontFamily: "Inter_600SemiBold" }]}>
-                  You are ready! AORANE is building your plan...
+                  You are ready! Aorane is building your plan...
                 </Text>
               </LinearGradient>
             )}
@@ -144,7 +144,7 @@ export default function OnboardingGoals() {
                 ? <ActivityIndicator color="#FFF" />
                 : <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                     <Ionicons name="rocket" size={20} color="#FFF" />
-                    <Text style={[styles.ctaText, { fontFamily: "Inter_700Bold" }]}>Start AORANE</Text>
+                    <Text style={[styles.ctaText, { fontFamily: "Inter_700Bold" }]}>Start Aorane</Text>
                   </View>
               }
             </LinearGradient>

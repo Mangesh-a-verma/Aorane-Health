@@ -139,7 +139,7 @@ export default function PermissionsScreen() {
           </LinearGradient>
           <Text style={[styles.title, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>App Permissions</Text>
           <Text style={[styles.subtitle, { color: isDark ? "rgba(255,255,255,0.48)" : "rgba(10,22,40,0.52)", fontFamily: "Inter_400Regular" }]}>
-            These permissions make AORANE work better — all are optional
+            These permissions make Aorane work better — all are optional
           </Text>
         </View>
 
@@ -213,7 +213,7 @@ export default function PermissionsScreen() {
         <View style={[styles.privNote, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.6)", borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.88)" }]}>
           <Ionicons name="lock-closed" size={12} color={isDark ? "#38BDF8" : "#0077B6"} />
           <Text style={[styles.privTxt, { color: isDark ? "rgba(255,255,255,0.38)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>
-            Your data is never shared with third parties • AORANE Privacy Policy
+            Your data is never shared with third parties • Aorane Privacy Policy
           </Text>
         </View>
       </Animated.View>

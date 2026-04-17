@@ -71,7 +71,7 @@ export default function ProfileScreen() {
   const bmi     = heightVal && weightVal
     ? (Number(weightVal) / Math.pow(Number(heightVal) / 100, 2)).toFixed(1) : null;
   const phone   = (user as Record<string, unknown>)?.phone as string;
-  const name    = (profile.full_name as string) || (profile.fullName as string) || "AORANE User";
+  const name    = (profile.full_name as string) || (profile.fullName as string) || "Aorane User";
   const plan    = ((user as Record<string, unknown>)?.plan as string || "free").toUpperCase();
   const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
@@ -246,7 +246,7 @@ export default function ProfileScreen() {
               </View>
             </View>
             {[
-              { emoji: "🪪", label: "Health Scorecard (AORANE ID)", desc: "ATM card style health ID + QR code",          route: "/scorecard",         color: P },
+              { emoji: "🪪", label: "Health Scorecard (Aorane ID)", desc: "ATM card style health ID + QR code",          route: "/scorecard",         color: P },
               { emoji: "⌚", label: "Smart Watch & Wearables",      desc: "Google Fit, Smart Band, steps, heart rate",   route: "/wearable",          color: "#34A853" },
               { emoji: "💧", label: "Water Tracker",                desc: "Track 8 glasses of water daily",              route: "/water",             color: DS.color.sky },
               { emoji: "🧘", label: "Stress Tracker",               desc: "Mood + 5-Pillar + 4-7-8 Breathing",          route: "/stress",            color: DS.color.purple },
@@ -346,7 +346,7 @@ export default function ProfileScreen() {
           {/* ── Footer ── */}
           <View style={s.footer}>
             <Image source={require("../../assets/images/aorane-logo.png")} style={s.footerLogo} resizeMode="contain" />
-            <Text style={s.version}>AORANE v1.0.0</Text>
+            <Text style={s.version}>Aorane v1.0.0</Text>
             <Text style={s.tagline}>Privacy-First Health Platform</Text>
           </View>
         </View>

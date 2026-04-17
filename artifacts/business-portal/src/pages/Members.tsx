@@ -96,10 +96,10 @@ function MemberDetailModal({ userId, name, onClose }: { userId: string; name: st
             <div className="text-sm text-red-500 bg-red-50 dark:bg-red-950/20 rounded-lg px-4 py-3">{error}</div>
           ) : detail ? (
             <div className="space-y-4">
-              {/* AORANE ID */}
+              {/* Aorane ID */}
               {detail.user?.aoraneId && (
                 <div className="bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
-                  <div className="text-[10px] text-muted-foreground font-medium uppercase mb-1">AORANE ID</div>
+                  <div className="text-[10px] text-muted-foreground font-medium uppercase mb-1">Aorane ID</div>
                   <div className="font-mono text-lg font-bold text-primary tracking-widest">
                     {detail.user.aoraneId.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")}
                   </div>
@@ -217,7 +217,7 @@ function SearchResultCard({ r }: { r: MemberSearchResult }) {
         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${planColors[r.plan] || planColors.free}`}>{r.plan}</span>
       </div>
       <div className="bg-primary/5 rounded-lg px-3 py-2 mb-2">
-        <div className="text-[10px] text-muted-foreground uppercase font-medium mb-0.5">AORANE ID</div>
+        <div className="text-[10px] text-muted-foreground uppercase font-medium mb-0.5">Aorane ID</div>
         <div className="font-mono text-base font-bold text-primary tracking-widest">
           {r.aoraneId ? r.aoraneId.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3") : "Not generated yet"}
         </div>
@@ -284,21 +284,21 @@ export default function Members() {
   return (
     <Layout>
       <div className="p-6 max-w-5xl mx-auto space-y-6">
-        {/* AORANE ID Search */}
+        {/* Aorane ID Search */}
         <div className="bg-gradient-to-br from-primary/5 via-transparent to-primary/5 border border-primary/20 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <Fingerprint size={18} className="text-primary" />
-            <h2 className="text-base font-bold text-foreground">AORANE ID Search</h2>
+            <h2 className="text-base font-bold text-foreground">Aorane ID Search</h2>
             <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Members only</span>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">Search your members by AORANE ID or name</p>
+          <p className="text-xs text-muted-foreground mb-3">Search your members by Aorane ID or name</p>
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="search"
               value={aoraneQuery}
               onChange={(e) => handleAoraneSearch(e.target.value)}
-              placeholder="AORANE ID (12 digits) or member name..."
+              placeholder="Aorane ID (12 digits) or member name..."
               className="w-full bg-card border border-border rounded-xl pl-9 pr-10 py-2.5 text-sm focus:outline-none focus:border-primary transition-all font-mono"
             />
             {aoraneQuery && (

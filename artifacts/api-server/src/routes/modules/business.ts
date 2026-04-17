@@ -120,7 +120,7 @@ router.post("/business/login", async (req, res) => {
 
     res.json({
       requiresOtp: true,
-      message: sent ? "OTP aapke email pe bheja gaya" : (isDev ? "Dev mode — OTP neeche hai" : "Email service unavailable"),
+      message: sent ? "OTP sent to your email" : (isDev ? "Dev mode — OTP below" : "Email service unavailable"),
       ...(returnDevOtp ? { devOtp: otp } : {}),
       sent,
     });
@@ -140,11 +140,11 @@ router.post("/business/login/verify-otp", async (req, res) => {
     const { cache } = await import("../../lib/redis");
     const storedHash = cache.getOtp(`biz_login_otp:${email.toLowerCase()}`);
     if (!storedHash) {
-      res.status(400).json({ error: "OTP expired ya nahin mila. Dobara login karein." });
+      res.status(400).json({ error: "OTP expired or not found. Please log in again." });
       return;
     }
     if (!verifyOtpHash(otp, storedHash as string)) {
-      res.status(400).json({ error: "Galat OTP. Dobara try karein." });
+      res.status(400).json({ error: "Incorrect OTP. Please try again." });
       return;
     }
     cache.deleteOtp(`biz_login_otp:${email.toLowerCase()}`);
@@ -173,7 +173,7 @@ router.post("/business/login/send-email-otp", async (req, res) => {
     }
     const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.email, email));
     if (!admin || !admin.isActive) {
-      res.status(200).json({ success: true, message: "Agar yeh email registered hai to OTP bheja jayega", sent: false });
+      res.status(200).json({ success: true, message: "If this email is registered, an OTP will be sent.", sent: false });
       return;
     }
     const { cache } = await import("../../lib/redis");
@@ -192,7 +192,7 @@ router.post("/business/login/send-email-otp", async (req, res) => {
     const returnDevOtp = !sent && (isDev || testEmails.includes(email.toLowerCase()));
     res.json({
       success: true,
-      message: sent ? "OTP aapke email pe bheja gaya" : (isDev ? "Dev mode — OTP neeche hai" : "Email service unavailable"),
+      message: sent ? "OTP sent to your email" : (isDev ? "Dev mode — OTP below" : "Email service unavailable"),
       ...(returnDevOtp ? { devOtp: otp } : {}),
       sent,
     });
@@ -444,7 +444,7 @@ router.post("/business/billing/subscription/create", requireBusinessAuth, async 
       });
     }
 
-    const rzPlan = await createPlan({ name: `AORANE Business ${planInfo.label} ${period}`, amount, period });
+    const rzPlan = await createPlan({ name: `Aorane Business ${planInfo.label} ${period}`, amount, period });
     const rzSub = await createSubscription({ planId: rzPlan.id, totalCount: 60, notes: { orgId: req.orgId!, plan } });
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + (isMonthly ? 30 : 365));

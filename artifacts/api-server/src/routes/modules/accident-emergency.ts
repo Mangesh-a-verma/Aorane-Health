@@ -44,12 +44,12 @@ router.get("/emergency/contacts", requireAuth, async (req: AuthRequest, res) => 
   }
 });
 
-/** POST /emergency/contacts — Emergency contact add karo */
+/** POST /emergency/contacts — Add emergency contact */
 router.post("/emergency/contacts", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { name, phone, relation, isPrimary, notifyOnAccident, notifyOnBloodEmergency } = req.body as Record<string, unknown>;
     if (!name || !phone) {
-      res.status(400).json({ error: "Name aur phone number required hai" });
+      res.status(400).json({ error: "Name and phone number are required." });
       return;
     }
     const [contact] = await db.insert(emergencyContactsTable).values({
@@ -117,7 +117,7 @@ router.post("/emergency/accident/sos", requireAuth, async (req: AuthRequest, res
       // Return India's national emergency numbers (always available)
       res.json({
         comingSoon: true,
-        message: "Accident Emergency feature jald aa raha hai. Abhi yeh numbers use karein:",
+        message: "Accident Emergency feature is coming soon. Please use these numbers for now:",
         emergencyNumbers: [
           { name: "National Emergency (Ambulance + Police + Fire)", number: "112", priority: 1 },
           { name: "Ambulance", number: "108", priority: 2 },
@@ -126,8 +126,8 @@ router.post("/emergency/accident/sos", requireAuth, async (req: AuthRequest, res
           { name: "Women Helpline", number: "1091", priority: 5 },
         ],
         googleMapsUrl: `https://www.google.com/maps?q=${lat},${lng}`,
-        yourLocation: { lat, lng, address: address || "GPS se mila" },
-        note: "Yeh URL share karo ambulance/police ko apni exact location batane ke liye",
+        yourLocation: { lat, lng, address: address || "Detected via GPS" },
+        note: "Share this URL with ambulance or police to convey your exact location",
       });
     }
 

@@ -50,7 +50,7 @@ type CompanySettings = {
   weeklyReportEnabled: boolean; monthlyReportEnabled: boolean;
 };
 const DEFAULT_COMPANY: CompanySettings = {
-  companyName: "AORANE Health", companyLogoUrl: null, tagline: "Your health, in your hands",
+  companyName: "Aorane Health", companyLogoUrl: null, tagline: "Your health, in your hands",
   website: "aorane.com", supportPhone: null, supportEmail: null, address: null,
   primaryColor: "#0077B6", accentColor: "#00B896",
   scorecardShowQr: true, scorecardShowBloodGroup: true, scorecardShowBmi: true, scorecardShowActivePercent: true,
@@ -168,8 +168,8 @@ export default function ScorecardScreen() {
   .footer { font-size: 10px; opacity: 0.5; text-align: center; margin-top: 16px; }
 </style></head><body>
 <div class="card">
-  <div class="logo">AORANE</div>
-  <div class="tagline">स्वास्थ्य ही धन — Your Health, Your Wealth</div>
+  <div class="logo">Aorane</div>
+  <div class="tagline">Your Health, Your Wealth</div>
   <div class="name">${c.name || "User"}</div>
   <div class="id">${(c.aoraneId || "").replace(/(\d{4})(\d{4})(\d{4})/, "$1  $2  $3")}</div>
   <span class="plan-badge">${(c.plan || "FREE").toUpperCase()} MEMBER</span>
@@ -196,7 +196,7 @@ export default function ScorecardScreen() {
     setDownloading(true);
     const now = new Date();
     setShareDate(now);
-    const filename = `AORANE_Health_Card_${card.aoraneId || "user"}.png`;
+    const filename = `Aorane_Health_Card_${card.aoraneId || "user"}.png`;
 
     if (Platform.OS === "web") {
       await new Promise((r) => setTimeout(r, 150));
@@ -215,7 +215,7 @@ export default function ScorecardScreen() {
         const { uri } = await Print.printToFileAsync({ html, base64: false });
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
-          await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Save AORANE Health Card" });
+          await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Save Aorane Health Card" });
         } else {
           Alert.alert("Saved", `Health card PDF saved to: ${uri}`);
         }
@@ -241,8 +241,8 @@ export default function ScorecardScreen() {
           const blob = await res.blob();
           const file = new File([blob], "aorane-health-card.png", { type: "image/png" });
           await (navigator as unknown as { share: (data: unknown) => Promise<void> }).share({
-            title: "My AORANE Health Card",
-            text: `My AORANE ID: ${card.aoraneId}\nCheck out the AORANE Health App!`,
+            title: "My Aorane Health Card",
+            text: `My Aorane ID: ${card.aoraneId}\nCheck out the Aorane Health App!`,
             files: [file],
           });
         } catch {
@@ -265,12 +265,12 @@ export default function ScorecardScreen() {
         const { uri } = await Print.printToFileAsync({ html, base64: false });
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
-          await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Share AORANE Health Card" });
+          await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Share Aorane Health Card" });
         } else {
           // Fallback: share text via native Share sheet
           await Share.share({
-            title: "My AORANE Health Card",
-            message: `🏥 My AORANE Health Card\n\nName: ${card.name}\nAORANE ID: ${(card.aoraneId || "").replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")}\nHealth Score: ${Math.round(card.activePercent?.overall ?? 0)}\nBlood Group: ${card.bloodGroup || "N/A"}\nBMI: ${card.bmi || "N/A"}\n\nDownload AORANE: https://play.google.com/store/apps/details?id=in.aorane.app`,
+            title: "My Aorane Health Card",
+            message: `🏥 My Aorane Health Card\n\nName: ${card.name}\nAorane ID: ${(card.aoraneId || "").replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")}\nHealth Score: ${Math.round(card.activePercent?.overall ?? 0)}\nBlood Group: ${card.bloodGroup || "N/A"}\nBMI: ${card.bmi || "N/A"}\n\nDownload Aorane: https://play.google.com/store/apps/details?id=in.aorane.app`,
           });
         }
       } catch {
@@ -294,7 +294,7 @@ export default function ScorecardScreen() {
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={{ color: "#0D1F33", fontFamily: "Inter_700Bold", fontSize: 22 }}>Health Scorecard</Text>
-            <Text style={{ color: "#7A90A4", fontSize: 12, fontFamily: "Inter_400Regular" }}>Your AORANE Health Identity</Text>
+            <Text style={{ color: "#7A90A4", fontSize: 12, fontFamily: "Inter_400Regular" }}>Your Aorane Health Identity</Text>
           </View>
           <TouchableOpacity onPress={() => setShowAvatarPicker(true)}
             style={{ backgroundColor: "rgba(0,119,182,0.08)", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 5 }}>
@@ -354,7 +354,7 @@ export default function ScorecardScreen() {
                       </LinearGradient>
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13 }} numberOfLines={1}>
-                          {card.name || "AORANE User"}
+                          {card.name || "Aorane User"}
                         </Text>
                         <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 9, fontFamily: "Inter_400Regular" }}>
                           {card.age ? `Age ${card.age}` : ""}
@@ -364,7 +364,7 @@ export default function ScorecardScreen() {
                       </View>
                     </View>
                     {/* ID */}
-                    <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 7, fontFamily: "Inter_500Medium", letterSpacing: 1.5, marginBottom: 1 }}>AORANE ID</Text>
+                    <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 7, fontFamily: "Inter_500Medium", letterSpacing: 1.5, marginBottom: 1 }}>Aorane ID</Text>
                     <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 2, marginBottom: 8 }}>
                       {formatId(card.aoraneId)}
                     </Text>
@@ -451,22 +451,22 @@ export default function ScorecardScreen() {
                 onPress={() => {
                   if (card?.aoraneId && Platform.OS === "web" && typeof navigator !== "undefined" && navigator.clipboard) {
                     navigator.clipboard.writeText(card.aoraneId);
-                    Alert.alert("Copied!", `AORANE ID: ${card.aoraneId}`);
+                    Alert.alert("Copied!", `Aorane ID: ${card.aoraneId}`);
                   } else {
-                    Alert.alert("Your AORANE ID", card?.aoraneId || "N/A");
+                    Alert.alert("Your Aorane ID", card?.aoraneId || "N/A");
                   }
                 }}
                 style={[styles.actionBtn, { backgroundColor: "rgba(0,119,182,0.08)", borderWidth: 1.5, borderColor: "#0077B6" }]}
               >
                 <Ionicons name="copy-outline" size={18} color="#0077B6" />
-                <Text style={[styles.actionBtnText, { color: "#0077B6" }]}>Copy AORANE ID</Text>
+                <Text style={[styles.actionBtnText, { color: "#0077B6" }]}>Copy Aorane ID</Text>
               </TouchableOpacity>
             </View>
 
             {/* Info note */}
             <Text style={{ textAlign: "center", color: "#7A90A4", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 16, lineHeight: 18 }}>
               The date shown on your card is the date of download/share.{"\n"}
-              Your AORANE ID is permanent and never changes.
+              Your Aorane ID is permanent and never changes.
             </Text>
           </>
         ) : (
@@ -476,7 +476,7 @@ export default function ScorecardScreen() {
               Complete Your Profile First
             </Text>
             <Text style={{ color: "#7A90A4", fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 8 }}>
-              Add your name, blood group, and health details in your profile to generate your AORANE ID.
+              Add your name, blood group, and health details in your profile to generate your Aorane ID.
             </Text>
           </View>
         )}

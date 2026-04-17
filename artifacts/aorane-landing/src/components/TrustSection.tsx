@@ -61,7 +61,7 @@ export default function TrustSection() {
           <AlertTriangle className="w-8 h-8 mx-auto mb-4 opacity-60" />
           <h3 className="text-2xl sm:text-3xl font-extrabold mb-3">Start your health journey today</h3>
           <p className="text-white/70 max-w-lg mx-auto mb-6">
-            Join 2 lakh+ Indians who've transformed their health with AORANE. Free forever for individuals.
+            Join 2 lakh+ Indians who've transformed their health with Aorane. Free forever for individuals.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <motion.a

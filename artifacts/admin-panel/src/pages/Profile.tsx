@@ -21,7 +21,7 @@ type CompanyForm = {
 };
 
 const EMPTY_COMPANY: CompanyForm = {
-  companyName: "AORANE Health", tagline: "Your Health, In Your Hands",
+  companyName: "Aorane Health", tagline: "Your Health, In Your Hands",
   website: "aorane.com", supportEmail: "", supportPhone: "",
   address: "", registeredAddress: "", city: "", state: "", pincode: "",
   gstin: "", cin: "", pan: "",
@@ -76,7 +76,7 @@ export default function Profile() {
       const r = await api.getCompanySettings();
       const s = r.settings as Record<string, string>;
       const form: CompanyForm = {
-        companyName: s.companyName || s.company_name || "AORANE Health",
+        companyName: s.companyName || s.company_name || "Aorane Health",
         tagline: s.tagline || "Your Health, In Your Hands",
         website: s.website || "aorane.com",
         supportEmail: s.supportEmail || s.support_email || "",
@@ -400,7 +400,7 @@ export default function Profile() {
                 </p>
                 <div className="grid sm:grid-cols-2 gap-3">
                   {[
-                    { label: "Company / Brand Name", key: "companyName", placeholder: "AORANE Health" },
+                    { label: "Company / Brand Name", key: "companyName", placeholder: "Aorane Health" },
                     { label: "Tagline", key: "tagline", placeholder: "Your Health, In Your Hands" },
                     { label: "Website", key: "website", placeholder: "aorane.com" },
                     { label: "Support Email", key: "supportEmail", placeholder: "support@aorane.com" },

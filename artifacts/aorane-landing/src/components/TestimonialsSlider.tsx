@@ -9,7 +9,7 @@ const testimonials = [
     initials: "PS",
     color: "#0747A6",
     stars: 5,
-    quote: "The AI food scanner is magical! I scanned my dal chawal and got exact macros in 2 seconds. Lost 6kg in 3 months without any diet plan. AORANE changed my life.",
+    quote: "The AI food scanner is magical! I scanned my dal chawal and got exact macros in 2 seconds. Lost 6kg in 3 months without any diet plan. Aorane changed my life.",
   },
   {
     name: "Dr. Rajan Mehta",
@@ -18,7 +18,7 @@ const testimonials = [
     initials: "RM",
     color: "#10B981",
     stars: 5,
-    quote: "Finally an Indian app that takes medical data seriously. I recommend AORANE to all my patients for daily vitals tracking. The ECG monitoring alerts have been life-saving.",
+    quote: "Finally an Indian app that takes medical data seriously. I recommend Aorane to all my patients for daily vitals tracking. The ECG monitoring alerts have been life-saving.",
   },
   {
     name: "Anita Krishnamurthy",
@@ -27,7 +27,7 @@ const testimonials = [
     initials: "AK",
     color: "#7C3AED",
     stars: 5,
-    quote: "Our company's productivity improved 18% after deploying AORANE Business for 500 employees. The department health dashboards are incredible for planning wellness programs.",
+    quote: "Our company's productivity improved 18% after deploying Aorane Business for 500 employees. The department health dashboards are incredible for planning wellness programs.",
   },
   {
     name: "Vikram Tiwari",
@@ -36,7 +36,7 @@ const testimonials = [
     initials: "VT",
     color: "#F59E0B",
     stars: 5,
-    quote: "MET-based calorie tracking is incredibly accurate. I recommend AORANE to all my clients. The exercise library with 300+ exercises covers everything from yoga to weightlifting.",
+    quote: "MET-based calorie tracking is incredibly accurate. I recommend Aorane to all my clients. The exercise library with 300+ exercises covers everything from yoga to weightlifting.",
   },
   {
     name: "Sunita Patel",
@@ -54,7 +54,7 @@ const testimonials = [
     initials: "RB",
     color: "#059669",
     stars: 5,
-    quote: "AORANE Business reduced our health insurance claims by 22% in the first year. The ROI is phenomenal. Every Indian company should have this for their workforce.",
+    quote: "Aorane Business reduced our health insurance claims by 22% in the first year. The ROI is phenomenal. Every Indian company should have this for their workforce.",
   },
   {
     name: "Meera Iyer",
@@ -122,7 +122,7 @@ export default function TestimonialsSlider() {
             Loved by <span className="gradient-text">2 lakh+ Indians</span>
           </h2>
           <p className="mt-3 text-gray-500 max-w-lg mx-auto">
-            From fitness enthusiasts to doctors, families to Fortune 500 companies — AORANE works for everyone.
+            From fitness enthusiasts to doctors, families to Fortune 500 companies — Aorane works for everyone.
           </p>
         </motion.div>
       </div>

@@ -775,7 +775,7 @@ export default function BloodEmergencyScreen() {
                   "Your contact number will be shared with donors",
                   "The request will automatically expire after 72 hours",
                   "A request flagged by 3 reports will be automatically hidden",
-                  "AORANE is not responsible for the safety or quality of blood — this is a connecting platform only",
+                  "Aorane is not responsible for the safety or quality of blood — this is a connecting platform only",
                 ].map((t, i) => (
                   <View key={i} style={{ flexDirection: "row", gap: 8 }}>
                     <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 12 }}>{i + 1}.</Text>

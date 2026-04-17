@@ -103,7 +103,7 @@ function SuccessOverlay({ plan, inviteCode, onDone }: { plan: string; inviteCode
           {plan.toUpperCase()} Plan is Active!
         </Text>
         <Text style={{ color: "rgba(255,255,255,0.65)", fontFamily: "Inter_400Regular", fontSize: 12, textAlign: "center", marginBottom: 20 }}>
-          {isFamilyPlan ? "4 family members ke liye — code share karo" : "All premium features unlocked!"}
+          {isFamilyPlan ? "For 4 family members — share the code below" : "All premium features unlocked!"}
         </Text>
 
         {/* Family invite code */}
@@ -116,14 +116,14 @@ function SuccessOverlay({ plan, inviteCode, onDone }: { plan: string; inviteCode
               <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{copied ? "Copied!" : "Copy Code"}</Text>
             </TouchableOpacity>
             <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 8 }}>
-              Family members → App → Family Health → Code daalo
+              Family members → App → Family Health → Enter Code
             </Text>
           </View>
         )}
 
         <TouchableOpacity onPress={onDone} style={{ backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14, width: "100%", alignItems: "center" }}>
           <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>
-            {isFamilyPlan ? "Family Screen Dekho" : "Go to Dashboard"}
+            {isFamilyPlan ? "View Family" : "Go to Dashboard"}
           </Text>
         </TouchableOpacity>
       </LinearGradient>
@@ -204,7 +204,7 @@ export default function UpgradeScreen() {
     const params = new URLSearchParams({
       key: orderRes.razorpayKeyId,
       order_id: orderRes.razorpayOrderId,
-      name: "AORANE Health",
+      name: "Aorane Health",
       description: `${plan.label} Plan - 1 Month`,
       callback_url: callbackUrl,
       cancel_url: callbackUrl,
@@ -241,7 +241,7 @@ export default function UpgradeScreen() {
           amount: orderRes.amount * 100,
           currency: "INR",
           order_id: orderRes.razorpayOrderId,
-          name: "AORANE Health",
+          name: "Aorane Health",
           description: `${plan.label} Plan - 1 Month`,
           prefill: {
             contact: (user?.phone as string) || "",
@@ -287,7 +287,7 @@ export default function UpgradeScreen() {
             <Ionicons name="arrow-back" size={20} color={isDark ? "#FFF" : "#0077B6"} />
           </TouchableOpacity>
           <View>
-            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>AORANE Premium ✨</Text>
+            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>Aorane Premium ✨</Text>
             <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Razorpay Secure Checkout</Text>
           </View>
         </View>
@@ -351,7 +351,7 @@ export default function UpgradeScreen() {
             <View style={{ flexDirection: "row", gap: 8 }}>
               <TextInput
                 value={promoCode} onChangeText={t => { setPromoCode(t); setPromoMsg(""); setDiscount(0); }}
-                placeholder="Code daalo (e.g. AORANE20)" placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.3)"}
+                placeholder="Enter code (e.g. AORANE20)" placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.3)"}
                 style={{ flex: 1, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,119,182,0.06)", borderRadius: 12, padding: 12, color: isDark ? "#FFF" : "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 14, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.15)", textTransform: "uppercase" }}
                 autoCapitalize="characters"
               />

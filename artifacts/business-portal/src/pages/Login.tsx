@@ -141,8 +141,8 @@ export default function Login() {
       >
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 56 }}>
-            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ width: 200, height: 200, objectFit: "contain" }} />
-            <span style={{ color: "white", fontSize: 20, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>AORANE Business</span>
+            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="Aorane" style={{ width: 200, height: 200, objectFit: "contain" }} />
+            <span style={{ color: "white", fontSize: 20, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Aorane Business</span>
           </div>
           <h2 style={{ fontSize: 32, fontWeight: 800, color: "white", lineHeight: 1.25, margin: "0 0 16px", fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
             Employee health, measured. Not guessed.
@@ -182,8 +182,8 @@ export default function Login() {
 
           {/* Mobile logo */}
           <div className="mobile-logo" style={{ display: "none", alignItems: "center", gap: 10, marginBottom: 36 }}>
-            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ width: 180, height: 180, objectFit: "contain" }} />
-            <span style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20" }}>AORANE Business</span>
+            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="Aorane" style={{ width: 180, height: 180, objectFit: "contain" }} />
+            <span style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20" }}>Aorane Business</span>
           </div>
 
           {/* Header */}
@@ -288,7 +288,7 @@ export default function Login() {
                         </div>
                         <div style={{ fontSize: 16, fontWeight: 700, color: "#181c20", marginBottom: 4 }}>Email Verification</div>
                         <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.5 }}>
-                          Password verified! OTP bheja gaya:<br />
+                          Password verified! OTP sent to:<br />
                           <span style={{ fontWeight: 600, color: PRIMARY }}>{email}</span>
                         </div>
                       </div>
@@ -308,7 +308,7 @@ export default function Login() {
                       </div>
                       <button type="button" onClick={resetPasswordTab}
                         style={{ fontSize: 12, color: PRIMARY, background: "none", border: "none", cursor: "pointer", marginTop: 8, padding: 0, fontWeight: 600, display: "block" }}>
-                        ← Wapas jaao / Password change karein
+                        ← Go back / Change password
                       </button>
                     </div>
                   )}

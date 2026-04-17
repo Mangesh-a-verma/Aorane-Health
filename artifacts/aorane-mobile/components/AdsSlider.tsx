@@ -30,11 +30,11 @@ type Ad = {
 };
 
 const PLACEHOLDER_ADS: Ad[] = [
-  { id: "ph1", title: "AORANE Premium — 3 Mahine Free! 🏆", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 1 },
-  { id: "ph2", title: "Family Health Plan — Poore ghar ke liye 👨‍👩‍👧‍👦", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 2 },
-  { id: "ph3", title: "AI Food Scan — Khane ki calories AI se jaano 🥗", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 3 },
-  { id: "ph4", title: "Medicine Reminder — Dawai kabhi mat bhulo 💊", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 4 },
-  { id: "ph5", title: "Health Score — 100% banao, fit raho ❤️", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 5 },
+  { id: "ph1", title: "Aorane Premium — 3 Months Free! 🏆", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 1 },
+  { id: "ph2", title: "Family Health Plan — For your entire family 👨‍👩‍👧‍👦", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 2 },
+  { id: "ph3", title: "AI Food Scan — Know your meal calories with AI 🥗", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 3 },
+  { id: "ph4", title: "Medicine Reminder — Never miss your medicines 💊", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 4 },
+  { id: "ph5", title: "Health Score — Score 100%, stay fit ❤️", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 5 },
 ];
 
 const PLACEHOLDER_GRADIENTS: [string, string][] = [

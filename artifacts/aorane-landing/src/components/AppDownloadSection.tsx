@@ -102,7 +102,7 @@ export default function AppDownloadSection() {
               Available Now
             </span>
             <h2 className="text-4xl sm:text-5xl font-extrabold text-white leading-tight mb-5">
-              Download AORANE.{" "}
+              Download Aorane.{" "}
               <span className="text-[#10B981]">Free forever</span>
             </h2>
             <p className="text-lg text-white/70 leading-relaxed mb-8 max-w-lg">

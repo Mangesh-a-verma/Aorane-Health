@@ -21,7 +21,7 @@ const router = Router();
 const COMING_SOON_RESPONSE = {
   status: "coming_soon",
   feature: "WhatsApp Bot Integration",
-  message: "Yeh feature abhi development mein hai. Jald aa raha hai!",
+  message: "This feature is currently in development. Coming soon!",
   expectedLaunch: "Q2 2026",
   plan: "pro",
 };
@@ -140,12 +140,12 @@ router.get("/admin/whatsapp/stats", requireAdmin, async (_req: AdminRequest, res
 router.get("/admin/whatsapp/templates", requireAdmin, async (_req: AdminRequest, res) => {
   res.json({
     templates: [
-      { name: "meal_reminder_breakfast", type: "meal_reminder", status: "draft", language: "hi", body: "Namaste {{name}}! Aaj ka breakfast track karo 🌅 Kal aapne {{calories}} kcal liye the." },
-      { name: "meal_reminder_lunch", type: "meal_reminder", status: "draft", language: "hi", body: "{{name}} bhai/didi, lunch mein kya khaya? Ek line mein batao! 🍱" },
-      { name: "meal_reminder_dinner", type: "meal_reminder", status: "draft", language: "hi", body: "Raat ka khana track karo {{name}}! Aaj ka score: {{health_score}}/100 🌙" },
-      { name: "medicine_reminder", type: "medicine_reminder", status: "draft", language: "hi", body: "💊 {{name}}, {{medicine_name}} lene ka time ho gaya! Dose: {{dose}}" },
-      { name: "exercise_reminder", type: "exercise_reminder", status: "draft", language: "hi", body: "{{name}}, aaj exercise nahi ki abhi tak 💪 30 min walk bhi kaafi hai!" },
-      { name: "weekly_report", type: "weekly_report", status: "draft", language: "hi", body: "📊 {{name}} ki weekly health report:\n✅ Avg calories: {{avg_cal}} kcal\n💪 Exercise: {{exercise_days}} din\n💧 Water: {{avg_water}} glasses\n🏆 Health Score: {{health_score}}/100" },
+      { name: "meal_reminder_breakfast", type: "meal_reminder", status: "draft", language: "en", body: "Good morning {{name}}! Don't forget to track your breakfast 🌅 Yesterday you had {{calories}} kcal." },
+      { name: "meal_reminder_lunch", type: "meal_reminder", status: "draft", language: "en", body: "Hey {{name}}, what did you have for lunch? Log it in one tap! 🍱" },
+      { name: "meal_reminder_dinner", type: "meal_reminder", status: "draft", language: "en", body: "Time to track dinner, {{name}}! Today's health score: {{health_score}}/100 🌙" },
+      { name: "medicine_reminder", type: "medicine_reminder", status: "draft", language: "en", body: "💊 {{name}}, it's time to take {{medicine_name}}! Dose: {{dose}}" },
+      { name: "exercise_reminder", type: "exercise_reminder", status: "draft", language: "en", body: "{{name}}, you haven't exercised yet today 💪 Even a 30-min walk counts!" },
+      { name: "weekly_report", type: "weekly_report", status: "draft", language: "en", body: "📊 {{name}}'s Weekly Health Report:\n✅ Avg calories: {{avg_cal}} kcal\n💪 Exercise: {{exercise_days}} days\n💧 Water: {{avg_water}} glasses\n🏆 Health Score: {{health_score}}/100" },
     ],
     status: "coming_soon",
   });

@@ -76,7 +76,7 @@ function SearchResultCard({ r }: { r: SearchResult }) {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <div className="bg-muted/40 rounded-lg px-3 py-2">
-          <div className="text-[10px] text-muted-foreground uppercase font-medium mb-0.5">AORANE ID</div>
+          <div className="text-[10px] text-muted-foreground uppercase font-medium mb-0.5">Aorane ID</div>
           <div className="font-mono text-sm font-bold text-primary tracking-widest">
             {r.aoraneId ? r.aoraneId.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3") : "Not generated"}
           </div>
@@ -146,21 +146,21 @@ export default function Users() {
   return (
     <Layout>
       <div className="p-6 max-w-5xl mx-auto space-y-6">
-        {/* AORANE ID Search Section */}
+        {/* Aorane ID Search Section */}
         <div className="bg-gradient-to-br from-primary/5 via-transparent to-primary/5 border border-primary/20 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <Fingerprint size={18} className="text-primary" />
-            <h2 className="text-base font-bold text-foreground">AORANE ID Search</h2>
+            <h2 className="text-base font-bold text-foreground">Aorane ID Search</h2>
             <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">12-digit</span>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">Search by AORANE ID (12 digits) or user name</p>
+          <p className="text-xs text-muted-foreground mb-3">Search by Aorane ID (12 digits) or user name</p>
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="search"
               value={aoraneQuery}
               onChange={(e) => handleAoraneSearch(e.target.value)}
-              placeholder="Search by AORANE ID or name..."
+              placeholder="Search by Aorane ID or name..."
               className="w-full bg-card border border-border rounded-xl pl-9 pr-10 py-2.5 text-sm focus:outline-none focus:border-primary transition-all font-mono"
             />
             {aoraneQuery && (

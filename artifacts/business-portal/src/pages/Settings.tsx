@@ -97,7 +97,7 @@ export default function Settings() {
       <div className="p-6 max-w-2xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Organization aur account manage karein</p>
+          <p className="text-muted-foreground text-sm mt-0.5">Manage your organization and account settings</p>
         </div>
 
         {/* Admin Profile */}
@@ -254,7 +254,7 @@ export default function Settings() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Password change karein apni account security ke liye</p>
+            <p className="text-sm text-muted-foreground">Change your password to keep your account secure</p>
           )}
         </div>
 

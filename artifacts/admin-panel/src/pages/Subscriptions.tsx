@@ -68,13 +68,13 @@ export default function Subscriptions() {
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
             <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-bold text-foreground text-lg">Subscription Grant Karo</h2>
+                <h2 className="font-bold text-foreground text-lg">Grant Subscription</h2>
                 <button onClick={() => setGrantOpen(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
               </div>
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">User ID</label>
-                  <input value={grantUserId} onChange={e => setGrantUserId(e.target.value)} placeholder="User UUID daalo" className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                  <input value={grantUserId} onChange={e => setGrantUserId(e.target.value)} placeholder="Enter User UUID" className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Plan</label>
@@ -101,8 +101,8 @@ export default function Subscriptions() {
         ) : subs.length === 0 ? (
           <div className="bg-card border border-border rounded-xl p-12 text-center">
             <CreditCard size={40} className="text-muted-foreground/30 mx-auto mb-3" />
-            <h3 className="font-semibold text-foreground mb-1">Koi subscriptions nahi</h3>
-            <p className="text-muted-foreground text-sm">Abhi tak koi paid subscription nahi hai</p>
+            <h3 className="font-semibold text-foreground mb-1">No subscriptions found</h3>
+            <p className="text-muted-foreground text-sm">No paid subscriptions yet</p>
           </div>
         ) : (
           <div className="bg-card border border-border rounded-xl overflow-hidden">

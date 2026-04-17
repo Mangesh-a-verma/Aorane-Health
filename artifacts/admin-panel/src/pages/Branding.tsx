@@ -20,7 +20,7 @@ type CompanySettings = {
 };
 
 const DEFAULTS: CompanySettings = {
-  companyName: "AORANE Health", companyLogoUrl: null, tagline: "Your Health, In Your Hands",
+  companyName: "Aorane Health", companyLogoUrl: null, tagline: "Your Health, In Your Hands",
   website: "aorane.com", supportPhone: "+917307826291", supportEmail: "support@aorane.com", address: "Indra Nagar, Near Lekhraj Metro, Lucknow, Uttar Pradesh 226016",
   primaryColor: "#0077B6", accentColor: "#00B896",
   scorecardShowQr: true, scorecardShowBloodGroup: true, scorecardShowBmi: true,
@@ -141,7 +141,7 @@ export default function BrandingPage() {
               desc="Name, logo and basic info — shown in scorecard footer and reports" />
             <div className="space-y-4">
               <Field label="Company Name *">
-                <Input value={settings.companyName} onChange={(v) => set("companyName", v)} placeholder="e.g. AORANE Health Pvt. Ltd." />
+                <Input value={settings.companyName} onChange={(v) => set("companyName", v)} placeholder="e.g. Aorane Health Pvt. Ltd." />
               </Field>
               <Field label="Tagline">
                 <Input value={settings.tagline || ""} onChange={(v) => set("tagline", v)} placeholder="e.g. Your Health, In Your Hands" />
@@ -232,7 +232,7 @@ export default function BrandingPage() {
             {/* ── SCORECARD SETTINGS ── */}
             <div className="bg-card border border-border rounded-2xl p-6">
               <SectionHeader icon={Eye} title="Scorecard Fields"
-                desc="Kaunse fields user ke scorecard card pe dikhne chahiye" />
+                desc="Choose which fields are visible on the user's scorecard card" />
               <div className="divide-y divide-border">
                 <Toggle checked={settings.scorecardShowQr} onChange={(v) => set("scorecardShowQr", v)} label="Show Play Store QR Code" />
                 <Toggle checked={settings.scorecardShowBloodGroup} onChange={(v) => set("scorecardShowBloodGroup", v)} label="Show Blood Group" />

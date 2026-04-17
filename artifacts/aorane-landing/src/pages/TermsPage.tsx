@@ -15,7 +15,7 @@ export default function TermsPage() {
           <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-teal-500 rounded-lg flex items-center justify-center">
             <Activity size={14} className="text-white" />
           </div>
-          <span className="font-bold">AORANE</span>
+          <span className="font-bold">Aorane</span>
         </div>
       </nav>
 
@@ -27,14 +27,14 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-white font-semibold text-lg mb-3">1. Acceptance of Terms</h2>
-            <p>By downloading, installing, or using the AORANE mobile application or web platform ("Platform"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not use our Platform.</p>
-            <p className="mt-3">These Terms constitute a legally binding agreement between you and AORANE Health Technology ("AORANE", "we", "us", "our"). These Terms are governed by the laws of India.</p>
+            <p>By downloading, installing, or using the Aorane mobile application or web platform ("Platform"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not use our Platform.</p>
+            <p className="mt-3">These Terms constitute a legally binding agreement between you and Aorane Health Technology ("Aorane", "we", "us", "our"). These Terms are governed by the laws of India.</p>
           </section>
 
           <section>
             <h2 className="text-white font-semibold text-lg mb-3">2. Eligibility</h2>
             <ul className="list-disc pl-5 space-y-1.5">
-              <li>You must be at least 13 years of age to use AORANE</li>
+              <li>You must be at least 13 years of age to use Aorane</li>
               <li>If you are under 18, you must have parental or guardian consent</li>
               <li>You must have a valid Indian mobile number for OTP-based registration</li>
               <li>You must provide accurate and truthful information during registration</li>
@@ -45,7 +45,7 @@ export default function TermsPage() {
             <h2 className="text-white font-semibold text-lg mb-3">3. Nature of Service — Medical Disclaimer</h2>
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-4">
               <p className="text-amber-300 font-medium">⚠️ Important Medical Disclaimer</p>
-              <p className="text-amber-200/80 mt-2">AORANE is a wellness and health management tool. It is NOT a medical device and does not provide medical diagnosis, treatment, or clinical advice. Always consult a qualified healthcare professional for medical decisions.</p>
+              <p className="text-amber-200/80 mt-2">Aorane is a wellness and health management tool. It is NOT a medical device and does not provide medical diagnosis, treatment, or clinical advice. Always consult a qualified healthcare professional for medical decisions.</p>
             </div>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>AI-generated health suggestions are for informational purposes only</li>
@@ -63,15 +63,15 @@ export default function TermsPage() {
               <li>You must not share your OTP or account credentials with anyone</li>
               <li>You are responsible for all activity that occurs under your account</li>
               <li>You must promptly notify us of any unauthorized use of your account</li>
-              <li>One person may not maintain more than one active AORANE account</li>
-              <li>You must not use AORANE for any unlawful purpose</li>
+              <li>One person may not maintain more than one active Aorane account</li>
+              <li>You must not use Aorane for any unlawful purpose</li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-white font-semibold text-lg mb-3">5. Subscription Plans & Billing</h2>
             <h3 className="text-white/90 font-medium mb-2">5.1 Free Plan</h3>
-            <p>AORANE offers a free tier with basic health tracking features. Free features may change over time at our discretion.</p>
+            <p>Aorane offers a free tier with basic health tracking features. Free features may change over time at our discretion.</p>
             <h3 className="text-white/90 font-medium mb-2 mt-3">5.2 Paid Subscriptions</h3>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>Paid plans are billed monthly or annually as selected</li>
@@ -87,9 +87,9 @@ export default function TermsPage() {
           <section>
             <h2 className="text-white font-semibold text-lg mb-3">6. Corporate / Business Plans</h2>
             <ul className="list-disc pl-5 space-y-1.5">
-              <li>Organisations registering on AORANE must provide accurate GST and company details</li>
+              <li>Organisations registering on Aorane must provide accurate GST and company details</li>
               <li>Corporate admins are responsible for managing their organisation's members</li>
-              <li>Member health data shared with corporate admins is governed by your organisation's data policy and AORANE's Privacy Policy</li>
+              <li>Member health data shared with corporate admins is governed by your organisation's data policy and Aorane's Privacy Policy</li>
               <li>Seat-based billing is calculated on the number of active seats</li>
               <li>Corporate accounts may generate GST invoices for B2B billing</li>
             </ul>
@@ -98,16 +98,16 @@ export default function TermsPage() {
           <section>
             <h2 className="text-white font-semibold text-lg mb-3">7. Intellectual Property</h2>
             <ul className="list-disc pl-5 space-y-1.5">
-              <li>All content, design, code, and AI models on AORANE are owned by AORANE Health Technology</li>
+              <li>All content, design, code, and AI models on Aorane are owned by Aorane Health Technology</li>
               <li>You may not copy, distribute, or reverse-engineer any part of the Platform</li>
-              <li>The AORANE name and logo are trademarks of AORANE Health Technology</li>
-              <li>Content you upload (food photos, blood reports) remains yours; you grant AORANE a licence to process it for service delivery</li>
+              <li>The Aorane name and logo are trademarks of Aorane Health Technology</li>
+              <li>Content you upload (food photos, blood reports) remains yours; you grant Aorane a licence to process it for service delivery</li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-white font-semibold text-lg mb-3">8. Prohibited Uses</h2>
-            <p>You must not use AORANE to:</p>
+            <p>You must not use Aorane to:</p>
             <ul className="list-disc pl-5 space-y-1.5 mt-2">
               <li>Upload false, misleading, or fraudulent health information</li>
               <li>Impersonate another person or entity</li>
@@ -122,7 +122,7 @@ export default function TermsPage() {
             <h2 className="text-white font-semibold text-lg mb-3">9. Limitation of Liability</h2>
             <p>To the maximum extent permitted by applicable law:</p>
             <ul className="list-disc pl-5 space-y-1.5 mt-2">
-              <li>AORANE is provided "as is" without warranties of any kind</li>
+              <li>Aorane is provided "as is" without warranties of any kind</li>
               <li>We are not liable for health decisions made based on AI suggestions</li>
               <li>Our total liability shall not exceed the amount paid by you in the last 3 months</li>
               <li>We are not responsible for third-party service outages (payment processors, AI providers)</li>
@@ -163,7 +163,7 @@ export default function TermsPage() {
       </main>
 
       <footer className="border-t border-white/10 py-8 text-center text-white/30 text-xs">
-        © {new Date().getFullYear()} AORANE Health Technology. All rights reserved.
+        © {new Date().getFullYear()} Aorane Health Technology. All rights reserved.
       </footer>
     </div>
   );

@@ -45,7 +45,7 @@ const DEFAULT_PLANS = [
   {
     planKey: "starter", displayName: "Starter", type: "organization",
     monthlyPrice: "999", yearlyPrice: "9990", maxSeats: 50,
-    features: ["50 member seats", "Member health dashboard", "AORANE ID search", "Enrollment code management", "Basic analytics"],
+    features: ["50 member seats", "Member health dashboard", "Aorane ID search", "Enrollment code management", "Basic analytics"],
     badgeText: null, badgeColor: "#0077B6",
     gradientColors: ["#0077B6", "#0369A1"] as [string, string],
     isActive: true, sortOrder: 10,

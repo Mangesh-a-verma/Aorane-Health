@@ -59,9 +59,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div className="px-6 pt-6 pb-4 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
-            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ height: 48, width: "auto", objectFit: "contain" }} />
+            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="Aorane" style={{ height: 48, width: "auto", objectFit: "contain" }} />
             <div>
-              <div className="text-white font-bold text-sm tracking-wide">AORANE</div>
+              <div className="text-white font-bold text-sm tracking-wide">Aorane</div>
               <div className="text-sidebar-foreground/50 text-xs">Business Portal</div>
             </div>
           </div>

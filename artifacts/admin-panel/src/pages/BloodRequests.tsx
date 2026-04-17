@@ -47,7 +47,7 @@ export default function BloodRequests() {
         ) : requests.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-center">
             <Droplet size={36} className="text-muted-foreground/30 mb-3" />
-            <p className="text-muted-foreground">Koi blood request nahi mili</p>
+            <p className="text-muted-foreground">No blood requests found</p>
           </div>
         ) : (
           <div className="space-y-3">

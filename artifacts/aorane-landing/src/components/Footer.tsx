@@ -17,7 +17,7 @@ export default function Footer() {
     {
       title: "Company",
       links: [
-        { label: "About AORANE", href: "#" },
+        { label: "About Aorane", href: "#" },
         { label: "Blog", href: "#" },
         { label: "Careers", href: "#" },
         { label: "Press Kit", href: "#" },
@@ -42,8 +42,8 @@ export default function Footer() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-8">
           <div className="lg:col-span-2">
             <div className="flex items-center gap-2.5 mb-4">
-              <img src={import.meta.env.BASE_URL + 'logo.png'} alt="AORANE" style={{ height: 52, width: "auto", objectFit: "contain" }} />
-              <span className="text-xl font-bold">AORANE</span>
+              <img src={import.meta.env.BASE_URL + 'logo.png'} alt="Aorane" style={{ height: 52, width: "auto", objectFit: "contain" }} />
+              <span className="text-xl font-bold">Aorane</span>
             </div>
             <p className="text-sm text-gray-400 leading-relaxed max-w-xs mb-6">
               India's most comprehensive AI-powered health management platform. Built for Bharat.
@@ -90,7 +90,7 @@ export default function Footer() {
 
         <div className="border-t border-white/10 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-500">
-            © {year} AORANE Health Technologies Pvt. Ltd. All rights reserved.
+            © {year} Aorane Health Technologies Pvt. Ltd. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
             <span className="text-xs text-gray-500 flex items-center gap-1">

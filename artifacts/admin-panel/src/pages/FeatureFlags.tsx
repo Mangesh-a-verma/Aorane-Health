@@ -73,7 +73,7 @@ export default function FeatureFlags() {
           ) : flags.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">
               <FlagIcon size={36} className="text-muted-foreground/30 mb-3" />
-              <p className="text-muted-foreground">Koi feature flag nahi mili</p>
+              <p className="text-muted-foreground">No feature flags found</p>
             </div>
           ) : (
             flags.map((flag) => (

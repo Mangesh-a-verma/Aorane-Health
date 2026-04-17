@@ -67,7 +67,7 @@ export async function scheduleMedicineReminders(
     const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: "💊 Medicine Reminder",
-        body: `${medicine.medicineName}${medicine.dosage ? " " + medicine.dosage : ""} lene ka waqt ho gaya!${mealHint}`,
+        body: `Time to take ${medicine.medicineName}${medicine.dosage ? " " + medicine.dosage : ""}!${mealHint}`,
         sound: true,
         data: {
           medicineId: medicine.medicineId,
@@ -117,8 +117,8 @@ export async function scheduleHealthTipNotification(): Promise<void> {
   try {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: "🌿 AORANE Daily Health Tip",
-        body: "Aaj ka health tip dekhne ke liye tap karein!",
+        title: "🌿 Aorane Daily Health Tip",
+        body: "Tap to see today's health tip!",
         sound: true,
         data: { type: "health_tip" },
       },

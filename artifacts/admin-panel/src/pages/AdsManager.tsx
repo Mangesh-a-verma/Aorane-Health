@@ -190,7 +190,7 @@ function AdModal({
             <label className="text-xs font-semibold text-muted-foreground mb-1 block">Ad Title *</label>
             <input value={form.title} onChange={(e) => set("title", e.target.value)} required
               className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-              placeholder="e.g. AORANE Premium — 50% Off"
+              placeholder="e.g. Aorane Premium — 50% Off"
             />
           </div>
 

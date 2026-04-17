@@ -143,7 +143,7 @@ export default function LoginScreen() {
 
   const handleSendEmailOtp = async () => {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      Alert.alert("Invalid Email", "Sahi email address daalo."); return;
+      Alert.alert("Invalid Email", "Please enter a valid email address."); return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsLoading(true);
@@ -155,7 +155,7 @@ export default function LoginScreen() {
         router.push({ pathname: "/(auth)/verify-otp", params: { email, lang, mode: "email" } });
       }
     } catch (err: unknown) {
-      Alert.alert("Email Error", err instanceof Error ? err.message : "OTP bhejne mein problem aayi.");
+      Alert.alert("Email Error", err instanceof Error ? err.message : "Failed to send OTP. Please try again.");
     } finally { setIsLoading(false); }
   };
 
@@ -420,7 +420,7 @@ export default function LoginScreen() {
                       ? <ActivityIndicator color="#FFF" />
                       : <>
                           <Text style={s.ctaText}>
-                            {loginMode === "pin" ? t("pinLogin") : loginMode === "email" ? "📧 Email OTP Bhejo" : t("sendSmsOtp")}
+                            {loginMode === "pin" ? t("pinLogin") : loginMode === "email" ? "📧 Send Email OTP" : t("sendSmsOtp")}
                           </Text>
                           <View style={s.ctaArrow}>
                             <Ionicons name="arrow-forward" size={16} color={loginMode === "pin" ? "#7C3AED" : PRIMARY} />
@@ -431,35 +431,39 @@ export default function LoginScreen() {
                 ) : (
                   <View style={s.ctaBtnDisabled}>
                     <Text style={s.ctaTextDisabled}>
-                      {loginMode === "pin" ? t("pinLogin") : loginMode === "email" ? "📧 Email OTP Bhejo" : t("sendSmsOtp")}
+                      {loginMode === "pin" ? t("pinLogin") : loginMode === "email" ? "📧 Send Email OTP" : t("sendSmsOtp")}
                     </Text>
                   </View>
                 )}
               </TouchableOpacity>
 
-              {/* Google Sign-In — Primary alternative */}
-              <View style={s.dividerRow}>
-                <View style={s.dividerLine} />
-                <Text style={s.dividerText}>ya</Text>
-                <View style={s.dividerLine} />
-              </View>
+              {/* Google Sign-In — only shown when OAuth client ID is configured */}
+              {!!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID && (
+                <>
+                  <View style={s.dividerRow}>
+                    <View style={s.dividerLine} />
+                    <Text style={s.dividerText}>or</Text>
+                    <View style={s.dividerLine} />
+                  </View>
 
-              <TouchableOpacity
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); googlePromptAsync(); }}
-                disabled={anyLoading || googleLoading}
-                activeOpacity={0.88}
-                style={[s.googleBtn, (anyLoading || googleLoading) && { opacity: 0.65 }]}
-              >
-                {googleLoading
-                  ? <ActivityIndicator color="#4285F4" size="small" />
-                  : <>
-                      <View style={s.googleIcon}>
-                        <Text style={{ fontSize: 17 }}>G</Text>
-                      </View>
-                      <Text style={s.googleText}>Google se continue karo</Text>
-                    </>
-                }
-              </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); googlePromptAsync(); }}
+                    disabled={anyLoading || googleLoading}
+                    activeOpacity={0.88}
+                    style={[s.googleBtn, (anyLoading || googleLoading) && { opacity: 0.65 }]}
+                  >
+                    {googleLoading
+                      ? <ActivityIndicator color="#4285F4" size="small" />
+                      : <>
+                          <View style={s.googleIcon}>
+                            <Text style={{ fontSize: 17 }}>G</Text>
+                          </View>
+                          <Text style={s.googleText}>Continue with Google</Text>
+                        </>
+                    }
+                  </TouchableOpacity>
+                </>
+              )}
 
               {/* Social Buttons */}
               {loginMode === "otp" && (

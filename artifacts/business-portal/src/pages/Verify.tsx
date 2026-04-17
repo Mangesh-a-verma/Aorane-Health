@@ -165,7 +165,7 @@ export default function Verify() {
         </div>
 
         <div className="mt-6 text-center text-xs text-[#9CA3AF]">
-          Contact your AORANE administrator to activate verification services.
+          Contact your Aorane administrator to activate verification services.
         </div>
       </div>
     </Layout>
