@@ -1,100 +1,128 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Animated, Platform, Alert, Dimensions,
+  Animated, Platform, Alert, Dimensions, Modal, ActivityIndicator,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
 import { api } from "@/lib/api";
+import { DS } from "@/lib/theme";
 
 const { width: W } = Dimensions.get("window");
 
+// ── Color palette consistent with app theme ─────────────────────────────────
 const C = {
-  bg: "#F0F9FF", card: "#FFFFFF", primary: "#0077B6", accent: "#00B896",
-  text: "#0D1F33", muted: "#7A90A4", border: "#E2EFF5",
-  purple: "#8B5CF6", green: "#10B981", orange: "#F97316", red: "#DC2626",
-  amber: "#F59E0B",
+  bg:      "#F9F5FF",
+  card:    "#FFFFFF",
+  text:    DS.color.text,
+  muted:   DS.color.muted,
+  border:  "#EDE9FA",
+  primary: "#7C3AED",          // deep purple — calm, clinical
+  accent:  "#06B6D4",          // cyan — breathing/relaxation
+  green:   "#10B981",
+  amber:   "#F59E0B",
+  orange:  "#F97316",
+  red:     "#EF4444",
 };
 
+// ── Score helpers ─────────────────────────────────────────────────────────────
+function scoreColor(s: number): string {
+  if (s === 0)  return C.border;
+  if (s < 26)   return C.green;
+  if (s < 51)   return C.amber;
+  if (s < 76)   return C.orange;
+  return C.red;
+}
+function scoreLabel(s: number): string {
+  if (s < 26)  return "Low";
+  if (s < 51)  return "Moderate";
+  if (s < 76)  return "Elevated";
+  return "High Risk";
+}
+function scoreEmoji(s: number): string {
+  if (s < 26)  return "😌";
+  if (s < 51)  return "😐";
+  if (s < 76)  return "😟";
+  return "🚨";
+}
+
+// ── MOOD options (5-level) ─────────────────────────────────────────────────
 const MOODS = [
-  { key: "happy",    label: "Happy",    emoji: "😊", color: C.green,  score: 15, desc: "All good!" },
-  { key: "neutral",  label: "Neutral",  emoji: "😐", color: C.amber,  score: 40, desc: "Feeling okay" },
-  { key: "stressed", label: "Stressed", emoji: "😟", color: C.orange, score: 72, desc: "Under pressure" },
-  { key: "sad",      label: "Sad",      emoji: "😢", color: C.red,    score: 65, desc: "Mood is low" },
+  { score: 1, label: "Excellent", emoji: "😄", color: C.green,   subText: "Feeling great!" },
+  { score: 2, label: "Good",      emoji: "🙂", color: "#34D399", subText: "Doing well"      },
+  { score: 3, label: "Fair",      emoji: "😐", color: C.amber,   subText: "So-so"           },
+  { score: 4, label: "Low",       emoji: "😟", color: C.orange,  subText: "Struggling"      },
+  { score: 5, label: "Very Low",  emoji: "😞", color: C.red,     subText: "Really hard day" },
 ];
 
+// ── ENERGY options ─────────────────────────────────────────────────────────
+const ENERGY_LABELS = ["Exhausted", "Low", "Okay", "Good", "High Energy"];
+
+// ── Clinical PSS-style questions (PHQ-4 inspired) ─────────────────────────
+const PSS_QUESTIONS = [
+  { q: "Feeling nervous, anxious, or overwhelmed?",       key: "q1" },
+  { q: "Unable to control important things in your life?",key: "q2" },
+  { q: "Things piling up beyond what you can handle?",    key: "q3" },
+];
+const PSS_OPTIONS = ["Not at all", "Rarely", "Sometimes", "Often"];
+
+// ── Body symptoms multi-select ─────────────────────────────────────────────
+const SYMPTOMS = [
+  "Headache",  "Fatigue",   "Tight shoulders", "Trouble sleeping",
+  "Racing heart", "Low appetite", "Difficulty focusing", "Irritability",
+  "Chest tightness", "Muscle tension",
+];
+
+// ── 5-Pillar icons ─────────────────────────────────────────────────────────
 const PILLARS = [
-  { key: "sleep",    label: "Sleep",    icon: "moon-outline" as const,       color: C.purple },
-  { key: "water",    label: "Water",    icon: "water-outline" as const,      color: C.primary },
-  { key: "exercise", label: "Exercise", icon: "barbell-outline" as const,    color: C.green },
-  { key: "medicine", label: "Medicine", icon: "medical-outline" as const,    color: C.amber },
-  { key: "food",     label: "Food",     icon: "restaurant-outline" as const, color: "#EC4899" },
+  { key: "sleep",    label: "Sleep",    icon: "moon-outline" as const,       color: "#8B5CF6" },
+  { key: "water",    label: "Hydration",icon: "water-outline" as const,      color: "#06B6D4" },
+  { key: "exercise", label: "Exercise", icon: "barbell-outline" as const,    color: C.green   },
+  { key: "medicine", label: "Medicine", icon: "medical-outline" as const,    color: C.amber   },
+  { key: "food",     label: "Nutrition",icon: "restaurant-outline" as const, color: "#EC4899" },
 ];
 
-type DayData = { date: string; dayLabel: string; dayLabelHi: string; avgScore: number; count: number; dominantMood: string | null };
-type InsightData = { avgScore: number; insight: string; tips: string[]; logsCount: number; aiPowered: boolean };
-type LogItem = { stressScore: number; stressType: string; mood?: string; pillars?: Record<string, number>; loggedAt: string };
+type DayData  = { date: string; dayLabel: string; avgScore: number; count: number; dominantMood: string | null };
+type LogItem  = { stressScore: number; stressType: string; mood?: string; pillars?: Record<string, unknown>; loggedAt: string };
+type Insight  = { avgScore: number; insight: string; tips: string[]; logsCount: number; aiPowered: boolean };
+type WeekData = { days: DayData[]; weekAvg: number; totalLogs: number; highStreakDays: number; burnoutRisk: boolean };
 
-function scoreColor(s: number) {
-  return s === 0 ? C.border : s < 30 ? C.green : s < 55 ? C.amber : s < 75 ? C.orange : C.red;
-}
-function scoreLabel(s: number) {
-  return s < 30 ? "Low" : s < 55 ? "Moderate" : s < 75 ? "High" : "Critical";
-}
-function moodEmoji(m: string | null) {
-  return { happy: "😊", neutral: "😐", stressed: "😟", sad: "😢" }[m ?? ""] ?? "—";
-}
-
-function Card({ children, style }: { children: React.ReactNode; style?: object }) {
-  return (
-    <View style={[{ backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.border, shadowColor: "#0077B6", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3, overflow: "hidden" }, style]}>
-      {Platform.OS === "ios"
-        ? <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
-        : null}
-      {children}
-    </View>
-  );
-}
-
+// ── Animated weekly bar chart ──────────────────────────────────────────────
 function WeeklyChart({ days }: { days: DayData[] }) {
-  const bars = useRef(days.map(() => new Animated.Value(0))).current;
-  const maxH = 90;
+  const bars   = useRef(days.map(() => new Animated.Value(0))).current;
+  const maxH   = 80;
 
   useEffect(() => {
-    Animated.stagger(60, bars.map((b, i) =>
-      Animated.timing(b, { toValue: days[i]?.avgScore || 0, duration: 500, useNativeDriver: false })
+    Animated.stagger(55, bars.map((b, i) =>
+      Animated.timing(b, { toValue: days[i]?.avgScore || 0, duration: 450, useNativeDriver: false })
     )).start();
   }, [days]);
 
   return (
-    <View style={{ paddingHorizontal: 16, paddingBottom: 16, paddingTop: 8 }}>
-      <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_500Medium", marginBottom: 12 }}>7-Din Ka Stress Trend</Text>
-      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 6, height: maxH + 36 }}>
+    <View style={{ paddingHorizontal: 14, paddingBottom: 14, paddingTop: 6 }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 5, height: maxH + 34 }}>
         {days.map((d, i) => {
           const isToday = i === days.length - 1;
-          const col = scoreColor(d.avgScore);
-          const barH = bars[i]!.interpolate({ inputRange: [0, 100], outputRange: [0, maxH] });
+          const col     = scoreColor(d.avgScore);
+          const barH    = bars[i]!.interpolate({ inputRange: [0, 100], outputRange: [0, maxH] });
           return (
             <View key={d.date} style={{ flex: 1, alignItems: "center" }}>
               <View style={{ height: maxH, justifyContent: "flex-end", width: "100%" }}>
-                {d.count > 0 ? (
-                  <Animated.View style={{ height: barH, borderRadius: 6, backgroundColor: col, opacity: isToday ? 1 : 0.7 }} />
-                ) : (
-                  <View style={{ height: 4, borderRadius: 3, backgroundColor: C.border }} />
-                )}
+                {d.count > 0
+                  ? <Animated.View style={{ height: barH, borderRadius: 6, backgroundColor: col, opacity: isToday ? 1 : 0.72, borderWidth: isToday ? 1.5 : 0, borderColor: col }} />
+                  : <View style={{ height: 3, borderRadius: 3, backgroundColor: C.border }} />
+                }
               </View>
               {d.count > 0 && (
-                <Text style={{ color: col, fontSize: 9, fontFamily: "Inter_700Bold", marginTop: 3 }}>{d.avgScore}</Text>
+                <Text style={{ color: col, fontSize: 8.5, fontFamily: "Inter_700Bold", marginTop: 2 }}>{d.avgScore}</Text>
               )}
-              <Text style={{ color: isToday ? C.primary : C.muted, fontSize: 10, fontFamily: isToday ? "Inter_700Bold" : "Inter_400Regular", marginTop: 2 }}>
+              <Text style={{ color: isToday ? C.primary : C.muted, fontSize: 9.5, fontFamily: isToday ? "Inter_700Bold" : "Inter_400Regular", marginTop: 1 }}>
                 {d.dayLabel}
               </Text>
-              {d.dominantMood && d.count > 0 && (
-                <Text style={{ fontSize: 9, marginTop: 1 }}>{moodEmoji(d.dominantMood)}</Text>
-              )}
             </View>
           );
         })}
@@ -103,214 +131,284 @@ function WeeklyChart({ days }: { days: DayData[] }) {
   );
 }
 
-function BreathingCircle() {
+// ── Live score ring ────────────────────────────────────────────────────────
+function ScoreRing({ score, size = 90 }: { score: number; size?: number }) {
+  const col   = scoreColor(score);
+  const label = scoreLabel(score);
+  const emoji = scoreEmoji(score);
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 3.5, borderColor: col, alignItems: "center", justifyContent: "center", backgroundColor: col + "12" }}>
+      <Text style={{ fontSize: size * 0.28, fontFamily: "Inter_800ExtraBold", color: col, lineHeight: size * 0.32 }}>{score}</Text>
+      <Text style={{ fontSize: size * 0.14, fontFamily: "Inter_500Medium", color: col }}>{label}</Text>
+      <Text style={{ fontSize: size * 0.22, marginTop: 1 }}>{emoji}</Text>
+    </View>
+  );
+}
+
+// ── 4-7-8 Breathing exercise component ────────────────────────────────────
+function BreathingExercise() {
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const [phase, setPhase] = useState<"inhale" | "hold" | "exhale">("inhale");
-  const [active, setActive] = useState(false);
-  const loopRef = useRef<ReturnType<typeof Animated.loop> | null>(null);
+  const [phase,   setPhase]  = useState<"inhale" | "hold" | "exhale">("inhale");
+  const [active,  setActive] = useState(false);
+  const loopRef   = useRef<ReturnType<typeof Animated.loop> | null>(null);
+  const timers    = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const startCycle = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setActive(true);
+    setPhase("inhale");
     const seq = Animated.sequence([
       Animated.timing(scaleAnim, { toValue: 1.55, duration: 4000, useNativeDriver: false }),
       Animated.delay(7000),
       Animated.timing(scaleAnim, { toValue: 1, duration: 8000, useNativeDriver: false }),
     ]);
-    setPhase("inhale");
-    const t1 = setTimeout(() => setPhase("hold"), 4000);
-    const t2 = setTimeout(() => setPhase("exhale"), 11000);
-    const t3 = setTimeout(() => setPhase("inhale"), 19000);
+    timers.current.push(
+      setTimeout(() => setPhase("hold"),   4000),
+      setTimeout(() => setPhase("exhale"), 11000),
+      setTimeout(() => setPhase("inhale"), 19000),
+    );
     loopRef.current = Animated.loop(seq);
     loopRef.current.start();
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   };
 
   const stop = () => {
     loopRef.current?.stop();
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
     setActive(false);
     scaleAnim.setValue(1);
     setPhase("inhale");
   };
 
-  const phaseText = { inhale: "Saans lo… (4s)", hold: "Roko… (7s)", exhale: "Chodo… (8s)" }[phase];
-  const phaseColor = { inhale: C.primary, hold: C.purple, exhale: C.green }[phase];
+  const phaseInfo = {
+    inhale: { text: "Breathe In…",  sub: "4 seconds", color: C.accent  },
+    hold:   { text: "Hold…",        sub: "7 seconds", color: C.primary  },
+    exhale: { text: "Breathe Out…", sub: "8 seconds", color: C.green    },
+  }[phase];
 
   return (
-    <View style={{ alignItems: "center", paddingVertical: 20 }}>
-      <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 15, marginBottom: 4 }}>4-7-8 Breathing</Text>
-      <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 18, textAlign: "center" }}>
-        This breathing technique helps reduce stress immediately
+    <View style={{ alignItems: "center", paddingVertical: 20, paddingHorizontal: 16 }}>
+      <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 4 }}>4-7-8 Breathing Technique</Text>
+      <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 20, textAlign: "center", lineHeight: 18 }}>
+        A clinically proven breathing method. Inhale 4s → Hold 7s → Exhale 8s. Repeat 4 cycles.
       </Text>
       {active ? (
-        <>
+        <View style={{ alignItems: "center" }}>
           <Animated.View style={{
-            width: 110, height: 110, borderRadius: 55,
-            backgroundColor: phaseColor + "18",
+            width: 120, height: 120, borderRadius: 60,
+            backgroundColor: phaseInfo.color + "18",
             transform: [{ scale: scaleAnim }],
             alignItems: "center", justifyContent: "center",
-            borderWidth: 2.5, borderColor: phaseColor,
+            borderWidth: 2.5, borderColor: phaseInfo.color,
           }}>
-            <Text style={{ fontSize: 30 }}>🌬️</Text>
+            <Text style={{ fontSize: 36 }}>🌬️</Text>
           </Animated.View>
-          <Text style={{ color: phaseColor, fontFamily: "Inter_700Bold", fontSize: 15, marginTop: 14 }}>{phaseText}</Text>
-          <TouchableOpacity onPress={stop} style={{ marginTop: 16, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 12, backgroundColor: C.red + "15" }}>
-            <Text style={{ color: C.red, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Stop it</Text>
+          <Text style={{ color: phaseInfo.color, fontFamily: "Inter_700Bold", fontSize: 17, marginTop: 18 }}>{phaseInfo.text}</Text>
+          <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 3 }}>{phaseInfo.sub}</Text>
+          <TouchableOpacity onPress={stop} style={{ marginTop: 18, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12, backgroundColor: C.red + "18" }}>
+            <Text style={{ color: C.red, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Stop</Text>
           </TouchableOpacity>
-        </>
+        </View>
       ) : (
-        <TouchableOpacity onPress={startCycle} style={{ width: 110, height: 110, borderRadius: 55, backgroundColor: C.primary + "12", borderWidth: 2.5, borderColor: C.primary, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ fontSize: 34 }}>🌬️</Text>
-          <Text style={{ color: C.primary, fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 4 }}>Get Started</Text>
+        <TouchableOpacity onPress={startCycle} style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: C.accent + "12", borderWidth: 2.5, borderColor: C.accent, alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: 38 }}>🌬️</Text>
+          <Text style={{ color: C.accent, fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 6 }}>Start</Text>
         </TouchableOpacity>
       )}
     </View>
   );
 }
 
+// ── Main Screen ─────────────────────────────────────────────────────────────
 export default function StressScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const [tab, setTab] = useState<"today" | "pillar" | "history">("today");
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
-  const [logLoading, setLogLoading] = useState(false);
+  const [tab,          setTab]          = useState<"checkin" | "pillar" | "history">("checkin");
+  const [dataLoading,  setDataLoading]  = useState(true);
+  const [weekly,       setWeekly]       = useState<WeekData | null>(null);
+  const [insight,      setInsight]      = useState<Insight | null>(null);
+  const [logs,         setLogs]         = useState<LogItem[]>([]);
+
+  // ── Check-in form state (3-step) ──────────────────────────────────────────
+  const [step,         setStep]         = useState<1 | 2 | 3>(1);
+  const [moodScore,    setMoodScore]    = useState<number | null>(null);
+  const [energyScore,  setEnergyScore]  = useState<number>(3);
+  const [pssAnswers,   setPssAnswers]   = useState<number[]>([0, 0, 0]);
+  const [symptoms,     setSymptoms]     = useState<string[]>([]);
+  const [submitting,   setSubmitting]   = useState(false);
+  const [resultScore,  setResultScore]  = useState<number | null>(null);
+
+  // ── 5-Pillar tab ──────────────────────────────────────────────────────────
   const [pillarLoading, setPillarLoading] = useState(false);
+  const [pillarResult,  setPillarResult]  = useState<{ score: number; pillars: Record<string, number> } | null>(null);
 
-  const [weekly, setWeekly] = useState<DayData[]>([]);
-  const [weekAvg, setWeekAvg] = useState(0);
-  const [insight, setInsight] = useState<InsightData | null>(null);
-  const [logs, setLogs] = useState<LogItem[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
-
-  useEffect(() => { loadAll(); }, []);
-
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     setDataLoading(true);
     const [weekRes, insightRes, logsRes] = await Promise.allSettled([
-      api.getStressWeekly(),
-      api.getStressInsight(),
-      api.getStressLogs(30),
+      api.getStressWeekly(), api.getStressInsight(), api.getStressLogs(30),
     ]);
-    if (weekRes.status === "fulfilled") {
-      setWeekly(weekRes.value.days);
-      setWeekAvg(weekRes.value.weekAvg);
-    }
+    if (weekRes.status    === "fulfilled") setWeekly(weekRes.value as WeekData);
     if (insightRes.status === "fulfilled") setInsight(insightRes.value);
-    if (logsRes.status === "fulfilled") setLogs(logsRes.value.logs as LogItem[]);
+    if (logsRes.status    === "fulfilled") setLogs(logsRes.value.logs as LogItem[]);
     setDataLoading(false);
+  }, []);
+
+  useEffect(() => { loadAll(); }, []);
+  useFocusEffect(useCallback(() => { loadAll(); }, [loadAll]));
+
+  const todayStr  = new Date().toISOString().split("T")[0]!;
+  const todayLogs = logs.filter(l => l.loggedAt?.split("T")[0] === todayStr);
+  const todayAvg  = todayLogs.length ? Math.round(todayLogs.reduce((s, l) => s + l.stressScore, 0) / todayLogs.length) : 0;
+
+  // ── Live preview score calculation ─────────────────────────────────────────
+  const liveScore: number = (() => {
+    if (!moodScore) return 0;
+    const moodBase    = ((moodScore - 1) / 4) * 35;
+    const energyBase  = ((energyScore - 1) / 4) * 15;
+    const pssTotal    = pssAnswers.reduce((s, q) => s + q, 0);
+    const pssComp     = (pssTotal / 9) * 35;
+    const sympComp    = Math.min(symptoms.length * 3, 15);
+    return Math.max(5, Math.min(98, Math.round(moodBase + energyBase + pssComp + sympComp)));
+  })();
+
+  const resetForm = () => {
+    setStep(1); setMoodScore(null); setEnergyScore(3);
+    setPssAnswers([0, 0, 0]); setSymptoms([]); setResultScore(null);
   };
 
-  const submitMood = async () => {
-    if (!selectedMood) return;
-    setLogLoading(true);
+  const handleSubmit = async () => {
+    if (!moodScore) { Alert.alert("Select Mood", "Please select how you are feeling."); return; }
+    setSubmitting(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const res = await api.logStress({ stressType: "mood", mood: selectedMood });
-      const m = MOODS.find(x => x.key === selectedMood);
-      Alert.alert("Logged! ✅", `${m?.emoji} ${m?.label} — Stress score: ${res.stressScore}/100`);
-      setSelectedMood(null);
+      const res = await api.logStress({
+        stressType: "full_assessment",
+        moodScore, energyScore, pssScores: pssAnswers, symptoms,
+      });
+      setResultScore(res.stressScore);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       loadAll();
     } catch (e: unknown) {
-      Alert.alert("Error", (e as Error).message || "Failed");
-    } finally { setLogLoading(false); }
+      Alert.alert("Error", (e as Error).message || "Could not save check-in.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const submit5Pillar = async () => {
+  const handlePillarAnalysis = async () => {
     setPillarLoading(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       const res = await api.logStress({ stressType: "five_pillar" });
-      Alert.alert(
-        "5-Pillar Analysis ✅",
-        `Today's stress score: ${res.stressScore}/100\n\nCalculated based on today's water intake, exercise and sleep data.`
-      );
+      const pillarsData = (res.log as Record<string, unknown>).pillars as Record<string, number> | undefined;
+      setPillarResult({ score: res.stressScore, pillars: pillarsData || {} });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       loadAll();
     } catch (e: unknown) {
-      Alert.alert("Error", (e as Error).message || "Failed");
-    } finally { setPillarLoading(false); }
+      Alert.alert("Error", (e as Error).message || "Failed to compute analysis.");
+    } finally {
+      setPillarLoading(false); }
   };
 
-  const todayStr = new Date().toISOString().split("T")[0]!;
-  const todayLogs = logs.filter(l => l.loggedAt?.split("T")[0] === todayStr);
-  const todayAvg = todayLogs.length
-    ? Math.round(todayLogs.reduce((s, l) => s + l.stressScore, 0) / todayLogs.length)
-    : 0;
+  const toggleSymptom = (s: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSymptoms(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <LinearGradient colors={["#E0F2FE", "#F0FAFB", "#F5FFF8"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={["#F5F0FF", "#EDE9FA", "#F9F5FF"]} style={StyleSheet.absoluteFill} />
 
-      <ScrollView contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: 100, paddingHorizontal: 16 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: 120, paddingHorizontal: 16 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
 
-        {/* Header */}
-        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: C.primary + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+        {/* ── HEADER ──────────────────────────────────────────────────────── */}
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 18 }}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.primary + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}
+          >
             <Ionicons name="arrow-back" size={20} color={C.primary} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 22 }}>Stress Tracker 🧘</Text>
-            <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular" }}>Daily + weekly mood aur stress analysis</Text>
+            <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>Clinically-informed daily check-in</Text>
           </View>
+          {weekly?.burnoutRisk && (
+            <View style={{ backgroundColor: C.red + "15", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: C.red + "30" }}>
+              <Text style={{ color: C.red, fontFamily: "Inter_700Bold", fontSize: 10 }}>⚠️ Burnout Risk</Text>
+            </View>
+          )}
         </View>
 
-        {/* Today Summary Row */}
-        <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
-          <Card style={{ flex: 1, padding: 14 }}>
-            <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_500Medium" }}>Today's avg</Text>
-            <Text style={{ color: todayAvg > 0 ? scoreColor(todayAvg) : C.muted, fontFamily: "Inter_700Bold", fontSize: 26, marginTop: 2 }}>
-              {todayAvg > 0 ? todayAvg : "—"}
-            </Text>
-            {todayAvg > 0 && <Text style={{ color: scoreColor(todayAvg), fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{scoreLabel(todayAvg)}</Text>}
-            <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 }}>{todayLogs.length} log{todayLogs.length !== 1 ? "s" : ""} today</Text>
-          </Card>
-          <Card style={{ flex: 1, padding: 14 }}>
-            <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_500Medium" }}>Weekly avg</Text>
-            <Text style={{ color: weekAvg > 0 ? scoreColor(weekAvg) : C.muted, fontFamily: "Inter_700Bold", fontSize: 26, marginTop: 2 }}>
-              {weekAvg > 0 ? weekAvg : "—"}
-            </Text>
-            {weekAvg > 0 && <Text style={{ color: scoreColor(weekAvg), fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{scoreLabel(weekAvg)}</Text>}
-            <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 }}>7-day trend</Text>
-          </Card>
-        </View>
+        {/* ── TODAY SUMMARY ROW ──────────────────────────────────────────── */}
+        {!dataLoading && (
+          <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
+            <View style={[sCard, { flex: 1, padding: 14 }]}>
+              <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_500Medium" }}>Today's Avg</Text>
+              <Text style={{ color: todayAvg > 0 ? scoreColor(todayAvg) : C.muted, fontFamily: "Inter_700Bold", fontSize: 28, marginTop: 2 }}>
+                {todayAvg > 0 ? todayAvg : "—"}
+              </Text>
+              {todayAvg > 0 && <Text style={{ color: scoreColor(todayAvg), fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{scoreLabel(todayAvg)}</Text>}
+              <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 3 }}>{todayLogs.length} log{todayLogs.length !== 1 ? "s" : ""} today</Text>
+            </View>
+            <View style={[sCard, { flex: 1, padding: 14 }]}>
+              <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_500Medium" }}>Weekly Avg</Text>
+              <Text style={{ color: (weekly?.weekAvg ?? 0) > 0 ? scoreColor(weekly?.weekAvg ?? 0) : C.muted, fontFamily: "Inter_700Bold", fontSize: 28, marginTop: 2 }}>
+                {(weekly?.weekAvg ?? 0) > 0 ? weekly!.weekAvg : "—"}
+              </Text>
+              {(weekly?.weekAvg ?? 0) > 0 && <Text style={{ color: scoreColor(weekly!.weekAvg), fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{scoreLabel(weekly!.weekAvg)}</Text>}
+              {(weekly?.highStreakDays ?? 0) >= 2 && (
+                <Text style={{ color: C.orange, fontSize: 9, fontFamily: "Inter_600SemiBold", marginTop: 2 }}>
+                  {weekly!.highStreakDays} high-stress days in a row
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
 
-        {/* Weekly Chart */}
-        {weekly.length > 0 && (
-          <Card style={{ marginBottom: 14 }}>
-            <WeeklyChart days={weekly} />
-            <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: 16, paddingBottom: 12, flexWrap: "wrap" }}>
-              {[
-                { label: "Low (<30)", color: C.green },
-                { label: "Moderate", color: C.amber },
-                { label: "High", color: C.orange },
-                { label: "Critical", color: C.red },
-              ].map(leg => (
-                <View key={leg.label} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: leg.color }} />
-                  <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular" }}>{leg.label}</Text>
+        {/* ── WEEKLY CHART ──────────────────────────────────────────────── */}
+        {weekly && weekly.days.length > 0 && (
+          <View style={[sCard, { marginBottom: 14 }]}>
+            <View style={{ padding: 14, paddingBottom: 0 }}>
+              <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 13 }}>7-Day Stress Trend</Text>
+            </View>
+            <WeeklyChart days={weekly.days} />
+            <View style={{ flexDirection: "row", gap: 14, paddingHorizontal: 14, paddingBottom: 12, flexWrap: "wrap" }}>
+              {[{ label: "Low (<26)", color: C.green }, { label: "Moderate", color: C.amber }, { label: "Elevated", color: C.orange }, { label: "High Risk", color: C.red }].map(l => (
+                <View key={l.label} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: l.color }} />
+                  <Text style={{ color: C.muted, fontSize: 9.5, fontFamily: "Inter_400Regular" }}>{l.label}</Text>
                 </View>
               ))}
             </View>
-          </Card>
+          </View>
         )}
 
-        {/* AI Insight Card */}
+        {/* ── AI INSIGHT ────────────────────────────────────────────────── */}
         {insight && insight.logsCount > 0 && (
-          <Card style={{ marginBottom: 14 }}>
-            <LinearGradient colors={[C.purple + "15", C.primary + "08"]} style={{ borderRadius: 20, padding: 16 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: C.purple + "20", alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ fontSize: 16 }}>🤖</Text>
+          <View style={[sCard, { marginBottom: 14 }]}>
+            <LinearGradient colors={[C.primary + "12", "#E0E7FF"]} style={{ borderRadius: 18, padding: 16 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: C.primary + "20", alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ fontSize: 18 }}>🤖</Text>
                 </View>
                 <View>
-                  <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 14 }}>AI Analysis</Text>
-                  <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular" }}>{insight.aiPowered ? "Gemini AI se" : "Pattern analysis"}</Text>
+                  <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 14 }}>AI Insight</Text>
+                  <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular" }}>{insight.aiPowered ? "Gemini AI analysis" : "Pattern analysis"}</Text>
                 </View>
               </View>
               <Text style={{ color: C.text, fontFamily: "Inter_500Medium", fontSize: 13, lineHeight: 20, marginBottom: 12 }}>{insight.insight}</Text>
               {insight.tips?.length > 0 && (
-                <View style={{ gap: 6 }}>
+                <View style={{ gap: 8 }}>
                   {insight.tips.map((tip, i) => (
                     <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                      <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: C.accent + "20", alignItems: "center", justifyContent: "center", marginTop: 1 }}>
-                        <Text style={{ color: C.accent, fontSize: 10, fontFamily: "Inter_700Bold" }}>{i + 1}</Text>
+                      <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: C.primary + "20", alignItems: "center", justifyContent: "center", marginTop: 1 }}>
+                        <Text style={{ color: C.primary, fontSize: 9, fontFamily: "Inter_700Bold" }}>{i + 1}</Text>
                       </View>
                       <Text style={{ color: C.text, fontSize: 12, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 18 }}>{tip}</Text>
                     </View>
@@ -318,203 +416,377 @@ export default function StressScreen() {
                 </View>
               )}
             </LinearGradient>
-          </Card>
+          </View>
         )}
 
-        {/* Tabs */}
-        <View style={{ flexDirection: "row", backgroundColor: C.primary + "10", borderRadius: 14, padding: 4, marginBottom: 16, gap: 4 }}>
+        {/* ── TABS ──────────────────────────────────────────────────────── */}
+        <View style={{ flexDirection: "row", backgroundColor: C.primary + "12", borderRadius: 14, padding: 4, marginBottom: 16, gap: 4 }}>
           {([
-            { key: "today", label: "Mood Log" },
-            { key: "pillar", label: "5-Pillar" },
-            { key: "history", label: "History" },
+            { key: "checkin", label: "Check In"   },
+            { key: "pillar",  label: "Auto Analysis" },
+            { key: "history", label: "History"    },
           ] as const).map(t => (
-            <TouchableOpacity key={t.key} onPress={() => setTab(t.key)} style={{ flex: 1, paddingVertical: 9, borderRadius: 11, backgroundColor: tab === t.key ? C.primary : "transparent", alignItems: "center" }}>
-              <Text style={{ color: tab === t.key ? "#FFF" : C.muted, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>{t.label}</Text>
+            <TouchableOpacity
+              key={t.key} onPress={() => { setTab(t.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+              style={{ flex: 1, paddingVertical: 9, borderRadius: 11, backgroundColor: tab === t.key ? C.primary : "transparent", alignItems: "center" }}
+            >
+              <Text style={{ color: tab === t.key ? "#FFF" : C.muted, fontFamily: "Inter_600SemiBold", fontSize: 11.5 }}>{t.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* MOOD TAB */}
-        {tab === "today" && (
+        {/* ══════════════════════════════════════════════════════════════════
+            TAB 1 — CLINICAL CHECK-IN (3 steps)
+        ══════════════════════════════════════════════════════════════════ */}
+        {tab === "checkin" && (
           <View style={{ gap: 12 }}>
-            <Card>
-              <View style={{ padding: 18 }}>
-                <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 4 }}>How are you feeling right now?</Text>
-                <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 16 }}>Select a mood — you can log multiple times today</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
-                  {MOODS.map(m => (
-                    <TouchableOpacity key={m.key} onPress={() => setSelectedMood(m.key)} activeOpacity={0.85}
-                      style={{ flex: 1, minWidth: (W - 80) / 2, alignItems: "center", padding: 16, borderRadius: 16, borderWidth: 2, borderColor: selectedMood === m.key ? m.color : C.border, backgroundColor: selectedMood === m.key ? m.color + "15" : C.card }}>
-                      <Text style={{ fontSize: 36, marginBottom: 6 }}>{m.emoji}</Text>
-                      <Text style={{ color: selectedMood === m.key ? m.color : C.text, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{m.label}</Text>
-                      <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 }}>{m.desc}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <TouchableOpacity onPress={submitMood} disabled={!selectedMood || logLoading} activeOpacity={0.85}
-                  style={{ backgroundColor: selectedMood ? C.primary : C.border, borderRadius: 14, padding: 15, alignItems: "center" }}>
-                  <Text style={{ color: selectedMood ? "#FFF" : C.muted, fontFamily: "Inter_700Bold", fontSize: 15 }}>
-                    {logLoading ? "Saving…" : "Log Mood ✓"}
-                  </Text>
+
+            {/* Result card after submission */}
+            {resultScore !== null && (
+              <View style={[sCard, { padding: 20, alignItems: "center", gap: 10 }]}>
+                <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 15 }}>Check-In Saved ✅</Text>
+                <ScoreRing score={resultScore} size={110} />
+                <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, textAlign: "center", lineHeight: 18 }}>
+                  {resultScore < 26  ? "You are doing well. Keep maintaining your current routine." :
+                   resultScore < 51  ? "Some stress detected. Try a short walk or breathing exercise." :
+                   resultScore < 76  ? "Elevated stress. Take a break, hydrate, and try the 4-7-8 exercise below." :
+                                       "High stress detected. Consider speaking with a doctor or counselor."}
+                </Text>
+                <TouchableOpacity onPress={resetForm} style={{ backgroundColor: C.primary + "15", borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10 }}>
+                  <Text style={{ color: C.primary, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Log Again</Text>
                 </TouchableOpacity>
               </View>
-            </Card>
-
-            {/* Today's logs mini list */}
-            {todayLogs.length > 0 && (
-              <Card>
-                <View style={{ padding: 14 }}>
-                  <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13, marginBottom: 10 }}>Today's {todayLogs.length} logs</Text>
-                  {todayLogs.slice(0, 5).map((l, i) => {
-                    const t = new Date(l.loggedAt);
-                    const hhmm = t.toLocaleTimeString("hi-IN", { hour: "2-digit", minute: "2-digit" });
-                    return (
-                      <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 7, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: C.border }}>
-                        <Text style={{ fontSize: 20 }}>{moodEmoji(l.mood ?? null)}</Text>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: C.text, fontFamily: "Inter_500Medium", fontSize: 12 }}>
-                            {l.stressType === "mood" ? `Mood: ${l.mood}` : "5-Pillar Analysis"}
-                          </Text>
-                          <Text style={{ color: C.muted, fontSize: 10 }}>{hhmm}</Text>
-                        </View>
-                        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: scoreColor(l.stressScore) + "20", alignItems: "center", justifyContent: "center" }}>
-                          <Text style={{ color: scoreColor(l.stressScore), fontFamily: "Inter_700Bold", fontSize: 13 }}>{l.stressScore}</Text>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              </Card>
             )}
 
-            <Card>
-              <View style={{ paddingTop: 16, paddingHorizontal: 16, paddingBottom: 4 }}>
-                <BreathingCircle />
+            {resultScore === null && (
+              <>
+                {/* Step indicator */}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                  {[1, 2, 3].map(s => (
+                    <React.Fragment key={s}>
+                      <View style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: step >= s ? C.primary : C.border }} />
+                    </React.Fragment>
+                  ))}
+                </View>
+                <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 8, textAlign: "center" }}>
+                  Step {step} of 3 — {step === 1 ? "Mood & Energy" : step === 2 ? "Stress Indicators" : "Physical Symptoms"}
+                </Text>
+
+                {/* ── STEP 1: Mood + Energy ─────────────────────────────── */}
+                {step === 1 && (
+                  <View style={[sCard, { padding: 18 }]}>
+                    <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 15, marginBottom: 4 }}>How are you feeling right now?</Text>
+                    <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 16 }}>Select your overall mood today</Text>
+
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 22 }}>
+                      {MOODS.map(m => (
+                        <TouchableOpacity
+                          key={m.score} onPress={() => { setMoodScore(m.score); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                          style={{ width: (W - 80) / 2, alignItems: "center", padding: 14, borderRadius: 14, borderWidth: 2, borderColor: moodScore === m.score ? m.color : C.border, backgroundColor: moodScore === m.score ? m.color + "15" : C.card }}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={{ fontSize: 34, marginBottom: 6 }}>{m.emoji}</Text>
+                          <Text style={{ color: moodScore === m.score ? m.color : C.text, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{m.label}</Text>
+                          <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 }}>{m.subText}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13, marginBottom: 10 }}>Energy Level</Text>
+                    <View style={{ flexDirection: "row", gap: 6, marginBottom: 20 }}>
+                      {[1, 2, 3, 4, 5].map(e => (
+                        <TouchableOpacity
+                          key={e}
+                          onPress={() => { setEnergyScore(e); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                          style={{ flex: 1, height: 40, borderRadius: 10, borderWidth: 1.5, borderColor: energyScore === e ? C.primary : C.border, backgroundColor: energyScore === e ? C.primary + "15" : C.card, alignItems: "center", justifyContent: "center" }}
+                        >
+                          <Text style={{ color: energyScore === e ? C.primary : C.muted, fontFamily: "Inter_600SemiBold", fontSize: 11 }}>
+                            {e === 1 ? "😴" : e === 2 ? "🥱" : e === 3 ? "😶" : e === 4 ? "🙂" : "⚡"}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 18 }}>
+                      {ENERGY_LABELS[energyScore - 1]}
+                    </Text>
+
+                    <TouchableOpacity
+                      onPress={() => { if (!moodScore) { Alert.alert("Select Mood", "Please select a mood first."); return; } setStep(2); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
+                      style={{ backgroundColor: C.primary, borderRadius: 14, padding: 15, alignItems: "center" }}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>Next →</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* ── STEP 2: Clinical PSS questions ───────────────────── */}
+                {step === 2 && (
+                  <View style={[sCard, { padding: 18 }]}>
+                    <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 15, marginBottom: 4 }}>Stress Indicators</Text>
+                    <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 18 }}>In the past few days, how often did you experience the following?</Text>
+
+                    {PSS_QUESTIONS.map((q, qi) => (
+                      <View key={qi} style={{ marginBottom: 20 }}>
+                        <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13, marginBottom: 10, lineHeight: 18 }}>{q.q}</Text>
+                        <View style={{ flexDirection: "row", gap: 6 }}>
+                          {PSS_OPTIONS.map((opt, oi) => (
+                            <TouchableOpacity
+                              key={oi}
+                              onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setPssAnswers(prev => { const n = [...prev]; n[qi] = oi; return n; });
+                              }}
+                              style={{ flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: pssAnswers[qi] === oi ? C.primary : C.border, backgroundColor: pssAnswers[qi] === oi ? C.primary + "15" : C.card, alignItems: "center" }}
+                            >
+                              <Text style={{ color: pssAnswers[qi] === oi ? C.primary : C.muted, fontFamily: pssAnswers[qi] === oi ? "Inter_700Bold" : "Inter_400Regular", fontSize: 9.5, textAlign: "center" }}>{opt}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    ))}
+
+                    {/* Live preview */}
+                    {moodScore && (
+                      <View style={{ backgroundColor: scoreColor(liveScore) + "12", borderRadius: 12, padding: 12, marginBottom: 16, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        <View style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: scoreColor(liveScore), alignItems: "center", justifyContent: "center" }}>
+                          <Text style={{ color: scoreColor(liveScore), fontFamily: "Inter_700Bold", fontSize: 14 }}>{liveScore}</Text>
+                        </View>
+                        <View>
+                          <Text style={{ color: scoreColor(liveScore), fontFamily: "Inter_600SemiBold", fontSize: 12 }}>Live Score — {scoreLabel(liveScore)}</Text>
+                          <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular" }}>Updates as you answer</Text>
+                        </View>
+                      </View>
+                    )}
+
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <TouchableOpacity onPress={() => setStep(1)} style={{ flex: 1, backgroundColor: C.border, borderRadius: 14, padding: 14, alignItems: "center" }}>
+                        <Text style={{ color: C.muted, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>← Back</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => { setStep(3); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }} style={{ flex: 2, backgroundColor: C.primary, borderRadius: 14, padding: 14, alignItems: "center" }}>
+                        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>Next →</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {/* ── STEP 3: Body symptoms ─────────────────────────────── */}
+                {step === 3 && (
+                  <View style={[sCard, { padding: 18 }]}>
+                    <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 15, marginBottom: 4 }}>Physical Symptoms</Text>
+                    <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 16 }}>Any physical signs of stress today? (select all that apply)</Text>
+
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+                      {SYMPTOMS.map(sym => {
+                        const selected = symptoms.includes(sym);
+                        return (
+                          <TouchableOpacity
+                            key={sym} onPress={() => toggleSymptom(sym)}
+                            style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: selected ? C.primary : C.border, backgroundColor: selected ? C.primary + "15" : C.card }}
+                          >
+                            <Text style={{ color: selected ? C.primary : C.muted, fontFamily: selected ? "Inter_600SemiBold" : "Inter_400Regular", fontSize: 12 }}>
+                              {selected ? "✓ " : ""}{sym}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    {/* Final live score preview */}
+                    {moodScore && (
+                      <View style={{ alignItems: "center", marginBottom: 20 }}>
+                        <ScoreRing score={liveScore} size={100} />
+                        <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 10 }}>Your stress index preview</Text>
+                      </View>
+                    )}
+
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <TouchableOpacity onPress={() => setStep(2)} style={{ flex: 1, backgroundColor: C.border, borderRadius: 14, padding: 14, alignItems: "center" }}>
+                        <Text style={{ color: C.muted, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>← Back</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={handleSubmit}
+                        disabled={submitting}
+                        style={{ flex: 2, backgroundColor: C.primary, borderRadius: 14, padding: 14, alignItems: "center" }}
+                      >
+                        {submitting
+                          ? <ActivityIndicator color="#FFF" size="small" />
+                          : <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>Save Check-In ✓</Text>
+                        }
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 10 }}>
+                      No symptoms? That's great — just tap Save.
+                    </Text>
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Today's check-ins mini list */}
+            {todayLogs.length > 0 && (
+              <View style={[sCard, { padding: 14 }]}>
+                <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13, marginBottom: 10 }}>Today's {todayLogs.length} Check-In{todayLogs.length > 1 ? "s" : ""}</Text>
+                {todayLogs.slice(0, 4).map((l, i) => {
+                  const t    = new Date(l.loggedAt);
+                  const hhmm = t.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+                  const mode = (l.pillars as Record<string, unknown>)?.mode as string || l.stressType;
+                  const modeLabel = mode === "full_assessment" ? "Clinical Check-In" : mode === "five_pillar" ? "Auto Analysis" : "Mood Log";
+                  return (
+                    <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 7, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: C.border }}>
+                      <Text style={{ fontSize: 20 }}>{scoreEmoji(l.stressScore)}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: C.text, fontFamily: "Inter_500Medium", fontSize: 12 }}>{modeLabel}</Text>
+                        <Text style={{ color: C.muted, fontSize: 10 }}>{hhmm}</Text>
+                      </View>
+                      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: scoreColor(l.stressScore) + "20", alignItems: "center", justifyContent: "center" }}>
+                        <Text style={{ color: scoreColor(l.stressScore), fontFamily: "Inter_700Bold", fontSize: 14 }}>{l.stressScore}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
-            </Card>
+            )}
+
+            {/* Breathing exercise */}
+            <View style={sCard}>
+              <BreathingExercise />
+            </View>
           </View>
         )}
 
-        {/* 5-PILLAR TAB */}
+        {/* ══════════════════════════════════════════════════════════════════
+            TAB 2 — 5-PILLAR AUTO ANALYSIS
+        ══════════════════════════════════════════════════════════════════ */}
         {tab === "pillar" && (
-          <Card>
-            <View style={{ padding: 18 }}>
-              <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 4 }}>5-Pillar Stress Analysis</Text>
-              <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 16 }}>
-                Automatically calculates stress based on today's water, exercise and sleep data
+          <View style={{ gap: 12 }}>
+            <View style={[sCard, { padding: 18 }]}>
+              <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 15, marginBottom: 4 }}>Auto Stress Analysis</Text>
+              <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 16, lineHeight: 18 }}>
+                Automatically calculates your stress score based on today's tracked data across 5 health pillars. More data logged = more accurate result.
               </Text>
-              <View style={{ gap: 10, marginBottom: 20 }}>
-                {PILLARS.map(p => (
-                  <View key={p.key} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: p.color + "10", borderWidth: 1, borderColor: p.color + "25" }}>
-                    <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: p.color + "20", alignItems: "center", justifyContent: "center" }}>
-                      <Ionicons name={p.icon} size={20} color={p.color} />
+
+              {PILLARS.map(p => (
+                <View key={p.key} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: p.color + "10", borderWidth: 1, borderColor: p.color + "25", marginBottom: 10 }}>
+                  <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: p.color + "20", alignItems: "center", justifyContent: "center" }}>
+                    <Ionicons name={p.icon} size={20} color={p.color} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{p.label}</Text>
+                    <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>
+                      {p.key === "sleep"    ? "From your profile average" :
+                       p.key === "water"    ? "Today's water logs" :
+                       p.key === "exercise" ? "Today's exercise sessions" :
+                       p.key === "medicine" ? "Schedule adherence" : "Food log quality"}
+                    </Text>
+                  </View>
+                  {pillarResult?.pillars[p.key] !== undefined && (
+                    <View style={{ alignItems: "flex-end" }}>
+                      <Text style={{ color: p.color, fontFamily: "Inter_700Bold", fontSize: 15 }}>{Math.round(pillarResult.pillars[p.key]!)}%</Text>
+                      <Text style={{ color: C.muted, fontSize: 9, fontFamily: "Inter_400Regular" }}>Wellness</Text>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{p.label}</Text>
-                      <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>
-                        {p.key === "sleep" ? "Avg sleep from profile" : p.key === "water" ? "Today's water logs" : p.key === "exercise" ? "Today's exercise logs" : "Estimated score"}
-                      </Text>
+                  )}
+                </View>
+              ))}
+
+              {pillarResult && (
+                <View style={{ alignItems: "center", paddingVertical: 16 }}>
+                  <ScoreRing score={pillarResult.score} size={110} />
+                  <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 10, textAlign: "center" }}>
+                    Based on today's activity data
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                onPress={handlePillarAnalysis}
+                disabled={pillarLoading}
+                style={{ backgroundColor: "#06B6D4", borderRadius: 14, padding: 15, alignItems: "center", marginTop: 8 }}
+                activeOpacity={0.85}
+              >
+                {pillarLoading
+                  ? <ActivityIndicator color="#FFF" size="small" />
+                  : <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>Run Auto Analysis 🔍</Text>
+                }
+              </TouchableOpacity>
+            </View>
+
+            {/* Clinical use note */}
+            <View style={[sCard, { padding: 14 }]}>
+              <LinearGradient colors={["#EFF6FF", "#F0FDFA"]} style={{ borderRadius: 14, padding: 14 }}>
+                <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 13, marginBottom: 8 }}>📋 For Corporate & Clinical Use</Text>
+                <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 18 }}>
+                  This stress score is computed using a weighted formula across sleep quality, hydration, physical activity, medication adherence, and nutrition. It correlates with validated burnout indices used in occupational health settings.{"\n\n"}Clinicians and HR managers can access aggregated anonymized trends from the admin panel.
+                </Text>
+              </LinearGradient>
+            </View>
+          </View>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════
+            TAB 3 — HISTORY
+        ══════════════════════════════════════════════════════════════════ */}
+        {tab === "history" && (
+          <View style={{ gap: 10 }}>
+            {weekly && weekly.days.some(d => d.count > 0) && (
+              <View style={[sCard, { padding: 14 }]}>
+                <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 14, marginBottom: 12 }}>Daily Average Stress</Text>
+                {[...weekly.days].reverse().filter(d => d.count > 0).map(d => (
+                  <View key={d.date} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: C.border }}>
+                    <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_600SemiBold", width: 32 }}>{d.dayLabel}</Text>
+                    <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: C.border, overflow: "hidden" }}>
+                      <View style={{ height: "100%", width: `${d.avgScore}%`, backgroundColor: scoreColor(d.avgScore), borderRadius: 3 }} />
                     </View>
-                    <Ionicons name="checkmark-circle" size={22} color={p.color} />
+                    <Text style={{ color: scoreColor(d.avgScore), fontFamily: "Inter_700Bold", fontSize: 12, width: 28, textAlign: "right" }}>{d.avgScore}</Text>
+                    <Text style={{ fontSize: 14 }}>{scoreEmoji(d.avgScore)}</Text>
                   </View>
                 ))}
               </View>
-              <TouchableOpacity onPress={submit5Pillar} disabled={pillarLoading} activeOpacity={0.85}
-                style={{ backgroundColor: C.accent, borderRadius: 14, padding: 15, alignItems: "center" }}>
-                <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>
-                  {pillarLoading ? "Calculating…" : "Run 5-Pillar Analysis 🔍"}
-                </Text>
-              </TouchableOpacity>
-              <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 10 }}>
-                More data logged means more accurate results
-              </Text>
-            </View>
-          </Card>
-        )}
-
-        {/* HISTORY TAB */}
-        {tab === "history" && (
-          <View style={{ gap: 10 }}>
-            {/* Weekly summary by day */}
-            {weekly.some(d => d.count > 0) && (
-              <Card>
-                <View style={{ padding: 14 }}>
-                  <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 14, marginBottom: 12 }}>Daily avg stress</Text>
-                  {[...weekly].reverse().filter(d => d.count > 0).map(d => (
-                    <View key={d.date} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: C.border }}>
-                      <View style={{ width: 36, alignItems: "center" }}>
-                        <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{d.dayLabel}</Text>
-                        {d.dominantMood && <Text style={{ fontSize: 14 }}>{moodEmoji(d.dominantMood)}</Text>}
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <View style={{ height: 6, borderRadius: 3, backgroundColor: C.border, overflow: "hidden" }}>
-                          <View style={{ height: "100%", width: `${d.avgScore}%`, backgroundColor: scoreColor(d.avgScore), borderRadius: 3 }} />
-                        </View>
-                      </View>
-                      <Text style={{ color: scoreColor(d.avgScore), fontFamily: "Inter_700Bold", fontSize: 14, width: 30, textAlign: "right" }}>{d.avgScore}</Text>
-                      <Text style={{ color: C.muted, fontSize: 10, width: 50 }}>{d.count} log{d.count !== 1 ? "s" : ""}</Text>
-                    </View>
-                  ))}
-                </View>
-              </Card>
             )}
 
-            {/* Raw log list */}
-            {logs.length === 0 ? (
-              <Card>
-                <View style={{ padding: 36, alignItems: "center" }}>
-                  <Text style={{ fontSize: 44, marginBottom: 12 }}>🧘</Text>
-                  <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 16, textAlign: "center" }}>No history yet</Text>
-                  <Text style={{ color: C.muted, fontSize: 12, textAlign: "center", marginTop: 6, lineHeight: 18 }}>
-                    Go to the Mood Log tab to log your mood
-                  </Text>
-                </View>
-              </Card>
-            ) : (
-              logs.slice(0, 20).map((log, i) => {
-                const d = new Date(log.loggedAt);
-                const dateStr = d.toLocaleDateString("hi-IN", { day: "numeric", month: "short" });
-                const timeStr = d.toLocaleTimeString("hi-IN", { hour: "2-digit", minute: "2-digit" });
-                const pillars = log.pillars as Record<string, number> | undefined;
-                return (
-                  <Card key={i}>
-                    <View style={{ padding: 14 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                        <View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: scoreColor(log.stressScore) + "18", alignItems: "center", justifyContent: "center", borderWidth: 2.5, borderColor: scoreColor(log.stressScore) }}>
-                          <Text style={{ color: scoreColor(log.stressScore), fontFamily: "Inter_700Bold", fontSize: 18 }}>{log.stressScore}</Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                            <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{scoreLabel(log.stressScore)} Stress</Text>
-                            {log.mood && <Text style={{ fontSize: 16 }}>{moodEmoji(log.mood)}</Text>}
-                          </View>
-                          <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular" }}>
-                            {log.stressType === "mood" ? `Mood: ${log.mood}` : "5-Pillar Analysis"}
-                          </Text>
-                        </View>
-                        <View style={{ alignItems: "flex-end" }}>
-                          <Text style={{ color: C.text, fontSize: 11, fontFamily: "Inter_500Medium" }}>{dateStr}</Text>
-                          <Text style={{ color: C.muted, fontSize: 10 }}>{timeStr}</Text>
+            {logs.length === 0 && !dataLoading && (
+              <View style={[sCard, { padding: 30, alignItems: "center" }]}>
+                <Text style={{ fontSize: 40, marginBottom: 12 }}>📊</Text>
+                <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 15, marginBottom: 6 }}>No history yet</Text>
+                <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center" }}>Complete your first check-in to see your stress history here.</Text>
+              </View>
+            )}
+
+            {logs.slice(0, 20).map((l, i) => {
+              const t    = new Date(l.loggedAt);
+              const mode = (l.pillars as Record<string, unknown>)?.mode as string || l.stressType;
+              const modeLabel = mode === "full_assessment" ? "Clinical" : mode === "five_pillar" ? "Auto" : "Mood";
+              return (
+                <View key={i} style={[sCard, { padding: 14 }]}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                    <View style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: scoreColor(l.stressScore), backgroundColor: scoreColor(l.stressScore) + "12", alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ color: scoreColor(l.stressScore), fontFamily: "Inter_700Bold", fontSize: 15 }}>{l.stressScore}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{scoreLabel(l.stressScore)}</Text>
+                        <View style={{ backgroundColor: C.primary + "15", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 }}>
+                          <Text style={{ color: C.primary, fontSize: 9.5, fontFamily: "Inter_600SemiBold" }}>{modeLabel}</Text>
                         </View>
                       </View>
-                      {pillars && (
-                        <View style={{ flexDirection: "row", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                          {Object.entries(pillars).map(([k, v]) => {
-                            const p = PILLARS.find(x => x.key === k);
-                            return p ? (
-                              <View key={k} style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: p.color + "12", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                                <Ionicons name={p.icon} size={11} color={p.color} />
-                                <Text style={{ color: p.color, fontSize: 10, fontFamily: "Inter_600SemiBold" }}>{Math.round(v)}%</Text>
-                              </View>
-                            ) : null;
-                          })}
-                        </View>
-                      )}
+                      <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 }}>
+                        {t.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} · {t.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                      </Text>
                     </View>
-                  </Card>
-                );
-              })
-            )}
+                    <Text style={{ fontSize: 24 }}>{scoreEmoji(l.stressScore)}</Text>
+                  </View>
+                  {!!(l.pillars as Record<string, unknown>)?.symptoms && (
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 10 }}>
+                      {((l.pillars as Record<string, unknown>).symptoms as string[]).map(sym => (
+                        <View key={sym} style={{ backgroundColor: C.orange + "12", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
+                          <Text style={{ color: C.orange, fontSize: 10, fontFamily: "Inter_400Regular" }}>{sym}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -522,3 +794,18 @@ export default function StressScreen() {
     </View>
   );
 }
+
+const sCard = StyleSheet.create({
+  card: {
+    backgroundColor: "#FFF",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#EDE9FA",
+    shadowColor: "#7C3AED",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+    overflow: "hidden",
+  },
+}).card;

@@ -14,7 +14,7 @@ import { DS } from "@/lib/theme";
 import {
   Flame, Droplets, Dumbbell, Heart,
   Utensils, Pill, ScanLine, Brain, FileText,
-  ChevronRight, Sparkles, Plus, Beef, Wheat,
+  ChevronRight, Sparkles, Plus, Beef, Wheat, Zap,
 } from "lucide-react-native";
 
 function todayDate() { return new Date().toISOString().slice(0, 10); }
@@ -236,6 +236,74 @@ const wd = StyleSheet.create({
   empty:   { backgroundColor: "#EBF5FB", borderWidth: 1.5, borderColor: DS.color.sky + "30" },
 });
 
+// ── STRESS CARD ────────────────────────────────────────────────────────────────
+type StressToday = { checkedIn: boolean; latestScore: number | null; avgScore: number | null; count: number; latestMood: string | null; burnoutRisk: boolean };
+
+function stressScoreColor(s: number): string {
+  if (s < 26) return DS.color.green;
+  if (s < 51) return "#F59E0B";
+  if (s < 76) return "#F97316";
+  return "#EF4444";
+}
+function stressScoreLabel(s: number): string {
+  if (s < 26) return "Low";
+  if (s < 51) return "Moderate";
+  if (s < 76) return "Elevated";
+  return "High Risk";
+}
+
+function StressCard({ data, onPress }: { data: StressToday | null; onPress: () => void }) {
+  const hasScore = data?.checkedIn && data.latestScore !== null;
+  const score    = data?.latestScore ?? 0;
+  const col      = hasScore ? stressScoreColor(score) : "#8B5CF6";
+  const label    = hasScore ? stressScoreLabel(score) : "Not checked in";
+
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.88} style={sc.wrap}>
+      {/* Left: icon + title */}
+      <View style={[sc.iconBox, { backgroundColor: col + "18" }]}>
+        <Brain size={20} color={col} strokeWidth={2} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={sc.title}>Stress Check-In</Text>
+        {data?.burnoutRisk && (
+          <View style={sc.burnoutBadge}>
+            <Text style={sc.burnoutTxt}>⚠️ Burnout Risk</Text>
+          </View>
+        )}
+        <Text style={[sc.status, { color: col }]}>
+          {hasScore
+            ? `Score ${score} · ${label}${data!.count > 1 ? ` (${data!.count} today)` : ""}`
+            : "Tap to check in now"
+          }
+        </Text>
+      </View>
+      {/* Right: score ring or plus */}
+      {hasScore ? (
+        <View style={[sc.ring, { borderColor: col }]}>
+          <Text style={[sc.ringNum, { color: col }]}>{score}</Text>
+        </View>
+      ) : (
+        <View style={[sc.addBtn, { backgroundColor: "#8B5CF6" + "15", borderColor: "#8B5CF6" + "30" }]}>
+          <Plus size={16} color="#8B5CF6" strokeWidth={2.5} />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+const sc = StyleSheet.create({
+  wrap:        { backgroundColor: "#FFF", borderRadius: 20, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 },
+  iconBox:     { width: 46, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  title:       { fontSize: 14, fontFamily: "Inter_700Bold", color: DS.color.text, marginBottom: 2 },
+  status:      { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
+  burnoutBadge:{ backgroundColor: "#FEE2E2", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, alignSelf: "flex-start", marginBottom: 2 },
+  burnoutTxt:  { color: "#EF4444", fontSize: 9.5, fontFamily: "Inter_700Bold" },
+  ring:        { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+  ringNum:     { fontSize: 14, fontFamily: "Inter_700Bold" },
+  addBtn:      { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", borderWidth: 1.5 },
+});
+
 // ── MEDICINE ROW ───────────────────────────────────────────────────────────────
 const mealColors: Record<string, string> = {
   before_meal: DS.color.orange, after_meal: DS.color.green, with_meal: DS.color.sky, anytime: DS.color.purple,
@@ -255,6 +323,7 @@ export default function DashboardScreen() {
   const [nutrition,   setNutrition]   = useState({ protein: 0, carbs: 0, fat: 0 });
   const [exerciseMin, setExerciseMin] = useState(0);
   const [activityPct, setActivityPct] = useState(0);
+  const [stressToday, setStressToday] = useState<StressToday | null>(null);
   const [isLoading,   setIsLoading]   = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
   const [userName,    setUserName]    = useState("");
@@ -272,10 +341,10 @@ export default function DashboardScreen() {
   const loadData = useCallback(async () => {
     try {
       const date = todayDate();
-      const [scoreRes, waterRes, foodRes, exerciseRes, profileRes, medRes, activityRes] = await Promise.allSettled([
+      const [scoreRes, waterRes, foodRes, exerciseRes, profileRes, medRes, activityRes, stressRes] = await Promise.allSettled([
         api.getHealthScore(date), api.getWaterLog(date), api.getFoodSummary(date),
         api.getExerciseLogs(date), api.getProfile(), api.getMedicineSchedules(),
-        api.getWeeklyActivity(),
+        api.getWeeklyActivity(), api.getStressToday(),
       ]);
       if (scoreRes.status === "fulfilled") {
         const sc = scoreRes.value.score as Record<string, number>;
@@ -309,6 +378,9 @@ export default function DashboardScreen() {
       }
       if (activityRes.status === "fulfilled") {
         setActivityPct(activityRes.value.percentage ?? 0);
+      }
+      if (stressRes.status === "fulfilled") {
+        setStressToday(stressRes.value as StressToday);
       }
     } catch (err) {
       if (process.env.NODE_ENV !== "production") {
@@ -437,7 +509,10 @@ export default function DashboardScreen() {
           {/* 5. WATER INTAKE */}
           <WaterDots current={water.current} goal={Math.max(water.goal, 6)} onAdd={handleAddWater} />
 
-          {/* 6. TODAY'S MEDICINES */}
+          {/* 6. STRESS CHECK-IN */}
+          <StressCard data={stressToday} onPress={() => router.push("/stress" as never)} />
+
+          {/* 7. TODAY'S MEDICINES */}
           <View style={s.surfaceCard}>
             <View style={s.cardHeader}>
               <Text style={s.secTitle}>Today's Medicines 💊</Text>
