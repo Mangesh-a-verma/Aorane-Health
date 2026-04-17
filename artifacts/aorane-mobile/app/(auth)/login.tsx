@@ -20,6 +20,14 @@ WebBrowser.maybeCompleteAuthSession();
 
 // Evaluated at bundle-time by Metro so the Google button is truly hidden when not configured
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? "";
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "";
+
+// Google auth is only enabled when the platform-specific client ID is actually set
+const GOOGLE_ENABLED =
+  Platform.OS === "android" ? GOOGLE_ANDROID_CLIENT_ID.length > 0
+  : Platform.OS === "ios"     ? GOOGLE_IOS_CLIENT_ID.length > 0
+  : GOOGLE_CLIENT_ID.length > 0;
 
 const { width: W, height: H } = Dimensions.get("window");
 
@@ -74,12 +82,14 @@ export default function LoginScreen() {
   const [pinFocused, setPinFocused] = useState(false);
   const [devOtp, setDevOtp] = useState<string | null>(null);
 
-  const [, googleResponse, googlePromptAsync] = Google.useAuthRequest({
-    clientId: GOOGLE_CLIENT_ID || undefined,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || undefined,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || undefined,
-    scopes: ["openid", "email", "profile"],
-  });
+  const [, googleResponse, googlePromptAsync] = Google.useAuthRequest(
+    GOOGLE_ENABLED ? {
+      clientId: GOOGLE_CLIENT_ID || undefined,
+      androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
+      iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
+      scopes: ["openid", "email", "profile"],
+    } : null
+  );
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
@@ -440,8 +450,8 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
-              {/* Google Sign-In — only shown when OAuth client ID is configured */}
-              {GOOGLE_CLIENT_ID.length > 0 && (
+              {/* Google Sign-In — only shown when platform-specific OAuth client ID is configured */}
+              {GOOGLE_ENABLED && (
                 <>
                   <View style={s.dividerRow}>
                     <View style={s.dividerLine} />
