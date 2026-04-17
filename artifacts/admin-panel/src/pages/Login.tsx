@@ -32,7 +32,7 @@ export default function Login() {
     try {
       const res = await api.login(email, password);
       login(res.token, res.admin);
-      navigate("/dashboard");
+      // Navigation handled by PublicOnly wrapper watching token state
     } catch (err) {
       const msg = (err as Error).message || "Authentication failed";
       if (msg.includes("JSON") || msg.includes("Unexpected") || msg.includes("empty") || msg.includes("non-JSON")) {

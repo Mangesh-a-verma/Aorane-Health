@@ -49,6 +49,15 @@ function Protected({ component: C }: { component: React.ComponentType }) {
   return <C />;
 }
 
+function PublicOnly({ component: C }: { component: React.ComponentType }) {
+  const { token, isLoading } = useAuth();
+  const [, navigate] = useLocation();
+  useEffect(() => { if (!isLoading && token) navigate("/dashboard"); }, [token, isLoading, navigate]);
+  if (isLoading) return <Spinner />;
+  if (token) return null;
+  return <C />;
+}
+
 function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -64,7 +73,7 @@ function NotFound() {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Login} />
+      <Route path="/" component={() => <PublicOnly component={Login} />} />
       <Route path="/dashboard" component={() => <Protected component={Dashboard} />} />
       <Route path="/users" component={() => <Protected component={Users} />} />
       <Route path="/organizations" component={() => <Protected component={Organizations} />} />
