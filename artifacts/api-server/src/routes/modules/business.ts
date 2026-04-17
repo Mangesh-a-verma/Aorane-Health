@@ -114,14 +114,11 @@ router.post("/business/login", async (req, res) => {
     cache.setOtp(`biz_login_otp:${email.toLowerCase()}`, hashed);
     const sent = await sendEmailOtp(email, otp);
     const isDev = process.env.NODE_ENV !== "production";
-    const testEmails = (process.env.TEST_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
-    const isTestEmail = testEmails.includes(email.toLowerCase());
-    const returnDevOtp = !sent && (isDev || isTestEmail);
 
     res.json({
       requiresOtp: true,
       message: sent ? "OTP sent to your email" : (isDev ? "Dev mode — OTP below" : "Email service unavailable"),
-      ...(returnDevOtp ? { devOtp: otp } : {}),
+      ...(isDev ? { devOtp: otp } : {}),
       sent,
     });
   } catch {
