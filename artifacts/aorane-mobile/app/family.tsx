@@ -159,7 +159,7 @@ export default function FamilyScreen() {
             </GlassCard>
 
             <TouchableOpacity onPress={createGroup} disabled={creating} style={{ backgroundColor: "#0077B6", borderRadius: 14, padding: 16, alignItems: "center", marginBottom: 12 }}>
-              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>{creating ? "Creating..." : "Naya Group Banao"}</Text>
+              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>{creating ? "Creating..." : "Create New Group"}</Text>
             </TouchableOpacity>
 
             <GlassCard>

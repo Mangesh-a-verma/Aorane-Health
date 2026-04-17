@@ -206,7 +206,7 @@ export default function StressScreen() {
     try {
       const res = await api.logStress({ stressType: "mood", mood: selectedMood });
       const m = MOODS.find(x => x.key === selectedMood);
-      Alert.alert("Log Ho Gaya! ✅", `${m?.emoji} ${m?.label} — Stress score: ${res.stressScore}/100`);
+      Alert.alert("Logged! ✅", `${m?.emoji} ${m?.label} — Stress score: ${res.stressScore}/100`);
       setSelectedMood(null);
       loadAll();
     } catch (e: unknown) {

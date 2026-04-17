@@ -352,7 +352,7 @@ export default function BloodEmergencyScreen() {
             <TouchableOpacity onPress={openModal} activeOpacity={0.87}>
               <LinearGradient colors={["#DC2626", "#B91C1C"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.actionBtn, { marginBottom: 4 }]}>
                 <Ionicons name="add-circle-outline" size={18} color="#FFF" />
-                <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 15 }}>Naya Blood Emergency Request</Text>
+                <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 15 }}>New Blood Emergency Request</Text>
               </LinearGradient>
             </TouchableOpacity>
 

@@ -410,6 +410,7 @@ router.post("/auth/send-email-otp", async (req, res) => {
 
     const sent = await sendEmailOtp(email, otp);
     const isDev = process.env.NODE_ENV !== "production";
+    if (isDev) console.log(`[Dev] Email OTP for ${email}: ${otp}`);
     const testEmails = (process.env.TEST_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
     const isTestEmail = testEmails.includes(email.toLowerCase());
     const returnDevOtp = !sent && (isDev || isTestEmail);
