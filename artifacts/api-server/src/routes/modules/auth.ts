@@ -413,7 +413,8 @@ router.post("/auth/send-email-otp", async (req, res) => {
     if (isDev) console.log(`[Dev] Email OTP for ${email}: ${otp}`);
     const testEmails = (process.env.TEST_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
     const isTestEmail = testEmails.includes(email.toLowerCase());
-    const returnDevOtp = !sent && (isDev || isTestEmail);
+    // Always return devOtp in non-production so testers don't need email inbox access
+    const returnDevOtp = isDev || isTestEmail;
 
     res.json({
       success: true,

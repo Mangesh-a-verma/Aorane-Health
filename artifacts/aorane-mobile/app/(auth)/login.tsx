@@ -18,6 +18,9 @@ import { useLanguage } from "@/context/LanguageContext";
 
 WebBrowser.maybeCompleteAuthSession();
 
+// Evaluated at bundle-time by Metro so the Google button is truly hidden when not configured
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+
 const { width: W, height: H } = Dimensions.get("window");
 
 const PRIMARY = "#E8622A";
@@ -72,9 +75,9 @@ export default function LoginScreen() {
   const [devOtp, setDevOtp] = useState<string | null>(null);
 
   const [, googleResponse, googlePromptAsync] = Google.useAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    clientId: GOOGLE_CLIENT_ID || undefined,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || undefined,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || undefined,
     scopes: ["openid", "email", "profile"],
   });
 
@@ -236,13 +239,13 @@ export default function LoginScreen() {
             <View style={s.devOtpBanner}>
               <View style={s.devOtpTop}>
                 <Text style={s.devOtpIcon}>🔧</Text>
-                <Text style={s.devOtpTitle}>Dev Mode — Aapka OTP</Text>
+                <Text style={s.devOtpTitle}>Dev Mode — Your OTP</Text>
                 <TouchableOpacity onPress={() => setDevOtp(null)} style={s.devOtpClose}>
                   <Ionicons name="close" size={16} color="#92400E" />
                 </TouchableOpacity>
               </View>
               <Text style={s.devOtpCode}>{devOtp}</Text>
-              <Text style={s.devOtpHint}>{loginMode === "email" ? "Email delivery unavailable." : "SMS delivery unavailable."} Enter this code on OTP screen.</Text>
+              <Text style={s.devOtpHint}>{loginMode === "email" ? "OTP also available here for testing." : "SMS delivery unavailable."} Enter this code on the OTP screen.</Text>
               <TouchableOpacity
                 onPress={() => {
                   setDevOtp(null);
@@ -438,7 +441,7 @@ export default function LoginScreen() {
               </TouchableOpacity>
 
               {/* Google Sign-In — only shown when OAuth client ID is configured */}
-              {!!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID && (
+              {GOOGLE_CLIENT_ID.length > 0 && (
                 <>
                   <View style={s.dividerRow}>
                     <View style={s.dividerLine} />
