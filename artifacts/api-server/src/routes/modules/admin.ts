@@ -6,27 +6,10 @@ import { signAdminToken } from "../../lib/jwt";
 import type { AdminRequest } from "../../middlewares/admin-auth";
 import { invalidateAICache } from "../../lib/ai";
 import { invalidateFeatureCache } from "../../middlewares/feature-check";
-import crypto from "crypto";
+import { verifyAndMigratePassword } from "../../lib/auth-utils";
 import bcrypt from "bcryptjs";
 
 const router = Router();
-
-// Secure password verification with lazy bcrypt migration from SHA-256
-async function verifyAndMigratePassword(
-  plain: string,
-  stored: string,
-  updateHash: (h: string) => Promise<void>
-): Promise<boolean> {
-  if (stored.startsWith("$2b$") || stored.startsWith("$2a$")) {
-    return bcrypt.compare(plain, stored);
-  }
-  // Legacy SHA-256 — verify then silently upgrade to bcrypt
-  const sha = crypto.createHash("sha256").update(plain).digest("hex");
-  if (sha !== stored) return false;
-  const newHash = await bcrypt.hash(plain, 12);
-  await updateHash(newHash);
-  return true;
-}
 
 router.post("/admin/login", async (req, res) => {
   try {

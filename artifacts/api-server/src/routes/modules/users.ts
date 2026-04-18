@@ -340,67 +340,6 @@ function getActiveLabel(pct: number): string {
   return "Inactive 😴";
 }
 
-// ─── Notification Settings (GET + PUT) ───────────────────────────────────────
-router.get("/notifications/settings", requireAuth, async (req: AuthRequest, res) => {
-  try {
-    const r = await pool.query(
-      `SELECT notifications_enabled, medicine_reminders, water_reminders, food_reminders,
-              period_reminders, suggestion_notifications, weekly_report_email,
-              wake_up_time, bed_time, calorie_goal, water_goal_glasses
-       FROM user_preferences WHERE user_id=$1`,
-      [req.userId!]
-    );
-    const row = r.rows[0] ?? {};
-    res.json({
-      settings: {
-        notificationsEnabled:      row.notifications_enabled      ?? true,
-        medicineReminders:         row.medicine_reminders         ?? true,
-        waterReminders:            row.water_reminders            ?? true,
-        foodReminders:             row.food_reminders             ?? true,
-        periodReminders:           row.period_reminders           ?? true,
-        suggestionNotifications:   row.suggestion_notifications   ?? true,
-        weeklyReportEmail:         row.weekly_report_email        ?? false,
-        wakeUpTime:                row.wake_up_time               ?? "07:00",
-        bedTime:                   row.bed_time                   ?? "22:30",
-        calorieGoal:               row.calorie_goal               ?? 2000,
-        waterGoalGlasses:          row.water_goal_glasses         ?? 8,
-      }
-    });
-  } catch (e) {
-    res.status(500).json({ error: "Failed to fetch notification settings" });
-  }
-});
-
-router.put("/notifications/settings", requireAuth, async (req: AuthRequest, res) => {
-  try {
-    const colMap: Record<string, string> = {
-      notificationsEnabled:    "notifications_enabled",
-      medicineReminders:       "medicine_reminders",
-      waterReminders:          "water_reminders",
-      foodReminders:           "food_reminders",
-      periodReminders:         "period_reminders",
-      suggestionNotifications: "suggestion_notifications",
-      weeklyReportEmail:       "weekly_report_email",
-      wakeUpTime:              "wake_up_time",
-      bedTime:                 "bed_time",
-      calorieGoal:             "calorie_goal",
-      waterGoalGlasses:        "water_goal_glasses",
-    };
-    const fields: string[] = []; const vals: unknown[] = []; let idx = 1;
-    for (const [jsKey, col] of Object.entries(colMap)) {
-      if (Object.prototype.hasOwnProperty.call(req.body, jsKey) && req.body[jsKey] !== undefined) {
-        fields.push(`${col}=$${idx++}`); vals.push(req.body[jsKey]);
-      }
-    }
-    if (fields.length === 0) { res.json({ success: true }); return; }
-    vals.push(req.userId!);
-    await pool.query(`UPDATE user_preferences SET ${fields.join(",")} WHERE user_id=$${idx}`, vals);
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: "Failed to update notification settings" });
-  }
-});
-
 // ─── Search user by AORANE ID (for Admin + Business Portal) ──────────────────
 // Also supports search by name/phone for admin
 router.get("/users/search", requireAuth, async (req: AuthRequest, res) => {

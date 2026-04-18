@@ -5,25 +5,9 @@ import { requireBusinessAuth } from "../../middlewares/business-auth";
 import { requireAuth } from "../../middlewares/user-auth";
 import { signBusinessToken } from "../../lib/jwt";
 import type { BusinessRequest } from "../../middlewares/business-auth";
-import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { generateOtp, hashOtp, verifyOtpHash, sendEmailOtp } from "../../lib/otp";
-
-// Secure password verification with lazy bcrypt migration from SHA-256
-async function verifyAndMigratePassword(
-  plain: string,
-  stored: string,
-  updateHash: (h: string) => Promise<void>
-): Promise<boolean> {
-  if (stored.startsWith("$2b$") || stored.startsWith("$2a$")) {
-    return bcrypt.compare(plain, stored);
-  }
-  const sha = crypto.createHash("sha256").update(plain).digest("hex");
-  if (sha !== stored) return false;
-  const newHash = await bcrypt.hash(plain, 12);
-  await updateHash(newHash);
-  return true;
-}
+import { verifyAndMigratePassword } from "../../lib/auth-utils";
 import {
   isLiveMode, createPlan, createSubscription, cancelSubscription,
   verifySubscriptionSignature, verifyPaymentSignature, createOrder,
