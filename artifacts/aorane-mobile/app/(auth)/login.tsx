@@ -38,7 +38,7 @@ const PRIMARY = "#E8622A";
 // which happens only when GOOGLE_ENABLED is true.
 function GoogleSignInButton({ disabled, loginWithToken, lang }: {
   disabled: boolean;
-  loginWithToken: (accessToken: string, refreshToken: string, user: { id: string; phone: string; plan: string; languageCode: string }, isNewUser: boolean) => Promise<void>;
+  loginWithToken: (accessToken: string, refreshToken: string, user: { id: string; phone: string; plan: string; languageCode: string }, isNewUser: boolean, onboardingStep?: number) => Promise<void>;
   lang: string;
 }) {
   const [googleLoading, setGoogleLoading] = React.useState(false);
@@ -63,14 +63,21 @@ function GoogleSignInButton({ disabled, loginWithToken, lang }: {
     setGoogleLoading(true);
     try {
       const result = await api.googleLogin(accessToken);
-      const userData = result.user as { id: string; plan: string };
+      const userData = result.user as { id: string; plan: string; languageCode?: string };
+      const onboardingStep = (result as Record<string, unknown>).onboardingStep as number ?? 0;
       await loginWithToken(
         result.accessToken,
         result.refreshToken,
-        { id: userData.id, phone: "", plan: userData.plan || "free", languageCode: lang },
-        result.isNewUser
+        { id: userData.id, phone: "", plan: userData.plan || "free", languageCode: userData.languageCode || lang },
+        result.isNewUser,
+        onboardingStep,
       );
-      router.replace("/(tabs)/" as never);
+      const onboardingDone = !result.isNewUser && onboardingStep >= 5;
+      if (!onboardingDone) {
+        router.replace("/(onboarding)/" as never);
+      } else {
+        router.replace("/(tabs)/dashboard");
+      }
     } catch (err: unknown) {
       Alert.alert("Google Login Failed", err instanceof Error ? err.message : "Please try again.");
     } finally {

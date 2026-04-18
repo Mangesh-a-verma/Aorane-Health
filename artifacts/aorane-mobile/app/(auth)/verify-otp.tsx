@@ -85,6 +85,7 @@ export default function VerifyOtpScreen() {
       let refreshToken: string;
       let user: { id: string; phone?: string; email?: string; plan: string; languageCode: string };
       let isNewUser: boolean;
+      let onboardingStep = 0;
 
       if (mode === "email") {
         const res = await api.verifyEmailOtp(email || "", otpValue, langParam as string);
@@ -92,6 +93,7 @@ export default function VerifyOtpScreen() {
         refreshToken = res.refreshToken;
         user = res.user;
         isNewUser = res.isNewUser;
+        onboardingStep = (res as Record<string, unknown>).onboardingStep as number ?? 0;
       } else if (mode === "firebase") {
         const confirmation = getConfirmationResult();
         if (!confirmation) throw new Error("Session expired — please request OTP again");
@@ -103,17 +105,20 @@ export default function VerifyOtpScreen() {
         refreshToken = res.refreshToken;
         user = res.user;
         isNewUser = res.isNewUser;
+        onboardingStep = (res as Record<string, unknown>).onboardingStep as number ?? 0;
       } else {
         const res = await api.verifyOtp(phone || "", otpValue, langParam as string);
         accessToken = res.accessToken;
         refreshToken = res.refreshToken;
         user = res.user;
         isNewUser = res.isNewUser;
+        onboardingStep = (res as Record<string, unknown>).onboardingStep as number ?? 0;
       }
 
-      await loginWithToken(accessToken, refreshToken, user, isNewUser);
+      await loginWithToken(accessToken, refreshToken, user, isNewUser, onboardingStep);
 
-      if (isNewUser) {
+      const onboardingDone = !isNewUser && onboardingStep >= 5;
+      if (!onboardingDone) {
         router.replace("/(onboarding)/" as never);
       } else {
         const pinSetAlready = await storage.isPinSet();

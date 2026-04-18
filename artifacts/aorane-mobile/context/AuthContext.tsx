@@ -20,8 +20,10 @@ type AuthState = {
   token: string | null;
 };
 
+const ONBOARDING_FINAL_STEP = 5; // goals.tsx is step 5 of 5
+
 type AuthContextType = AuthState & {
-  loginWithToken: (token: string, refreshToken: string, user: User, isNewUser: boolean) => Promise<void>;
+  loginWithToken: (token: string, refreshToken: string, user: User, isNewUser: boolean, onboardingStep?: number) => Promise<void>;
   logout: () => Promise<void>;
   setOnboardingComplete: () => Promise<void>;
   setPinComplete: () => Promise<void>;
@@ -87,11 +89,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const loginWithToken = useCallback(async (token: string, refreshToken: string, user: User, isNewUser: boolean) => {
+  const loginWithToken = useCallback(async (token: string, refreshToken: string, user: User, isNewUser: boolean, onboardingStep = 0) => {
     await storage.setToken(token);
     await storage.setRefreshToken(refreshToken);
     await storage.setUser(user as Record<string, unknown>);
-    const onboarding = isNewUser ? false : await storage.isOnboardingDone();
+
+    // Determine onboarding status:
+    // 1. New users always need onboarding
+    // 2. Returning users: trust DB onboarding_step (not AsyncStorage which gets cleared on logout/reinstall)
+    const serverSaysDone = !isNewUser && onboardingStep >= ONBOARDING_FINAL_STEP;
+    // Sync AsyncStorage so app-open (initAuth) also works without network
+    if (serverSaysDone) await storage.setOnboardingDone(true);
+    const onboarding = serverSaysDone ? true : (isNewUser ? false : await storage.isOnboardingDone());
+
     const pinSet = await storage.isPinSet();
     setState({
       isLoading: false,

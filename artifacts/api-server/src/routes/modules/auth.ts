@@ -166,6 +166,10 @@ router.post("/auth/verify-otp", async (req, res) => {
     await pool.query(`INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
     await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]).catch(() => {});
 
+    // Fetch onboarding_step from DB — client uses this to skip onboarding for returning users
+    const profileRow = await pool.query(`SELECT onboarding_step FROM user_profiles WHERE user_id=$1`, [user.id]).catch(() => null);
+    const onboardingStep: number = profileRow?.rows?.[0]?.onboarding_step ?? 0;
+
     const payload = { userId: user.id, phone: phone, plan: user.plan };
     const accessToken = signUserToken(payload);
     const refreshToken = signRefreshToken(payload);
@@ -174,6 +178,7 @@ router.post("/auth/verify-otp", async (req, res) => {
       accessToken,
       refreshToken,
       isNewUser,
+      onboardingStep,
       user: {
         id: user.id,
         phone: user.phone,
@@ -247,6 +252,9 @@ router.post("/auth/firebase-login", async (req, res) => {
     await pool.query(`INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
     await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]).catch(() => {});
 
+    const fbProfileRow = await pool.query(`SELECT onboarding_step FROM user_profiles WHERE user_id=$1`, [user.id]).catch(() => null);
+    const fbOnboardingStep: number = fbProfileRow?.rows?.[0]?.onboarding_step ?? 0;
+
     const payload = { userId: user.id, phone, plan: user.plan };
     const accessToken = signUserToken(payload);
     const refreshToken = signRefreshToken(payload);
@@ -257,6 +265,7 @@ router.post("/auth/firebase-login", async (req, res) => {
       accessToken,
       refreshToken,
       isNewUser,
+      onboardingStep: fbOnboardingStep,
       user: {
         id: user.id,
         phone: user.phone,
@@ -363,11 +372,14 @@ router.post("/auth/google", async (req, res) => {
 
     await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
 
+    const gProfileRow = await pool.query(`SELECT onboarding_step FROM user_profiles WHERE user_id=$1`, [user.id]).catch(() => null);
+    const gOnboardingStep: number = gProfileRow?.rows?.[0]?.onboarding_step ?? 0;
+
     const payload = { userId: user.id, email: googleData.email, plan: user.plan };
     const accessToken = signUserToken(payload);
     const refreshToken = signRefreshToken(payload);
 
-    res.json({ accessToken, refreshToken, isNewUser, user: { id: user.id, plan: user.plan } });
+    res.json({ accessToken, refreshToken, isNewUser, onboardingStep: gOnboardingStep, user: { id: user.id, plan: user.plan, languageCode: user.languageCode } });
   } catch (err) {
     res.status(500).json({ error: "Google authentication failed" });
   }
@@ -465,12 +477,15 @@ router.post("/auth/verify-email-otp", async (req, res) => {
     await pool.query(`INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
     await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]).catch(() => {});
 
+    const eProfileRow = await pool.query(`SELECT onboarding_step FROM user_profiles WHERE user_id=$1`, [user.id]).catch(() => null);
+    const eOnboardingStep: number = eProfileRow?.rows?.[0]?.onboarding_step ?? 0;
+
     const payload = { userId: user.id, email: email.toLowerCase(), plan: user.plan };
     const accessToken = signUserToken(payload);
     const refreshToken = signRefreshToken(payload);
 
     res.json({
-      accessToken, refreshToken, isNewUser,
+      accessToken, refreshToken, isNewUser, onboardingStep: eOnboardingStep,
       user: { id: user.id, email: user.email, plan: user.plan, languageCode: user.languageCode },
     });
   } catch (err) {
