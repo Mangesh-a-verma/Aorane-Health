@@ -184,8 +184,8 @@ function ServiceTile({ icon, label, color, onPress, badge }: {
 }
 const st = StyleSheet.create({
   wrap:     { width: "33.33%", alignItems: "center", paddingVertical: 6 },
-  inner:    { alignItems: "center", gap: 7 },
-  shadow3d: { position: "absolute", width: 52, height: 18, borderRadius: 10, top: 42, left: "50%", marginLeft: -26 },
+  inner:    { alignItems: "center", gap: 7, width: 64 },
+  shadow3d: { position: "absolute", width: 44, height: 13, borderRadius: 10, top: 45, left: 10, opacity: 0.9 },
   circle:   { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   lbl:      { fontSize: 11, fontFamily: "Inter_600SemiBold", color: DS.color.text, textAlign: "center", lineHeight: 14, height: 28 },
   badgeDot: { position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: "#FFF", alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
@@ -491,7 +491,71 @@ export default function DashboardScreen() {
             activityPct={activityPct}
           />
 
-          {/* 2. NUTRITION CARD */}
+          {/* 2. QUICK SERVICES */}
+          <View style={s.surfaceCard}>
+            <Text style={s.secTitle}>Quick Services</Text>
+            <View style={s.grid}>
+              {[
+                { icon: <Utensils size={22} color="#FFF" strokeWidth={2.2} />, label: "Meal Log",  color: "#F5A623", route: "/(tabs)/food" },
+                { icon: <Dumbbell size={22} color="#FFF" strokeWidth={2.2} />, label: "Exercise",  color: DS.color.green,  route: "/(tabs)/exercise" },
+                { icon: <Pill     size={22} color="#FFF" strokeWidth={2.2} />, label: "Medicine",  color: DS.color.purple, route: "/(tabs)/medicine",
+                  badge: medicines.length > 0 ? String(medicines.length) : undefined },
+                { icon: <ScanLine size={22} color="#FFF" strokeWidth={2.2} />, label: "AI Scan",   color: DS.color.primary, route: "/(tabs)/scan" },
+                { icon: <Brain    size={22} color="#FFF" strokeWidth={2.2} />, label: "AI Coach",  color: "#8E44AD", route: "/suggestions" },
+                { icon: <FileText size={22} color="#FFF" strokeWidth={2.2} />, label: "Reports",   color: DS.color.sky,     route: "/health-report" },
+              ].map((t, i) => (
+                <ServiceTile
+                  key={i} icon={t.icon} label={t.label} color={t.color}
+                  badge={(t as { badge?: string }).badge}
+                  onPress={() => router.push(t.route as never)}
+                />
+              ))}
+            </View>
+          </View>
+
+          {/* 3. WATER INTAKE */}
+          <WaterDots current={water.current} goal={Math.max(water.goal, 6)} onAdd={handleAddWater} />
+
+          {/* 4. TODAY'S MEDICINES */}
+          <View style={s.surfaceCard}>
+            <View style={s.cardHeader}>
+              <Text style={s.secTitle}>Today's Medicines 💊</Text>
+              <TouchableOpacity onPress={() => router.push("/(tabs)/medicine" as never)}>
+                <Text style={s.viewAll}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            {medicines.length === 0 ? (
+              <TouchableOpacity
+                style={s.emptyRow}
+                onPress={() => router.push("/(tabs)/medicine" as never)}
+                activeOpacity={0.8}
+              >
+                <View style={[s.medIcon, { backgroundColor: DS.color.purple + "18" }]}>
+                  <Pill size={15} color={DS.color.purple} strokeWidth={2} />
+                </View>
+                <Text style={s.emptyTxt}>No medicine schedule — Add one</Text>
+                <ChevronRight size={14} color={DS.color.purple} strokeWidth={2} />
+              </TouchableOpacity>
+            ) : (
+              medicines.slice(0, 3).map((med, idx) => (
+                <View
+                  key={med.id}
+                  style={[s.medRow, idx === Math.min(medicines.length, 3) - 1 && { borderBottomWidth: 0 }]}
+                >
+                  <View style={[s.medIcon, { backgroundColor: (mealColors[med.mealTiming] || DS.color.purple) + "18" }]}>
+                    <Pill size={15} color={mealColors[med.mealTiming] || DS.color.purple} strokeWidth={2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.medName}>{med.medicineName}{med.dosage ? ` · ${med.dosage}` : ""}</Text>
+                    <Text style={s.medSub}>{med.reminderTimes[0] || ""} • {mealLabels[med.mealTiming] || "Anytime"}</Text>
+                  </View>
+                  <ChevronRight size={14} color={DS.color.muted} strokeWidth={1.5} />
+                </View>
+              ))
+            )}
+          </View>
+
+          {/* 5. NUTRITION CARD */}
           <NutritionCard
             calories={calories.eaten}
             protein={nutrition.protein}
@@ -499,10 +563,13 @@ export default function DashboardScreen() {
             fat={nutrition.fat}
           />
 
-          {/* 3. ADS SLIDER */}
+          {/* 6. STRESS CHECK-IN */}
+          <StressCard data={stressToday} onPress={() => router.push("/stress" as never)} />
+
+          {/* 7. ADS SLIDER */}
           <AdsSlider />
 
-          {/* 4. AI FEATURES — 2-column layout */}
+          {/* 8. AI FEATURES — 3-column equal layout */}
           <View style={s.aiGrid}>
             <TouchableOpacity
               style={{ flex: 1 }}
@@ -555,77 +622,10 @@ export default function DashboardScreen() {
                 <View style={[s.aiIconBox, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
                   <Text style={{ fontSize: 18 }}>🆘</Text>
                 </View>
-                <Text style={s.aiTitle}>Blood{"\n"}Emergency</Text>
+                <Text style={s.aiTitle}>Blood Emergency</Text>
                 <Text style={s.aiSub}>Find donors fast</Text>
               </LinearGradient>
             </TouchableOpacity>
-          </View>
-
-          {/* 5. QUICK SERVICES */}
-          <View style={s.surfaceCard}>
-            <Text style={s.secTitle}>Quick Services</Text>
-            <View style={s.grid}>
-              {[
-                { icon: <Utensils size={22} color="#FFF" strokeWidth={2.2} />, label: "Meal Log",  color: "#F5A623", route: "/(tabs)/food" },
-                { icon: <Dumbbell size={22} color="#FFF" strokeWidth={2.2} />, label: "Exercise",  color: DS.color.green,  route: "/(tabs)/exercise" },
-                { icon: <Pill     size={22} color="#FFF" strokeWidth={2.2} />, label: "Medicine",  color: DS.color.purple, route: "/(tabs)/medicine",
-                  badge: medicines.length > 0 ? String(medicines.length) : undefined },
-                { icon: <ScanLine size={22} color="#FFF" strokeWidth={2.2} />, label: "AI Scan",   color: DS.color.primary, route: "/(tabs)/scan" },
-                { icon: <Brain    size={22} color="#FFF" strokeWidth={2.2} />, label: "AI Coach",  color: "#8E44AD", route: "/suggestions" },
-                { icon: <FileText size={22} color="#FFF" strokeWidth={2.2} />, label: "Reports",   color: DS.color.sky,     route: "/health-report" },
-              ].map((t, i) => (
-                <ServiceTile
-                  key={i} icon={t.icon} label={t.label} color={t.color}
-                  badge={(t as { badge?: string }).badge}
-                  onPress={() => router.push(t.route as never)}
-                />
-              ))}
-            </View>
-          </View>
-
-          {/* 6. WATER INTAKE */}
-          <WaterDots current={water.current} goal={Math.max(water.goal, 6)} onAdd={handleAddWater} />
-
-          {/* 7. STRESS CHECK-IN */}
-          <StressCard data={stressToday} onPress={() => router.push("/stress" as never)} />
-
-          {/* 8. TODAY'S MEDICINES */}
-          <View style={s.surfaceCard}>
-            <View style={s.cardHeader}>
-              <Text style={s.secTitle}>Today's Medicines 💊</Text>
-              <TouchableOpacity onPress={() => router.push("/(tabs)/medicine" as never)}>
-                <Text style={s.viewAll}>View All</Text>
-              </TouchableOpacity>
-            </View>
-            {medicines.length === 0 ? (
-              <TouchableOpacity
-                style={s.emptyRow}
-                onPress={() => router.push("/(tabs)/medicine" as never)}
-                activeOpacity={0.8}
-              >
-                <View style={[s.medIcon, { backgroundColor: DS.color.purple + "18" }]}>
-                  <Pill size={15} color={DS.color.purple} strokeWidth={2} />
-                </View>
-                <Text style={s.emptyTxt}>No medicine schedule — Add one</Text>
-                <ChevronRight size={14} color={DS.color.purple} strokeWidth={2} />
-              </TouchableOpacity>
-            ) : (
-              medicines.slice(0, 3).map((med, idx) => (
-                <View
-                  key={med.id}
-                  style={[s.medRow, idx === Math.min(medicines.length, 3) - 1 && { borderBottomWidth: 0 }]}
-                >
-                  <View style={[s.medIcon, { backgroundColor: (mealColors[med.mealTiming] || DS.color.purple) + "18" }]}>
-                    <Pill size={15} color={mealColors[med.mealTiming] || DS.color.purple} strokeWidth={2} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.medName}>{med.medicineName}{med.dosage ? ` · ${med.dosage}` : ""}</Text>
-                    <Text style={s.medSub}>{med.reminderTimes[0] || ""} • {mealLabels[med.mealTiming] || "Anytime"}</Text>
-                  </View>
-                  <ChevronRight size={14} color={DS.color.muted} strokeWidth={1.5} />
-                </View>
-              ))
-            )}
           </View>
 
         </Animated.View>
@@ -662,7 +662,7 @@ const s = StyleSheet.create({
   medSub:   { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: 1 },
 
   aiGrid:    { flexDirection: "row", gap: 8 },
-  aiCard:    { borderRadius: 18, padding: 11, minHeight: 108, overflow: "hidden", gap: 6 },
+  aiCard:    { flex: 1, borderRadius: 18, padding: 11, minHeight: 108, overflow: "hidden", gap: 6 },
   aiShine:   { position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(255,255,255,0.1)" },
   aiBadge:   { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20, paddingHorizontal: 7, paddingVertical: 3, alignSelf: "flex-start" },
   aiBadgeTxt:{ color: "#FFF", fontSize: 8.5, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
