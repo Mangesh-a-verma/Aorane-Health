@@ -46,12 +46,13 @@ function SplashScreen() {
 }
 
 export default function Index() {
-  const { isLoading, isAuthenticated, isOnboardingDone, isPinSet } = useAuth();
+  const { isLoading, isAuthenticated, isOnboardingDone, isPinSet, needsPinVerification } = useAuth();
 
   if (isLoading) return <SplashScreen />;
   if (!isAuthenticated) return <Redirect href="/(auth)/login" />;
   if (!isOnboardingDone) return <Redirect href={"/(onboarding)/" as never} />;
   if (!isPinSet) return <Redirect href="/(auth)/setup-pin" />;
+  if (needsPinVerification) return <Redirect href={"/(auth)/verify-pin" as never} />;
   return <Redirect href="/(tabs)/dashboard" />;
 }
 

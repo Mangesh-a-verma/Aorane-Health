@@ -15,6 +15,7 @@ type AuthState = {
   isAuthenticated: boolean;
   isOnboardingDone: boolean;
   isPinSet: boolean;
+  needsPinVerification: boolean;
   user: User | null;
   token: string | null;
 };
@@ -24,6 +25,7 @@ type AuthContextType = AuthState & {
   logout: () => Promise<void>;
   setOnboardingComplete: () => Promise<void>;
   setPinComplete: () => Promise<void>;
+  clearPinVerification: () => void;
   refreshUser: () => Promise<void>;
 };
 
@@ -35,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: false,
     isOnboardingDone: false,
     isPinSet: false,
+    needsPinVerification: false,
     user: null,
     token: null,
   });
@@ -50,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: false,
         isOnboardingDone: false,
         isPinSet: false,
+        needsPinVerification: false,
         user: null,
         token: null,
       });
@@ -71,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isAuthenticated: true,
           isOnboardingDone: onboarding,
           isPinSet: pinSet,
+          needsPinVerification: pinSet,
           user: user as User,
           token,
         });
@@ -93,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: true,
       isOnboardingDone: onboarding,
       isPinSet: pinSet,
+      needsPinVerification: false,
       user,
       token,
     });
@@ -105,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: false,
       isOnboardingDone: false,
       isPinSet: false,
+      needsPinVerification: false,
       user: null,
       token: null,
     });
@@ -117,7 +124,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const setPinComplete = useCallback(async () => {
     await storage.setPinSet(true);
-    setState((s) => ({ ...s, isPinSet: true }));
+    setState((s) => ({ ...s, isPinSet: true, needsPinVerification: false }));
+  }, []);
+
+  const clearPinVerification = useCallback(() => {
+    setState((s) => ({ ...s, needsPinVerification: false }));
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -131,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...state, loginWithToken, logout, setOnboardingComplete, setPinComplete, refreshUser }}>
+    <AuthContext.Provider value={{ ...state, loginWithToken, logout, setOnboardingComplete, setPinComplete, clearPinVerification, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
