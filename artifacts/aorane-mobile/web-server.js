@@ -1,7 +1,7 @@
 const http = require("http");
-const https = require("https");
 const fs = require("fs");
 const path = require("path");
+const { spawnSync } = require("child_process");
 
 const PORT = parseInt(process.env.PORT || "18624", 10);
 const BASE_PATH = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
@@ -28,6 +28,49 @@ const MIME = {
   ".map": "application/json",
 };
 
+// ---------------------------------------------------------------------------
+// Auto-rebuild: run expo export before serving if dist is stale or missing
+// ---------------------------------------------------------------------------
+function needsRebuild() {
+  const metaPath = path.join(DIST_DIR, "metadata.json");
+  if (!fs.existsSync(metaPath)) return true;
+  try {
+    const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+    // Empty fileMetadata means the previous build was corrupted / incomplete
+    if (!meta.fileMetadata || Object.keys(meta.fileMetadata).length === 0) return true;
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+function buildWeb() {
+  console.log("[BUILD] Starting expo export --platform web …");
+  const result = spawnSync(
+    "pnpm",
+    ["--filter", "@workspace/aorane-mobile", "run", "web:export"],
+    {
+      cwd: path.resolve(__dirname, "../.."),
+      stdio: "inherit",
+      env: { ...process.env, CI: "1" },
+    }
+  );
+  if (result.status !== 0) {
+    console.error("[BUILD] expo export failed — serving existing dist (if any)");
+  } else {
+    console.log("[BUILD] expo export complete ✓");
+  }
+}
+
+if (needsRebuild()) {
+  buildWeb();
+} else {
+  console.log("[BUILD] dist/ is up-to-date, skipping rebuild.");
+}
+
+// ---------------------------------------------------------------------------
+// Proxy helpers
+// ---------------------------------------------------------------------------
 function proxyToLocalApi(req, res, urlPath) {
   const chunks = [];
   req.on("data", (chunk) => chunks.push(chunk));
@@ -63,6 +106,9 @@ function proxyToLocalApi(req, res, urlPath) {
 // the server is accessed (via Replit proxy or via the Expo dev domain directly).
 const STATIC_BASE_PREFIX = "/aorane-mobile";
 
+// ---------------------------------------------------------------------------
+// HTTP server
+// ---------------------------------------------------------------------------
 const server = http.createServer((req, res) => {
   let urlPath = req.url.split("?")[0];
 
@@ -88,7 +134,7 @@ const server = http.createServer((req, res) => {
     urlPath = "/index.html";
   }
 
-  let filePath = path.join(DIST_DIR, urlPath);
+  const filePath = path.join(DIST_DIR, urlPath);
 
   const tryServe = (fp) => {
     try {
@@ -100,15 +146,24 @@ const server = http.createServer((req, res) => {
       const ext = path.extname(fp).toLowerCase();
       const mime = MIME[ext] || "application/octet-stream";
       // Strong no-cache to prevent stale bundle serving
-      const cacheHeader = ext === ".html"
-        ? "no-store, no-cache, must-revalidate, max-age=0"
-        : "no-store, max-age=0";
-      res.writeHead(200, { "Content-Type": mime, "Cache-Control": cacheHeader, "Pragma": "no-cache", "Expires": "0" });
+      const cacheHeader =
+        ext === ".html"
+          ? "no-store, no-cache, must-revalidate, max-age=0"
+          : "no-store, max-age=0";
+      res.writeHead(200, {
+        "Content-Type": mime,
+        "Cache-Control": cacheHeader,
+        Pragma: "no-cache",
+        Expires: "0",
+      });
       fs.createReadStream(fp).pipe(res);
     } catch {
       const indexPath = path.join(DIST_DIR, "index.html");
       if (fs.existsSync(indexPath)) {
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
+        res.writeHead(200, {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-cache",
+        });
         fs.createReadStream(indexPath).pipe(res);
       } else {
         res.writeHead(404);
