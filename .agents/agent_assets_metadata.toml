@@ -17,3 +17,9 @@ id = "_X-uj7BC0v5-3NHmQ5v7j"
 uri = "file://admin-panel-dist.tar.gz"
 type = "unspecified"
 title = "Admin Panel — Production Build (284KB)"
+
+[[outputs]]
+id = "zmDU-qY3GEu7ehu3l41vl"
+uri = "file://exports/AORANE_Blueprint.pdf"
+type = "pdf"
+title = "AORANE Platform — Complete Blueprint & Analysis (23 Pages)"
