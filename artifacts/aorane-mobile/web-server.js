@@ -29,23 +29,24 @@ const MIME = {
 };
 
 // ---------------------------------------------------------------------------
-// Auto-rebuild: run expo export before serving if dist is stale or missing
+// Auto-rebuild: only rebuild if the JS bundle is missing
 // ---------------------------------------------------------------------------
 function needsRebuild() {
-  const metaPath = path.join(DIST_DIR, "metadata.json");
-  if (!fs.existsSync(metaPath)) return true;
+  const jsDir = path.join(DIST_DIR, "_expo", "static", "js", "web");
+  if (!fs.existsSync(jsDir)) return true;
   try {
-    const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
-    // Empty fileMetadata means the previous build was corrupted / incomplete
-    if (!meta.fileMetadata || Object.keys(meta.fileMetadata).length === 0) return true;
-    return false;
+    const files = fs.readdirSync(jsDir);
+    const hasBundle = files.some(
+      (f) => f.startsWith("entry-") && f.endsWith(".js")
+    );
+    return !hasBundle;
   } catch {
     return true;
   }
 }
 
 function buildWeb() {
-  console.log("[BUILD] Starting expo export --platform web …");
+  console.log("[BUILD] expo export --platform web …");
   const result = spawnSync(
     "pnpm",
     ["--filter", "@workspace/aorane-mobile", "run", "web:export"],
@@ -56,7 +57,7 @@ function buildWeb() {
     }
   );
   if (result.status !== 0) {
-    console.error("[BUILD] expo export failed — serving existing dist (if any)");
+    console.error("[BUILD] expo export failed — will serve existing dist");
   } else {
     console.log("[BUILD] expo export complete ✓");
   }
@@ -65,7 +66,7 @@ function buildWeb() {
 if (needsRebuild()) {
   buildWeb();
 } else {
-  console.log("[BUILD] dist/ is up-to-date, skipping rebuild.");
+  console.log("[BUILD] dist/ has a valid bundle, skipping rebuild.");
 }
 
 // ---------------------------------------------------------------------------
@@ -79,7 +80,9 @@ function proxyToLocalApi(req, res, urlPath) {
     const options = {
       hostname: "localhost",
       port: LOCAL_API_PORT,
-      path: urlPath + (req.url.includes("?") ? "?" + req.url.split("?")[1] : ""),
+      path:
+        urlPath +
+        (req.url.includes("?") ? "?" + req.url.split("?")[1] : ""),
       method: req.method,
       headers: {
         ...req.headers,
@@ -135,6 +138,8 @@ const server = http.createServer((req, res) => {
   }
 
   const filePath = path.join(DIST_DIR, urlPath);
+  const ext = path.extname(filePath).toLowerCase();
+  const isAsset = ext !== "" && ext !== ".html";
 
   const tryServe = (fp) => {
     try {
@@ -143,11 +148,11 @@ const server = http.createServer((req, res) => {
         tryServe(path.join(fp, "index.html"));
         return;
       }
-      const ext = path.extname(fp).toLowerCase();
-      const mime = MIME[ext] || "application/octet-stream";
+      const fext = path.extname(fp).toLowerCase();
+      const mime = MIME[fext] || "application/octet-stream";
       // Strong no-cache to prevent stale bundle serving
       const cacheHeader =
-        ext === ".html"
+        fext === ".html"
           ? "no-store, no-cache, must-revalidate, max-age=0"
           : "no-store, max-age=0";
       res.writeHead(200, {
@@ -158,16 +163,28 @@ const server = http.createServer((req, res) => {
       });
       fs.createReadStream(fp).pipe(res);
     } catch {
+      if (isAsset) {
+        // For JS/font/image requests that don't exist — return 404, not HTML
+        // This prevents old-cached-HTML → missing-JS → HTML-as-JS infinite loop
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("Not found: " + urlPath);
+        return;
+      }
+      // For HTML/unknown routes → SPA fallback
       const indexPath = path.join(DIST_DIR, "index.html");
       if (fs.existsSync(indexPath)) {
         res.writeHead(200, {
           "Content-Type": "text/html; charset=utf-8",
-          "Cache-Control": "no-cache",
+          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+          Pragma: "no-cache",
+          Expires: "0",
         });
         fs.createReadStream(indexPath).pipe(res);
       } else {
-        res.writeHead(404);
-        res.end("Not found");
+        res.writeHead(503, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(
+          "<html><body><h2>App is building…</h2><script>setTimeout(()=>location.reload(),5000)</script></body></html>"
+        );
       }
     }
   };
@@ -176,7 +193,9 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`AORANE Web Preview → http://localhost:${PORT}${BASE_PATH || "/"}`);
+  console.log(
+    `AORANE Web Preview → http://localhost:${PORT}${BASE_PATH || "/"}`
+  );
   if (USE_LOCAL_API) {
     console.log(`[API Proxy] /api/* → localhost:${LOCAL_API_PORT}/api/*`);
   }
