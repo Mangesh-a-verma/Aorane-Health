@@ -736,6 +736,58 @@ export async function runStartupMigrations(): Promise<void> {
     `INSERT INTO ai_config (feature, label, provider, model, is_enabled)
      VALUES ('smart_scan', 'Smart Scan AI (Vision)', 'google', 'gemini-2.5-flash', true)
      ON CONFLICT (feature) DO NOTHING`,
+
+    // ══════════════════════════════════════════════════════
+    // CREATE: daily_suggestions table (AI Daily Coach cache)
+    // ══════════════════════════════════════════════════════
+    `CREATE TABLE IF NOT EXISTS daily_suggestions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      suggestions_json JSONB NOT NULL,
+      calorie_goal_used INTEGER,
+      is_ai_generated BOOLEAN NOT NULL DEFAULT TRUE,
+      generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(user_id, date)
+    )`,
+
+    // ══════════════════════════════════════════════════════
+    // CREATE: health_predictions table (Monthly AI health risk)
+    // ══════════════════════════════════════════════════════
+    `CREATE TABLE IF NOT EXISTS health_predictions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      month TEXT NOT NULL,
+      prediction_json JSONB NOT NULL,
+      data_snapshot_json JSONB,
+      weather_context TEXT,
+      generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT health_predictions_user_month_uniq UNIQUE(user_id, month)
+    )`,
+
+    // ══════════════════════════════════════════════════════
+    // CREATE: weekly_diet_charts table (Weekly AI diet plan)
+    // ══════════════════════════════════════════════════════
+    `CREATE TABLE IF NOT EXISTS weekly_diet_charts (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      week_start TEXT NOT NULL,
+      diet_chart_json JSONB NOT NULL,
+      target_calories INTEGER,
+      generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT weekly_diet_charts_user_week_uniq UNIQUE(user_id, week_start)
+    )`,
+
+    // ── ai_config: seed missing features (health intelligence + suggestions) ──
+    `INSERT INTO ai_config (feature, label, provider, model, is_enabled) VALUES
+      ('health_prediction',  'Health Prediction AI',  'nvidia', 'meta/llama-3.3-70b-instruct', true),
+      ('weekly_diet_chart',  'Weekly Diet Chart AI',  'nvidia', 'meta/llama-3.3-70b-instruct', true),
+      ('health_suggestions', 'Daily Health Coach AI', 'nvidia', 'meta/llama-3.3-70b-instruct', true)
+     ON CONFLICT (feature) DO NOTHING`,
   ];
 
   let ok = 0; let fail = 0;

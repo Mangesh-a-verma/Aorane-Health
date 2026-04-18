@@ -156,6 +156,48 @@ router.post("/health/intelligence/predict/refresh", requireAuth, aiRateLimit("he
   }
 });
 
+function getStaticPrediction(month: string, data: Awaited<ReturnType<typeof gather30DayData>>, ctx: Awaited<ReturnType<typeof gatherUserContext>>) {
+  const score = data.avgSleepHours && data.avgSleepHours >= 7 && data.totalExerciseSessions >= 8 ? 72 : 60;
+  return {
+    overallScore: score,
+    overallLabel: score >= 70 ? "Good" : "Fair",
+    risks: [
+      {
+        name: "Dehydration Risk",
+        percentage: data.avgWaterGlasses < 6 ? 55 : 25,
+        level: data.avgWaterGlasses < 6 ? "moderate" : "low",
+        reason: `Average water intake is ${data.avgWaterGlasses} glasses/day. Recommended is 8+ glasses.`,
+        icon: "💧",
+      },
+      {
+        name: "Sedentary Lifestyle",
+        percentage: data.totalExerciseSessions < 8 ? 60 : 20,
+        level: data.totalExerciseSessions < 8 ? "moderate" : "low",
+        reason: `Only ${data.totalExerciseSessions} exercise sessions logged in the past 30 days.`,
+        icon: "🏃",
+      },
+      {
+        name: "Nutritional Imbalance",
+        percentage: data.avgProtein < 50 ? 50 : 20,
+        level: data.avgProtein < 50 ? "moderate" : "low",
+        reason: `Average protein intake (${data.avgProtein}g/day) may be lower than optimal.`,
+        icon: "🥗",
+      },
+    ],
+    recommendations: [
+      { title: "Stay Hydrated", detail: "Drink at least 8 glasses of water daily. Keep a bottle on your desk.", priority: "high" },
+      { title: "Walk 30 Minutes Daily", detail: "A daily brisk walk reduces stress, improves heart health, and burns calories.", priority: "high" },
+      { title: "Eat More Protein", detail: "Include dal, paneer, eggs, or sprouts in every meal for better muscle health.", priority: "medium" },
+      { title: "Sleep 7-8 Hours", detail: "Quality sleep boosts immunity and mental health. Maintain a consistent bedtime.", priority: "high" },
+      { title: "Reduce Salt & Sugar", detail: "Avoid processed foods, packed snacks, and excess chai/coffee.", priority: "medium" },
+    ],
+    disclaimer: "This is a general lifestyle insight based on your logged data. It is NOT a medical diagnosis. Please consult a qualified doctor for any health concerns.",
+    generatedFor: month,
+    isStaticFallback: true,
+    ctx: ctx.gender,
+  };
+}
+
 async function generatePrediction(userId: string, month: string, res: import("express").Response, forced: boolean) {
   const ctx = await gatherUserContext(userId);
   const data = await gather30DayData(userId);
@@ -217,22 +259,27 @@ Return ONLY valid JSON (no markdown, no extra text):
   "generatedFor": "${month}"
 }`;
 
-  const jsonStr = await callAI("health_prediction", [
-    { role: "system", content: "You are a preventive health analyst. Return only valid JSON." },
-    { role: "user", content: prompt },
-  ], { maxTokens: 3000, temperature: 0.5 });
-
-  const prediction = JSON.parse(jsonStr);
+  let prediction: unknown;
+  try {
+    const jsonStr = await callAI("health_prediction", [
+      { role: "system", content: "You are a preventive health analyst. Return only valid JSON." },
+      { role: "user", content: prompt },
+    ], { maxTokens: 3000, temperature: 0.5 });
+    prediction = JSON.parse(jsonStr);
+  } catch (aiErr) {
+    console.warn("[Health Prediction] AI call failed, using static fallback:", (aiErr as Error).message);
+    prediction = getStaticPrediction(month, data, ctx);
+  }
 
   await db.insert(healthPredictionsTable).values({
     userId,
     month,
-    predictionJson: prediction,
+    predictionJson: prediction as Record<string, unknown>,
     dataSnapshotJson: data as unknown as Record<string, unknown>,
     weatherContext: weather,
   }).onConflictDoUpdate({
     target: [healthPredictionsTable.userId, healthPredictionsTable.month],
-    set: { predictionJson: prediction, dataSnapshotJson: data as unknown as Record<string, unknown>, weatherContext: weather, generatedAt: new Date() },
+    set: { predictionJson: prediction as Record<string, unknown>, dataSnapshotJson: data as unknown as Record<string, unknown>, weatherContext: weather, generatedAt: new Date() },
   });
 
   res.json({ prediction, cached: false, forced, month, generatedAt: new Date() });
@@ -331,21 +378,47 @@ Return ONLY valid JSON (no markdown):
   "weeklyTips": ["Tip 1", "Tip 2", "Tip 3"]
 }`;
 
-  const jsonStr = await callAI("weekly_diet_chart", [
-    { role: "system", content: "You are a certified Indian dietitian. Return only valid JSON." },
-    { role: "user", content: prompt },
-  ], { maxTokens: 6000, temperature: 0.7 });
-
-  const dietChart = JSON.parse(jsonStr);
+  let dietChart: unknown;
+  try {
+    const jsonStr = await callAI("weekly_diet_chart", [
+      { role: "system", content: "You are a certified Indian dietitian. Return only valid JSON." },
+      { role: "user", content: prompt },
+    ], { maxTokens: 6000, temperature: 0.7 });
+    dietChart = JSON.parse(jsonStr);
+  } catch (aiErr) {
+    console.warn("[Diet Chart] AI call failed, using static fallback:", (aiErr as Error).message);
+    const isVeg = ctx.dietaryPref !== "non-veg";
+    dietChart = {
+      weekStart,
+      targetCalories: targetCal,
+      isStaticFallback: true,
+      days: [
+        { day: "Monday",    date: weekStart, breakfast: { time: "7:30 AM", items: ["Poha with peanuts (1 cup)", "Chai (1 cup)"], calories: 310 }, lunch: { time: "1:00 PM", items: ["Dal tadka (1 bowl)", "Roti (2)", "Dahi (1 bowl)"], calories: 520 }, dinner: { time: "7:30 PM", items: ["Khichdi (1.5 cup)", "Ghee (1 tsp)", "Papad"], calories: 400 }, snacks: [{ time: "11 AM", item: "Banana (1)", calories: 90 }, { time: "4 PM", item: "Roasted chana (30g)", calories: 110 }], totalCalories: 1430, water: "8-10 glasses", tip: "Start with warm lemon water today." },
+        { day: "Tuesday",   date: weekStart, breakfast: { time: "7:30 AM", items: ["Idli (3) + Sambar (1 bowl)", "Coconut chutney"], calories: 330 }, lunch: { time: "1:00 PM", items: ["Rajma chawal (1 plate)", "Salad"], calories: 560 }, dinner: { time: "7:30 PM", items: ["Roti (2)", "Palak sabzi (1 bowl)"], calories: 380 }, snacks: [{ time: "11 AM", item: "Apple (1)", calories: 80 }, { time: "4 PM", item: "Makhana (1 handful)", calories: 100 }], totalCalories: 1450, water: "8-10 glasses", tip: "Add a handful of sprouts to your lunch for extra protein." },
+        { day: "Wednesday", date: weekStart, breakfast: { time: "7:30 AM", items: ["Besan chilla (2)", "Green chutney"], calories: 280 }, lunch: { time: "1:00 PM", items: ["Chole (1 bowl)", "Roti (2)", "Onion salad"], calories: 540 }, dinner: { time: "7:30 PM", items: ["Dalia (1.5 cup)", "Mixed veg sabzi"], calories: 360 }, snacks: [{ time: "11 AM", item: "Guava (1)", calories: 70 }, { time: "4 PM", item: "Chai + Marie biscuits (3)", calories: 120 }], totalCalories: 1370, water: "8-10 glasses", tip: "Go for a 20-minute walk after dinner." },
+        { day: "Thursday",  date: weekStart, breakfast: { time: "7:30 AM", items: ["Oats upma (1 cup)", "Chai"], calories: 290 }, lunch: { time: "1:00 PM", items: [isVeg ? "Paneer sabzi (1 bowl)" : "Egg curry (2 eggs)", "Roti (2)", "Dahi"], calories: 580 }, dinner: { time: "7:30 PM", items: ["Moong dal (1 bowl)", "Roti (2)"], calories: 380 }, snacks: [{ time: "11 AM", item: "Pomegranate (1 bowl)", calories: 85 }, { time: "4 PM", item: "Peanut chikki (1 piece)", calories: 110 }], totalCalories: 1445, water: "8-10 glasses", tip: "Drink a glass of water before every meal." },
+        { day: "Friday",    date: weekStart, breakfast: { time: "7:30 AM", items: ["Paratha (1) with dahi", "Pickle"], calories: 350 }, lunch: { time: "1:00 PM", items: ["Dal makhani (1 bowl)", "Steamed rice (1 cup)", "Salad"], calories: 570 }, dinner: { time: "7:30 PM", items: ["Vegetable soup (1 bowl)", "Bread (2 slices)"], calories: 310 }, snacks: [{ time: "11 AM", item: "Orange (1)", calories: 65 }, { time: "4 PM", item: "Roasted peanuts (30g)", calories: 170 }], totalCalories: 1465, water: "8-10 glasses", tip: "Include a colorful salad with every meal this weekend." },
+        { day: "Saturday",  date: weekStart, breakfast: { time: "8:00 AM", items: ["Dosa (2) + Sambar", "Filter chai"], calories: 360 }, lunch: { time: "1:30 PM", items: ["Biryani/Pulao (1 cup)", isVeg ? "Raita (1 bowl)" : "Chicken curry (small portion)", "Salad"], calories: 600 }, dinner: { time: "8:00 PM", items: ["Roti (2)", "Mix dal (1 bowl)"], calories: 390 }, snacks: [{ time: "11 AM", item: "Watermelon (2 slices)", calories: 60 }, { time: "5 PM", item: "Bhel puri (1 cup)", calories: 150 }], totalCalories: 1560, water: "8-10 glasses", tip: "Enjoy a fun outdoor activity today — play cricket, walk in the park." },
+        { day: "Sunday",    date: weekStart, breakfast: { time: "9:00 AM", items: ["Aloo paratha (1)", "Dahi (1 bowl)", "Butter (1 tsp)"], calories: 400 }, lunch: { time: "2:00 PM", items: ["Kadhi chawal (1 plate)", "Papad", "Pickle"], calories: 520 }, dinner: { time: "8:00 PM", items: ["Khichdi (1 cup)", "Ghee (1 tsp)", "Pickle"], calories: 350 }, snacks: [{ time: "11 AM", item: "Lassi (1 glass)", calories: 130 }, { time: "5 PM", item: "Chai + cookies (2)", calories: 120 }], totalCalories: 1520, water: "8-10 glasses", tip: "Plan your next week's meals and groceries today." },
+      ],
+      weeklyTips: [
+        "Use mustard oil or desi ghee in moderation for healthy fats",
+        "Eat seasonal fruits as snacks instead of packaged foods",
+        "Have dinner at least 2 hours before sleeping",
+        "Drink 1 glass of warm water with lemon every morning",
+        "Add turmeric and ginger to your cooking for immunity",
+      ],
+    };
+  }
 
   await db.insert(weeklyDietChartsTable).values({
     userId,
     weekStart,
-    dietChartJson: dietChart,
+    dietChartJson: dietChart as Record<string, unknown>,
     targetCalories: targetCal,
   }).onConflictDoUpdate({
     target: [weeklyDietChartsTable.userId, weeklyDietChartsTable.weekStart],
-    set: { dietChartJson: dietChart, targetCalories: targetCal, generatedAt: new Date() },
+    set: { dietChartJson: dietChart as Record<string, unknown>, targetCalories: targetCal, generatedAt: new Date() },
   });
 
   res.json({ dietChart, cached: false, forced, weekStart, generatedAt: new Date() });
