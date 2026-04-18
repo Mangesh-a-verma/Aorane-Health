@@ -88,13 +88,22 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
     const finalAmount = Math.round(baseAmount * (1 - discount / 100));
     let razorpayOrderId: string | null = null;
     let orderIsTestMode = !isLiveMode();
+    let keyMismatch = false;
     if (isLiveMode()) {
       try {
         const order = await createOrder({ amount: finalAmount, receipt: `usr_${req.userId!.substring(0, 8)}` });
         razorpayOrderId = order.id;
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Razorpay error";
-        res.status(502).json({ error: `Payment gateway error: ${msg}` }); return;
+        const msg = (err instanceof Error ? err.message : "Razorpay error").toLowerCase();
+        // Auth failures = key mismatch in deployment env → fall back to test mode
+        if (msg.includes("authentication") || msg.includes("401") || msg.includes("unauthorized")) {
+          console.error("[Razorpay] Authentication failed — RAZORPAY_KEY_ID & KEY_SECRET mismatch in env. Falling back to test mode.");
+          orderIsTestMode = true;
+          keyMismatch = true;
+        } else {
+          res.status(502).json({ error: `Payment gateway error: ${err instanceof Error ? err.message : "Razorpay error"}` });
+          return;
+        }
       }
     }
     const [payment] = await db.insert(paymentsTable).values({
@@ -107,6 +116,7 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
       amount: finalAmount, plan, discount, promoUsed,
       planLabel: planData.displayName,
       isTestMode: orderIsTestMode,
+      keyMismatch,
     });
   } catch {
     res.status(500).json({ error: "Failed to create payment order" });
