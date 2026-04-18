@@ -62,11 +62,16 @@ async function getConfig(feature: string): Promise<CachedConfig> {
 function getGlobalKey(provider: string): string | null {
   const keys: Record<string, string | undefined> = {
     nvidia: process.env.NVIDIA_API_KEY,
-    google: process.env.GOOGLE_GEMINI_API_KEY,
+    // Use Replit AI Integrations proxy for Gemini (no user key needed), fallback to user key
+    google: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY,
     anthropic: process.env.ANTHROPIC_API_KEY,
     openai: process.env.OPENAI_API_KEY,
   };
   return keys[provider] ?? null;
+}
+
+function getGeminiBaseUrl(): string {
+  return process.env.AI_INTEGRATIONS_GEMINI_BASE_URL || "https://generativelanguage.googleapis.com";
 }
 
 async function callNvidiaProvider(
@@ -108,7 +113,7 @@ async function callGoogleProvider(
   }
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    `${getGeminiBaseUrl()}/v1beta/models/${model}:generateContent?key=${apiKey}`,
     { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
   );
   if (!res.ok) throw new Error(`Google AI error ${res.status}: ${await res.text()}`);

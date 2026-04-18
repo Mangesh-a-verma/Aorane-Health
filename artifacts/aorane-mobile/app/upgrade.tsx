@@ -220,12 +220,12 @@ export default function UpgradeScreen() {
 
       if (orderRes.isTestMode) {
         Alert.alert(
-          "Test Mode",
-          `Razorpay keys are not configured.\n\nActivate test payment?\n\nPlan: ${plan.label} | Amount: ₹${finalPrice}`,
+          "🔧 Developer Test Mode",
+          `Payment is in test mode (Razorpay test keys active).\n\nPlan: ${plan.label}\nAmount: ₹${finalPrice}/month\n\nTap "Activate (Test)" to simulate a successful payment and activate your plan.`,
           [
             { text: "Cancel", style: "cancel" },
             {
-              text: "Test Activate ✓",
+              text: "✅ Activate (Test)",
               onPress: async () => {
                 await onPaymentSuccess(orderRes.paymentId, "test_pay_" + Date.now(), "test_order", "test_sig", true);
               }
@@ -278,19 +278,21 @@ export default function UpgradeScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: bg }}>
-      <LinearGradient colors={isDark ? ["#010814","#041428","#020C20"] : ["#E0F2FE","#BAE6FD","#F0FDF4"]} style={StyleSheet.absoluteFill} />
+    <View style={{ flex: 1, backgroundColor: "#FFF8F3" }}>
+      <LinearGradient colors={["#FFF8F3", "#FEF0E7", "#FFF8F3"]} style={StyleSheet.absoluteFill} />
       <ScrollView contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: 100, paddingHorizontal: 16 }}>
 
-        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-            <Ionicons name="arrow-back" size={20} color={isDark ? "#FFF" : "#0077B6"} />
+        {/* Header */}
+        <LinearGradient colors={["#E8622A", "#F5A623"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ borderRadius: 20, padding: 20, marginBottom: 20, flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="arrow-back" size={20} color="#FFF" />
           </TouchableOpacity>
-          <View>
-            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>Aorane Premium ✨</Text>
-            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Razorpay Secure Checkout</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 22 }}>Aorane Premium ✨</Text>
+            <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Razorpay Secure Checkout · 100% Safe</Text>
           </View>
-        </View>
+          <Text style={{ fontSize: 32 }}>🛡️</Text>
+        </LinearGradient>
 
         {(user?.plan as string) !== "free" && (
           <GlassCard style={{ marginBottom: 16 }}>
@@ -379,7 +381,7 @@ export default function UpgradeScreen() {
             <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16 }}>Total</Text>
             <View style={{ alignItems: "flex-end" }}>
               {discount > 0 && <Text style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.35)", fontFamily: "Inter_400Regular", fontSize: 12, textDecorationLine: "line-through" }}>₹{plan.price}</Text>}
-              <Text style={{ color: "#0077B6", fontFamily: "Inter_700Bold", fontSize: 22 }}>₹{finalPrice}/mo</Text>
+              <Text style={{ color: "#E8622A", fontFamily: "Inter_700Bold", fontSize: 22 }}>₹{finalPrice}/mo</Text>
             </View>
           </View>
         </LinearGradient>

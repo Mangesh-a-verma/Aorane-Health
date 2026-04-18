@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Alert, ActivityIndicator, Animated, Dimensions, Image, Platform,
@@ -9,7 +9,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
+import { useFocusEffect, router } from "expo-router";
 import { api } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { DS } from "@/lib/theme";
 
 const { width: W, height: H } = Dimensions.get("window");
@@ -144,9 +146,41 @@ const sf = StyleSheet.create({
   cornerBR: { position: "absolute", bottom: 0, right: 0, width: CORNER, height: CORNER, borderBottomWidth: BORDER, borderRightWidth: BORDER, borderColor: ACCENT, borderBottomRightRadius: 16 },
 });
 
+// ─── PLAN GATE OVERLAY ────────────────────────────────────────────────────────
+function PlanGate() {
+  return (
+    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,248,243,0.95)", zIndex: 100, alignItems: "center", justifyContent: "center", padding: 32 }}>
+      <View style={{ backgroundColor: "#FFF", borderRadius: 28, padding: 28, alignItems: "center", gap: 14, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 20, elevation: 8, borderWidth: 1, borderColor: "#F0E6E0" }}>
+        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: PRIMARY + "15", alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: 36 }}>🔒</Text>
+        </View>
+        <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: "#1A1A1A", textAlign: "center" }}>AI Smart Scan</Text>
+        <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: "#6B7280", textAlign: "center", lineHeight: 21 }}>
+          AI-powered food scanning, lab report analysis & medicine lookup is available on Max & Pro plans.
+        </Text>
+        <View style={{ backgroundColor: "#FEF3E2", borderRadius: 12, padding: 12, width: "100%" }}>
+          <Text style={{ color: "#92400E", fontFamily: "Inter_600SemiBold", fontSize: 12, textAlign: "center" }}>📦 Free Plan · Limited Access</Text>
+        </View>
+        <TouchableOpacity onPress={() => router.push("/upgrade" as never)} style={{ width: "100%", borderRadius: 16, overflow: "hidden" }}>
+          <LinearGradient colors={[PRIMARY, SKY]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ padding: 16, alignItems: "center" }}>
+            <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>Upgrade to Max ✨</Text>
+            <Text style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>Starting ₹199/month</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => {}} style={{ paddingVertical: 8 }}>
+          <Text style={{ color: "#9CA3AF", fontFamily: "Inter_400Regular", fontSize: 13 }}>Maybe later</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 // ─── MAIN SCREEN ─────────────────────────────────────────────────────────────
 export default function SmartScanScreen() {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const userPlan = ((user as Record<string, unknown>)?.plan as string || "free").toLowerCase();
+  const isPremium = userPlan !== "free";
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -158,6 +192,15 @@ export default function SmartScanScreen() {
   useEffect(() => {
     Animated.timing(headerFade, { toValue: 1, duration: 500, useNativeDriver: ND }).start();
   }, []);
+
+  useFocusEffect(useCallback(() => {
+    return () => {
+      setResult(null);
+      setImageUri(null);
+      slideAnim.setValue(60);
+      fadeAnim.setValue(0);
+    };
+  }, []));
 
   function showResult() {
     Animated.parallel([
@@ -194,9 +237,19 @@ export default function SmartScanScreen() {
       setResult(data as unknown as ScanResult);
       showResult();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
+    } catch (err: unknown) {
       setScanning(false);
-      Alert.alert("Scan failed", "Please try again with a clearer image.");
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("503") || msg.includes("Gemini") || msg.includes("service")) {
+        Alert.alert("AI Service Unavailable", "AI Smart Scan needs Google Gemini to be configured. Please contact support or try later.");
+      } else if (msg.includes("403") || msg.includes("Upgrade") || msg.includes("plan")) {
+        Alert.alert("Plan Required", "AI Smart Scan is available on Max and Pro plans. Upgrade to continue.", [
+          { text: "Cancel", style: "cancel" },
+          { text: "Upgrade", onPress: () => {} },
+        ]);
+      } else {
+        Alert.alert("Scan Failed", "Could not analyse this image. Try with a clearer photo in good lighting.");
+      }
     }
   }
 
@@ -213,6 +266,7 @@ export default function SmartScanScreen() {
     <View style={s.root}>
       <LinearGradient colors={[DS.color.bg, DS.color.bgSoft, "#FFFFFF"]} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFill} />
       <View style={s.blob1} /><View style={s.blob2} />
+      {!isPremium && <PlanGate />}
 
       <ScrollView
         contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: insets.bottom + 96, paddingHorizontal: 16 }}

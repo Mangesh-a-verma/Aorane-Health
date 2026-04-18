@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, Platform, ActivityIndicator, Animated,
+  RefreshControl, Platform, ActivityIndicator, Animated, Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -322,6 +322,78 @@ const sc = StyleSheet.create({
   addBtn:      { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
 });
 
+// ── QUICK STRESS MODAL ─────────────────────────────────────────────────────────
+const QUICK_MOODS = [
+  { score: 10, emoji: "😄", label: "Great",     color: "#10B981" },
+  { score: 30, emoji: "🙂", label: "Good",      color: "#34D399" },
+  { score: 50, emoji: "😐", label: "Okay",      color: "#F59E0B" },
+  { score: 70, emoji: "😟", label: "Stressed",  color: "#F97316" },
+  { score: 90, emoji: "😰", label: "Very High", color: "#EF4444" },
+];
+
+function QuickStressModal({
+  visible, onClose, onSaved,
+}: { visible: boolean; onClose: () => void; onSaved: () => void }) {
+  const [selected, setSelected] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleSelect = async (score: number) => {
+    setSelected(score);
+    setSaving(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      await api.logStress({ stressScore: score, stressType: "quick_checkin", mood: QUICK_MOODS.find(m => m.score === score)?.label?.toLowerCase() || "okay" });
+      onSaved();
+      onClose();
+    } catch { } finally { setSaving(false); setSelected(null); }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={qm.backdrop} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={qm.sheet} onPress={() => {}}>
+          <View style={qm.handle} />
+          <Text style={qm.title}>How are you feeling? 💭</Text>
+          <Text style={qm.sub}>Tap to log your stress level instantly</Text>
+          <View style={qm.moodRow}>
+            {QUICK_MOODS.map((m) => (
+              <TouchableOpacity
+                key={m.score}
+                style={[qm.moodBtn, selected === m.score && { backgroundColor: m.color + "22", borderColor: m.color }]}
+                onPress={() => handleSelect(m.score)}
+                disabled={saving}
+              >
+                {saving && selected === m.score
+                  ? <ActivityIndicator size="small" color={m.color} />
+                  : <Text style={qm.emoji}>{m.emoji}</Text>
+                }
+                <Text style={[qm.label, { color: m.color }]}>{m.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity style={qm.detailBtn} onPress={() => { onClose(); router.push("/stress" as never); }}>
+            <Text style={qm.detailTxt}>Detailed Check-in →</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+const qm = StyleSheet.create({
+  backdrop:  { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
+  sheet:     { backgroundColor: "#FFF", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40 },
+  handle:    { width: 40, height: 4, backgroundColor: "#E5E7EB", borderRadius: 2, alignSelf: "center", marginBottom: 18 },
+  title:     { fontSize: 20, fontFamily: "Inter_700Bold", color: "#1F2937", textAlign: "center", marginBottom: 6 },
+  sub:       { fontSize: 13, fontFamily: "Inter_400Regular", color: "#6B7280", textAlign: "center", marginBottom: 22 },
+  moodRow:   { flexDirection: "row", justifyContent: "space-between", gap: 6 },
+  moodBtn:   { flex: 1, alignItems: "center", gap: 6, padding: 10, borderRadius: 16, borderWidth: 1.5, borderColor: "#E5E7EB", backgroundColor: "#F9FAFB" },
+  emoji:     { fontSize: 28 },
+  label:     { fontSize: 10, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  detailBtn: { marginTop: 20, alignSelf: "center", paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, backgroundColor: "#F9FAFB", borderWidth: 1, borderColor: "#E5E7EB" },
+  detailTxt: { color: "#7C3AED", fontFamily: "Inter_600SemiBold", fontSize: 13 },
+});
+
 // ── MEDICINE ROW ───────────────────────────────────────────────────────────────
 const mealColors: Record<string, string> = {
   before_meal: DS.color.orange, after_meal: DS.color.green, with_meal: DS.color.sky, anytime: DS.color.purple,
@@ -342,6 +414,7 @@ export default function DashboardScreen() {
   const [exerciseMin, setExerciseMin] = useState(0);
   const [activityPct, setActivityPct] = useState(0);
   const [stressToday, setStressToday] = useState<StressToday | null>(null);
+  const [showStressModal, setShowStressModal] = useState(false);
   const [isLoading,   setIsLoading]   = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
   const [userName,    setUserName]    = useState("");
@@ -564,7 +637,7 @@ export default function DashboardScreen() {
           />
 
           {/* 6. STRESS CHECK-IN */}
-          <StressCard data={stressToday} onPress={() => router.push("/stress" as never)} />
+          <StressCard data={stressToday} onPress={() => setShowStressModal(true)} />
 
           {/* 7. ADS SLIDER */}
           <AdsSlider />
@@ -630,6 +703,12 @@ export default function DashboardScreen() {
 
         </Animated.View>
       </ScrollView>
+
+      <QuickStressModal
+        visible={showStressModal}
+        onClose={() => setShowStressModal(false)}
+        onSaved={() => { loadData(); }}
+      />
     </View>
   );
 }

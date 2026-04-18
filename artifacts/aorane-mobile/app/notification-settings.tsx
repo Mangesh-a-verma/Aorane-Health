@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, ScrollView, Switch, TouchableOpacity,
-  StyleSheet, Platform, ActivityIndicator, Alert,
+  StyleSheet, Platform, ActivityIndicator, Alert, Linking,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,8 +16,8 @@ import {
 } from "@/lib/notifications";
 
 const C = {
-  bg: "#F0FAFB", card: "#FFFFFF", primary: "#0077B6", accent: "#00B896",
-  text: "#0D1F33", muted: "#7A90A4", border: "#E2EFF5",
+  bg: "#FFF8F3", card: "#FFFFFF", primary: "#E8622A", accent: "#F5A623",
+  text: "#1A1A1A", muted: "#7A7A7A", border: "#F0E6E0",
   red: "#EF4444", green: "#10B981",
 };
 
@@ -180,7 +180,7 @@ export default function NotificationSettingsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       {/* Header */}
-      <LinearGradient colors={["#0077B6", "#0099CC"]} style={{ paddingTop: topPad + 10, paddingHorizontal: 18, paddingBottom: 20 }}>
+      <LinearGradient colors={["#E8622A", "#F5A623"]} style={{ paddingTop: topPad + 10, paddingHorizontal: 18, paddingBottom: 20 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={22} color="#FFF" />
@@ -196,6 +196,19 @@ export default function NotificationSettingsScreen() {
         contentContainerStyle={{ padding: 18, paddingBottom: insets.bottom + 80, gap: 14 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Web Notice */}
+        {Platform.OS === "web" && (
+          <View style={{ backgroundColor: "#FFF3CD", borderRadius: 14, borderWidth: 1, borderColor: "#FBBF24", padding: 14, flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+            <Ionicons name="phone-portrait-outline" size={22} color="#D97706" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: "#92400E", fontFamily: "Inter_700Bold", fontSize: 13, marginBottom: 4 }}>Native App Required for Notifications</Text>
+              <Text style={{ color: "#92400E", fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 18 }}>
+                Push notifications (medicine, water, period reminders) only work on the Aorane native mobile app. Download our Android/iOS app to receive real-time reminders. You can still configure your preferences here.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Master Toggle */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>🔔 Main Toggle</Text>
@@ -260,48 +273,86 @@ export default function NotificationSettingsScreen() {
         {/* Daily Schedule — drives water reminder spacing */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>⏰ Daily Schedule</Text>
-          <View style={styles.row}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
+          <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, marginBottom: 14, lineHeight: 17 }}>
+            Set your daily routine so we can space your water & meal reminders perfectly.
+          </Text>
+
+          {/* Wake-Up Time */}
+          <View style={{ gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <View style={[styles.iconBox, { backgroundColor: "#FFF7ED" }]}>
                 <Text style={{ fontSize: 18 }}>🌅</Text>
               </View>
-              <View style={{ flex: 1, gap: 2 }}>
+              <View>
                 <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Wake-Up Time</Text>
-                <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>Water reminders start from here</Text>
+                <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 11 }}>Reminders start from this time</Text>
+              </View>
+              <View style={{ flex: 1, alignItems: "flex-end" }}>
+                <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 18 }}>{settings.wakeUpTime}</Text>
               </View>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              {["05:00","06:00","07:00","08:00","09:00"].map(t => (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {["05:00","06:00","06:30","07:00","07:30","08:00","08:30","09:00"].map(t => (
                 <TouchableOpacity key={t} onPress={() => { Haptics.selectionAsync(); update("wakeUpTime", t); }}
-                  style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1.5,
+                  style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
                     borderColor: settings.wakeUpTime === t ? C.primary : C.border,
-                    backgroundColor: settings.wakeUpTime === t ? C.primary + "15" : "transparent" }}>
-                  <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: settings.wakeUpTime === t ? C.primary : C.muted }}>{t}</Text>
+                    backgroundColor: settings.wakeUpTime === t ? C.primary + "15" : "#FAFAFA" }}>
+                  <Text style={{ fontSize: 12, fontFamily: settings.wakeUpTime === t ? "Inter_700Bold" : "Inter_400Regular", color: settings.wakeUpTime === t ? C.primary : C.muted }}>{t}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.row}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
+
+          <View style={[styles.divider, { marginVertical: 14 }]} />
+
+          {/* Bedtime */}
+          <View style={{ gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <View style={[styles.iconBox, { backgroundColor: "#F0F0FF" }]}>
                 <Text style={{ fontSize: 18 }}>🌙</Text>
               </View>
-              <View style={{ flex: 1, gap: 2 }}>
+              <View>
                 <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Bedtime</Text>
-                <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>Water reminders stop before here</Text>
+                <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 11 }}>Reminders stop before this time</Text>
+              </View>
+              <View style={{ flex: 1, alignItems: "flex-end" }}>
+                <Text style={{ color: "#7C3AED", fontFamily: "Inter_700Bold", fontSize: 18 }}>{settings.bedTime}</Text>
               </View>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              {["20:00","21:00","22:00","22:30","23:00"].map(t => (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {["20:00","21:00","21:30","22:00","22:30","23:00","23:30","00:00"].map(t => (
                 <TouchableOpacity key={t} onPress={() => { Haptics.selectionAsync(); update("bedTime", t); }}
-                  style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1.5,
-                    borderColor: settings.bedTime === t ? C.primary : C.border,
-                    backgroundColor: settings.bedTime === t ? C.primary + "15" : "transparent" }}>
-                  <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: settings.bedTime === t ? C.primary : C.muted }}>{t}</Text>
+                  style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
+                    borderColor: settings.bedTime === t ? "#7C3AED" : C.border,
+                    backgroundColor: settings.bedTime === t ? "#7C3AED15" : "#FAFAFA" }}>
+                  <Text style={{ fontSize: 12, fontFamily: settings.bedTime === t ? "Inter_700Bold" : "Inter_400Regular", color: settings.bedTime === t ? "#7C3AED" : C.muted }}>{t}</Text>
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
+
+          <View style={[styles.divider, { marginVertical: 14 }]} />
+
+          {/* Visual Schedule Preview */}
+          <Text style={{ color: C.muted, fontFamily: "Inter_700Bold", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Schedule Preview</Text>
+          <View style={{ gap: 8 }}>
+            {[
+              { time: settings.wakeUpTime, icon: "🌅", label: "Wake up & first water", color: "#F5A623" },
+              { time: (() => { const [h, m] = settings.wakeUpTime.split(":").map(Number); const t = h * 60 + (m || 0) + 60; return `${String(Math.floor(t/60)).padStart(2,"0")}:${String(t%60).padStart(2,"0")}`; })(), icon: "☀️", label: "Breakfast time", color: "#10B981" },
+              { time: "13:00", icon: "🍱", label: "Lunch reminder", color: "#0EA5E9" },
+              { time: "16:00", icon: "💧", label: "Afternoon water + snack", color: "#E8622A" },
+              { time: "19:30", icon: "🌙", label: "Dinner reminder", color: "#8B5CF6" },
+              { time: settings.bedTime, icon: "😴", label: "Bedtime — last reminder", color: "#6B7280" },
+            ].map((item, i) => (
+              <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <Text style={{ fontSize: 14, width: 20, textAlign: "center" }}>{item.icon}</Text>
+                <View style={{ width: 1, height: 32, backgroundColor: item.color + "40", position: "absolute", left: 29, top: 16 }} />
+                <View style={{ backgroundColor: item.color + "15", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: item.color + "30" }}>
+                  <Text style={{ color: item.color, fontFamily: "Inter_700Bold", fontSize: 11 }}>{item.time}</Text>
+                </View>
+                <Text style={{ color: C.text, fontFamily: "Inter_400Regular", fontSize: 12, flex: 1 }}>{item.label}</Text>
+              </View>
+            ))}
           </View>
         </View>
 

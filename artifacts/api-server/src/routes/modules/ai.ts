@@ -142,15 +142,21 @@ Return ONLY valid JSON:
   }
 });
 
-// smart-scan uses VISION (image analysis) — requires Gemini specifically
-// Admin can override provider for 'smart_scan' feature in AI Config
+// smart-scan uses VISION (image analysis) — requires Gemini (via Replit proxy or user key)
 router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), async (req: AuthRequest, res) => {
   try {
     const { imageBase64, mimeType = "image/jpeg" } = req.body as { imageBase64?: string; mimeType?: string };
     if (!imageBase64) { res.status(400).json({ error: "imageBase64 required" }); return; }
 
-    const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
-    if (!geminiKey) { res.status(503).json({ error: "Smart Scan requires Google Gemini API key. Set GOOGLE_GEMINI_API_KEY in environment." }); return; }
+    // Use Replit Gemini proxy first (no user key needed), then fall back to user's key
+    const proxyBaseUrl = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
+    const proxyKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
+    const userGeminiKey = process.env.GOOGLE_GEMINI_API_KEY;
+
+    const geminiBaseUrl = proxyBaseUrl || "https://generativelanguage.googleapis.com";
+    const geminiKey = proxyBaseUrl ? proxyKey : userGeminiKey;
+
+    if (!geminiKey) { res.status(503).json({ error: "Smart Scan AI is not configured. Contact support." }); return; }
 
     const prompt = `You are an expert AI health assistant. Carefully analyze this image and determine what type of content it shows.
 
@@ -184,7 +190,7 @@ For unknown:
     let geminiRes: globalThis.Response | null = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
       geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+        `${geminiBaseUrl}/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: geminiBody },
       );
       if (geminiRes.status === 429 && attempt < 3) {

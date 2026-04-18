@@ -16,12 +16,13 @@ AORANE's architecture consists of three main components: a mobile app (built wit
 
 **Technical Implementations & Feature Specifications:**
 - **Authentication:** Utilizes JWT for sessions (30-day user, 12-hour admin), OTP via Fast2SMS, and Google OAuth.
-- **AI Integration:** Gemini 2.0 Flash is integrated for advanced features like food scanning, diet plans, health tips, and medical report analysis. The Admin Panel allows per-feature AI configuration.
+- **AI Integration:** Gemini 2.5 Flash (via Replit AI Integrations proxy — no user API key needed) powers Smart Scan (vision: food/report/medicine), diet plans, and health tips. Fallback to user's GOOGLE_GEMINI_API_KEY if proxy not available. NVIDIA DeepSeek powers non-vision AI. The Admin Panel allows per-feature AI configuration (ai_config table). Proxy env vars: `AI_INTEGRATIONS_GEMINI_BASE_URL`, `AI_INTEGRATIONS_GEMINI_API_KEY`.
 - **Payment Gateway:** Razorpay is integrated for handling subscriptions and payments.
 - **Dynamic Plan Pricing Engine:** Admin panel `/plan-pricing` page lets admin update plan prices and features. Changes auto-reflect in Mobile App upgrade screen and Business Portal billing — no code changes needed. DB table: `plan_pricing`. Public endpoint: `GET /api/plans?type=individual|organization`. Admin endpoints: `GET/PUT /api/admin/plan-pricing/:planKey`, `POST /api/admin/plan-pricing/reset`.
 - **Notifications:** Firebase FCM and Fast2SMS are used for notifications.
 - **Storage:** Supabase handles file storage.
 - **Database Schema:** A comprehensive PostgreSQL schema includes tables for users, health data (food, exercise, water, medicine, stress, period, medical reports), community features (family groups, blood donation), business entities (organizations, members, enrollment codes), revenue (subscriptions, payments, promo codes), and platform infrastructure.
+- **Plan-based Feature Gating:** Server-side via `feature_flags.enabled_for_plans` (TEXT[]) — checked in `requireFeature()` middleware. Client-side `PlanGate` overlay in scan.tsx for free users. Free plan: limited AI Coach (upgrade banner in suggestions.tsx). Max/Pro/Family: AI Smart Scan, full AI Coach, wearable sync.
 - **Privacy-first Design:** Features 8 privacy toggles, with sensitive data logging (Stress, Sleep, Medicine) defaulting to OFF.
 - **Offline-first Capability:** An offline queue table is implemented for data synchronization when connectivity is restored.
 - **Semantic Caching:** Food scan checks a database cache first to reduce AI API calls.

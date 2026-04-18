@@ -10,6 +10,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { api } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { DS } from "@/lib/theme";
 
 const C = {
@@ -125,6 +126,9 @@ function SectionHeader({ icon, title, subtitle, color }: { icon: string; title: 
 
 export default function SuggestionsScreen() {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const userPlan = ((user as Record<string, unknown>)?.plan as string || "free").toLowerCase();
+  const isPremium = userPlan !== "free";
   const [suggestions, setSuggestions] = useState<Suggestion | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -226,6 +230,24 @@ export default function SuggestionsScreen() {
           )}
         </View>
       </View>
+
+      {/* Free plan upgrade banner */}
+      {!isPremium && (
+        <TouchableOpacity onPress={() => router.push("/upgrade" as never)} activeOpacity={0.9}
+          style={{ margin: 16, marginBottom: 0 }}>
+          <LinearGradient colors={["#E8622A", "#F5A623"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            style={{ borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Text style={{ fontSize: 26 }}>⚡</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>Free Plan — Limited AI Coach</Text>
+              <Text style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter_400Regular", fontSize: 12 }}>Upgrade to Max for personalised diet plans, exercise routines & more.</Text>
+            </View>
+            <View style={{ backgroundColor: "rgba(255,255,255,0.25)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 }}>
+              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 11 }}>Upgrade</Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
 
       {error && (
         <View style={{ margin: 16, backgroundColor: "#FEE2E2", borderRadius: 12, padding: 14, flexDirection: "row", gap: 10 }}>

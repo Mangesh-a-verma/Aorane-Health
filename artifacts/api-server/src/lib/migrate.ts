@@ -721,6 +721,21 @@ export async function runStartupMigrations(): Promise<void> {
 
     // ── subscriptions: add 'pending' status for in-flight Razorpay subscription creation ──
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='pending' AND enumtypid=(SELECT oid FROM pg_type WHERE typname='subscription_status')) THEN ALTER TYPE subscription_status ADD VALUE 'pending'; END IF; END$$`,
+
+    // ── feature_flags: add smart_scan (AI Smart Scan — premium feature) ──
+    `INSERT INTO feature_flags (key, label, description, is_enabled, enabled_for_plans)
+     VALUES ('smart_scan', 'AI Smart Scan', 'Gemini-powered food/report/medicine image scanning', true, ARRAY['max','pro','family'])
+     ON CONFLICT (key) DO NOTHING`,
+
+    // ── feature_flags: update AI/premium features with plan gating ──
+    `UPDATE feature_flags SET enabled_for_plans = ARRAY['max','pro','family'] WHERE key = 'food_ai_scan' AND (enabled_for_plans IS NULL OR cardinality(enabled_for_plans) = 0)`,
+    `UPDATE feature_flags SET enabled_for_plans = ARRAY['max','pro','family'] WHERE key = 'ai_health_coach' AND (enabled_for_plans IS NULL OR cardinality(enabled_for_plans) = 0)`,
+    `UPDATE feature_flags SET enabled_for_plans = ARRAY['max','pro','family'] WHERE key = 'wearable_sync' AND (enabled_for_plans IS NULL OR cardinality(enabled_for_plans) = 0)`,
+
+    // ── ai_config: add smart_scan config (uses gemini-2.5-flash for vision) ──
+    `INSERT INTO ai_config (feature, label, provider, model, is_enabled)
+     VALUES ('smart_scan', 'Smart Scan AI (Vision)', 'google', 'gemini-2.5-flash', true)
+     ON CONFLICT (feature) DO NOTHING`,
   ];
 
   let ok = 0; let fail = 0;
