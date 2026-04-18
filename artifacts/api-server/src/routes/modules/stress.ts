@@ -1,10 +1,30 @@
 import { Router } from "express";
-import { db, stressLogsTable, userProfilesTable, exerciseLogsTable, waterLogsTable } from "@workspace/db";
-import { eq, and, gte, desc } from "drizzle-orm";
+import { db, stressLogsTable, userProfilesTable, exerciseLogsTable, waterLogsTable, foodLogsTable, medicineLogsTable, medicineSchedulesTable } from "@workspace/db";
+import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { aiRateLimit } from "../../middlewares/ai-rate-limit";
 import { callAI } from "../../lib/ai";
+
+// ── Work profile → estimated daily work hours map ───────────────────────────
+const WORK_HOURS_MAP: Record<string, number> = {
+  "Office/Desk Job":    9,
+  "IT/Software":        10,
+  "Call Center/BPO":    9,
+  "Field/Sales":        10,
+  "Doctor/Healthcare":  12,
+  "Teacher/Professor":  7,
+  "Army/Defence":       10,
+  "Police/CRPF":        10,
+  "Farmer/Agriculture": 10,
+  "Housewife":          8,
+  "Student":            7,
+  "Business Owner":     11,
+  "Driver/Delivery":    10,
+  "Factory Worker":     9,
+  "Athlete/Sports":     7,
+  "Other":              8,
+};
 
 const router = Router();
 
@@ -68,26 +88,55 @@ router.post("/stress/log", requireAuth, async (req: AuthRequest, res) => {
       dbStressType = "five_pillar";
       const today      = new Date().toISOString().split("T")[0];
       const todayStart = new Date(`${today}T00:00:00Z`);
+      const todayEnd   = new Date(`${today}T23:59:59Z`);
 
       const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, req.userId!));
-      const waterLogs    = await db.select().from(waterLogsTable).where(and(eq(waterLogsTable.userId, req.userId!), gte(waterLogsTable.loggedAt, todayStart)));
-      const exerciseLogs = await db.select().from(exerciseLogsTable).where(and(eq(exerciseLogsTable.userId, req.userId!), gte(exerciseLogsTable.loggedAt, todayStart)));
+
+      // Fetch all 5 data sources in parallel
+      const [waterLogs, exerciseLogs, foodLogs, medSchedules, medLogs] = await Promise.all([
+        db.select().from(waterLogsTable).where(and(eq(waterLogsTable.userId, req.userId!), gte(waterLogsTable.loggedAt, todayStart))),
+        db.select().from(exerciseLogsTable).where(and(eq(exerciseLogsTable.userId, req.userId!), gte(exerciseLogsTable.loggedAt, todayStart))),
+        db.select().from(foodLogsTable).where(and(eq(foodLogsTable.userId, req.userId!), gte(foodLogsTable.loggedAt, todayStart))),
+        db.select().from(medicineSchedulesTable).where(and(eq(medicineSchedulesTable.userId, req.userId!), eq(medicineSchedulesTable.isActive, true))),
+        db.select().from(medicineLogsTable).where(and(eq(medicineLogsTable.userId, req.userId!), gte(medicineLogsTable.scheduledAt, todayStart), lte(medicineLogsTable.scheduledAt, todayEnd))),
+      ]);
 
       const waterGlasses = waterLogs.reduce((s, l) => s + (l.glassesCount || 0), 0);
       const exerciseMin  = exerciseLogs.reduce((s, l) => s + (l.durationMinutes || 0), 0);
       const sleepHours   = Number(profile?.sleepHoursAvg) || 7;
+      const mealCount    = foodLogs.length;
 
-      // Convert to 0-100 wellness scores (higher = better = lower stress)
-      const sleepScore    = Math.min(100, (sleepHours / 8) * 100);
-      const waterScore    = Math.min(100, (waterGlasses / 8) * 100);
-      const exerciseScore = Math.min(100, (exerciseMin / 30) * 100);
-      const medicineScore = 70;
-      const foodScore     = 65;
+      // ── 5 Wellness scores (0-100, higher = healthier = less stress) ─────────
+      const sleepScore    = Math.min(100, Math.round((sleepHours / 8) * 100));
+      const waterScore    = Math.min(100, Math.round((waterGlasses / 8) * 100));
+      const exerciseScore = Math.min(100, Math.round((exerciseMin / 30) * 100));
 
-      stressScore = Math.round(100 - ((sleepScore + waterScore + exerciseScore + medicineScore + foodScore) / 5));
+      // FIXED: Real food score from actual logs (not hardcoded 65)
+      const foodScore = mealCount >= 3 ? 100 : mealCount === 2 ? 70 : mealCount === 1 ? 40 : 15;
+
+      // FIXED: Real medicine score from actual logs (not hardcoded 70)
+      let medicineScore = 85; // neutral when no schedules
+      if (medSchedules.length > 0) {
+        const takenToday = medLogs.filter(l => (l as unknown as Record<string, unknown>)["status"] === "taken").length;
+        medicineScore = Math.min(100, Math.round((takenToday / medSchedules.length) * 100));
+        if (medicineScore < 10) medicineScore = 10; // floor
+      }
+
+      // NEW: Work profile → work hours → stress penalty (max +15 points)
+      const workProfileStr = (profile?.workProfile as string) || "Other";
+      const workHours      = WORK_HOURS_MAP[workProfileStr] ?? 8;
+      const workPenalty    = workHours > 8 ? Math.min(15, Math.round((workHours - 8) * 3.75)) : 0;
+
+      const wellnessAvg = (sleepScore + waterScore + exerciseScore + medicineScore + foodScore) / 5;
+      stressScore = Math.round(100 - wellnessAvg + workPenalty);
       stressScore = Math.max(10, Math.min(95, stressScore));
 
-      pillarData = { sleep: sleepScore, water: waterScore, exercise: exerciseScore, medicine: medicineScore, food: foodScore };
+      pillarData = {
+        sleep: sleepScore, water: waterScore, exercise: exerciseScore,
+        medicine: medicineScore, food: foodScore,
+        workHours, workPenalty, mealCount,
+        waterGlasses, exerciseMin, sleepHours,
+      };
 
     // ── Simple Mood Log ─────────────────────────────────────────────────────
     } else if (stressType === "mood") {
@@ -228,7 +277,30 @@ router.get("/stress/weekly", requireAuth, async (req: AuthRequest, res) => {
       else break;
     }
 
-    res.json({ days, weekAvg, totalLogs: logs.length, highStreakDays, burnoutRisk: highStreakDays >= 3 });
+    // NEW: Personal 30-day baseline (needs ≥5 logs to be meaningful)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+    const baselineLogs = await db.select().from(stressLogsTable)
+      .where(and(eq(stressLogsTable.userId, req.userId!), gte(stressLogsTable.loggedAt, thirtyDaysAgo)));
+
+    const personalBaseline = baselineLogs.length >= 5
+      ? Math.round(baselineLogs.reduce((s, l) => s + l.stressScore, 0) / baselineLogs.length)
+      : null;
+
+    // vs baseline signal: positive = worse than usual, negative = better than usual
+    const vsBaseline = (personalBaseline !== null && weekAvg > 0)
+      ? weekAvg - personalBaseline
+      : null;
+
+    res.json({
+      days, weekAvg, totalLogs: logs.length, highStreakDays,
+      burnoutRisk: highStreakDays >= 3,
+      personalBaseline,
+      vsBaseline,
+      baselineLogsCount: baselineLogs.length,
+    });
   } catch {
     res.status(500).json({ error: "Failed to get weekly data" });
   }

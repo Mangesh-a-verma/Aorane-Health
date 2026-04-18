@@ -89,7 +89,7 @@ const PILLARS = [
 type DayData  = { date: string; dayLabel: string; avgScore: number; count: number; dominantMood: string | null };
 type LogItem  = { stressScore: number; stressType: string; mood?: string; pillars?: Record<string, unknown>; loggedAt: string };
 type Insight  = { avgScore: number; insight: string; tips: string[]; logsCount: number; aiPowered: boolean };
-type WeekData = { days: DayData[]; weekAvg: number; totalLogs: number; highStreakDays: number; burnoutRisk: boolean };
+type WeekData = { days: DayData[]; weekAvg: number; totalLogs: number; highStreakDays: number; burnoutRisk: boolean; personalBaseline: number | null; vsBaseline: number | null; baselineLogsCount: number };
 
 // ── Animated weekly bar chart ──────────────────────────────────────────────
 function WeeklyChart({ days }: { days: DayData[] }) {
@@ -368,6 +368,46 @@ export default function StressScreen() {
                 </Text>
               )}
             </View>
+          </View>
+        )}
+
+        {/* ── PERSONAL BASELINE CARD ─────────────────────────────────────── */}
+        {!dataLoading && weekly?.personalBaseline !== null && weekly?.personalBaseline !== undefined && (
+          <View style={[sCard, { marginBottom: 14, padding: 14, flexDirection: "row", alignItems: "center", gap: 14 }]}>
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: C.primary + "15", alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="analytics-outline" size={22} color={C.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_500Medium" }}>Your 30-Day Baseline</Text>
+              <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8, marginTop: 2 }}>
+                <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 20 }}>{weekly.personalBaseline}</Text>
+                <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular" }}>/ 100 personal avg</Text>
+              </View>
+              {weekly.vsBaseline !== null && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 }}>
+                  <Ionicons
+                    name={weekly.vsBaseline > 5 ? "trending-up" : weekly.vsBaseline < -5 ? "trending-down" : "remove"}
+                    size={13}
+                    color={weekly.vsBaseline > 5 ? C.red : weekly.vsBaseline < -5 ? C.green : C.amber}
+                  />
+                  <Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: weekly.vsBaseline > 5 ? C.red : weekly.vsBaseline < -5 ? C.green : C.amber }}>
+                    {weekly.vsBaseline > 5
+                      ? `+${weekly.vsBaseline} pts above your usual — more stressed than normal`
+                      : weekly.vsBaseline < -5
+                      ? `${weekly.vsBaseline} pts below your usual — less stressed than normal`
+                      : "Within your normal range"}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+        {!dataLoading && (weekly?.personalBaseline === null || weekly?.personalBaseline === undefined) && (weekly?.baselineLogsCount ?? 0) < 5 && (
+          <View style={[sCard, { marginBottom: 14, padding: 12, flexDirection: "row", alignItems: "center", gap: 10, borderColor: C.primary + "20" }]}>
+            <Ionicons name="information-circle-outline" size={18} color={C.primary} />
+            <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", flex: 1 }}>
+              Log stress {5 - (weekly?.baselineLogsCount ?? 0)} more times to unlock your personal baseline comparison.
+            </Text>
           </View>
         )}
 
