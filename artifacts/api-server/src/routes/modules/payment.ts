@@ -34,6 +34,35 @@ async function getPlanFromDB(planKey: string) {
   return plan;
 }
 
+// ─── GET: Razorpay connectivity test (admin debug only) ──────────────────────
+router.get("/payment/razorpay-test", async (_req, res) => {
+  const keyId = process.env["RAZORPAY_KEY_ID"] || null;
+  const secret = process.env["RAZORPAY_KEY_SECRET"] || null;
+
+  if (!keyId || !secret) {
+    res.json({ ok: false, reason: "Keys not configured in environment", keyId: null });
+    return;
+  }
+
+  const mode = keyId.startsWith("rzp_live_") ? "LIVE" : keyId.startsWith("rzp_test_") ? "TEST" : "UNKNOWN";
+  const maskedKey = keyId.substring(0, 12) + "..." + keyId.slice(-4);
+
+  try {
+    const auth = `Basic ${Buffer.from(`${keyId}:${secret}`).toString("base64")}`;
+    const r = await fetch("https://api.razorpay.com/v1/orders?count=1", {
+      headers: { Authorization: auth, "Content-Type": "application/json" },
+    });
+    const body = await r.json() as Record<string, unknown>;
+    if (r.ok) {
+      res.json({ ok: true, mode, maskedKey, status: r.status, message: "Razorpay auth successful ✅" });
+    } else {
+      res.json({ ok: false, mode, maskedKey, status: r.status, razorpayError: (body as { error?: { description?: string } }).error?.description || JSON.stringify(body) });
+    }
+  } catch (e) {
+    res.json({ ok: false, mode, maskedKey, networkError: (e as Error).message });
+  }
+});
+
 // ─── GET: current subscription status ────────────────────────────────────────
 router.get("/payment/subscription", requireAuth, async (req: AuthRequest, res) => {
   try {
