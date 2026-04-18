@@ -83,12 +83,12 @@ const bn = StyleSheet.create({
   greet:    { color: "#FFF", fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 2 },
   sub:      { color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_400Regular" },
   scoreBlock: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
-  badge:    { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 50, paddingHorizontal: 12, paddingVertical: 6, alignItems: "center" },
-  badgeNum: { color: "#FFF", fontSize: 22, fontFamily: "Inter_700Bold", lineHeight: 26 },
+  badge:    { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", minWidth: 56 },
+  badgeNum: { color: "#FFF", fontSize: 16, fontFamily: "Inter_700Bold", lineHeight: 20 },
   badgeLbl: { color: "rgba(255,255,255,0.85)", fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
-  actBadge: { backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)" },
-  actNum:   { color: "#FFF", fontSize: 14, fontFamily: "Inter_700Bold", lineHeight: 18 },
-  actLbl:   { color: "rgba(255,255,255,0.8)", fontSize: 8, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 },
+  actBadge: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", minWidth: 56 },
+  actNum:   { color: "#FFF", fontSize: 16, fontFamily: "Inter_700Bold", lineHeight: 20 },
+  actLbl:   { color: "rgba(255,255,255,0.85)", fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
   divider:  { height: 0.8, backgroundColor: "rgba(255,255,255,0.18)", marginBottom: 12 },
   statsRow: { flexDirection: "row" },
   stat:     { flex: 1, alignItems: "center", gap: 4 },
@@ -183,11 +183,11 @@ function ServiceTile({ icon, label, color, onPress, badge }: {
   );
 }
 const st = StyleSheet.create({
-  wrap:     { flex: 1, alignItems: "center", paddingVertical: 6 },
+  wrap:     { width: "33.33%", alignItems: "center", paddingVertical: 6 },
   inner:    { alignItems: "center", gap: 7 },
   shadow3d: { position: "absolute", width: 52, height: 18, borderRadius: 10, top: 42, left: "50%", marginLeft: -26 },
   circle:   { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  lbl:      { fontSize: 11, fontFamily: "Inter_600SemiBold", color: DS.color.text, textAlign: "center", lineHeight: 14 },
+  lbl:      { fontSize: 11, fontFamily: "Inter_600SemiBold", color: DS.color.text, textAlign: "center", lineHeight: 14, height: 28 },
   badgeDot: { position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: "#FFF", alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
   badgeT:   { fontSize: 8, fontFamily: "Inter_700Bold", color: DS.color.primary },
 });

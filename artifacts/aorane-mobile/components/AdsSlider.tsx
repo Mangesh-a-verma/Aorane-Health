@@ -78,11 +78,19 @@ function PlaceholderSlide({ ad, index }: { ad: Ad; index: number }) {
 
 function AdSlide({ ad, index, onImpression }: { ad: Ad; index: number; onImpression: (id: string) => void }) {
   useEffect(() => { onImpression(ad.id); }, []);
+  const isPlaceholder = ad.id.startsWith("ph");
   const handlePress = async () => {
-    if (ad.linkUrl) { try { await Linking.openURL(ad.linkUrl); } catch { } }
+    if (isPlaceholder) return;
+    try {
+      const res = await api.recordAdClick(ad.id);
+      const url = res.linkUrl || ad.linkUrl;
+      if (url) await Linking.openURL(url);
+    } catch {
+      if (ad.linkUrl) { try { await Linking.openURL(ad.linkUrl); } catch { } }
+    }
   };
   return (
-    <TouchableOpacity onPress={handlePress} activeOpacity={ad.linkUrl ? 0.9 : 1} style={{ width: SLIDE_W }}>
+    <TouchableOpacity onPress={handlePress} activeOpacity={isPlaceholder ? 1 : 0.9} style={{ width: SLIDE_W }}>
       {ad.bannerUrl ? (
         <Image source={{ uri: ad.bannerUrl }} style={slides.image} resizeMode="cover" />
       ) : (
