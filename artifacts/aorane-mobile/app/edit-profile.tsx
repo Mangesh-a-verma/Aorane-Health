@@ -90,7 +90,7 @@ function SectionCard({ title, icon, children }: { title: string; icon: string; c
 // ─── Main Screen ───────────────────────────────────────────────────────────────
 export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   const [loading,  setLoading]  = useState(true);
   const [saving,   setSaving]   = useState(false);

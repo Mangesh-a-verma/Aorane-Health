@@ -162,25 +162,24 @@ export default function LoginScreen() {
   const orb1Anim = useRef(new Animated.Value(0)).current;
   const orb2Anim = useRef(new Animated.Value(0)).current;
 
+  const ND = Platform.OS !== "web";
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
-      Animated.spring(slideAnim, { toValue: 0, friction: 7, tension: 50, useNativeDriver: true }),
-      Animated.spring(logoScale, { toValue: 1, friction: 6, tension: 40, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: ND }),
+      Animated.spring(slideAnim, { toValue: 0, friction: 7, tension: 50, useNativeDriver: ND }),
+      Animated.spring(logoScale, { toValue: 1, friction: 6, tension: 40, useNativeDriver: ND }),
     ]).start();
-    // Floating orb animations
     Animated.loop(Animated.sequence([
-      Animated.timing(orb1Anim, { toValue: 1, duration: 4000, useNativeDriver: true }),
-      Animated.timing(orb1Anim, { toValue: 0, duration: 4000, useNativeDriver: true }),
+      Animated.timing(orb1Anim, { toValue: 1, duration: 4000, useNativeDriver: ND }),
+      Animated.timing(orb1Anim, { toValue: 0, duration: 4000, useNativeDriver: ND }),
     ])).start();
     Animated.loop(Animated.sequence([
-      Animated.timing(orb2Anim, { toValue: 1, duration: 5500, useNativeDriver: true }),
-      Animated.timing(orb2Anim, { toValue: 0, duration: 5500, useNativeDriver: true }),
+      Animated.timing(orb2Anim, { toValue: 1, duration: 5500, useNativeDriver: ND }),
+      Animated.timing(orb2Anim, { toValue: 0, duration: 5500, useNativeDriver: ND }),
     ])).start();
-    // Glow pulse
     Animated.loop(Animated.sequence([
-      Animated.timing(glowAnim, { toValue: 1, duration: 2200, useNativeDriver: true }),
-      Animated.timing(glowAnim, { toValue: 0.5, duration: 2200, useNativeDriver: true }),
+      Animated.timing(glowAnim, { toValue: 1, duration: 2200, useNativeDriver: ND }),
+      Animated.timing(glowAnim, { toValue: 0.5, duration: 2200, useNativeDriver: ND }),
     ])).start();
   }, []);
 
@@ -565,7 +564,7 @@ const s = StyleSheet.create({
   glowGrad: { width: W * 0.9, height: 240, borderRadius: 120 },
 
   logo: {
-    width: W * 0.80, height: 200,
+    width: Math.min(W * 0.80, 280), height: 180,
     marginBottom: 10,
   },
 

@@ -108,7 +108,7 @@ function useVoice(onResult: (text: string) => void) {
 
 export default function FoodScreen() {
   const insets = useSafeAreaInsets();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   const [logs,         setLogs]         = useState<FoodLog[]>([]);
   const [totalCal,     setTotalCal]     = useState(0);
@@ -160,8 +160,8 @@ export default function FoodScreen() {
   useEffect(() => {
     if (listening) {
       Animated.loop(Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.2, duration: 500, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.2, duration: 500, useNativeDriver: Platform.OS !== "web" }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 500, useNativeDriver: Platform.OS !== "web" }),
       ])).start();
     } else { pulseAnim.setValue(1); }
   }, [listening]);

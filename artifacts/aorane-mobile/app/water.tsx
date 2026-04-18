@@ -41,7 +41,7 @@ export default function WaterScreen() {
   const [selectedDrink, setSelectedDrink] = useState("water");
   const [loading, setLoading] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
   const bg = isDark ? "#010814" : "#F0F9FF";
   const today = new Date().toISOString().split("T")[0];
 

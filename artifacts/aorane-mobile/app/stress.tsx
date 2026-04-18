@@ -222,7 +222,7 @@ function BreathingExercise() {
 // ── Main Screen ─────────────────────────────────────────────────────────────
 export default function StressScreen() {
   const insets = useSafeAreaInsets();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   const [tab,          setTab]          = useState<"checkin" | "pillar" | "history">("checkin");
   const [dataLoading,  setDataLoading]  = useState(true);

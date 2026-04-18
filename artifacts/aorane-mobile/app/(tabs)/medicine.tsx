@@ -52,7 +52,7 @@ const MEAL_TIMING: Record<string, { label: string; icon: keyof typeof Ionicons.g
 
 export default function MedicineScreen() {
   const insets = useSafeAreaInsets();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   const [schedules,       setSchedules]       = useState<Schedule[]>([]);
   const [isLoading,       setIsLoading]       = useState(true);

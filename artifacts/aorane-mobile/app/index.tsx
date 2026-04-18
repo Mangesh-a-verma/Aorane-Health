@@ -1,6 +1,6 @@
 import { Redirect } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
-import { View, Image, StyleSheet, Dimensions, Animated } from "react-native";
+import { View, Image, StyleSheet, Dimensions, Animated, Platform } from "react-native";
 import { useEffect, useRef } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -12,7 +12,7 @@ function SplashScreen() {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(logoAnim, { toValue: 1, friction: 7, tension: 45, useNativeDriver: true }),
+      Animated.spring(logoAnim, { toValue: 1, friction: 7, tension: 45, useNativeDriver: Platform.OS !== "web" }),
       Animated.timing(glowAnim, { toValue: 1, duration: 1200, useNativeDriver: false }),
     ]).start();
   }, []);

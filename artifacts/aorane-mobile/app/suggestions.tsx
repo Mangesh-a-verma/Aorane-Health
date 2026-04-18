@@ -131,7 +131,7 @@ export default function SuggestionsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [fromCache, setFromCache] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   const load = useCallback(async (forceRefresh = false) => {
     try {
@@ -142,7 +142,7 @@ export default function SuggestionsScreen() {
       setSuggestions(res.suggestions);
       setFromCache(res.fromCache);
       setError(null);
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: Platform.OS !== "web" }).start();
     } catch {
       setError("Could not load suggestions. Please check your internet connection.");
     }

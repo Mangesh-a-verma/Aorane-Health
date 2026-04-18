@@ -65,7 +65,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const topPad  = Platform.OS === "web" ? 67 : insets.top;
+  const topPad  = insets.top;
   const heightVal = profile.height_cm ?? profile.heightCm;
   const weightVal = profile.weight_kg ?? profile.weightKg;
   const bmi     = heightVal && weightVal

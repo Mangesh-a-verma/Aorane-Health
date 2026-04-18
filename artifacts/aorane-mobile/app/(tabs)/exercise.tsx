@@ -164,7 +164,7 @@ export default function ExerciseScreen() {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, []));
 
-  const topPad  = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
   const ringPct = Math.min(1, totalMin / 60);
 
   return (

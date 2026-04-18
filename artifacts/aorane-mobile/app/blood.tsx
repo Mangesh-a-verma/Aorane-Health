@@ -315,7 +315,7 @@ export default function BloodEmergencyScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       {/* Header */}
-      <LinearGradient colors={["#DC2626", "#B91C1C"]} style={{ paddingTop: (Platform.OS === "web" ? 67 : insets.top) + 12, paddingHorizontal: 16, paddingBottom: 0 }}>
+      <LinearGradient colors={["#DC2626", "#B91C1C"]} style={{ paddingTop: (insets.top) + 12, paddingHorizontal: 16, paddingBottom: 0 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 }}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={22} color="#FFF" />

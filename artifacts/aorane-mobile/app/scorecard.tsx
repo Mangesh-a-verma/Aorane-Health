@@ -124,7 +124,7 @@ export default function ScorecardScreen() {
   const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[4]);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [shareDate, setShareDate] = useState(new Date());
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   useEffect(() => { loadCard(); loadCompany(); }, []);
 

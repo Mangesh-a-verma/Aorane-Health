@@ -44,7 +44,7 @@ export default function PeriodScreen() {
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
   const bg = isDark ? "#010814" : "#FFF5F9";
 
   useEffect(() => { load(); }, []);

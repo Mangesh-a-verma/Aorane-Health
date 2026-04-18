@@ -10,14 +10,15 @@ import { BlurView } from "expo-blur";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { api } from "@/lib/api";
+import { DS } from "@/lib/theme";
 
 const { width: W, height: H } = Dimensions.get("window");
-const PRIMARY = "#0077B6";
-const SKY = "#0EA5E9";
-const ACCENT = "#00B896";
+const PRIMARY = DS.color.primary;
+const SKY = DS.color.secondary;
+const ACCENT = DS.color.green;
 const C = {
-  text: "#0D1F33", muted: "#5B7A8E",
-  glass: "rgba(255,255,255,0.78)", glassBorder: "rgba(255,255,255,0.92)",
+  text: DS.color.text, muted: DS.color.textSub,
+  glass: "rgba(255,255,255,0.88)", glassBorder: "rgba(255,255,255,0.96)",
 };
 
 type ScanResult =
@@ -59,26 +60,24 @@ function ScannerFrame({ imageUri }: { imageUri: string | null }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const cornerAnim = useRef(new Animated.Value(0)).current;
 
+  const ND = Platform.OS !== "web";
   useEffect(() => {
-    // Scanning line
     Animated.loop(
       Animated.sequence([
-        Animated.timing(scanLineAnim, { toValue: 1, duration: 1600, useNativeDriver: true }),
-        Animated.timing(scanLineAnim, { toValue: 0, duration: 1600, useNativeDriver: true }),
+        Animated.timing(scanLineAnim, { toValue: 1, duration: 1600, useNativeDriver: ND }),
+        Animated.timing(scanLineAnim, { toValue: 0, duration: 1600, useNativeDriver: ND }),
       ])
     ).start();
-    // Corner pulse
     Animated.loop(
       Animated.sequence([
-        Animated.timing(cornerAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
-        Animated.timing(cornerAnim, { toValue: 0.5, duration: 900, useNativeDriver: true }),
+        Animated.timing(cornerAnim, { toValue: 1, duration: 900, useNativeDriver: ND }),
+        Animated.timing(cornerAnim, { toValue: 0.5, duration: 900, useNativeDriver: ND }),
       ])
     ).start();
-    // Scale pulse
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.04, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.04, duration: 800, useNativeDriver: ND }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: ND }),
       ])
     ).start();
   }, []);
@@ -97,11 +96,11 @@ function ScannerFrame({ imageUri }: { imageUri: string | null }) {
           <Image source={{ uri: imageUri }} style={{ width: FRAME - 4, height: FRAME - 4, borderRadius: 16, resizeMode: "cover" }} />
         ) : (
           <LinearGradient
-            colors={["rgba(0,119,182,0.05)", "rgba(0,184,150,0.05)"]}
+            colors={[DS.color.primarySoft, DS.color.secondarySoft]}
             style={{ width: FRAME - 4, height: FRAME - 4, borderRadius: 16, alignItems: "center", justifyContent: "center" }}
           >
             <View style={sf.centerIcon}>
-              <Ionicons name="scan-outline" size={48} color={SKY} style={{ opacity: 0.5 }} />
+              <Ionicons name="scan-outline" size={48} color={PRIMARY} style={{ opacity: 0.4 }} />
             </View>
           </LinearGradient>
         )}
@@ -133,7 +132,7 @@ const sf = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "rgba(14,165,233,0.25)",
+    borderColor: DS.color.border,
   },
   scanLine: {
     position: "absolute", left: 0, right: 0, height: 2,
@@ -155,14 +154,15 @@ export default function SmartScanScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const headerFade = useRef(new Animated.Value(0)).current;
 
+  const ND = Platform.OS !== "web";
   useEffect(() => {
-    Animated.timing(headerFade, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+    Animated.timing(headerFade, { toValue: 1, duration: 500, useNativeDriver: ND }).start();
   }, []);
 
   function showResult() {
     Animated.parallel([
-      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, damping: 18 }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: ND, damping: 18 }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: ND }),
     ]).start();
   }
 
@@ -207,11 +207,11 @@ export default function SmartScanScreen() {
     fadeAnim.setValue(0);
   }
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={["#C5E8FF", "#DCF5EF", "#EFF8FF", "#FFFFFF"]} locations={[0, 0.25, 0.6, 1]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[DS.color.bg, DS.color.bgSoft, "#FFFFFF"]} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFill} />
       <View style={s.blob1} /><View style={s.blob2} />
 
       <ScrollView
@@ -436,7 +436,7 @@ function MedicineResult({ r, onReset }: { r: Extract<ScanResult, { type: "medici
       {r.genericName && <Text style={rs.serving}>Generic: {r.genericName}</Text>}
       <View style={rs.summBox}><Text style={rs.sectionSmall}>Used For</Text><Text style={rs.summText}>{r.uses}</Text></View>
       {r.commonDosage && (
-        <View style={[rs.summBox, { backgroundColor: "#E0F2FE" }]}>
+        <View style={[rs.summBox, { backgroundColor: DS.color.primarySoft }]}>
           <Text style={rs.sectionSmall}>Typical Dosage</Text>
           <Text style={[rs.summText, { color: PRIMARY }]}>{r.commonDosage}</Text>
         </View>
@@ -483,10 +483,10 @@ const rs = StyleSheet.create({
   scoreBadge: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
   scoreVal: { fontSize: 14, fontFamily: "Inter_700Bold" },
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
-  tag: { backgroundColor: "#E0F2FE", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  tag: { backgroundColor: DS.color.primarySoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   tagText: { fontSize: 11, color: PRIMARY, fontFamily: "Inter_500Medium" },
-  tipBox: { flexDirection: "row", gap: 8, backgroundColor: "#F0FBF8", borderRadius: 14, padding: 12, alignItems: "flex-start", marginBottom: 14 },
-  tipText: { flex: 1, fontSize: 12.5, color: "#065F46", lineHeight: 18 },
+  tipBox: { flexDirection: "row", gap: 8, backgroundColor: DS.color.greenSoft, borderRadius: 14, padding: 12, alignItems: "flex-start", marginBottom: 14 },
+  tipText: { flex: 1, fontSize: 12.5, color: "#1A5C33", lineHeight: 18 },
   urgencyBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   urgencyDot: { width: 6, height: 6, borderRadius: 3 },
   urgencyText: { fontSize: 10.5, fontFamily: "Inter_700Bold" },
@@ -508,9 +508,9 @@ const rs = StyleSheet.create({
 });
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#EBF5FF" },
-  blob1: { position: "absolute", width: 300, height: 300, borderRadius: 150, backgroundColor: "#7DD3FC", opacity: 0.2, top: -100, right: -100 },
-  blob2: { position: "absolute", width: 240, height: 240, borderRadius: 120, backgroundColor: "#6EE7B7", opacity: 0.13, bottom: 180, left: -80 },
+  root: { flex: 1, backgroundColor: DS.color.bg },
+  blob1: { position: "absolute", width: 300, height: 300, borderRadius: 150, backgroundColor: DS.color.primarySoft, opacity: 0.6, top: -100, right: -100 },
+  blob2: { position: "absolute", width: 240, height: 240, borderRadius: 120, backgroundColor: DS.color.secondarySoft, opacity: 0.5, bottom: 180, left: -80 },
 
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
   headerTitle: { fontSize: 24, fontFamily: "Inter_700Bold", color: C.text },

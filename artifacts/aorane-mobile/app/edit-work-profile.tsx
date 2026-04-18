@@ -64,7 +64,7 @@ const CATEGORY_ORDER = ["💼 Desk / Sedentary", "🚶 Light Active", "🏃 Mode
 
 export default function EditWorkProfileScreen() {
   const insets = useSafeAreaInsets();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
   const [workProfile, setWorkProfile] = useState("");
   const [activityLevel, setActivityLevel] = useState("");
   const [loading, setLoading] = useState(true);

@@ -464,7 +464,7 @@ async function downloadPdfNative(html: string): Promise<void> {
 
 export default function HealthReportScreen() {
   const insets = useSafeAreaInsets();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   const [reportType, setReportType] = useState<ReportType>("weekly");
   const [card, setCard]             = useState<Scorecard | null>(null);

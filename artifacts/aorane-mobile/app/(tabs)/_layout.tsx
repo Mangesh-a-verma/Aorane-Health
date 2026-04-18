@@ -22,7 +22,7 @@ function TabIcon({ Icon, focused, label }: {
 }) {
   const scale = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    Animated.spring(scale, { toValue: focused ? 1.1 : 1, useNativeDriver: true, damping: 14 }).start();
+    Animated.spring(scale, { toValue: focused ? 1.1 : 1, useNativeDriver: Platform.OS !== "web", damping: 14 }).start();
   }, [focused]);
 
   return (
@@ -54,16 +54,16 @@ function ScanButton({ onPress }: { onPress: () => void }) {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.14, duration: 1300, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1.00, duration: 1300, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1.14, duration: 1300, useNativeDriver: Platform.OS !== "web" }),
+        Animated.timing(pulse, { toValue: 1.00, duration: 1300, useNativeDriver: Platform.OS !== "web" }),
       ])
     ).start();
   }, []);
 
   return (
     <Pressable
-      onPressIn ={() => Animated.spring(scale, { toValue: 0.88, useNativeDriver: true, damping: 10 }).start()}
-      onPressOut={() => Animated.spring(scale, { toValue: 1.00, useNativeDriver: true, damping: 8  }).start()}
+      onPressIn ={() => Animated.spring(scale, { toValue: 0.88, useNativeDriver: Platform.OS !== "web", damping: 10 }).start()}
+      onPressOut={() => Animated.spring(scale, { toValue: 1.00, useNativeDriver: Platform.OS !== "web", damping: 8  }).start()}
       onPress={onPress}
       hitSlop={14}
     >

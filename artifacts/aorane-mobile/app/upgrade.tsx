@@ -145,7 +145,7 @@ export default function UpgradeScreen() {
   const [success, setSuccess] = useState(false);
   const [familyInviteCode, setFamilyInviteCode] = useState<string | null>(null);
   const [rzpReady, setRzpReady] = useState(false);
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
   const bg = isDark ? "#010814" : "#F0F9FF";
 
   const plan = (plans.find(p => p.key === selectedPlan) ?? plans[0])!;

@@ -163,8 +163,8 @@ function ServiceTile({ icon, label, color, onPress, badge }: {
   return (
     <TouchableOpacity
       style={st.wrap} activeOpacity={1}
-      onPressIn ={() => Animated.spring(sc, { toValue: 0.88, useNativeDriver: true, damping: 10 }).start()}
-      onPressOut={() => Animated.spring(sc, { toValue: 1,    useNativeDriver: true, damping: 8  }).start()}
+      onPressIn ={() => Animated.spring(sc, { toValue: 0.88, useNativeDriver: Platform.OS !== "web", damping: 10 }).start()}
+      onPressOut={() => Animated.spring(sc, { toValue: 1,    useNativeDriver: Platform.OS !== "web", damping: 8  }).start()}
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress?.(); }}
     >
       <Animated.View style={[st.inner, { transform: [{ scale: sc }] }]}>
@@ -409,8 +409,8 @@ export default function DashboardScreen() {
       setRefreshing(false);
     }
     Animated.parallel([
-      Animated.timing(fadeAnim,  { toValue: 1, duration: 460, useNativeDriver: true }),
-      Animated.spring(slideAnim, { toValue: 0, damping: 18,   useNativeDriver: true }),
+      Animated.timing(fadeAnim,  { toValue: 1, duration: 460, useNativeDriver: Platform.OS !== "web" }),
+      Animated.spring(slideAnim, { toValue: 0, damping: 18,   useNativeDriver: Platform.OS !== "web" }),
     ]).start();
   }, []);
 
@@ -430,7 +430,7 @@ export default function DashboardScreen() {
     } catch { }
   };
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
   const today  = new Date().toLocaleDateString("en-IN", { month: "long", day: "numeric", year: "numeric" });
 
   if (isLoading) {

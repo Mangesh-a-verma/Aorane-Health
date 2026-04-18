@@ -39,7 +39,7 @@ export default function FamilyScreen() {
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
   const [creating, setCreating] = useState(false);
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
   const bg = isDark ? "#010814" : "#F0F9FF";
 
   useEffect(() => { load(); }, []);

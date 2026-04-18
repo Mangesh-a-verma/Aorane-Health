@@ -173,7 +173,7 @@ export default function WearableScreen() {
   const [showManual, setShowManual] = useState(false);
   const [showConnect, setShowConnect] = useState(false);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   useEffect(() => {
     loadAll();
