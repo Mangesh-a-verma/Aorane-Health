@@ -1,5 +1,6 @@
 import { pool } from "@workspace/db";
 import { logger } from "./logger";
+import { buildNewFoodSeedSQL } from "./seed-new-foods";
 
 // Safe startup migration — adds any missing columns using IF NOT EXISTS
 // Run once at server startup; safe to re-run multiple times
@@ -800,6 +801,11 @@ export async function runStartupMigrations(): Promise<void> {
     // ── food_items: ai_generated flag for tracking AI-promoted items ──────────
     `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS ai_generated BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS ai_source_cache_id UUID`,
+
+    // ── NEW FOODS: Separately curated additions (see seed-new-foods.ts) ────────
+    // These are NOT AI-generated; they are manually verified additions.
+    // Kept in seed-new-foods.ts so original migration data stays clean.
+    ...buildNewFoodSeedSQL(),
   ];
 
   let ok = 0; let fail = 0;
