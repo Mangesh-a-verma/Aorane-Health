@@ -788,6 +788,18 @@ export async function runStartupMigrations(): Promise<void> {
       ('weekly_diet_chart',  'Weekly Diet Chart AI',  'nvidia', 'meta/llama-3.3-70b-instruct', true),
       ('health_suggestions', 'Daily Health Coach AI', 'nvidia', 'meta/llama-3.3-70b-instruct', true)
      ON CONFLICT (feature) DO NOTHING`,
+
+    // ── food_scan_cache: new columns for AI food discovery workflow ───────────
+    `ALTER TABLE food_scan_cache ADD COLUMN IF NOT EXISTS is_promoted   BOOLEAN     NOT NULL DEFAULT false`,
+    `ALTER TABLE food_scan_cache ADD COLUMN IF NOT EXISTS is_rejected   BOOLEAN     NOT NULL DEFAULT false`,
+    `ALTER TABLE food_scan_cache ADD COLUMN IF NOT EXISTS source_ai     TEXT`,
+    `ALTER TABLE food_scan_cache ADD COLUMN IF NOT EXISTS name_normalized TEXT`,
+    `ALTER TABLE food_scan_cache ADD COLUMN IF NOT EXISTS reviewed_at   TIMESTAMPTZ`,
+    `ALTER TABLE food_scan_cache ADD COLUMN IF NOT EXISTS promoted_food_item_id UUID REFERENCES food_items(id) ON DELETE SET NULL`,
+
+    // ── food_items: ai_generated flag for tracking AI-promoted items ──────────
+    `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS ai_generated BOOLEAN NOT NULL DEFAULT false`,
+    `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS ai_source_cache_id UUID`,
   ];
 
   let ok = 0; let fail = 0;

@@ -26,6 +26,7 @@ import AIConfig from "@/pages/AIConfig";
 import UpcomingFeatures from "@/pages/UpcomingFeatures";
 import Branding from "@/pages/Branding";
 import Profile from "@/pages/Profile";
+import AIFoodDiscovery from "@/pages/AIFoodDiscovery";
 
 const queryClient = new QueryClient();
 
@@ -92,8 +93,9 @@ function Router() {
       <Route path="/ads" component={() => <Protected component={AdsManager} />} />
       <Route path="/ai-config" component={() => <Protected component={AIConfig} />} />
       <Route path="/branding" component={() => <Protected component={Branding} />} />
-      <Route path="/upcoming-features" component={() => <Protected component={UpcomingFeatures} />} />
-      <Route path="/profile" component={() => <Protected component={Profile} />} />
+      <Route path="/upcoming-features"   component={() => <Protected component={UpcomingFeatures} />} />
+      <Route path="/profile"             component={() => <Protected component={Profile} />} />
+      <Route path="/ai-food-discovery"   component={() => <Protected component={AIFoodDiscovery} />} />
       <Route component={NotFound} />
     </Switch>
   );

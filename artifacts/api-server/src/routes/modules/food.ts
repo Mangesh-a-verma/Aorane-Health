@@ -10,6 +10,71 @@ import { cache } from "../../lib/redis";
 
 const WEATHER_CACHE_TTL = 6 * 60 * 60; // 6 hours
 
+// ── Fuzzy dedup helpers ──────────────────────────────────────────────────────
+/** Normalize food name for fuzzy matching: lowercase, trim, collapse spaces */
+function normalizeFoodName(name: string): string {
+  return name.toLowerCase().trim()
+    .replace(/[^a-z0-9\u0900-\u097f ]/g, "") // keep alphanumeric, Hindi chars, spaces
+    .replace(/\s+/g, " ");
+}
+
+/** Simple similarity: check if two normalized names are close enough */
+function isSimilarName(a: string, b: string): boolean {
+  if (a === b) return true;
+  // Check if one contains the other (handles "poha" vs "poha with peanuts")
+  if (a.includes(b) || b.includes(a)) return true;
+  // Levenshtein distance for short names
+  if (Math.abs(a.length - b.length) > 4) return false;
+  let matches = 0;
+  const shorter = a.length < b.length ? a : b;
+  const longer  = a.length < b.length ? b : a;
+  for (let i = 0; i < shorter.length; i++) {
+    if (longer.includes(shorter[i]!)) matches++;
+  }
+  return (matches / longer.length) >= 0.8;
+}
+
+/** Auto-promote a cache entry to food_items if it meets quality threshold */
+async function maybeAutoPromote(cacheId: string, hitCount: number, aiResult: Record<string, unknown>, foodNameEn: string): Promise<void> {
+  if (hitCount < 5) return; // Only auto-promote after 5+ searches
+  // Check not already promoted
+  const [entry] = await db.select({ isPromoted: foodScanCacheTable.isPromoted })
+    .from(foodScanCacheTable).where(eq(foodScanCacheTable.id, cacheId));
+  if (!entry || entry.isPromoted) return;
+  // Insert into food_items
+  try {
+    const r = aiResult as Record<string, unknown>;
+    const [newItem] = await db.insert(foodItemsTable).values({
+      foodNameEn: (r.foodNameEn as string) || foodNameEn,
+      category: (r.category as string) || "other",
+      cuisineType: "indian",
+      calories: String(r.calories || 0),
+      proteinG: r.proteinG ? String(r.proteinG) : null,
+      carbsG:   r.carbsG   ? String(r.carbsG)   : null,
+      fatG:     r.fatG     ? String(r.fatG)      : null,
+      fiberG:   r.fiberG   ? String(r.fiberG)    : null,
+      sugarG:   r.sugarG   ? String(r.sugarG)    : null,
+      sodiumMg: r.sodiumMg ? String(r.sodiumMg)  : null,
+      servingSizeG: r.servingSizeG ? String(r.servingSizeG) : "100",
+      servingDescription: (r.servingDescription as string) || null,
+      dietaryTags: Array.isArray(r.dietaryTags) ? r.dietaryTags as string[] : [],
+      vitaminCMg: (r.vitamins as Record<string,unknown>)?.vitaminC_mg ? String((r.vitamins as Record<string,unknown>).vitaminC_mg) : null,
+      ironMg:    (r.vitamins as Record<string,unknown>)?.iron_mg    ? String((r.vitamins as Record<string,unknown>).iron_mg)    : null,
+      calciumMg: (r.vitamins as Record<string,unknown>)?.calcium_mg ? String((r.vitamins as Record<string,unknown>).calcium_mg) : null,
+      isVerified: false,
+      addedByAdmin: false,
+      aiGenerated: true,
+      aiSourceCacheId: cacheId,
+    }).returning({ id: foodItemsTable.id });
+    // Mark cache entry as promoted
+    await db.update(foodScanCacheTable).set({
+      isPromoted: true,
+      reviewedAt: new Date(),
+      promotedFoodItemId: newItem?.id ?? null,
+    }).where(eq(foodScanCacheTable.id, cacheId));
+  } catch { /* ignore promote errors — don't break main flow */ }
+}
+
 const router = Router();
 
 // ── Food Database Stats (internal debug) ──────────────────────────────────────
@@ -256,10 +321,13 @@ router.post("/food/scan", requireAuth, aiRateLimit("food_scan", 50), async (req:
       const [cached] = await db.select().from(foodScanCacheTable)
         .where(ilike(foodScanCacheTable.foodNameEn, searchTerm));
       if (cached) {
+        const newHitCount = cached.hitCount + 1;
         await db.update(foodScanCacheTable)
-          .set({ hitCount: cached.hitCount + 1, lastUsedAt: new Date() })
+          .set({ hitCount: newHitCount, lastUsedAt: new Date() })
           .where(eq(foodScanCacheTable.id, cached.id));
-        res.json({ result: cached.aiResult, fromCache: true, fromDb: false, fromHistory: false, hitCount: cached.hitCount + 1 }); return;
+        // Auto-promote if threshold reached
+        void maybeAutoPromote(cached.id, newHitCount, cached.aiResult as Record<string, unknown>, cached.foodNameEn);
+        res.json({ result: cached.aiResult, fromCache: true, fromDb: false, fromHistory: false, hitCount: newHitCount }); return;
       }
     }
 
@@ -321,12 +389,45 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
       res.status(400).json({ error: "searchTerm or imageBase64 required" }); return;
     }
 
-    // Save to AI-discovered foods cache so it's NEVER called again for this food
+    // Save to AI-discovered foods cache (with fuzzy dedup + auto-promote)
     if (searchTerm) {
-      await db.insert(foodScanCacheTable).values({
-        foodNameEn: searchTerm,
-        aiResult: result,
-      }).onConflictDoNothing();
+      const normalizedSearch = normalizeFoodName(searchTerm);
+      // Load recent cache entries to check for fuzzy duplicates (last 200)
+      const recentEntries = await db.select({
+        id: foodScanCacheTable.id,
+        foodNameEn: foodScanCacheTable.foodNameEn,
+        nameNormalized: foodScanCacheTable.nameNormalized,
+        hitCount: foodScanCacheTable.hitCount,
+        isPromoted: foodScanCacheTable.isPromoted,
+        aiResult: foodScanCacheTable.aiResult,
+      }).from(foodScanCacheTable).orderBy(desc(foodScanCacheTable.lastUsedAt)).limit(200);
+
+      const similarEntry = recentEntries.find((e) =>
+        isSimilarName(normalizedSearch, e.nameNormalized || normalizeFoodName(e.foodNameEn))
+      );
+
+      if (similarEntry) {
+        // Increment hit_count of existing similar entry
+        const newHitCount = (similarEntry.hitCount || 1) + 1;
+        await db.update(foodScanCacheTable).set({
+          hitCount: newHitCount,
+          lastUsedAt: new Date(),
+        }).where(eq(foodScanCacheTable.id, similarEntry.id));
+        // Auto-promote if threshold reached
+        void maybeAutoPromote(similarEntry.id, newHitCount, similarEntry.aiResult as Record<string, unknown>, similarEntry.foodNameEn);
+      } else {
+        // Insert new entry
+        const sourceAi = process.env.GEMINI_API_KEY ? "gemini" : "nvidia";
+        const [inserted] = await db.insert(foodScanCacheTable).values({
+          foodNameEn: searchTerm,
+          nameNormalized: normalizedSearch,
+          aiResult: result,
+          sourceAi,
+          hitCount: 1,
+        }).onConflictDoNothing().returning({ id: foodScanCacheTable.id, hitCount: foodScanCacheTable.hitCount });
+        // Auto-promote if already at threshold (unlikely but safe)
+        if (inserted) void maybeAutoPromote(inserted.id, inserted.hitCount ?? 1, result, searchTerm);
+      }
     }
 
     res.json({ result, fromCache: false, fromDb: false, fromHistory: false });

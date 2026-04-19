@@ -6,7 +6,7 @@ import {
   Tag, Megaphone, Droplet, Languages, ClipboardList, LogOut,
   Menu, X, ShieldAlert, ChevronRight, CreditCard, BarChart3,
   DollarSign, MonitorPlay, Paintbrush2, Brain, Bell, Search,
-  Sun, Moon, IndianRupee, Sliders, Rocket, UserCircle,
+  Sun, Moon, IndianRupee, Sliders, Rocket, UserCircle, Sparkles,
 } from "lucide-react";
 
 type NavItem = { path: string; icon: React.ElementType; label: string; color: string };
@@ -37,7 +37,8 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { path: "/ai-config",     icon: Brain,         label: "AI Config",     color: "#6366F1" },
       { path: "/branding",      icon: Paintbrush2,   label: "Branding",      color: "#8B5CF6" },
       { path: "/feature-flags", icon: Flag,          label: "Feature Flags", color: "#F59E0B" },
-      { path: "/food-items",    icon: UtensilsCrossed, label: "Food Database", color: "#10B981" },
+      { path: "/food-items",         icon: UtensilsCrossed, label: "Food Database",      color: "#10B981" },
+      { path: "/ai-food-discovery",  icon: Sparkles,        label: "AI Food Discovery", color: "#8B5CF6" },
       { path: "/promo-codes",   icon: Tag,           label: "Promo Codes",   color: "#EF4444" },
       { path: "/announcements", icon: Megaphone,     label: "Announcements", color: "#3B82F6" },
     ],

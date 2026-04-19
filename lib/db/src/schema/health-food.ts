@@ -45,6 +45,8 @@ export const foodItemsTable = pgTable("food_items", {
   tags: text("tags").array(),
   isVerified: boolean("is_verified").notNull().default(false),
   addedByAdmin: boolean("added_by_admin").notNull().default(false),
+  aiGenerated: boolean("ai_generated").notNull().default(false),
+  aiSourceCacheId: uuid("ai_source_cache_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -52,11 +54,18 @@ export const foodItemsTable = pgTable("food_items", {
 export const foodScanCacheTable = pgTable("food_scan_cache", {
   id: uuid("id").primaryKey().defaultRandom(),
   foodNameEn: text("food_name_en").notNull().unique(),
+  nameNormalized: text("name_normalized"),
   aiResult: jsonb("ai_result").notNull(),
   foodItemId: uuid("food_item_id").references(() => foodItemsTable.id),
   hitCount: integer("hit_count").notNull().default(1),
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // AI Food Discovery workflow
+  isPromoted: boolean("is_promoted").notNull().default(false),
+  isRejected: boolean("is_rejected").notNull().default(false),
+  sourceAi: text("source_ai"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  promotedFoodItemId: uuid("promoted_food_item_id").references(() => foodItemsTable.id),
 });
 
 export const foodLogsTable = pgTable("food_logs", {

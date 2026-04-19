@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable, planPricingTable } from "@workspace/db";
+import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, foodScanCacheTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable, planPricingTable } from "@workspace/db";
 import { eq, desc, ilike, count, or, sql, and } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import { signAdminToken } from "../../lib/jwt";
@@ -557,6 +557,163 @@ router.patch("/admin/me", requireAdmin, async (req: AdminRequest, res) => {
       .returning({ id: adminUsersTable.id, fullName: adminUsersTable.fullName, email: adminUsersTable.email, role: adminUsersTable.role });
     res.json({ admin: updated, success: true });
   } catch { res.status(500).json({ error: "Failed to update profile" }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// AI Food Discovery / Cache Review Endpoints
+// ══════════════════════════════════════════════════════════════════════════════
+
+router.get("/admin/food-cache/stats", requireAdmin, async (_req, res) => {
+  try {
+    const [total]    = await db.select({ count: count() }).from(foodScanCacheTable);
+    const [pending]  = await db.select({ count: count() }).from(foodScanCacheTable)
+      .where(and(eq(foodScanCacheTable.isPromoted, false), eq(foodScanCacheTable.isRejected, false)));
+    const [promoted] = await db.select({ count: count() }).from(foodScanCacheTable).where(eq(foodScanCacheTable.isPromoted, true));
+    const [rejected] = await db.select({ count: count() }).from(foodScanCacheTable).where(eq(foodScanCacheTable.isRejected, true));
+    const [autoP]    = await db.select({ count: count() }).from(foodItemsTable).where(eq(foodItemsTable.aiGenerated, true));
+    res.json({ total: Number(total?.count ?? 0), pending: Number(pending?.count ?? 0), promoted: Number(promoted?.count ?? 0), rejected: Number(rejected?.count ?? 0), autoPromoted: Number(autoP?.count ?? 0) });
+  } catch { res.status(500).json({ error: "Failed to fetch stats" }); }
+});
+
+router.get("/admin/food-cache", requireAdmin, async (req, res) => {
+  try {
+    const { filter = "all", limit = "50", offset = "0", search = "" } = req.query as Record<string, string>;
+    const conditions = [];
+    if (filter === "pending")  { conditions.push(eq(foodScanCacheTable.isPromoted, false), eq(foodScanCacheTable.isRejected, false)); }
+    if (filter === "promoted") { conditions.push(eq(foodScanCacheTable.isPromoted, true)); }
+    if (filter === "rejected") { conditions.push(eq(foodScanCacheTable.isRejected, true)); }
+    if (search) { conditions.push(ilike(foodScanCacheTable.foodNameEn, `%${search}%`)); }
+
+    const rows = await db.select().from(foodScanCacheTable)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(foodScanCacheTable.hitCount))
+      .limit(Number(limit))
+      .offset(Number(offset));
+
+    const [{ count: total }] = await db.select({ count: count() }).from(foodScanCacheTable)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    res.json({ entries: rows.map((e) => ({
+      id: e.id,
+      foodNameEn: e.foodNameEn,
+      hitCount: e.hitCount,
+      sourceAi: e.sourceAi,
+      isPromoted: e.isPromoted,
+      isRejected: e.isRejected,
+      reviewedAt: e.reviewedAt,
+      createdAt: e.createdAt,
+      lastUsedAt: e.lastUsedAt,
+      promotedFoodItemId: e.promotedFoodItemId,
+      aiResult: e.aiResult,
+    })), total: Number(total) });
+  } catch { res.status(500).json({ error: "Failed to fetch food cache" }); }
+});
+
+router.post("/admin/food-cache/:id/promote", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { id } = req.params as { id: string };
+    const [entry] = await db.select().from(foodScanCacheTable).where(eq(foodScanCacheTable.id, id));
+    if (!entry) { res.status(404).json({ error: "Cache entry not found" }); return; }
+    if (entry.isPromoted) { res.status(409).json({ error: "Already promoted" }); return; }
+
+    const r = entry.aiResult as Record<string, unknown>;
+    const [newItem] = await db.insert(foodItemsTable).values({
+      foodNameEn: (r.foodNameEn as string) || entry.foodNameEn,
+      category: (r.category as string) || "other",
+      cuisineType: "indian",
+      calories: String(r.calories || 0),
+      proteinG:  r.proteinG  ? String(r.proteinG)  : null,
+      carbsG:    r.carbsG    ? String(r.carbsG)    : null,
+      fatG:      r.fatG      ? String(r.fatG)      : null,
+      fiberG:    r.fiberG    ? String(r.fiberG)    : null,
+      sugarG:    r.sugarG    ? String(r.sugarG)    : null,
+      sodiumMg:  r.sodiumMg  ? String(r.sodiumMg)  : null,
+      servingSizeG: r.servingSizeG ? String(r.servingSizeG) : "100",
+      servingDescription: (r.servingDescription as string) || null,
+      dietaryTags: Array.isArray(r.dietaryTags) ? r.dietaryTags as string[] : [],
+      vitaminCMg: (r.vitamins as Record<string,unknown>)?.vitaminC_mg ? String((r.vitamins as Record<string,unknown>).vitaminC_mg) : null,
+      ironMg:    (r.vitamins as Record<string,unknown>)?.iron_mg    ? String((r.vitamins as Record<string,unknown>).iron_mg)    : null,
+      calciumMg: (r.vitamins as Record<string,unknown>)?.calcium_mg ? String((r.vitamins as Record<string,unknown>).calcium_mg) : null,
+      potassiumMg: (r.vitamins as Record<string,unknown>)?.potassium_mg ? String((r.vitamins as Record<string,unknown>).potassium_mg) : null,
+      isVerified: true,
+      addedByAdmin: true,
+      aiGenerated: true,
+      aiSourceCacheId: entry.id,
+    }).onConflictDoNothing().returning({ id: foodItemsTable.id, foodNameEn: foodItemsTable.foodNameEn });
+
+    await db.update(foodScanCacheTable).set({
+      isPromoted: true,
+      reviewedAt: new Date(),
+      promotedFoodItemId: newItem?.id ?? null,
+    }).where(eq(foodScanCacheTable.id, id));
+
+    await db.insert(adminAuditLogsTable).values({
+      adminId: req.adminId!,
+      action: "promote_ai_food",
+      targetType: "food_scan_cache",
+      targetId: id,
+      details: { foodName: entry.foodNameEn, promotedItemId: newItem?.id },
+    }).catch(() => {});
+
+    res.json({ success: true, foodItem: newItem });
+  } catch (err) {
+    console.error("Promote food error:", err);
+    res.status(500).json({ error: "Failed to promote food" });
+  }
+});
+
+router.post("/admin/food-cache/:id/reject", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { id } = req.params as { id: string };
+    const [entry] = await db.select({ id: foodScanCacheTable.id, foodNameEn: foodScanCacheTable.foodNameEn })
+      .from(foodScanCacheTable).where(eq(foodScanCacheTable.id, id));
+    if (!entry) { res.status(404).json({ error: "Cache entry not found" }); return; }
+
+    await db.update(foodScanCacheTable).set({
+      isRejected: true,
+      reviewedAt: new Date(),
+    }).where(eq(foodScanCacheTable.id, id));
+
+    await db.insert(adminAuditLogsTable).values({
+      adminId: req.adminId!,
+      action: "reject_ai_food",
+      targetType: "food_scan_cache",
+      targetId: id,
+      details: { foodName: entry.foodNameEn },
+    }).catch(() => {});
+
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: "Failed to reject food" }); }
+});
+
+router.get("/admin/food-cache/export", requireAdmin, async (req, res) => {
+  try {
+    const { format = "json", filter = "all" } = req.query as Record<string, string>;
+    const conditions = [];
+    if (filter === "pending")  { conditions.push(eq(foodScanCacheTable.isPromoted, false), eq(foodScanCacheTable.isRejected, false)); }
+    if (filter === "promoted") { conditions.push(eq(foodScanCacheTable.isPromoted, true)); }
+    if (filter === "rejected") { conditions.push(eq(foodScanCacheTable.isRejected, true)); }
+
+    const rows = await db.select().from(foodScanCacheTable)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(foodScanCacheTable.hitCount));
+
+    if (format === "csv") {
+      const csvHeader = "id,foodNameEn,hitCount,sourceAi,isPromoted,isRejected,createdAt,lastUsedAt,calories,proteinG,carbsG,fatG";
+      const csvRows = rows.map((e) => {
+        const r = e.aiResult as Record<string, unknown>;
+        return [e.id, `"${e.foodNameEn}"`, e.hitCount, e.sourceAi ?? "", e.isPromoted, e.isRejected,
+          e.createdAt.toISOString(), e.lastUsedAt.toISOString(),
+          r.calories ?? "", r.proteinG ?? "", r.carbsG ?? "", r.fatG ?? ""].join(",");
+      });
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename="ai-food-discovery-${filter}-${Date.now()}.csv"`);
+      res.send([csvHeader, ...csvRows].join("\n"));
+    } else {
+      res.setHeader("Content-Disposition", `attachment; filename="ai-food-discovery-${filter}-${Date.now()}.json"`);
+      res.json({ exportedAt: new Date().toISOString(), filter, count: rows.length, entries: rows });
+    }
+  } catch { res.status(500).json({ error: "Export failed" }); }
 });
 
 router.post("/admin/change-password", requireAdmin, async (req: AdminRequest, res) => {

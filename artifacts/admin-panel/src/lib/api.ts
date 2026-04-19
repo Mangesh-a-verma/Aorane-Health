@@ -186,6 +186,29 @@ export const api = {
     req<{ admin: { id: string; fullName: string; email: string; role: string }; success: boolean }>("/admin/me", { method: "PATCH", body: JSON.stringify(data) }),
   changePassword: (currentPassword: string, newPassword: string) =>
     req<{ success: boolean; message: string }>("/admin/change-password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
+
+  foodCacheStats: () => req<FoodCacheStats>("/admin/food-cache/stats"),
+  foodCache: (params?: { filter?: string; search?: string; limit?: number; offset?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.filter)  qs.set("filter",  params.filter);
+    if (params?.search)  qs.set("search",  params.search);
+    if (params?.limit)   qs.set("limit",   String(params.limit));
+    if (params?.offset)  qs.set("offset",  String(params.offset));
+    return req<{ entries: FoodCacheEntry[]; total: number }>(`/admin/food-cache?${qs}`);
+  },
+  promoteFood: (id: string) => req<{ success: boolean; foodItem: { id: string; foodNameEn: string } | null }>(`/admin/food-cache/${id}/promote`, { method: "POST" }),
+  rejectFood:  (id: string) => req<{ success: boolean }>(`/admin/food-cache/${id}/reject`, { method: "POST" }),
+  exportFoodCache: async (filter = "all", format: "csv" | "json" = "json") => {
+    const token = getToken();
+    const url = `${API_BASE}/admin/food-cache/export?filter=${filter}&format=${format}`;
+    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `ai-food-discovery-${filter}-${Date.now()}.${format}`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  },
 };
 
 export type AiConfig = {
@@ -199,4 +222,26 @@ export type PlanPricingItem = {
   features: string[]; badgeText: string | null; badgeColor: string | null;
   gradientColors: [string, string] | null; isActive: boolean; sortOrder: number;
   createdAt: string; updatedAt: string;
+};
+
+export type FoodCacheEntry = {
+  id: string;
+  foodNameEn: string;
+  hitCount: number;
+  sourceAi: string | null;
+  isPromoted: boolean;
+  isRejected: boolean;
+  reviewedAt: string | null;
+  createdAt: string;
+  lastUsedAt: string;
+  promotedFoodItemId: string | null;
+  aiResult: Record<string, unknown>;
+};
+
+export type FoodCacheStats = {
+  total: number;
+  pending: number;
+  promoted: number;
+  rejected: number;
+  autoPromoted: number;
 };

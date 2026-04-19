@@ -94,6 +94,35 @@ OTP Verify → Profile (Step 1/5) → Physical/BMI (Step 2/5) → Health Conditi
 - **SMS fallback**: When Fast2SMS DLT not configured, `smsSent: false` returned. devOtp visible in dev only — users must enter OTP manually.
 - **WhatsApp OTP fallback**: Automatically falls back to SMS if WhatsApp delivery fails.
 
+## AI Food Discovery System (April 2026)
+
+**Feature: AI-Discovered Food Cache Review & Auto-Promotion**
+
+A complete workflow for managing AI-discovered foods from user searches:
+
+**Database Changes:**
+- `food_scan_cache` table — 6 new columns: `is_promoted` (bool), `is_rejected` (bool), `source_ai` (text, nvidia/gemini), `name_normalized` (text for fuzzy matching), `reviewed_at` (timestamp), `promoted_food_item_id` (uuid FK)
+- `food_items` table — 2 new columns: `ai_generated` (bool), `ai_source_cache_id` (uuid)
+
+**Backend (api-server):**
+- `food.ts`: Added fuzzy duplicate detection — normalizes food names (lowercase, strip punctuation) and checks similarity before inserting to cache. Prevents "Poha", "poha", "POHA" from creating 3 entries.
+- **Auto-promote**: When any cache entry reaches `hit_count ≥ 5`, it's automatically promoted to `food_items` table.
+- New admin endpoints:
+  - `GET /admin/food-cache/stats` — total/pending/promoted/rejected/autoPromoted counts
+  - `GET /admin/food-cache` — list with filter (all/pending/promoted/rejected), search, pagination
+  - `POST /admin/food-cache/:id/promote` — manually promote to food_items (isVerified:true, addedByAdmin:true)
+  - `POST /admin/food-cache/:id/reject` — mark as rejected
+  - `GET /admin/food-cache/export?format=csv|json&filter=...` — download export
+
+**Admin Panel UI:**
+- New page: `AIFoodDiscovery.tsx` — route `/ai-food-discovery`
+- 5 stats cards: Total, Pending, Promoted, Rejected, Auto-Promoted
+- Table with: food name, hit count, calories, macros (P/C/F), source AI, status badge, Promote/Reject actions
+- Filter tabs: All | Pending Review | Promoted | Rejected
+- Detail modal: full nutrition breakdown (macros, vitamins, dietary tags, health tip)
+- CSV/JSON export buttons
+- Added to sidebar nav under "Content" group (sparkles icon, purple color)
+
 ## Advanced API Features (April 2026)
 
 **AI Provider Abstraction Layer:**
