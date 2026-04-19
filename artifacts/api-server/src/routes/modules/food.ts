@@ -12,6 +12,31 @@ const WEATHER_CACHE_TTL = 6 * 60 * 60; // 6 hours
 
 const router = Router();
 
+// ── Food Database Stats (internal debug) ──────────────────────────────────────
+router.get("/food/db-stats", requireAuth, async (_req: AuthRequest, res) => {
+  try {
+    const [totals] = await db.select({
+      total:       sql<number>`COUNT(*)`,
+      indian:      sql<number>`COUNT(CASE WHEN cuisine_type='indian' THEN 1 END)`,
+      global:      sql<number>`COUNT(CASE WHEN is_global=true THEN 1 END)`,
+      drinks:      sql<number>`COUNT(CASE WHEN category='beverage' THEN 1 END)`,
+      grains:      sql<number>`COUNT(CASE WHEN category='grain' THEN 1 END)`,
+      vegetables:  sql<number>`COUNT(CASE WHEN category='vegetable' THEN 1 END)`,
+      fruits:      sql<number>`COUNT(CASE WHEN category='fruit' THEN 1 END)`,
+      dairy:       sql<number>`COUNT(CASE WHEN category='dairy' THEN 1 END)`,
+      protein:     sql<number>`COUNT(CASE WHEN category='protein' THEN 1 END)`,
+      snacks:      sql<number>`COUNT(CASE WHEN category='snack' THEN 1 END)`,
+      sweets:      sql<number>`COUNT(CASE WHEN category='sweet' THEN 1 END)`,
+      legumes:     sql<number>`COUNT(CASE WHEN category='legume' THEN 1 END)`,
+      condiments:  sql<number>`COUNT(CASE WHEN category='condiment' THEN 1 END)`,
+      fats:        sql<number>`COUNT(CASE WHEN category='fat' THEN 1 END)`,
+    }).from(foodItemsTable);
+    res.json({ stats: totals });
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
 // ── Food Logs ──────────────────────────────────────────────────────────────────
 router.get("/food/logs", requireAuth, async (req: AuthRequest, res) => {
   try {
