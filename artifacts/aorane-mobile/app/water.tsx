@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Animated, Platform, useColorScheme, Dimensions,
@@ -8,7 +8,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
-import { api } from "@/lib/api";
+import { cachedGet } from "@/lib/api";
+import { useOfflineLog } from "@/hooks/useOfflineLog";
 
 const { width: W } = Dimensions.get("window");
 const GOAL = 8;
@@ -37,7 +38,7 @@ export default function WaterScreen() {
   const isDark = useColorScheme() === "dark";
   const insets = useSafeAreaInsets();
   const [glasses, setGlasses] = useState(0);
-  const [logs, setLogs] = useState<Array<{ drinkType?: string; drink_type?: string; glassesCount?: number; glasses_count?: number; loggedAt?: string; logged_at?: string }>>([]);
+  const [logs, setLogs] = useState<Array<{ drinkType?: string; drink_type?: string; glassesCount?: number; glasses_count?: number; loggedAt?: string; logged_at?: string; _offline?: boolean }>>([]);
   const [selectedDrink, setSelectedDrink] = useState("water");
   const [loading, setLoading] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -45,23 +46,48 @@ export default function WaterScreen() {
   const bg = isDark ? "#010814" : "#F0F9FF";
   const today = new Date().toISOString().split("T")[0];
 
-  useEffect(() => { loadWater(); }, []);
+  const { logEntry, onSync } = useOfflineLog();
+
+  const loadWater = useCallback(async () => {
+    try {
+      const { data } = await cachedGet<{ logs: Array<Record<string, unknown>>; totalGlasses: number; goalGlasses: number }>(`/health/water/${today}`);
+      setGlasses(data.totalGlasses);
+      setLogs((data.logs || []) as Array<{ drinkType: string; glassesCount: number; loggedAt: string }>);
+    } catch { }
+  }, [today]);
+
+  useEffect(() => { loadWater(); }, [loadWater]);
+
+  // Refresh when offline queue syncs
+  useEffect(() => onSync(loadWater), [onSync, loadWater]);
+
   useEffect(() => {
     Animated.timing(progressAnim, { toValue: Math.min(1, glasses / GOAL), duration: 600, useNativeDriver: false }).start();
   }, [glasses]);
 
-  const loadWater = async () => {
-    try {
-      const res = await api.getWaterLogs(today);
-      setGlasses(res.totalGlasses);
-      setLogs((res.logs || []) as Array<{ drinkType: string; glassesCount: number; loggedAt: string }>);
-    } catch { }
-  };
-
   const addGlass = async () => {
     setLoading(true);
     try {
-      await api.logWater({ glassesCount: 1, drinkType: selectedDrink });
+      await logEntry({
+        path: "/health/water",
+        body: { glassesCount: 1, drinkType: selectedDrink },
+        category: "water",
+        onSynced: loadWater,
+        onOptimistic: (temp) => {
+          // Immediately update count and log list
+          setGlasses((g) => g + 1);
+          setLogs((prev) => [
+            {
+              drinkType: selectedDrink,
+              glassesCount: 1,
+              loggedAt: new Date().toISOString(),
+              _offline: true,
+            },
+            ...prev,
+          ]);
+        },
+      });
+      // If online, reload to get server data
       loadWater();
     } catch { } finally { setLoading(false); }
   };
@@ -159,6 +185,11 @@ export default function WaterScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 13 }}>{dt.label} — {glassCount} glass</Text>
                       </View>
+                      {l._offline && (
+                        <View style={{ backgroundColor: "#F59E0B20", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ color: "#F59E0B", fontSize: 10, fontFamily: "Inter_600SemiBold" }}>⏳ Syncing</Text>
+                        </View>
+                      )}
                       <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" }}>{validTime ? `${t.getHours()}:${String(t.getMinutes()).padStart(2, "0")}` : "--:--"}</Text>
                     </View>
                   );

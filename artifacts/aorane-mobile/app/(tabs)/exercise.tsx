@@ -9,9 +9,10 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { router, useFocusEffect } from "expo-router";
-import { api } from "@/lib/api";
+import { api, cachedGet } from "@/lib/api";
 import { DS } from "@/lib/theme";
 import { Plus, Timer, Flame, Trophy, X, Dumbbell, Trash2 } from "lucide-react-native";
+import { useOfflineLog } from "@/hooks/useOfflineLog";
 
 const { width: W } = Dimensions.get("window");
 const P = DS.color.primary;
@@ -76,12 +77,20 @@ export default function ExerciseScreen() {
 
   const scrollRef = useRef<ScrollView>(null);
 
-  useEffect(() => { loadLogs(); }, []);
+  const { logEntry, onSync } = useOfflineLog();
 
   const loadLogs = useCallback(async () => {
-    try { const res = await api.getExerciseLogs(todayDate()); setLogs(res.logs as ExerciseLog[]); } catch { }
+    try {
+      const { data } = await cachedGet<{ logs: Array<Record<string, unknown>> }>(`/health/exercise?date=${todayDate()}`);
+      setLogs(data.logs as ExerciseLog[]);
+    } catch { }
     setIsLoading(false);
   }, []);
+
+  useEffect(() => { loadLogs(); }, [loadLogs]);
+
+  // Refresh when offline queue syncs
+  useEffect(() => onSync(loadLogs), [onSync, loadLogs]);
 
   const totalMin = logs.reduce((s, l) => s + l.durationMinutes, 0);
   const totalCal = logs.reduce((s, l) => s + Number(l.caloriesBurned || 0), 0);
@@ -141,13 +150,30 @@ export default function ExerciseScreen() {
     setIsSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await Promise.all(toLog.map(e =>
-        api.logExercise({ exerciseType: e.exerciseType, durationMinutes: parseInt(e.duration), intensity: e.intensity })
-      ));
+      let anyOffline = false;
+      for (const e of toLog) {
+        const result = await logEntry({
+          path: "/health/exercise",
+          body: { exerciseType: e.exerciseType, durationMinutes: parseInt(e.duration), intensity: e.intensity },
+          category: "exercise",
+          onSynced: loadLogs,
+          onOptimistic: () => {
+            // Optimistic: add to logs immediately
+            setLogs((prev) => [...prev, {
+              id: "offline-" + e.id,
+              exerciseType: e.exerciseType,
+              durationMinutes: parseInt(e.duration),
+              intensity: e.intensity,
+              caloriesBurned: String(e.estimatedCalories ?? 0),
+            }]);
+          },
+        });
+        if (result.offline) anyOffline = true;
+      }
       setShowModal(false);
       setSession([]); setSelectedExercise(""); setDuration(""); setLiveEstimate(null); setIntensity("moderate");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      loadLogs();
+      if (!anyOffline) loadLogs();
     } catch {
       Alert.alert("Error", "Could not log exercises. Please try again.");
     } finally {

@@ -11,9 +11,10 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { router, useFocusEffect } from "expo-router";
-import { api } from "@/lib/api";
+import { api, cachedGet } from "@/lib/api";
 import { DS } from "@/lib/theme";
 import { Plus, Utensils, X, Search, Mic, Camera, Image as ImageIcon, Sparkles } from "lucide-react-native";
+import { useOfflineLog } from "@/hooks/useOfflineLog";
 
 const { width: W } = Dimensions.get("window");
 const P = DS.color.primary;
@@ -31,6 +32,7 @@ const MEAL_META: Record<MealType, { label: string; icon: keyof typeof Ionicons.g
 type FoodLog = {
   id: string; foodNameEn: string; mealType: string;
   calories: string; proteinG?: string; carbsG?: string; fatG?: string; fiberG?: string;
+  _offline?: boolean;
 };
 type FavItem = { foodNameEn: string; calories: number; proteinG: number; carbsG: number; fatG: number; fiberG: number; count: number };
 type ScanResult = {
@@ -132,10 +134,12 @@ export default function FoodScreen() {
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pulseAnim   = useRef(new Animated.Value(1)).current;
 
+  const { logEntry, onSync } = useOfflineLog();
+
   const loadLogs = useCallback(async () => {
     try {
-      const res = await api.getFoodLogs(today());
-      const l = res.logs as FoodLog[];
+      const { data } = await cachedGet<{ logs: Array<Record<string, unknown>> }>(`/food/logs?date=${today()}`);
+      const l = data.logs as FoodLog[];
       setLogs(l);
       setTotalCal(l.reduce((s, i) => s + Number(i.calories), 0));
     } catch { }
@@ -148,6 +152,9 @@ export default function FoodScreen() {
   }, [favsLoaded]);
 
   useEffect(() => { loadLogs(); }, []);
+
+  // Refresh food logs when offline queue syncs to server
+  useEffect(() => onSync(loadLogs), [onSync, loadLogs]);
 
   useEffect(() => {
     api.getWeatherFoodSuggestions()
@@ -220,19 +227,41 @@ export default function FoodScreen() {
 
   const logItem = async (item: { foodNameEn: string; calories: number; proteinG?: number; carbsG?: number; fatG?: number; fiberG?: number }, method = "text") => {
     setSubmitting(true);
+    const logBody = {
+      foodNameEn: item.foodNameEn, mealType: activeMeal,
+      calories: String(Math.round(item.calories)),
+      proteinG: String(Math.round((item.proteinG || 0) * 10) / 10),
+      carbsG:   String(Math.round((item.carbsG || 0) * 10) / 10),
+      fatG:     String(Math.round((item.fatG || 0) * 10) / 10),
+      fiberG:   String(Math.round((item.fiberG || 0) * 10) / 10),
+      inputMethod: method,
+    };
     try {
-      await api.logFood({
-        foodNameEn: item.foodNameEn, mealType: activeMeal,
-        calories: String(Math.round(item.calories)),
-        proteinG: String(Math.round((item.proteinG || 0) * 10) / 10),
-        carbsG:   String(Math.round((item.carbsG || 0) * 10) / 10),
-        fatG:     String(Math.round((item.fatG || 0) * 10) / 10),
-        fiberG:   String(Math.round((item.fiberG || 0) * 10) / 10),
-        inputMethod: method,
+      const result = await logEntry({
+        path: "/food/log",
+        body: logBody,
+        category: "food",
+        onSynced: loadLogs,
+        onOptimistic: (temp) => {
+          // Show immediately in logs
+          const tempLog: FoodLog = {
+            id: temp.id as string,
+            foodNameEn: item.foodNameEn,
+            mealType: activeMeal,
+            calories: String(Math.round(item.calories)),
+            proteinG: String(item.proteinG || 0),
+            carbsG: String(item.carbsG || 0),
+            fatG: String(item.fatG || 0),
+            fiberG: String(item.fiberG || 0),
+            _offline: true,
+          };
+          setLogs((prev) => [...prev, tempLog]);
+          setTotalCal((c) => c + Math.round(item.calories));
+        },
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       closeModal(); setFavsLoaded(false);
-      loadLogs();
+      if (!result.offline) loadLogs();
     } catch (e: unknown) {
       Alert.alert("Error", (e as Error).message || "Could not log food.");
     } finally {
@@ -395,17 +424,21 @@ export default function FoodScreen() {
                   <View style={s.mealCard}>
                     {mLogs.map((log, i) => (
                       <View key={log.id} style={[s.foodRow, i > 0 && s.foodRowBorder]}>
-                        <View style={[s.foodDot, { backgroundColor: ml.color }]} />
+                        <View style={[s.foodDot, { backgroundColor: log._offline ? "#F59E0B" : ml.color }]} />
                         <View style={{ flex: 1 }}>
                           <Text style={s.foodName}>{log.foodNameEn}</Text>
                           <Text style={s.foodMacros}>
-                            P:{Math.round(Number(log.proteinG||0))}g · C:{Math.round(Number(log.carbsG||0))}g · F:{Math.round(Number(log.fatG||0))}g
+                            {log._offline
+                              ? "⏳ Saved offline — syncing when online"
+                              : `P:${Math.round(Number(log.proteinG||0))}g · C:${Math.round(Number(log.carbsG||0))}g · F:${Math.round(Number(log.fatG||0))}g`}
                           </Text>
                         </View>
-                        <Text style={[s.foodCal, { color: ml.color }]}>{Math.round(Number(log.calories))}</Text>
-                        <TouchableOpacity onPress={() => deleteLog(log.id, log.foodNameEn)} style={{ padding: 4 }}>
-                          <Ionicons name="close-circle-outline" size={18} color={DS.color.muted} />
-                        </TouchableOpacity>
+                        <Text style={[s.foodCal, { color: log._offline ? "#F59E0B" : ml.color }]}>{Math.round(Number(log.calories))}</Text>
+                        {!log._offline && (
+                          <TouchableOpacity onPress={() => deleteLog(log.id, log.foodNameEn)} style={{ padding: 4 }}>
+                            <Ionicons name="close-circle-outline" size={18} color={DS.color.muted} />
+                          </TouchableOpacity>
+                        )}
                       </View>
                     ))}
                     <TouchableOpacity onPress={() => openModal(mt)} style={s.addMoreBtn}>

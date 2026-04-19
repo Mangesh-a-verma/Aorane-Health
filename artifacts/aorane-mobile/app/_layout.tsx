@@ -9,13 +9,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import OfflineBanner from "@/components/OfflineBanner";
 import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
+import { useNetworkSync } from "@/hooks/useNetworkSync";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,6 +32,21 @@ function RootLayoutNav() {
       <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="(tabs)" />
     </Stack>
+  );
+}
+
+function AppShell() {
+  const { isOnline, pendingCount, syncing } = useNetworkSync();
+
+  return (
+    <View style={{ flex: 1 }}>
+      <OfflineBanner isOnline={isOnline} pendingCount={pendingCount} syncing={syncing} />
+      <View style={{ flex: 1 }}>
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
+      </View>
+    </View>
   );
 }
 
@@ -55,9 +73,7 @@ export default function RootLayout() {
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
               <LanguageProvider>
-                <AuthProvider>
-                  <RootLayoutNav />
-                </AuthProvider>
+                <AppShell />
               </LanguageProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

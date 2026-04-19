@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
+import { setCachedResponse, getCachedResponse, setOnlineState } from "./offlineQueue";
 
 // On web browser → use relative path so web-server.js proxy handles it (local API, devOtp works)
 // On native (Expo Go / APK) → use production URL from env or fallback
@@ -18,7 +19,8 @@ async function getToken(): Promise<string | null> {
   return AsyncStorage.getItem("auth_token");
 }
 
-async function request<T>(
+/** Exported so syncOfflineQueue can use it directly */
+export async function rawRequest<T>(
   method: string,
   path: string,
   body?: Record<string, unknown>,
@@ -37,7 +39,9 @@ async function request<T>(
       headers,
       body: body ? JSON.stringify(body) : undefined,
     });
+    setOnlineState(true);
   } catch {
+    setOnlineState(false);
     throw new Error("Network error — check your internet connection");
   }
 
@@ -63,6 +67,36 @@ async function request<T>(
     throw new Error((data as { error?: string }).error || `Request failed (${res.status})`);
   }
   return data as T;
+}
+
+/**
+ * GET request with offline cache fallback.
+ * On network error: returns cached response if available (no error thrown).
+ * Returns { data, fromCache } so callers know if it's fresh.
+ */
+export async function cachedGet<T>(path: string): Promise<{ data: T; fromCache: boolean }> {
+  try {
+    const data = await rawRequest<T>("GET", path);
+    await setCachedResponse(path, data);
+    return { data, fromCache: false };
+  } catch (e: unknown) {
+    const msg = (e as Error).message || "";
+    const isNetworkError = msg.toLowerCase().includes("network") || msg.toLowerCase().includes("fetch");
+    if (isNetworkError) {
+      const cached = await getCachedResponse<T>(path);
+      if (cached) return { data: cached, fromCache: true };
+    }
+    throw e;
+  }
+}
+
+async function request<T>(
+  method: string,
+  path: string,
+  body?: Record<string, unknown>,
+  auth = true
+): Promise<T> {
+  return rawRequest<T>(method, path, body, auth);
 }
 
 export const api = {
