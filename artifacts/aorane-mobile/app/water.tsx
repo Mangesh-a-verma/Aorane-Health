@@ -37,7 +37,7 @@ export default function WaterScreen() {
   const isDark = useColorScheme() === "dark";
   const insets = useSafeAreaInsets();
   const [glasses, setGlasses] = useState(0);
-  const [logs, setLogs] = useState<Array<{ drinkType: string; glassesCount: number; loggedAt: string }>>([]);
+  const [logs, setLogs] = useState<Array<{ drinkType?: string; drink_type?: string; glassesCount?: number; glasses_count?: number; loggedAt?: string; logged_at?: string }>>([]);
   const [selectedDrink, setSelectedDrink] = useState("water");
   const [loading, setLoading] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -147,15 +147,19 @@ export default function WaterScreen() {
               <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 12 }}>Today's log</Text>
               <View style={{ gap: 8 }}>
                 {logs.slice(0, 8).map((l, i) => {
-                  const dt = DRINK_TYPES.find(d => d.key === l.drinkType) || DRINK_TYPES[0];
-                  const t = new Date(l.loggedAt);
+                  const drinkKey = l.drink_type || l.drinkType || "water";
+                  const dt = DRINK_TYPES.find(d => d.key === drinkKey) || DRINK_TYPES[0];
+                  const glassCount = l.glasses_count ?? l.glassesCount ?? 1;
+                  const rawTime = l.logged_at || l.loggedAt || "";
+                  const t = rawTime ? new Date(rawTime) : new Date();
+                  const validTime = !isNaN(t.getTime());
                   return (
                     <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: i < logs.length - 1 ? 1 : 0, borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,119,182,0.08)" }}>
                       <Text style={{ fontSize: 22 }}>{dt.emoji}</Text>
                       <View style={{ flex: 1 }}>
-                        <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 13 }}>{dt.label} — {l.glassesCount} glass</Text>
+                        <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 13 }}>{dt.label} — {glassCount} glass</Text>
                       </View>
-                      <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" }}>{t.getHours()}:{String(t.getMinutes()).padStart(2, "0")}</Text>
+                      <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" }}>{validTime ? `${t.getHours()}:${String(t.getMinutes()).padStart(2, "0")}` : "--:--"}</Text>
                     </View>
                   );
                 })}

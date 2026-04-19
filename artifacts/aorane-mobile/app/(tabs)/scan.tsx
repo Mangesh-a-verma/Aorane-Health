@@ -147,7 +147,7 @@ const sf = StyleSheet.create({
 });
 
 // ─── PLAN GATE OVERLAY ────────────────────────────────────────────────────────
-function PlanGate() {
+function PlanGate({ onDismiss }: { onDismiss: () => void }) {
   return (
     <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,248,243,0.95)", zIndex: 100, alignItems: "center", justifyContent: "center", padding: 32 }}>
       <View style={{ backgroundColor: "#FFF", borderRadius: 28, padding: 28, alignItems: "center", gap: 14, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 20, elevation: 8, borderWidth: 1, borderColor: "#F0E6E0" }}>
@@ -167,8 +167,8 @@ function PlanGate() {
             <Text style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>Starting ₹199/month</Text>
           </LinearGradient>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => {}} style={{ paddingVertical: 8 }}>
-          <Text style={{ color: "#9CA3AF", fontFamily: "Inter_400Regular", fontSize: 13 }}>Maybe later</Text>
+        <TouchableOpacity onPress={onDismiss} style={{ paddingVertical: 8 }}>
+          <Text style={{ color: "#9CA3AF", fontFamily: "Inter_400Regular", fontSize: 13 }}>Maybe later — use text search</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -181,6 +181,7 @@ export default function SmartScanScreen() {
   const { user } = useAuth();
   const userPlan = ((user as Record<string, unknown>)?.plan as string || "free").toLowerCase();
   const isPremium = userPlan !== "free";
+  const [planGateDismissed, setPlanGateDismissed] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -266,7 +267,7 @@ export default function SmartScanScreen() {
     <View style={s.root}>
       <LinearGradient colors={[DS.color.bg, DS.color.bgSoft, "#FFFFFF"]} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFill} />
       <View style={s.blob1} /><View style={s.blob2} />
-      {!isPremium && <PlanGate />}
+      {!isPremium && !planGateDismissed && <PlanGate onDismiss={() => setPlanGateDismissed(true)} />}
 
       <ScrollView
         contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: insets.bottom + 96, paddingHorizontal: 16 }}
@@ -318,16 +319,31 @@ export default function SmartScanScreen() {
         {/* CTA Buttons */}
         {!result && !scanning && (
           <Animated.View style={[s.btnGroup, { opacity: headerFade }]}>
-            <TouchableOpacity style={s.cameraBtnWrap} onPress={() => pickAndScan("camera")}>
-              <LinearGradient colors={[PRIMARY, SKY, ACCENT]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.cameraBtn}>
-                <Ionicons name="camera" size={22} color="#FFF" />
-                <Text style={s.cameraBtnText}>Open Camera</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.galleryBtn} onPress={() => pickAndScan("gallery")}>
-              <Ionicons name="images-outline" size={20} color={PRIMARY} />
-              <Text style={s.galleryText}>Pick from Gallery</Text>
-            </TouchableOpacity>
+            {isPremium || planGateDismissed ? (
+              <>
+                <TouchableOpacity style={s.cameraBtnWrap} onPress={() => pickAndScan("camera")}>
+                  <LinearGradient colors={[PRIMARY, SKY, ACCENT]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.cameraBtn}>
+                    <Ionicons name="camera" size={22} color="#FFF" />
+                    <Text style={s.cameraBtnText}>Open Camera</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.galleryBtn} onPress={() => pickAndScan("gallery")}>
+                  <Ionicons name="images-outline" size={20} color={PRIMARY} />
+                  <Text style={s.galleryText}>Pick from Gallery</Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
+            {(!isPremium && planGateDismissed) && (
+              <TouchableOpacity
+                style={[s.cameraBtnWrap, { marginTop: 8 }]}
+                onPress={() => router.push("/(tabs)/food" as never)}
+              >
+                <LinearGradient colors={[PRIMARY, "#F5A623"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.cameraBtn}>
+                  <Ionicons name="search" size={22} color="#FFF" />
+                  <Text style={s.cameraBtnText}>Search Food by Name</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
           </Animated.View>
         )}
 
