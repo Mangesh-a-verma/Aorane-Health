@@ -34,6 +34,19 @@ function isSimilarName(a: string, b: string): boolean {
   return (matches / longer.length) >= 0.8;
 }
 
+/** Safely convert AI result value to decimal string — handles 0 correctly */
+function toDecStr(v: unknown): string | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  if (isNaN(n)) return null;
+  return String(n);
+}
+
+/** Extract vitamins object from AI result */
+function getVitamins(aiResult: Record<string, unknown>) {
+  return (aiResult.vitamins as Record<string, unknown>) ?? {};
+}
+
 /** Auto-promote a cache entry to food_items if it meets quality threshold */
 async function maybeAutoPromote(cacheId: string, hitCount: number, aiResult: Record<string, unknown>, foodNameEn: string): Promise<void> {
   if (hitCount < 5) return; // Only auto-promote after 5+ searches
@@ -43,27 +56,30 @@ async function maybeAutoPromote(cacheId: string, hitCount: number, aiResult: Rec
   if (!entry || entry.isPromoted) return;
   // Insert into food_items
   try {
-    const r = aiResult as Record<string, unknown>;
+    const r = aiResult;
+    const vs = getVitamins(r);
     const [newItem] = await db.insert(foodItemsTable).values({
       foodNameEn: (r.foodNameEn as string) || foodNameEn,
-      category: (r.category as string) || "other",
+      category:   (r.category as string)   || "other",
       cuisineType: "indian",
-      calories: String(r.calories || 0),
-      proteinG: r.proteinG ? String(r.proteinG) : null,
-      carbsG:   r.carbsG   ? String(r.carbsG)   : null,
-      fatG:     r.fatG     ? String(r.fatG)      : null,
-      fiberG:   r.fiberG   ? String(r.fiberG)    : null,
-      sugarG:   r.sugarG   ? String(r.sugarG)    : null,
-      sodiumMg: r.sodiumMg ? String(r.sodiumMg)  : null,
-      servingSizeG: r.servingSizeG ? String(r.servingSizeG) : "100",
+      calories:    toDecStr(r.calories) ?? "0",
+      proteinG:    toDecStr(r.proteinG),
+      carbsG:      toDecStr(r.carbsG),
+      fatG:        toDecStr(r.fatG),
+      fiberG:      toDecStr(r.fiberG),
+      sugarG:      toDecStr(r.sugarG),
+      sodiumMg:    toDecStr(r.sodiumMg),
+      potassiumMg: toDecStr(r.potassiumMg) ?? toDecStr(vs.potassium_mg),
+      vitaminCMg:  toDecStr(vs.vitaminC_mg),
+      vitaminDMcg: toDecStr(vs.vitaminD_mcg),
+      calciumMg:   toDecStr(vs.calcium_mg),
+      ironMg:      toDecStr(vs.iron_mg),
+      servingSizeG:      toDecStr(r.servingSizeG) ?? "100",
       servingDescription: (r.servingDescription as string) || null,
       dietaryTags: Array.isArray(r.dietaryTags) ? r.dietaryTags as string[] : [],
-      vitaminCMg: (r.vitamins as Record<string,unknown>)?.vitaminC_mg ? String((r.vitamins as Record<string,unknown>).vitaminC_mg) : null,
-      ironMg:    (r.vitamins as Record<string,unknown>)?.iron_mg    ? String((r.vitamins as Record<string,unknown>).iron_mg)    : null,
-      calciumMg: (r.vitamins as Record<string,unknown>)?.calcium_mg ? String((r.vitamins as Record<string,unknown>).calcium_mg) : null,
-      isVerified: false,
-      addedByAdmin: false,
-      aiGenerated: true,
+      isVerified:    false,
+      addedByAdmin:  false,
+      aiGenerated:   true,
       aiSourceCacheId: cacheId,
     }).returning({ id: foodItemsTable.id });
     // Mark cache entry as promoted

@@ -617,27 +617,34 @@ router.post("/admin/food-cache/:id/promote", requireAdmin, async (req: AdminRequ
     if (entry.isPromoted) { res.status(409).json({ error: "Already promoted" }); return; }
 
     const r = entry.aiResult as Record<string, unknown>;
+    const vs = (r.vitamins as Record<string, unknown>) ?? {};
+    /** Safely convert value to decimal string — handles 0 correctly */
+    const toD = (v: unknown): string | null => {
+      if (v === null || v === undefined || v === "") return null;
+      const n = Number(v); return isNaN(n) ? null : String(n);
+    };
     const [newItem] = await db.insert(foodItemsTable).values({
-      foodNameEn: (r.foodNameEn as string) || entry.foodNameEn,
-      category: (r.category as string) || "other",
+      foodNameEn:  (r.foodNameEn as string) || entry.foodNameEn,
+      category:    (r.category as string)   || "other",
       cuisineType: "indian",
-      calories: String(r.calories || 0),
-      proteinG:  r.proteinG  ? String(r.proteinG)  : null,
-      carbsG:    r.carbsG    ? String(r.carbsG)    : null,
-      fatG:      r.fatG      ? String(r.fatG)      : null,
-      fiberG:    r.fiberG    ? String(r.fiberG)    : null,
-      sugarG:    r.sugarG    ? String(r.sugarG)    : null,
-      sodiumMg:  r.sodiumMg  ? String(r.sodiumMg)  : null,
-      servingSizeG: r.servingSizeG ? String(r.servingSizeG) : "100",
+      calories:     toD(r.calories) ?? "0",
+      proteinG:     toD(r.proteinG),
+      carbsG:       toD(r.carbsG),
+      fatG:         toD(r.fatG),
+      fiberG:       toD(r.fiberG),
+      sugarG:       toD(r.sugarG),
+      sodiumMg:     toD(r.sodiumMg),
+      potassiumMg:  toD(r.potassiumMg) ?? toD(vs.potassium_mg),
+      vitaminCMg:   toD(vs.vitaminC_mg),
+      vitaminDMcg:  toD(vs.vitaminD_mcg),
+      calciumMg:    toD(vs.calcium_mg),
+      ironMg:       toD(vs.iron_mg),
+      servingSizeG:       toD(r.servingSizeG) ?? "100",
       servingDescription: (r.servingDescription as string) || null,
       dietaryTags: Array.isArray(r.dietaryTags) ? r.dietaryTags as string[] : [],
-      vitaminCMg: (r.vitamins as Record<string,unknown>)?.vitaminC_mg ? String((r.vitamins as Record<string,unknown>).vitaminC_mg) : null,
-      ironMg:    (r.vitamins as Record<string,unknown>)?.iron_mg    ? String((r.vitamins as Record<string,unknown>).iron_mg)    : null,
-      calciumMg: (r.vitamins as Record<string,unknown>)?.calcium_mg ? String((r.vitamins as Record<string,unknown>).calcium_mg) : null,
-      potassiumMg: (r.vitamins as Record<string,unknown>)?.potassium_mg ? String((r.vitamins as Record<string,unknown>).potassium_mg) : null,
-      isVerified: true,
-      addedByAdmin: true,
-      aiGenerated: true,
+      isVerified:    true,
+      addedByAdmin:  true,
+      aiGenerated:   true,
       aiSourceCacheId: entry.id,
     }).onConflictDoNothing().returning({ id: foodItemsTable.id, foodNameEn: foodItemsTable.foodNameEn });
 
