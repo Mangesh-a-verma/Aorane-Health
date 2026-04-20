@@ -110,6 +110,7 @@ export interface SeatOrder {
   razorpayOrderId: string | null;
   razorpayKeyId: string | null;
   isTestMode: boolean;
+  razorpayError?: string | null;
 }
 
 export interface Announcement {

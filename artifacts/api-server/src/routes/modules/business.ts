@@ -837,12 +837,15 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
     const { createOrder, isLiveMode } = await import("../../lib/razorpay.js");
     let razorpayOrderId: string | null = null;
     let isTestMode = !isLiveMode();
+    let razorpayError: string | null = null;
     if (isLiveMode()) {
       try {
         const order = await createOrder({ amount: totalAmount, receipt: `biz_${req.orgId!.substring(0, 8)}` });
         razorpayOrderId = order.id;
-      } catch {
+      } catch (err) {
         isTestMode = true;
+        razorpayError = err instanceof Error ? err.message : "Razorpay order creation failed";
+        console.error("[seat-order] Razorpay createOrder failed:", razorpayError);
       }
     }
 
@@ -880,6 +883,7 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
       razorpayOrderId,
       razorpayKeyId: process.env["RAZORPAY_KEY_ID"] || null,
       isTestMode,
+      razorpayError,
     });
   } catch (e) {
     console.error("[seat-order]", e);

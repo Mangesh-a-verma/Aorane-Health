@@ -200,7 +200,11 @@ export default function UpgradeScreen() {
   };
 
   const openRazorpayNative = (orderRes: { paymentId: string; razorpayOrderId: string; razorpayKeyId: string; amount: number }) => {
-    const callbackUrl = `${process.env.EXPO_PUBLIC_API_URL?.replace("/api","")||""}/api/payment/rzp-callback`;
+    let callbackBase = process.env.EXPO_PUBLIC_API_URL?.replace("/api", "") || "";
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      callbackBase = window.location.origin;
+    }
+    const callbackUrl = `${callbackBase}/api/payment/rzp-callback`;
     const params = new URLSearchParams({
       key: orderRes.razorpayKeyId,
       order_id: orderRes.razorpayOrderId,

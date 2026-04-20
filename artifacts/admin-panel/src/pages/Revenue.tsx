@@ -83,10 +83,13 @@ function SummaryCard({
   );
 }
 
+type RzpStatus = { ok: boolean; mode?: string; maskedKey?: string; message?: string; razorpayError?: string; networkError?: string; status?: number };
+
 export default function Revenue() {
   const [data, setData] = useState<RevData | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [rzp, setRzp] = useState<RzpStatus | null>(null);
 
   const load = () => {
     setLoading(true); setErr("");
@@ -96,7 +99,13 @@ export default function Revenue() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    fetch(`${import.meta.env.BASE_URL}api/payment/razorpay-test`)
+      .then(r => r.json())
+      .then((d: RzpStatus) => setRzp(d))
+      .catch(() => setRzp({ ok: false, networkError: "Cannot reach API" }));
+  }, []);
 
   const s = data?.summary;
   const pieData = data?.planBreakdown.filter(p => p.users > 0).map(p => ({
@@ -133,6 +142,34 @@ export default function Revenue() {
         {err && (
           <div className="rounded-xl p-4 text-sm" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}>
             {err}
+          </div>
+        )}
+
+        {/* ── Razorpay Gateway Status ──────────────────────────────── */}
+        {rzp && (
+          <div className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm"
+               style={{
+                 background: rzp.ok ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)",
+                 border: `1px solid ${rzp.ok ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}`,
+               }}>
+            <div className={`w-2 h-2 rounded-full ${rzp.ok ? "bg-green-400" : "bg-red-400"}`} style={{ boxShadow: `0 0 6px ${rzp.ok ? "#34d399" : "#f87171"}` }} />
+            <span style={{ color: rzp.ok ? "#34d399" : "#f87171", fontWeight: 600 }}>
+              Razorpay Gateway: {rzp.ok ? "✅ LIVE — Auth Successful" : "❌ Error"}
+            </span>
+            {rzp.maskedKey && (
+              <span className="font-mono text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>({rzp.maskedKey})</span>
+            )}
+            {rzp.mode && (
+              <span className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold"
+                    style={{ background: rzp.mode === "LIVE" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: rzp.mode === "LIVE" ? "#34d399" : "#fbbf24" }}>
+                {rzp.mode} MODE
+              </span>
+            )}
+            {(rzp.razorpayError || rzp.networkError) && (
+              <span className="ml-2 text-xs" style={{ color: "#f87171" }}>
+                {rzp.razorpayError || rzp.networkError}
+              </span>
+            )}
           </div>
         )}
 

@@ -140,6 +140,26 @@ export default function Billing() {
       document.body.appendChild(s);
     });
 
+  const activateTestMode = async (order: import("@/lib/api").SeatOrder) => {
+    try {
+      const result = await api.verifySeatPayment({
+        paymentId: order.paymentId,
+        razorpayPaymentId: "test_pay_" + Date.now(),
+        razorpayOrderId: "test_order",
+        razorpaySignature: "test_sig",
+        seats: seatCount,
+        plan: selectedPlan,
+        billingCycle: billing,
+        isTestMode: true,
+      });
+      if (result.org) setOrg?.(result.org);
+      setSuccess(result.message || `${seatCount} seats activated (test mode)!`);
+      setSubscription({ plan: selectedPlan, status: "success", payment_type: "one_time", expires_at: result.expiresAt });
+    } catch (e) {
+      setError((e as Error).message || "Test activation failed");
+    }
+  };
+
   const handlePay = async () => {
     if (seatCount < 10) { setError("Minimum 10 seats required"); return; }
     setPaying(true);
@@ -148,44 +168,50 @@ export default function Billing() {
     try {
       const order = await api.createSeatOrder(selectedPlan, seatCount, billing, orgGstin, orgState);
       if (order.isTestMode || !order.razorpayOrderId) {
-        setError("Payment gateway is not configured. Please contact Aorane support to activate your plan.");
+        const errMsg = order.razorpayError
+          ? `Razorpay Error: ${order.razorpayError}`
+          : "Payment gateway is in test mode (Razorpay test keys active).";
+        setError(errMsg + " To process real payments, configure live Razorpay keys on the server.");
+        if (window.confirm(`${errMsg}\n\nActivate ${seatCount} seats in test mode to continue testing?`)) {
+          await activateTestMode(order);
+        }
         return;
-      } else {
-        const ok = await loadRazorpay();
-        if (!ok) { setError("Payment gateway failed to load. Try again."); return; }
-        await new Promise<void>((resolve, reject) => {
-          const rzp = new window.Razorpay({
-            key: order.razorpayKeyId,
-            amount: order.totalAmount * 100,
-            currency: "INR",
-            order_id: order.razorpayOrderId,
-            name: "Aorane Business",
-            description: `${planInfo.label} Plan — ${seatCount} seats (${billing})`,
-            handler: async (resp: Record<string, string>) => {
-              try {
-                const result = await api.verifySeatPayment({
-                  paymentId: order.paymentId,
-                  razorpayPaymentId: resp.razorpay_payment_id,
-                  razorpayOrderId: resp.razorpay_order_id,
-                  razorpaySignature: resp.razorpay_signature,
-                  seats: seatCount,
-                  plan: selectedPlan,
-                  billingCycle: billing,
-                });
-                if (result.org) setOrg?.(result.org);
-                setSuccess(result.message || `${seatCount} seats activated!`);
-                setSubscription({ plan: selectedPlan, status: "success", payment_type: "one_time", expires_at: result.expiresAt });
-                resolve();
-              } catch (e) { reject(e); }
-            },
-            prefill: { email: org?.contactEmail, contact: org?.contactPhone },
-            theme: { color: "#0077B6" },
-          });
-          rzp.open();
-        });
       }
+      const ok = await loadRazorpay();
+      if (!ok) { setError("Razorpay checkout failed to load. Check your internet connection and try again."); return; }
+      await new Promise<void>((resolve, reject) => {
+        const rzp = new window.Razorpay({
+          key: order.razorpayKeyId,
+          amount: order.totalAmount * 100,
+          currency: "INR",
+          order_id: order.razorpayOrderId,
+          name: "Aorane Business",
+          description: `${planInfo.label} Plan — ${seatCount} seats (${billing})`,
+          handler: async (resp: Record<string, string>) => {
+            try {
+              const result = await api.verifySeatPayment({
+                paymentId: order.paymentId,
+                razorpayPaymentId: resp.razorpay_payment_id,
+                razorpayOrderId: resp.razorpay_order_id,
+                razorpaySignature: resp.razorpay_signature,
+                seats: seatCount,
+                plan: selectedPlan,
+                billingCycle: billing,
+              });
+              if (result.org) setOrg?.(result.org);
+              setSuccess(result.message || `${seatCount} seats activated!`);
+              setSubscription({ plan: selectedPlan, status: "success", payment_type: "one_time", expires_at: result.expiresAt });
+              resolve();
+            } catch (e) { reject(e); }
+          },
+          prefill: { email: org?.contactEmail, contact: org?.contactPhone },
+          theme: { color: "#0077B6" },
+          modal: { ondismiss: () => resolve() },
+        });
+        rzp.open();
+      });
     } catch (e) {
-      setError((e as Error).message || "Payment failed");
+      setError((e as Error).message || "Payment failed. Please try again.");
     } finally { setPaying(false); }
   };
 
