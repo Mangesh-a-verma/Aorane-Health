@@ -144,9 +144,9 @@ export default function Login() {
         }}
       >
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 56 }}>
-            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="Aorane" style={{ width: 200, height: 200, objectFit: "contain" }} />
-            <span style={{ color: "white", fontSize: 20, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Aorane Business</span>
+          <div style={{ marginBottom: 56 }}>
+            <img src={import.meta.env.BASE_URL + 'logo-white.svg'} alt="Aorane" style={{ height: 44, width: "auto", objectFit: "contain" }} />
+            <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", marginTop: 6, textTransform: "uppercase" as const }}>Business Suite</div>
           </div>
           <h2 style={{ fontSize: 32, fontWeight: 800, color: "white", lineHeight: 1.25, margin: "0 0 16px", fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
             Employee health, measured. Not guessed.
