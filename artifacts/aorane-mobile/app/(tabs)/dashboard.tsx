@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, Platform, ActivityIndicator, Animated, Modal,
+  RefreshControl, Platform, ActivityIndicator, Animated, Modal, StatusBar,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -12,9 +12,9 @@ import { useAuth } from "@/context/AuthContext";
 import * as Haptics from "expo-haptics";
 import { DS } from "@/lib/theme";
 import {
-  Flame, Droplets, Dumbbell, Heart,
+  Flame, Droplets, Dumbbell,
   Utensils, Pill, ScanLine, Brain, FileText,
-  ChevronRight, Sparkles, Plus, Beef, Wheat, Zap,
+  ChevronRight, Sparkles, Plus, Beef, Wheat,
 } from "lucide-react-native";
 
 function todayDate() { return new Date().toISOString().slice(0, 10); }
@@ -504,11 +504,11 @@ export default function DashboardScreen() {
   };
 
   const topPad = insets.top;
-  const today  = new Date().toLocaleDateString("en-IN", { month: "long", day: "numeric", year: "numeric" });
 
   if (isLoading) {
     return (
       <View style={[s.root, { alignItems: "center", justifyContent: "center" }]}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFF8F3" />
         <ActivityIndicator size="large" color={DS.color.primary} />
       </View>
     );
@@ -516,6 +516,7 @@ export default function DashboardScreen() {
 
   return (
     <View style={s.root}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFF8F3" translucent={false} />
       <LinearGradient
         colors={["#FFF8F3", "#F9F2ED", "#FFF8F3"]}
         style={StyleSheet.absoluteFill}
@@ -523,34 +524,13 @@ export default function DashboardScreen() {
 
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[s.scroll, { paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[s.scroll, { paddingBottom: insets.bottom + 100, paddingTop: topPad + 12 }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }}
             tintColor={DS.color.primary} colors={[DS.color.primary]} />
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* ── HEADER ── */}
-        <LinearGradient
-          colors={["#C0392B", "#E8622A", "#F5A623"]}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-          style={[s.header, { paddingTop: topPad }]}
-        >
-          <View style={s.headerRow}>
-            <View>
-              <Text style={s.greetTxt}>{greeting}</Text>
-              <Text style={s.dateTxt}>{today}</Text>
-            </View>
-            {/* User name where bell used to be */}
-            {userName !== "" && (
-              <View style={s.namePill}>
-                <Heart size={11} color={DS.color.primary} strokeWidth={2.5} fill={DS.color.primary} />
-                <Text style={s.namePillTxt} numberOfLines={1}>{userName}</Text>
-              </View>
-            )}
-          </View>
-        </LinearGradient>
-
         {/* ── BODY ── */}
         <Animated.View style={[s.body, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
 
@@ -717,14 +697,7 @@ const s = StyleSheet.create({
   root:   { flex: 1 },
   scroll: { gap: 0 },
 
-  header:    { borderBottomLeftRadius: 24, borderBottomRightRadius: 24, overflow: "hidden" },
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 10, paddingBottom: 16 },
-  greetTxt:  { fontSize: 17, fontFamily: "Inter_700Bold", color: "#FFF" },
-  dateTxt:   { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.7)", marginTop: 2 },
-  namePill:  { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(255,255,255,0.92)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, maxWidth: 130 },
-  namePillTxt: { fontSize: 13, fontFamily: "Inter_700Bold", color: DS.color.primary },
-
-  body:     { paddingHorizontal: 14, paddingTop: 14, gap: 12 },
+  body:     { paddingHorizontal: 14, paddingTop: 0, gap: 12 },
 
   surfaceCard: { backgroundColor: "#FFF", borderRadius: 20, padding: 16 },
   cardHeader:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
