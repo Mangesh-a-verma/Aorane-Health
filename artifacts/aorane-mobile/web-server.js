@@ -29,17 +29,42 @@ const MIME = {
 };
 
 // ---------------------------------------------------------------------------
-// Auto-rebuild: only rebuild if the JS bundle is missing
+// Auto-rebuild: rebuild if bundle missing OR source files are newer than bundle
 // ---------------------------------------------------------------------------
+function getNewestMtime(dir, extensions = [".ts", ".tsx", ".js", ".jsx", ".json"]) {
+  let newest = 0;
+  try {
+    const walk = (d) => {
+      if (!fs.existsSync(d)) return;
+      for (const f of fs.readdirSync(d)) {
+        if (f === "node_modules" || f === "dist" || f === ".expo") continue;
+        const full = path.join(d, f);
+        const st = fs.statSync(full);
+        if (st.isDirectory()) { walk(full); }
+        else if (extensions.some((e) => f.endsWith(e))) {
+          if (st.mtimeMs > newest) newest = st.mtimeMs;
+        }
+      }
+    };
+    walk(dir);
+  } catch { /* ignore */ }
+  return newest;
+}
+
 function needsRebuild() {
   const jsDir = path.join(DIST_DIR, "_expo", "static", "js", "web");
   if (!fs.existsSync(jsDir)) return true;
   try {
     const files = fs.readdirSync(jsDir);
-    const hasBundle = files.some(
-      (f) => f.startsWith("entry-") && f.endsWith(".js")
-    );
-    return !hasBundle;
+    const bundleFile = files.find((f) => f.startsWith("entry-") && f.endsWith(".js"));
+    if (!bundleFile) return true;
+    const bundleMtime = fs.statSync(path.join(jsDir, bundleFile)).mtimeMs;
+    const srcMtime = getNewestMtime(path.join(__dirname, "app"));
+    if (srcMtime > bundleMtime) {
+      console.log("[BUILD] Source files changed — rebuilding…");
+      return true;
+    }
+    return false;
   } catch {
     return true;
   }
