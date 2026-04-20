@@ -27,74 +27,6 @@ function getGreeting() {
   return "Good Evening 🌆";
 }
 
-// ── SUMMARY BANNER ─────────────────────────────────────────────────────────────
-function SummaryBanner({ greeting, healthScore, calories, water, exerciseMin, activityPct }: {
-  greeting: string; healthScore: number;
-  calories: { eaten: number; burned: number };
-  water: { current: number; goal: number };
-  exerciseMin: number;
-  activityPct: number;
-}) {
-  return (
-    <LinearGradient
-      colors={["#C0392B", "#E8622A", "#F5A623"]}
-      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-      style={bn.card}
-    >
-      <View style={bn.shine1} />
-      <View style={bn.topRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={bn.greet}>{greeting}</Text>
-          <Text style={bn.sub}>Today's health overview</Text>
-        </View>
-        <View style={bn.scoreBlock}>
-          <View style={bn.badge}>
-            <Text style={bn.badgeNum}>{healthScore}</Text>
-            <Text style={bn.badgeLbl}>HEALTH</Text>
-          </View>
-          <View style={bn.actBadge}>
-            <Text style={bn.actNum}>{activityPct}%</Text>
-            <Text style={bn.actLbl}>ACTIVE</Text>
-          </View>
-        </View>
-      </View>
-      <View style={bn.divider} />
-      <View style={bn.statsRow}>
-        {[
-          { icon: <Utensils  size={13} color="rgba(255,255,255,0.9)" strokeWidth={2} />, val: String(calories.eaten),            lbl: "Kcal" },
-          { icon: <Flame     size={13} color="rgba(255,255,255,0.9)" strokeWidth={2} />, val: String(calories.burned),           lbl: "Burned" },
-          { icon: <Droplets  size={13} color="rgba(255,255,255,0.9)" strokeWidth={2} />, val: `${water.current}/${water.goal}`,  lbl: "Glass" },
-          { icon: <Dumbbell  size={13} color="rgba(255,255,255,0.9)" strokeWidth={2} />, val: `${exerciseMin}m`,                 lbl: "Active" },
-        ].map((s, i) => (
-          <View key={i} style={bn.stat}>
-            {s.icon}
-            <Text style={bn.statVal}>{s.val}</Text>
-            <Text style={bn.statLbl}>{s.lbl}</Text>
-          </View>
-        ))}
-      </View>
-    </LinearGradient>
-  );
-}
-const bn = StyleSheet.create({
-  card:     { borderRadius: 20, padding: 16, overflow: "hidden" },
-  shine1:   { position: "absolute", width: 160, height: 160, borderRadius: 80, backgroundColor: "rgba(255,255,255,0.07)", top: -50, right: -30 },
-  topRow:   { flexDirection: "row", alignItems: "flex-start", marginBottom: 12 },
-  greet:    { color: "#FFF", fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 2 },
-  sub:      { color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_400Regular" },
-  scoreBlock: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
-  badge:    { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", minWidth: 56 },
-  badgeNum: { color: "#FFF", fontSize: 16, fontFamily: "Inter_700Bold", lineHeight: 20 },
-  badgeLbl: { color: "rgba(255,255,255,0.85)", fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
-  actBadge: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", minWidth: 56 },
-  actNum:   { color: "#FFF", fontSize: 16, fontFamily: "Inter_700Bold", lineHeight: 20 },
-  actLbl:   { color: "rgba(255,255,255,0.85)", fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
-  divider:  { height: 0.8, backgroundColor: "rgba(255,255,255,0.18)", marginBottom: 12 },
-  statsRow: { flexDirection: "row" },
-  stat:     { flex: 1, alignItems: "center", gap: 4 },
-  statVal:  { color: "#FFF", fontSize: 14, fontFamily: "Inter_700Bold" },
-  statLbl:  { color: "rgba(255,255,255,0.72)", fontSize: 9.5, fontFamily: "Inter_400Regular" },
-});
 
 // ── NUTRITION CARD ─────────────────────────────────────────────────────────────
 function NutritionCard({ calories, protein, carbs, fat }: {
@@ -407,12 +339,9 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
-  const [healthScore, setHealthScore] = useState(0);
   const [water,       setWater]       = useState({ current: 0, goal: 8 });
   const [calories,    setCalories]    = useState({ eaten: 0, burned: 0 });
   const [nutrition,   setNutrition]   = useState({ protein: 0, carbs: 0, fat: 0 });
-  const [exerciseMin, setExerciseMin] = useState(0);
-  const [activityPct, setActivityPct] = useState(0);
   const [stressToday, setStressToday] = useState<StressToday | null>(null);
   const [showStressModal, setShowStressModal] = useState(false);
   const [isLoading,   setIsLoading]   = useState(true);
@@ -432,15 +361,11 @@ export default function DashboardScreen() {
   const loadData = useCallback(async () => {
     try {
       const date = todayDate();
-      const [scoreRes, waterRes, foodRes, exerciseRes, profileRes, medRes, activityRes, stressRes] = await Promise.allSettled([
-        api.getHealthScore(date), api.getWaterLog(date), api.getFoodSummary(date),
+      const [waterRes, foodRes, exerciseRes, profileRes, medRes, stressRes] = await Promise.allSettled([
+        api.getWaterLog(date), api.getFoodSummary(date),
         api.getExerciseLogs(date), api.getProfile(), api.getMedicineSchedules(),
-        api.getWeeklyActivity(), api.getStressToday(),
+        api.getStressToday(),
       ]);
-      if (scoreRes.status === "fulfilled") {
-        const sc = scoreRes.value.score as Record<string, number>;
-        setHealthScore(sc.healthScore ?? 0);
-      }
       if (waterRes.status === "fulfilled")
         setWater({ current: waterRes.value.totalGlasses || 0, goal: waterRes.value.goal || 8 });
       if (foodRes.status === "fulfilled") {
@@ -454,7 +379,6 @@ export default function DashboardScreen() {
       }
       if (exerciseRes.status === "fulfilled") {
         const logs = exerciseRes.value.logs as Array<{ durationMinutes: number; caloriesBurned?: string }>;
-        setExerciseMin(logs.reduce((s, l) => s + l.durationMinutes, 0));
         setCalories((c) => ({ ...c, burned: Math.round(logs.reduce((s, l) => s + Number(l.caloriesBurned || 0), 0)) }));
       }
       if (profileRes.status === "fulfilled") {
@@ -466,9 +390,6 @@ export default function DashboardScreen() {
         setMedicines(
           (medRes.value.schedules as typeof medicines).filter((m) => m.isActive)
         );
-      }
-      if (activityRes.status === "fulfilled") {
-        setActivityPct(activityRes.value.percentage ?? 0);
       }
       if (stressRes.status === "fulfilled") {
         setStressToday(stressRes.value as StressToday);
@@ -534,15 +455,13 @@ export default function DashboardScreen() {
         {/* ── BODY ── */}
         <Animated.View style={[s.body, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
 
-          {/* 1. SUMMARY BANNER */}
-          <SummaryBanner
-            greeting={greeting}
-            healthScore={healthScore}
-            calories={calories}
-            water={water}
-            exerciseMin={exerciseMin}
-            activityPct={activityPct}
-          />
+          {/* 1. GREETING */}
+          <View style={s.greetRow}>
+            <Text style={s.greetMain}>{greeting}</Text>
+            {userName !== "" && (
+              <Text style={s.greetName}>{userName}</Text>
+            )}
+          </View>
 
           {/* 2. QUICK SERVICES */}
           <View style={s.surfaceCard}>
@@ -698,6 +617,10 @@ const s = StyleSheet.create({
   scroll: { gap: 0 },
 
   body:     { paddingHorizontal: 14, paddingTop: 0, gap: 12 },
+
+  greetRow: { paddingHorizontal: 4, paddingBottom: 4 },
+  greetMain:{ fontSize: 22, fontFamily: "Inter_700Bold", color: DS.color.text },
+  greetName:{ fontSize: 14, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: 2 },
 
   surfaceCard: { backgroundColor: "#FFF", borderRadius: 20, padding: 16 },
   cardHeader:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
