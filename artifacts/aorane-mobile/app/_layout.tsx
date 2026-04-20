@@ -15,6 +15,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import Constants from "expo-constants";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import OfflineBanner from "@/components/OfflineBanner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -47,7 +48,8 @@ async function registerPushToken() {
       finalStatus = status;
     }
     if (finalStatus !== "granted") return;
-    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+    const tokenData = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
     const token = tokenData.data;
     if (token?.startsWith("ExponentPushToken[")) {
       await rawRequest("POST", "/users/push-token", { token, platform: Platform.OS }).catch(() => {});
