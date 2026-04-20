@@ -222,26 +222,6 @@ export default function UpgradeScreen() {
     try {
       const orderRes = await api.createPaymentOrder(selectedPlan, promoCode.trim().toUpperCase() || undefined);
 
-      if (orderRes.isTestMode) {
-        const isKeyMismatch = (orderRes as Record<string, unknown>).keyMismatch === true;
-        Alert.alert(
-          isKeyMismatch ? "⚠️ Payment Config Issue" : "🔧 Developer Test Mode",
-          isKeyMismatch
-            ? `Razorpay key mismatch on server.\n\nFix: Render dashboard → Environment Variables → set RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET (both from same account).\n\nFor now, tap "Activate (Test)" to test the app flow.`
-            : `Payment is in test mode (Razorpay test keys active).\n\nPlan: ${plan.label}\nAmount: ₹${finalPrice}/month\n\nTap "Activate (Test)" to simulate a successful payment and activate your plan.`,
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "✅ Activate (Test)",
-              onPress: async () => {
-                await onPaymentSuccess(orderRes.paymentId, "test_pay_" + Date.now(), "test_order", "test_sig", true);
-              }
-            },
-          ]
-        );
-        return;
-      }
-
       if (Platform.OS === "web" && rzpReady && window.Razorpay && orderRes.razorpayKeyId && orderRes.razorpayOrderId) {
         const rzp = new window.Razorpay({
           key: orderRes.razorpayKeyId,

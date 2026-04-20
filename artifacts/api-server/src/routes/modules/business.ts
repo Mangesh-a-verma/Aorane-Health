@@ -416,11 +416,11 @@ router.post("/business/billing/order", requireBusinessAuth, async (req: Business
     if (!orgPlans[plan]) { res.status(400).json({ error: "Invalid plan" }); return; }
     const planInfo = orgPlans[plan];
     const amount = billing === "yearly" ? planInfo.priceYearly : planInfo.price;
-    let razorpayOrderId: string | null = null;
-    if (isLiveMode()) {
-      const order = await createOrder({ amount, receipt: `org_${req.orgId!.substring(0, 8)}` });
-      razorpayOrderId = order.id;
+    if (!isLiveMode()) {
+      res.status(503).json({ error: "Payment gateway not configured. Please contact support." }); return;
     }
+    const order = await createOrder({ amount, receipt: `org_${req.orgId!.substring(0, 8)}` });
+    const razorpayOrderId = order.id;
     const [payment] = await db.insert(orgPaymentsTable).values({
       orgId: req.orgId!, plan, seats: planInfo.seats, amount: amount.toString(),
       currency: "INR", razorpayOrderId, status: "pending", paymentType: "one_time",
@@ -429,7 +429,7 @@ router.post("/business/billing/order", requireBusinessAuth, async (req: Business
       success: true, paymentId: payment.id, razorpayOrderId,
       razorpayKeyId: process.env["RAZORPAY_KEY_ID"] || null,
       amount, plan, planLabel: planInfo.label, seats: planInfo.seats,
-      isTestMode: !isLiveMode(),
+      isTestMode: false,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create billing order";
@@ -835,19 +835,11 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
     const invoiceNumber = `AOR/${fy}/${invoiceSeq}`;
 
     const { createOrder, isLiveMode } = await import("../../lib/razorpay.js");
-    let razorpayOrderId: string | null = null;
-    let isTestMode = !isLiveMode();
-    let razorpayError: string | null = null;
-    if (isLiveMode()) {
-      try {
-        const order = await createOrder({ amount: totalAmount, receipt: `biz_${req.orgId!.substring(0, 8)}` });
-        razorpayOrderId = order.id;
-      } catch (err) {
-        isTestMode = true;
-        razorpayError = err instanceof Error ? err.message : "Razorpay order creation failed";
-        console.error("[seat-order] Razorpay createOrder failed:", razorpayError);
-      }
+    if (!isLiveMode()) {
+      res.status(503).json({ error: "Payment gateway not configured. Please contact support." }); return;
     }
+    const order = await createOrder({ amount: totalAmount, receipt: `biz_${req.orgId!.substring(0, 8)}` });
+    const razorpayOrderId = order.id;
 
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
     const [payment] = await db.insert(orgPaymentsTable).values({
@@ -856,7 +848,7 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
       seats,
       amount: String(totalAmount),
       razorpayOrderId,
-      status: isTestMode ? "test_pending" : "pending",
+      status: "pending",
     }).returning();
 
     res.json({
@@ -882,8 +874,7 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
       aoranGstin: await getAoraneGstin(),
       razorpayOrderId,
       razorpayKeyId: process.env["RAZORPAY_KEY_ID"] || null,
-      isTestMode,
-      razorpayError,
+      isTestMode: false,
     });
   } catch (e) {
     console.error("[seat-order]", e);

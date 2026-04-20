@@ -140,26 +140,6 @@ export default function Billing() {
       document.body.appendChild(s);
     });
 
-  const activateTestMode = async (order: import("@/lib/api").SeatOrder) => {
-    try {
-      const result = await api.verifySeatPayment({
-        paymentId: order.paymentId,
-        razorpayPaymentId: "test_pay_" + Date.now(),
-        razorpayOrderId: "test_order",
-        razorpaySignature: "test_sig",
-        seats: seatCount,
-        plan: selectedPlan,
-        billingCycle: billing,
-        isTestMode: true,
-      });
-      if (result.org) setOrg?.(result.org);
-      setSuccess(result.message || `${seatCount} seats activated (test mode)!`);
-      setSubscription({ plan: selectedPlan, status: "success", payment_type: "one_time", expires_at: result.expiresAt });
-    } catch (e) {
-      setError((e as Error).message || "Test activation failed");
-    }
-  };
-
   const handlePay = async () => {
     if (seatCount < 10) { setError("Minimum 10 seats required"); return; }
     setPaying(true);
@@ -167,16 +147,6 @@ export default function Billing() {
     setSuccess("");
     try {
       const order = await api.createSeatOrder(selectedPlan, seatCount, billing, orgGstin, orgState);
-      if (order.isTestMode || !order.razorpayOrderId) {
-        const errMsg = order.razorpayError
-          ? `Razorpay Error: ${order.razorpayError}`
-          : "Payment gateway is in test mode (Razorpay test keys active).";
-        setError(errMsg + " To process real payments, configure live Razorpay keys on the server.");
-        if (window.confirm(`${errMsg}\n\nActivate ${seatCount} seats in test mode to continue testing?`)) {
-          await activateTestMode(order);
-        }
-        return;
-      }
       const ok = await loadRazorpay();
       if (!ok) { setError("Razorpay checkout failed to load. Check your internet connection and try again."); return; }
       await new Promise<void>((resolve, reject) => {
