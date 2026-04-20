@@ -346,7 +346,7 @@ export default function ProfileScreen() {
 
           {/* ── Footer ── */}
           <View style={s.footer}>
-            <AoraneLogo color="#E8622A" width={110} height={30} showTagline={false} />
+            <AoraneLogo color="#E8622A" crossWidth={42} showTagline={false} />
             <Text style={s.version}>Aorane v1.0.0</Text>
             <Text style={s.tagline}>Privacy-First Health Platform</Text>
           </View>
