@@ -147,8 +147,15 @@ export default function SuggestionsScreen() {
       setFromCache(res.fromCache);
       setError(null);
       Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: Platform.OS !== "web" }).start();
-    } catch {
-      setError("Could not load suggestions. Please check your internet connection.");
+    } catch (e: unknown) {
+      const msg = (e as Error)?.message || "";
+      if (msg.includes("429") || msg.includes("rate limit") || msg.includes("limit")) {
+        setError("AI Coach is taking a short break. Your cached plan is shown below — refresh after a while to get fresh suggestions.");
+      } else if (msg.includes("profile") || msg.includes("complete")) {
+        setError("Please complete your health profile first so AI Coach can personalise suggestions for you.");
+      } else {
+        setError("Could not load suggestions right now. Tap the refresh button to try again.");
+      }
     }
     setLoading(false);
     setRefreshing(false);

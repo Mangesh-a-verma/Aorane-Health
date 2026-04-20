@@ -802,6 +802,40 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS ai_generated BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS ai_source_cache_id UUID`,
 
+    // ── push_tokens: Expo push notification tokens per user ───────────────────
+    `CREATE TABLE IF NOT EXISTS push_tokens (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL,
+      token TEXT NOT NULL,
+      platform TEXT NOT NULL DEFAULT 'unknown',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, token)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_push_tokens_user ON push_tokens(user_id)`,
+
+    // ── support_tickets: user complaints / help requests → admin panel ────────
+    `CREATE TABLE IF NOT EXISTS support_tickets (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL,
+      category TEXT NOT NULL DEFAULT 'general',
+      subject TEXT NOT NULL,
+      message TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open',
+      priority TEXT NOT NULL DEFAULT 'normal',
+      user_name TEXT,
+      user_email TEXT,
+      user_phone TEXT,
+      aorane_id TEXT,
+      admin_notes TEXT,
+      resolved_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status)`,
+    `CREATE INDEX IF NOT EXISTS idx_support_tickets_user ON support_tickets(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_support_tickets_created ON support_tickets(created_at DESC)`,
+
     // ── NEW FOODS: Separately curated additions (see seed-new-foods.ts) ────────
     // These are NOT AI-generated; they are manually verified additions.
     // Kept in seed-new-foods.ts so original migration data stays clean.

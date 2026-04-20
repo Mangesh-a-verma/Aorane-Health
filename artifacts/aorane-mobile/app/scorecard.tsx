@@ -364,7 +364,7 @@ export default function ScorecardScreen() {
                       </View>
                     </View>
                     {/* ID */}
-                    <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 7, fontFamily: "Inter_500Medium", letterSpacing: 1.5, marginBottom: 1 }}>Aorane ID</Text>
+                    <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 7, fontFamily: "Inter_500Medium", letterSpacing: 1.5, marginBottom: 1 }}>AORANE ID</Text>
                     <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 2, marginBottom: 8 }}>
                       {formatId(card.aoraneId)}
                     </Text>

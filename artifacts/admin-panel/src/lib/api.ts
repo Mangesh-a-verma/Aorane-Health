@@ -4,6 +4,13 @@ const API_BASE = import.meta.env.VITE_API_URL
 
 export function getToken(): string | null { return localStorage.getItem("ap_token"); }
 
+export async function adminRequest<T>(path: string, opts?: { method?: string; body?: Record<string, unknown> }): Promise<T> {
+  return req<T>(path, {
+    method: opts?.method ?? "GET",
+    body: opts?.body ? JSON.stringify(opts.body) : undefined,
+  });
+}
+
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {

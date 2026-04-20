@@ -1,10 +1,11 @@
 import { Router } from "express";
-import { db, bloodDonorsTable, bloodEmergencyRequestsTable, bloodEmergencyResponsesTable, bloodDonationsTable } from "@workspace/db";
+import { db, pool as _pool, bloodDonorsTable, bloodEmergencyRequestsTable, bloodEmergencyResponsesTable, bloodDonationsTable } from "@workspace/db";
 import { eq, and, or, ilike, isNull, lt, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import { cache } from "../../lib/redis";
 import { generateOtp, hashOtp, verifyOtpHash, sendSmsOtp } from "../../lib/otp";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { sendExpoPushNotifications, getTokensForUsers } from "./support";
 
 const COMPATIBLE_DONORS: Record<string, string[]> = {
   "A+":  ["A+", "A-", "O+", "O-"],
@@ -314,6 +315,38 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
     cache.incrementRateLimit(monthKey, 31 * 24 * 3600);
 
     res.status(201).json({ success: true, request });
+
+    // ── Fire-and-forget: notify compatible donors in the same city ───────────
+    (async () => {
+      try {
+        const compatible = COMPATIBLE_DONORS[String(bloodGroup)] || [];
+        if (!compatible.length) return;
+        const inGroups = compatible.map((_, i) => `$${i + 1}`).join(",");
+        const cityParam = `$${compatible.length + 1}`;
+        const donorRes = await _pool.query(
+          `SELECT user_id FROM blood_donors
+           WHERE blood_group IN (${inGroups})
+             AND LOWER(city) = LOWER(${cityParam})
+             AND is_available = true
+             AND user_id != $${compatible.length + 2}
+           LIMIT 50`,
+          [...compatible, String(hospitalCity || ""), req.userId!]
+        );
+        const uids: string[] = donorRes.rows.map((r: { user_id: string }) => r.user_id);
+        if (!uids.length) return;
+        const tokens = await getTokensForUsers(uids);
+        if (!tokens.length) return;
+        await sendExpoPushNotifications(
+          tokens,
+          "🩸 Urgent Blood Needed Nearby!",
+          `${bloodGroup} blood needed at ${hospitalName || "a hospital"} in ${hospitalCity || "your city"}. Tap to help!`,
+          { screen: "blood", requestId: request?.id || "" }
+        );
+        console.log(`[BloodEmergency] Sent push to ${tokens.length} donors for ${bloodGroup} in ${hospitalCity}`);
+      } catch (notifErr) {
+        console.error("[BloodEmergency] Push notification error (non-fatal):", notifErr);
+      }
+    })().catch(() => {});
   } catch (err) {
     console.error("Blood emergency error:", err);
     res.status(500).json({ error: "Failed to create blood emergency" });

@@ -276,7 +276,7 @@ tr:nth-child(even) td{background:#FAFBFC}
     <div class="st">User Profile</div>
     <div class="pgrid">
       <div class="pf"><div class="pl">Full Name</div><div class="pv">${card?.name || "—"}</div></div>
-      <div class="pf"><div class="pl">User ID (Aorane)</div><div class="pv" style="font-size:10px;letter-spacing:1px">${card?.aoraneId ? card.aoraneId.replace(/(.{4})(.{4})(.{4})/, "$1 $2 $3") : "—"}</div></div>
+      <div class="pf"><div class="pl">USER ID (AORANE)</div><div class="pv" style="font-size:10px;letter-spacing:1px">${card?.aoraneId ? card.aoraneId.replace(/(.{4})(.{4})(.{4})/, "$1 $2 $3") : "—"}</div></div>
       <div class="pf"><div class="pl">Age</div><div class="pv">${card?.age ? `${card.age} Years` : "—"}</div></div>
       <div class="pf"><div class="pl">Gender</div><div class="pv">${card?.gender ? card.gender.charAt(0).toUpperCase() + card.gender.slice(1) : "—"}</div></div>
       <div class="pf"><div class="pl">Height</div><div class="pv">${heightCm ? `${heightCm} cm` : "—"}</div></div>
@@ -611,7 +611,7 @@ export default function HealthReportScreen() {
                 <View style={s.profGrid}>
                   {[
                     { l: "Full Name",   v: card?.name || "—" },
-                    { l: "User ID",     v: card?.aoraneId?.slice(-8) || "—" },
+                    { l: "AORANE ID",   v: card?.aoraneId?.slice(-8) || "—" },
                     { l: "Age",         v: card?.age ? `${card.age} yrs` : "—" },
                     { l: "Gender",      v: card?.gender ? card.gender.charAt(0).toUpperCase() + card.gender.slice(1) : "—" },
                     { l: "Height",      v: heightCm ? `${heightCm} cm` : "—" },

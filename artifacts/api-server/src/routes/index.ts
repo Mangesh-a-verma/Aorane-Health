@@ -23,6 +23,7 @@ import intelligenceRouter from "./modules/intelligence";
 import plansRouter from "./modules/plans";
 import whatsappRouter from "./modules/whatsapp";
 import sessionsRouter from "./modules/sessions";
+import supportRouter from "./modules/support";
 
 const router: IRouter = Router();
 
@@ -50,5 +51,6 @@ router.use(intelligenceRouter);
 router.use(plansRouter);
 router.use(whatsappRouter);
 router.use(sessionsRouter);
+router.use(supportRouter);
 
 export default router;
