@@ -1,8 +1,9 @@
 import { Redirect } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
-import { View, Image, StyleSheet, Dimensions, Animated, Platform } from "react-native";
+import { View, StyleSheet, Dimensions, Animated, Platform } from "react-native";
 import { useEffect, useRef } from "react";
 import { LinearGradient } from "expo-linear-gradient";
+import AoraneLogo from "@/components/AoraneLogo";
 
 const { width: W } = Dimensions.get("window");
 
@@ -35,11 +36,7 @@ function SplashScreen() {
             style={styles.glowCircle}
           />
         </Animated.View>
-        <Image
-          source={require("../assets/images/aorane-logo.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+        <AoraneLogo color="#E8622A" width={Math.min(W - 80, 260)} height={70} showTagline />
       </Animated.View>
     </View>
   );
@@ -63,5 +60,5 @@ const styles = StyleSheet.create({
   orb2: { position: "absolute", width: 300, height: 300, borderRadius: 150, bottom: 40, left: -100, opacity: 0.2, backgroundColor: "#A7F3D0" },
   glowBehind: { position: "absolute", alignSelf: "center" },
   glowCircle: { width: W * 1.1, height: 400, borderRadius: 200 },
-  logo: { width: W - 10, height: 250 },
+  logo: { width: W - 80, height: 70 },
 });

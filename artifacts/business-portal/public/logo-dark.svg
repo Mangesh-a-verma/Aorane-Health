@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 72" fill="none">
+  <line x1="6" y1="36" x2="78" y2="36" stroke="#1A1A1A" stroke-width="1.9"/>
+  <line x1="42" y1="6" x2="42" y2="66" stroke="#1A1A1A" stroke-width="1.9"/>
+  <line x1="37.5" y1="6" x2="46.5" y2="6" stroke="#1A1A1A" stroke-width="1.9"/>
+  <line x1="37.5" y1="66" x2="46.5" y2="66" stroke="#1A1A1A" stroke-width="1.9"/>
+  <line x1="6" y1="31.5" x2="6" y2="40.5" stroke="#1A1A1A" stroke-width="1.9"/>
+  <line x1="78" y1="31.5" x2="78" y2="40.5" stroke="#1A1A1A" stroke-width="1.9"/>
+  <text x="92" y="41" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="700" letter-spacing="5" fill="#1A1A1A">AORANE</text>
+  <text x="93" y="54" font-family="Noto Sans Devanagari, Arial, sans-serif" font-size="7.8" fill="#1A1A1A" opacity="0.65">स्वस्थस्य स्वास्थ्य रक्षणं।</text>
+</svg>

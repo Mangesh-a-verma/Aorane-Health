@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Switch, Alert, Platform, Image, Dimensions,
+  Switch, Alert, Platform, Dimensions,
 } from "react-native";
+import AoraneLogo from "@/components/AoraneLogo";
 import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -345,7 +346,7 @@ export default function ProfileScreen() {
 
           {/* ── Footer ── */}
           <View style={s.footer}>
-            <Image source={require("../../assets/images/aorane-logo.png")} style={s.footerLogo} resizeMode="contain" />
+            <AoraneLogo color="#E8622A" width={110} height={30} showTagline={false} />
             <Text style={s.version}>Aorane v1.0.0</Text>
             <Text style={s.tagline}>Privacy-First Health Platform</Text>
           </View>

@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Alert, Image, Animated, Dimensions,
+  Alert, Animated, Dimensions,
 } from "react-native";
+import AoraneLogo from "@/components/AoraneLogo";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -324,11 +325,7 @@ export default function LoginScreen() {
             </Animated.View>
 
             {/* Logo */}
-            <Image
-              source={require("../../assets/images/aorane-logo.png")}
-              style={s.logo}
-              resizeMode="contain"
-            />
+            <AoraneLogo color="#E8622A" width={Math.min(W * 0.80, 280)} height={75} showTagline />
 
             {/* Tagline */}
             <View style={s.taglineRow}>

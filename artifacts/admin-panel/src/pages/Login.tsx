@@ -66,17 +66,8 @@ export default function Login() {
         {/* Logo */}
         <div className="relative">
           <div className="flex items-center gap-3">
-            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="Aorane" style={{ height: 52, width: "auto", objectFit: "contain" }} />
+            <img src={import.meta.env.BASE_URL + 'logo-white.svg'} alt="Aorane" style={{ height: 48, width: "auto", objectFit: "contain" }} />
             <div>
-              <div className="font-black text-base tracking-widest"
-                   style={{
-                     background: "linear-gradient(135deg, #0077B6, #1B998B)",
-                     WebkitBackgroundClip: "text",
-                     WebkitTextFillColor: "transparent",
-                     backgroundClip: "text",
-                   }}>
-                Aorane
-              </div>
               <div className="text-[9px] font-mono tracking-[0.3em]"
                    style={{ color: "rgba(255,255,255,0.25)" }}>
                 ADMIN CONSOLE

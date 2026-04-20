@@ -42,8 +42,7 @@ export default function Footer() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-8">
           <div className="lg:col-span-2">
             <div className="flex items-center gap-2.5 mb-4">
-              <img src={import.meta.env.BASE_URL + 'logo.png'} alt="Aorane" style={{ height: 52, width: "auto", objectFit: "contain" }} />
-              <span className="text-xl font-bold">Aorane</span>
+              <img src={import.meta.env.BASE_URL + 'logo-white.svg'} alt="Aorane" style={{ height: 44, width: "auto", objectFit: "contain" }} />
             </div>
             <p className="text-sm text-gray-400 leading-relaxed max-w-xs mb-6">
               India's most comprehensive AI-powered health management platform. Built for Bharat.
