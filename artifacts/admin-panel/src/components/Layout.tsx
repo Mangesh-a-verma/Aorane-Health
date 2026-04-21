@@ -124,7 +124,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             <Link href="/">
               <a className="flex items-center cursor-pointer" aria-label="Admin home">
-                <img src={import.meta.env.BASE_URL + 'logo-full.png'} alt="Aorane" style={{ height: 56, width: "auto", objectFit: "contain", background: "white", borderRadius: 8, padding: 4 }} />
+                <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" style={{ height: 56, width: "auto", objectFit: "contain", background: "white", borderRadius: 8, padding: 4 }} />
               </a>
             </Link>
             <div>

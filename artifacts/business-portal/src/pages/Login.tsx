@@ -145,7 +145,7 @@ export default function Login() {
       >
         <div>
           <div style={{ marginBottom: 56 }}>
-            <img src={import.meta.env.BASE_URL + 'logo-full.png'} alt="Aorane" style={{ height: 56, width: "auto", objectFit: "contain" }} />
+            <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" style={{ height: 56, width: "auto", objectFit: "contain" }} />
             <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", marginTop: 6, textTransform: "uppercase" as const }}>Business Suite</div>
           </div>
           <h2 style={{ fontSize: 32, fontWeight: 800, color: "white", lineHeight: 1.25, margin: "0 0 16px", fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
@@ -186,7 +186,7 @@ export default function Login() {
 
           {/* Mobile logo */}
           <div className="mobile-logo" style={{ display: "none", alignItems: "center", gap: 10, marginBottom: 36 }}>
-            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="Aorane" style={{ width: 200, height: 200, objectFit: "contain" }} />
+            <img src={import.meta.env.BASE_URL + 'logo.png?v=3'} alt="Aorane" style={{ width: 200, height: 200, objectFit: "contain" }} />
             <span style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20" }}>Aorane Business</span>
           </div>
 
