@@ -240,7 +240,7 @@ export default function Landing() {
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px", height: 72, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <img src={import.meta.env.BASE_URL + 'logo-full.png'} alt="Aorane" style={{ height: 88, width: "auto", objectFit: "contain" }} />
+            <img src={import.meta.env.BASE_URL + 'logo-full.png'} alt="Aorane" style={{ height: 120, width: "auto", objectFit: "contain" }} />
             <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#6b7280", letterSpacing: "0.05em" }}>
               Business
             </span>
@@ -704,7 +704,7 @@ export default function Landing() {
           <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 56 }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <img src={import.meta.env.BASE_URL + 'logo-full.png'} alt="Aorane" style={{ height: 88, width: "auto", objectFit: "contain" }} />
+                <img src={import.meta.env.BASE_URL + 'logo-full.png'} alt="Aorane" style={{ height: 120, width: "auto", objectFit: "contain" }} />
               </div>
               <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.85, maxWidth: 280, margin: "0 0 24px" }}>
                 The unified intelligence platform for managing health and wellness at scale across any organization.
