@@ -254,7 +254,10 @@ export default function PricingSection({ onBusinessSignUp }: { onBusinessSignUp?
                 isYearly={isYearly}
                 highlight={plan.planKey === highlightKey}
                 onBusinessSignUp={tab === "organization" ? onBusinessSignUp : undefined}
-                onMobileInstall={tab === "individual" ? () => setInstallOpen(true) : undefined}
+                onMobileInstall={tab === "individual" ? () => {
+                  const url = settings.androidPlayStoreUrl || "https://play.google.com/store/apps/details?id=in.aorane.app";
+                  window.open(url, "_blank", "noopener,noreferrer");
+                } : undefined}
               />
             ))}
           </motion.div>
