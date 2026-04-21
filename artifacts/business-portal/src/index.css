@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap');
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -88,13 +91,14 @@
   --popover-foreground: 216 77% 7%;
   --popover-border: 210 40% 90%;
 
-  --sidebar: 216 77% 7%;
-  --sidebar-foreground: 210 40% 90%;
-  --sidebar-border: 216 50% 14%;
+  /* LIGHT sidebar — Stitch Aorane look */
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 216 30% 18%;
+  --sidebar-border: 220 30% 92%;
   --sidebar-primary: 202 100% 36%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 174 70% 35%;
-  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-accent: 210 40% 96%;
+  --sidebar-accent-foreground: 202 100% 30%;
   --sidebar-ring: 202 100% 36%;
 
   /* AORANE Blue Primary */
@@ -119,10 +123,12 @@
   --chart-4: 0 84% 60%;
   --chart-5: 270 70% 55%;
 
-  --app-font-sans: 'Inter', 'Segoe UI', sans-serif;
+  --app-font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --app-font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  --app-font-deva: 'Noto Sans Devanagari', 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
-  --app-font-mono: Menlo, monospace;
-  --radius: 0.625rem;
+  --app-font-mono: 'JetBrains Mono', Menlo, monospace;
+  --radius: 0.75rem;
 
   --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -218,4 +224,49 @@
 }
 .gradient-btn:hover {
   background: linear-gradient(135deg, #005f91, #157a6e);
+}
+
+/* Stitch-aligned utilities */
+.font-display { font-family: var(--app-font-display); letter-spacing: -0.01em; }
+.font-deva { font-family: var(--app-font-deva); }
+.font-mono-data { font-family: var(--app-font-mono); font-feature-settings: "tnum"; letter-spacing: 0.02em; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+.glass-card {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0,119,182,0.08);
+}
+
+.pill-chip {
+  display: inline-flex; align-items: center; gap: 0.375rem;
+  padding: 0.25rem 0.625rem; border-radius: 9999px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+  font-family: var(--app-font-sans);
+}
+
+.kpi-number {
+  font-family: var(--app-font-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+/* Material symbols inline alignment */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  display: inline-block;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  vertical-align: middle;
 }

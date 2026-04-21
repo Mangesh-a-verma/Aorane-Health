@@ -32,17 +32,24 @@ function StatCard({ label, value, sub, icon: Icon, color }: {
   icon: React.ElementType; color: string;
 }) {
   return (
-    <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[#6B7280] text-sm font-medium">{label}</span>
-        <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}18` }}>
-          <Icon size={18} style={{ color }} />
+    <div className="bg-card border border-border rounded-2xl p-5 hover:border-primary/20 transition-colors">
+      <div className="flex items-start justify-between mb-3">
+        <span className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">{label}</span>
+        <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}1a` }}>
+          <Icon size={16} style={{ color }} />
         </div>
       </div>
-      <div className="text-2xl font-bold text-[#0D1F33]">{value}</div>
-      {sub && <div className="text-xs text-[#9CA3AF] mt-1">{sub}</div>}
+      <div className="kpi-number text-3xl text-foreground">{value}</div>
+      {sub && <div className="text-[11px] text-muted-foreground mt-1.5">{sub}</div>}
     </div>
   );
+}
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return { text: "Good morning", emoji: "👋" };
+  if (h < 17) return { text: "Good afternoon", emoji: "☀️" };
+  return { text: "Good evening", emoji: "🌙" };
 }
 
 function HealthCircle({ label, value, color, icon: Icon }: {
@@ -72,7 +79,9 @@ function HealthCircle({ label, value, color, icon: Icon }: {
 }
 
 export default function Dashboard() {
-  const { org, isPaidActive, subscriptionLoading } = useAuth();
+  const { admin, org, isPaidActive, subscriptionLoading } = useAuth();
+  const greeting = getGreeting();
+  const firstName = admin?.fullName?.split(" ")[0] || "there";
   const [overview, setOverview] = useState<Overview | null>(null);
   const [analytics, setAnalytics] = useState<HealthAnalytics | null>(null);
   const [copied, setCopied] = useState(false);
@@ -112,10 +121,27 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#0D1F33]">Dashboard</h1>
-          <p className="text-[#6B7280] text-sm mt-0.5">Organization overview &amp; aggregate health insights</p>
+      <div className="p-6 max-w-6xl mx-auto">
+        {/* Hero Greeting Card */}
+        <div className="mb-6 rounded-2xl p-6 border border-primary/15 bg-gradient-to-br from-primary/5 via-secondary/5 to-transparent relative overflow-hidden">
+          <div className="absolute inset-0 opacity-30 pointer-events-none"
+            style={{ backgroundImage: "radial-gradient(circle at 90% 20%, rgba(0,119,182,0.15), transparent 40%)" }} />
+          <div className="relative flex items-start justify-between flex-wrap gap-4">
+            <div>
+              <h1 className="font-display font-extrabold text-3xl md:text-4xl text-foreground tracking-tight">
+                {greeting.text}, {firstName} <span className="inline-block">{greeting.emoji}</span>
+              </h1>
+              <p className="text-muted-foreground text-sm mt-1.5 max-w-md">
+                Here's what's happening with <span className="font-semibold text-foreground">{org?.name || "your organization"}</span> today.
+              </p>
+            </div>
+            {analytics && analytics.totalMembers > 0 && (
+              <div className="rounded-xl bg-card/70 backdrop-blur border border-border px-4 py-3 min-w-[160px]">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Org Health Index</div>
+                <div className="kpi-number text-2xl text-primary mt-1">{analytics.avgHealthScore}<span className="text-base text-muted-foreground font-normal">/100</span></div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Enrollment Code Banner — only after active subscription */}
