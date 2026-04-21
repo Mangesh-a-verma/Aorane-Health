@@ -145,8 +145,9 @@ export default function Login() {
       >
         <div>
           <div style={{ marginBottom: 56 }}>
-            <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" style={{ height: 56, width: "auto", objectFit: "contain" }} />
-            <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", marginTop: 6, textTransform: "uppercase" as const }}>Business Suite</div>
+            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: 32, color: "white", letterSpacing: "-0.02em", lineHeight: 1 }}>AORANE</div>
+            <div style={{ fontFamily: "'Noto Sans Devanagari', sans-serif", fontSize: 14, color: "rgba(255,255,255,0.85)", marginTop: 4, letterSpacing: 0.5 }}>आज़ाद जीवन</div>
+            <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", marginTop: 10, textTransform: "uppercase" as const }}>Business Suite</div>
           </div>
           <h2 style={{ fontSize: 32, fontWeight: 800, color: "white", lineHeight: 1.25, margin: "0 0 16px", fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
             Employee health, measured. Not guessed.
@@ -185,9 +186,9 @@ export default function Login() {
         <div style={{ width: "100%", maxWidth: 420, animation: "fadeUp 0.5s ease forwards" }}>
 
           {/* Mobile logo */}
-          <div className="mobile-logo" style={{ display: "none", alignItems: "center", gap: 10, marginBottom: 36 }}>
-            <img src={import.meta.env.BASE_URL + 'logo.png?v=3'} alt="Aorane" style={{ width: 200, height: 200, objectFit: "contain" }} />
-            <span style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20" }}>Aorane Business</span>
+          <div className="mobile-logo" style={{ display: "none", flexDirection: "column", gap: 2, marginBottom: 32 }}>
+            <span style={{ fontSize: 28, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.02em", lineHeight: 1 }}>AORANE</span>
+            <span style={{ fontSize: 13, fontFamily: "'Noto Sans Devanagari', sans-serif", color: PRIMARY }}>आज़ाद जीवन · Business Suite</span>
           </div>
 
           {/* Header */}

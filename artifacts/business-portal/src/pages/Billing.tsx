@@ -204,8 +204,13 @@ export default function Billing() {
     <Layout>
       <div className="p-6 max-w-5xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Billing & Plans</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Seat-based pricing — pay only for what you need</p>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="pill-chip bg-primary/10 text-primary uppercase">
+              <CreditCard size={11} /> Subscription
+            </span>
+          </div>
+          <h1 className="font-display font-extrabold text-3xl md:text-4xl text-foreground tracking-tight">Billing &amp; Plans</h1>
+          <p className="text-muted-foreground text-sm mt-1.5">Seat-based pricing — pay only for what you need.</p>
         </div>
 
         {success && (
