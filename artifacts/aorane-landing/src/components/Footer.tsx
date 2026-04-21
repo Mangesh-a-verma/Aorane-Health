@@ -1,4 +1,4 @@
-import { Mail, Phone, MapPin, Twitter, Linkedin, Instagram, Youtube, Facebook } from "lucide-react";
+import { Mail, Phone, MapPin, Linkedin, Instagram, Youtube, Facebook } from "lucide-react";
 import { useSiteSettings } from "@/lib/useSiteSettings";
 
 export default function Footer() {
@@ -6,7 +6,6 @@ export default function Footer() {
   const s = useSiteSettings();
 
   const socials = [
-    { url: s.socialTwitter,   Icon: Twitter,   label: "Twitter" },
     { url: s.socialLinkedin,  Icon: Linkedin,  label: "LinkedIn" },
     { url: s.socialInstagram, Icon: Instagram, label: "Instagram" },
     { url: s.socialYoutube,   Icon: Youtube,   label: "YouTube" },

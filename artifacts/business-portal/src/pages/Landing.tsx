@@ -747,7 +747,6 @@ export default function Landing() {
             <p style={{ fontSize: 13, color: "#9ca3af", margin: 0 }}>© {new Date().getFullYear()} {settings.companyName || "Aorane"}. All rights reserved.</p>
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center" }}>
               {[
-                { url: settings.socialTwitter,   icon: "alternate_email", label: "Twitter" },
                 { url: settings.socialLinkedin,  icon: "business_center", label: "LinkedIn" },
                 { url: settings.socialInstagram, icon: "photo_camera",    label: "Instagram" },
                 { url: settings.socialYoutube,   icon: "smart_display",   label: "YouTube" },

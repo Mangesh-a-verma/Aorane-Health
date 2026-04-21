@@ -11,108 +11,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Google from "expo-auth-session/providers/google";
-import * as WebBrowser from "expo-web-browser";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-
-WebBrowser.maybeCompleteAuthSession();
-
-// Evaluated at bundle-time by Metro so the Google button is truly hidden when not configured
-const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
-const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? "";
-const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "";
-
-// Google auth is only enabled when the platform-specific client ID is actually set
-const GOOGLE_ENABLED =
-  Platform.OS === "android" ? GOOGLE_ANDROID_CLIENT_ID.length > 0
-  : Platform.OS === "ios"     ? GOOGLE_IOS_CLIENT_ID.length > 0
-  : GOOGLE_CLIENT_ID.length > 0;
 
 const { width: W, height: H } = Dimensions.get("window");
 
 const PRIMARY = "#E8622A";
 
-// ─── Google Sign-In sub-component ────────────────────────────────────────────
-// Isolated so the hook is only called when this component is mounted,
-// which happens only when GOOGLE_ENABLED is true.
-function GoogleSignInButton({ disabled, loginWithToken, lang }: {
-  disabled: boolean;
-  loginWithToken: (accessToken: string, refreshToken: string, user: { id: string; phone: string; plan: string; languageCode: string }, isNewUser: boolean, onboardingStep?: number) => Promise<void>;
-  lang: string;
-}) {
-  const [googleLoading, setGoogleLoading] = React.useState(false);
-  const [, googleResponse, googlePromptAsync] = Google.useAuthRequest({
-    clientId: GOOGLE_CLIENT_ID || undefined,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
-    iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
-    scopes: ["openid", "email", "profile"],
-  });
-
-  React.useEffect(() => {
-    if (googleResponse?.type === "success") {
-      const accessToken = googleResponse.authentication?.accessToken;
-      if (accessToken) handleGoogleLogin(accessToken);
-      else Alert.alert("Google Login Failed", "Could not get access token from Google.");
-    } else if (googleResponse?.type === "error") {
-      Alert.alert("Google Login Error", googleResponse.error?.message || "Google sign-in failed.");
-    }
-  }, [googleResponse]);
-
-  const handleGoogleLogin = async (accessToken: string) => {
-    setGoogleLoading(true);
-    try {
-      const result = await api.googleLogin(accessToken);
-      const userData = result.user as { id: string; plan: string; languageCode?: string };
-      const onboardingStep = (result as Record<string, unknown>).onboardingStep as number ?? 0;
-      await loginWithToken(
-        result.accessToken,
-        result.refreshToken,
-        { id: userData.id, phone: "", plan: userData.plan || "free", languageCode: userData.languageCode || lang },
-        result.isNewUser,
-        onboardingStep,
-      );
-      const onboardingDone = !result.isNewUser && onboardingStep >= 5;
-      if (!onboardingDone) {
-        router.replace("/(onboarding)/" as never);
-      } else {
-        router.replace("/(tabs)/dashboard");
-      }
-    } catch (err: unknown) {
-      Alert.alert("Google Login Failed", err instanceof Error ? err.message : "Please try again.");
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  return (
-    <>
-      <View style={s.dividerRow}>
-        <View style={s.dividerLine} />
-        <Text style={s.dividerText}>or</Text>
-        <View style={s.dividerLine} />
-      </View>
-      <TouchableOpacity
-        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); googlePromptAsync(); }}
-        disabled={disabled || googleLoading}
-        activeOpacity={0.88}
-        style={[s.googleBtn, (disabled || googleLoading) && { opacity: 0.65 }]}
-      >
-        {googleLoading
-          ? <ActivityIndicator color="#4285F4" size="small" />
-          : <>
-              <View style={s.googleIcon}>
-                <Text style={{ fontSize: 17 }}>G</Text>
-              </View>
-              <Text style={s.googleText}>Continue with Google</Text>
-            </>
-        }
-      </TouchableOpacity>
-    </>
-  );
-}
-// ─────────────────────────────────────────────────────────────────────────────
 const SKY = "#F5A623";
 const ACCENT = "#27AE60";
 
@@ -370,7 +276,7 @@ export default function LoginScreen() {
                       <LinearGradient colors={[PRIMARY, SKY]} style={StyleSheet.absoluteFill} />
                     )}
                     <Text style={[s.toggleText, loginMode === mode && s.toggleTextActive]}>
-                      {mode === "otp" ? `📱 SMS` : mode === "email" ? `📧 Email` : `🔒 PIN`}
+                      {mode === "otp" ? `💬 WhatsApp` : mode === "email" ? `📧 Email` : `🔒 PIN`}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -453,11 +359,11 @@ export default function LoginScreen() {
 
               {/* CTA Button */}
               <TouchableOpacity
-                onPress={loginMode === "pin" ? handlePinLogin : loginMode === "email" ? handleSendEmailOtp : handleSendOtp}
+                onPress={loginMode === "pin" ? handlePinLogin : loginMode === "email" ? handleSendEmailOtp : handleWhatsappOtp}
                 disabled={anyLoading || !isActive || (loginMode === "pin" && pin.length < 4)}
                 accessibilityState={{ disabled: anyLoading || !isActive || (loginMode === "pin" && pin.length < 4) }}
                 accessibilityRole="button"
-                accessibilityLabel={loginMode === "pin" ? "Login with PIN" : loginMode === "email" ? "Send Email OTP" : "Send SMS OTP"}
+                accessibilityLabel={loginMode === "pin" ? "Login with PIN" : loginMode === "email" ? "Send Email OTP" : "Send OTP on WhatsApp"}
                 activeOpacity={0.88}
                 style={s.ctaWrap}
               >
@@ -471,7 +377,7 @@ export default function LoginScreen() {
                       ? <ActivityIndicator color="#FFF" />
                       : <>
                           <Text style={s.ctaText}>
-                            {loginMode === "pin" ? t("pinLogin") : loginMode === "email" ? "📧 Send Email OTP" : t("sendSmsOtp")}
+                            {loginMode === "pin" ? t("pinLogin") : loginMode === "email" ? "📧 Send Email OTP" : "💬 Send OTP on WhatsApp"}
                           </Text>
                           <View style={s.ctaArrow}>
                             <Ionicons name="arrow-forward" size={16} color={loginMode === "pin" ? "#7C3AED" : PRIMARY} />
@@ -482,53 +388,13 @@ export default function LoginScreen() {
                 ) : (
                   <View style={s.ctaBtnDisabled}>
                     <Text style={s.ctaTextDisabled}>
-                      {loginMode === "pin" ? t("pinLogin") : loginMode === "email" ? "📧 Send Email OTP" : t("sendSmsOtp")}
+                      {loginMode === "pin" ? t("pinLogin") : loginMode === "email" ? "📧 Send Email OTP" : "💬 Send OTP on WhatsApp"}
                     </Text>
                   </View>
                 )}
               </TouchableOpacity>
 
-              {/* Google Sign-In — only mounted when platform-specific OAuth client ID is configured */}
-              {GOOGLE_ENABLED && (
-                <GoogleSignInButton
-                  disabled={anyLoading}
-                  loginWithToken={loginWithToken}
-                  lang={lang}
-                />
-              )}
 
-              {/* Social Buttons */}
-              {loginMode === "otp" && (
-                <View style={s.socialRow}>
-                  <TouchableOpacity
-                    onPress={handleWhatsappOtp}
-                    disabled={anyLoading || !isActive}
-                    activeOpacity={0.82}
-                    style={[s.socialBtn, s.waSocialBtn, (!isActive || anyLoading) && s.socialBtnDisabled]}
-                  >
-                    {whatsappLoading
-                      ? <ActivityIndicator color="#25D366" size="small" />
-                      : <>
-                          <View style={s.waBadge}>
-                            <Ionicons name="logo-whatsapp" size={17} color="#FFF" />
-                          </View>
-                          <Text style={[s.socialText, { color: isActive ? "#128C7E" : "#9CB8C8" }]}>WhatsApp</Text>
-                        </>
-                    }
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => Alert.alert("🚀", t("comingSoonMsg"))}
-                    activeOpacity={0.75}
-                    style={[s.socialBtn, s.xSocialBtn]}
-                  >
-                    <View style={s.xBadge}>
-                      <Ionicons name="logo-x" size={14} color="#FFF" />
-                    </View>
-                    <Text style={s.socialText}>X (Twitter)</Text>
-                    <View style={s.soonBadge}><Text style={s.soonText}>{t("comingSoon")}</Text></View>
-                  </TouchableOpacity>
-                </View>
-              )}
 
               {loginMode === "pin" && (
                 <Text style={s.pinHint}>{t("pinHint")}</Text>

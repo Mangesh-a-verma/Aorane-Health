@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Building2, Palette, FileImage, BarChart3, Save, RefreshCw,
   Globe, Phone, Mail, MapPin, Tag, Upload, Eye, Link2, FileText,
-  CheckCircle2, Loader2, Twitter, Linkedin, Instagram, Youtube, Facebook, Smartphone, Apple,
+  CheckCircle2, Loader2, Linkedin, Instagram, Youtube, Facebook, Smartphone, Apple,
 } from "lucide-react";
 
 type CompanySettings = {
@@ -191,9 +191,6 @@ export default function BrandingPage() {
             <SectionHeader icon={Globe} title="Social Media URLs"
               desc="Public links — shown in landing page & business portal footer. Leave blank to hide that icon." />
             <div className="space-y-3">
-              <Field label={<><Twitter size={12} className="inline mr-1" />Twitter / X</>}>
-                <Input value={settings.socialTwitter || ""} onChange={(v) => set("socialTwitter", v || null)} placeholder="https://twitter.com/aorane" />
-              </Field>
               <Field label={<><Linkedin size={12} className="inline mr-1" />LinkedIn</>}>
                 <Input value={settings.socialLinkedin || ""} onChange={(v) => set("socialLinkedin", v || null)} placeholder="https://linkedin.com/company/aorane" />
               </Field>
