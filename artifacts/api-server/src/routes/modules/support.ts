@@ -42,7 +42,8 @@ router.post("/users/push-token", requireAuth, async (req: AuthRequest, res) => {
     const uid = req.userId!;
     const { token, platform = "unknown" } = req.body as { token: string; platform?: string };
     if (!token?.startsWith("ExponentPushToken[")) {
-      return res.status(400).json({ error: "Invalid Expo push token" });
+      res.status(400).json({ error: "Invalid Expo push token" });
+      return;
     }
     await pool.query(
       `INSERT INTO push_tokens (user_id, token, platform, updated_at)
@@ -66,10 +67,11 @@ router.post("/support/ticket", requireAuth, async (req: AuthRequest, res) => {
     };
 
     if (!subject?.trim() || !message?.trim()) {
-      return res.status(400).json({ error: "Subject and message are required" });
+      res.status(400).json({ error: "Subject and message are required" });
+      return;
     }
-    if (subject.length > 200) return res.status(400).json({ error: "Subject too long (max 200 chars)" });
-    if (message.length > 2000) return res.status(400).json({ error: "Message too long (max 2000 chars)" });
+    if (subject.length > 200) { res.status(400).json({ error: "Subject too long (max 200 chars)" }); return; }
+    if (message.length > 2000) { res.status(400).json({ error: "Message too long (max 2000 chars)" }); return; }
 
     const VALID_CATEGORIES = ["general", "technical", "payment", "account", "feedback", "bug", "other"];
     const VALID_PRIORITIES = ["low", "normal", "high", "urgent"];

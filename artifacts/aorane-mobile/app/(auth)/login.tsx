@@ -393,7 +393,7 @@ export default function LoginScreen() {
                     onChangeText={setPhone}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
-                    autoFocus={loginMode !== "email"}
+                    autoFocus
                   />
                   {isPhoneActive && (
                     <View style={s.checkBadge}>

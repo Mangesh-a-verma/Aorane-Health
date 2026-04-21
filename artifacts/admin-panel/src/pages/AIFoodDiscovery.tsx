@@ -322,16 +322,16 @@ export default function AIFoodDiscovery() {
                     <div>
                       <div className="text-xs font-semibold text-muted-foreground mb-2">Vitamins & Minerals</div>
                       <div className="flex flex-wrap gap-1.5">
-                        {Object.entries(vs).map(([k, v]) => v && (
+                        {Object.entries(vs).map(([k, v]) => v ? (
                           <span key={k} className="text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">
                             {k.replace(/_/g, " ")}: {Number(v).toFixed(1)}
                           </span>
-                        ))}
+                        ) : null)}
                       </div>
                     </div>
                   )}
 
-                  {r.category && (
+                  {!!r.category && (
                     <div>
                       <span className="text-xs capitalize bg-muted text-muted-foreground px-3 py-1 rounded-full">
                         {String(r.category)}
@@ -351,7 +351,7 @@ export default function AIFoodDiscovery() {
                     </div>
                   )}
 
-                  {r.healthTip && (
+                  {!!r.healthTip && (
                     <div className="bg-muted/30 rounded-xl p-3">
                       <div className="text-xs font-semibold text-muted-foreground mb-1">Health Tip</div>
                       <p className="text-xs text-foreground/80">{String(r.healthTip)}</p>
