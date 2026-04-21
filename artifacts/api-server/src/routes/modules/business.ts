@@ -878,7 +878,8 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
     });
   } catch (e) {
     console.error("[seat-order]", e);
-    res.status(500).json({ error: "Failed to create seat order" });
+    const msg = e instanceof Error && e.message ? e.message : "Failed to create seat order";
+    res.status(500).json({ error: `Payment setup failed: ${msg}` });
   }
 });
 

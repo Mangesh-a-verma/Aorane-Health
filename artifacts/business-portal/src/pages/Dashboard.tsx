@@ -72,7 +72,7 @@ function HealthCircle({ label, value, color, icon: Icon }: {
 }
 
 export default function Dashboard() {
-  const { org } = useAuth();
+  const { org, isPaidActive, subscriptionLoading } = useAuth();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [analytics, setAnalytics] = useState<HealthAnalytics | null>(null);
   const [copied, setCopied] = useState(false);
@@ -118,21 +118,39 @@ export default function Dashboard() {
           <p className="text-[#6B7280] text-sm mt-0.5">Organization overview &amp; aggregate health insights</p>
         </div>
 
-        {/* Enrollment Code Banner */}
-        <div className="mb-6 rounded-xl p-5 text-white"
-          style={{ background: "linear-gradient(135deg, #0077B6, #1B998B)" }}>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <div className="text-white/70 text-sm mb-1">Organization Enrollment Code</div>
-              <div className="text-3xl font-bold tracking-widest font-mono">{org?.orgCode}</div>
-              <div className="text-white/60 text-xs mt-1">Share this code with employees to join your organization</div>
+        {/* Enrollment Code Banner — only after active subscription */}
+        {!subscriptionLoading && (
+          isPaidActive ? (
+            <div className="mb-6 rounded-xl p-5 text-white"
+              style={{ background: "linear-gradient(135deg, #0077B6, #1B998B)" }}>
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <div className="text-white/70 text-sm mb-1">Organization Enrollment Code</div>
+                  <div className="text-3xl font-bold tracking-widest font-mono">{org?.orgCode}</div>
+                  <div className="text-white/60 text-xs mt-1">Share this code with employees to join your organization</div>
+                </div>
+                <button onClick={copyCode}
+                  className="flex items-center gap-2 bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl px-4 py-2.5 text-sm font-medium transition-all">
+                  {copied ? <><Check size={15} /> Copied!</> : <><Copy size={15} /> Copy Code</>}
+                </button>
+              </div>
             </div>
-            <button onClick={copyCode}
-              className="flex items-center gap-2 bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl px-4 py-2.5 text-sm font-medium transition-all">
-              {copied ? <><Check size={15} /> Copied!</> : <><Copy size={15} /> Copy Code</>}
-            </button>
-          </div>
-        </div>
+          ) : (
+            <div className="mb-6 rounded-xl p-5 border border-amber-200 bg-amber-50">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <div className="text-amber-900 text-sm font-semibold mb-1">Activate Your Subscription</div>
+                  <div className="text-amber-800 text-xs">
+                    Your Organization Enrollment Code will be available once your plan is active. Complete payment to start onboarding employees.
+                  </div>
+                </div>
+                <a href="/billing" className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-all">
+                  Go to Billing
+                </a>
+              </div>
+            </div>
+          )
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

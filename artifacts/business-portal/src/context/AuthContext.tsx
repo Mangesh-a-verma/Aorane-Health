@@ -1,23 +1,37 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import type { Admin, Org } from "@/lib/api";
+import { api, type Admin, type Org } from "@/lib/api";
 
 interface AuthState {
   token: string | null;
   admin: Admin | null;
   org: Org | null;
   isLoading: boolean;
+  subscriptionStatus: string | null;
+  subscriptionLoading: boolean;
 }
 
 interface AuthContextType extends AuthState {
   login: (token: string, admin: Admin, org: Org) => void;
   logout: () => void;
   setOrg: (org: Org) => void;
+  refreshSubscription: () => Promise<void>;
+  isPaidActive: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>({ token: null, admin: null, org: null, isLoading: true });
+  const [state, setState] = useState<AuthState>({ token: null, admin: null, org: null, isLoading: true, subscriptionStatus: null, subscriptionLoading: false });
+
+  const fetchSubscription = async () => {
+    setState((s) => ({ ...s, subscriptionLoading: true }));
+    try {
+      const data = await api.getBillingSubscription();
+      setState((s) => ({ ...s, subscriptionStatus: data?.payment?.status || null, subscriptionLoading: false }));
+    } catch {
+      setState((s) => ({ ...s, subscriptionStatus: null, subscriptionLoading: false }));
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("bp_token");
@@ -28,7 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const admin = JSON.parse(adminStr);
         const org = JSON.parse(orgStr);
         if (admin?.id && org?.id) {
-          setState({ token, admin, org, isLoading: false });
+          setState({ token, admin, org, isLoading: false, subscriptionStatus: null, subscriptionLoading: true });
+          fetchSubscription();
           return;
         }
       } catch { /* fall through */ }
@@ -47,14 +62,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("bp_token", token);
     localStorage.setItem("bp_admin", JSON.stringify(admin));
     localStorage.setItem("bp_org", JSON.stringify(org));
-    setState({ token, admin, org, isLoading: false });
+    setState({ token, admin, org, isLoading: false, subscriptionStatus: null, subscriptionLoading: true });
+    fetchSubscription();
   };
 
   const logout = () => {
     localStorage.removeItem("bp_token");
     localStorage.removeItem("bp_admin");
     localStorage.removeItem("bp_org");
-    setState({ token: null, admin: null, org: null, isLoading: false });
+    setState({ token: null, admin: null, org: null, isLoading: false, subscriptionStatus: null, subscriptionLoading: false });
   };
 
   const setOrg = (org: Org) => {
@@ -62,7 +78,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState(s => ({ ...s, org }));
   };
 
-  return <AuthContext.Provider value={{ ...state, login, logout, setOrg }}>{children}</AuthContext.Provider>;
+  const isPaidActive = state.subscriptionStatus === "success" || state.subscriptionStatus === "active";
+
+  return <AuthContext.Provider value={{ ...state, login, logout, setOrg, refreshSubscription: fetchSubscription, isPaidActive }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

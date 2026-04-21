@@ -36,7 +36,7 @@ function NavItem({ path, icon: Icon, label }: { path: string; icon: React.Elemen
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { admin, org, logout } = useAuth();
+  const { admin, org, logout, isPaidActive } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const orgTypeLabels: Record<string, string> = {
@@ -126,9 +126,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </button>
           <div className="flex-1" />
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md font-mono">
-              {org?.orgCode}
-            </span>
+            {isPaidActive && (
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md font-mono">
+                {org?.orgCode}
+              </span>
+            )}
             <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
               <Bell size={18} />
             </button>

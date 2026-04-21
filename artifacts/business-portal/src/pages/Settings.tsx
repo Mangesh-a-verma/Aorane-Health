@@ -26,7 +26,7 @@ function Alert({ type, msg }: { type: "success" | "error"; msg: string }) {
 }
 
 export default function Settings() {
-  const { admin, org, logout, setOrg } = useAuth();
+  const { admin, org, logout, setOrg, isPaidActive } = useAuth();
 
   const [editingOrg, setEditingOrg] = useState(false);
   const [orgForm, setOrgForm] = useState({
@@ -267,7 +267,11 @@ export default function Settings() {
           <div className="space-y-2.5">
             <div className="flex items-center justify-between py-2 border-b border-border">
               <span className="text-sm text-muted-foreground">Organization Code</span>
-              <span className="font-mono text-sm font-bold text-primary tracking-widest">{org?.orgCode || "—"}</span>
+              {isPaidActive ? (
+                <span className="font-mono text-sm font-bold text-primary tracking-widest">{org?.orgCode || "—"}</span>
+              ) : (
+                <span className="text-xs text-amber-600 font-medium">Activate plan to view</span>
+              )}
             </div>
             <div className="flex items-center justify-between py-2 border-b border-border">
               <span className="text-sm text-muted-foreground">Total Seats</span>
