@@ -1,4 +1,5 @@
 import * as Print from "expo-print";
+import { AORANE_LOGO_DATAURI } from "./brand-logo";
 import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
 
@@ -61,7 +62,9 @@ export async function exportMedicalReportPDF(analysis: ScanAnalysis, userName?: 
     body { font-family: -apple-system, Arial, sans-serif; background: #f8fafc; color: #1a1a2e; }
     .page { max-width: 800px; margin: 0 auto; background: #fff; min-height: 100vh; }
     .header { background: linear-gradient(135deg, #0077B6, #1B998B); padding: 28px 32px; color: #fff; }
-    .logo { font-size: 26px; font-weight: 800; letter-spacing: 2px; }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo img { width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.18); padding: 4px; }
+    .logo span { font-size: 24px; font-weight: 800; letter-spacing: 2px; }
     .tagline { font-size: 12px; opacity: 0.8; margin-top: 2px; }
     .report-info { margin-top: 16px; display: flex; gap: 24px; flex-wrap: wrap; }
     .info-item { font-size: 13px; opacity: 0.9; }
@@ -85,7 +88,7 @@ export async function exportMedicalReportPDF(analysis: ScanAnalysis, userName?: 
 <body>
 <div class="page">
   <div class="header">
-    <div class="logo">Aorane</div>
+    <div class="logo"><img src="${AORANE_LOGO_DATAURI}" alt="Aorane"/><span>AORANE</span></div>
     <div class="tagline">Your Health Coach — Medical Report Analysis</div>
     <div class="report-info">
       <div class="info-item"><strong>Patient</strong>${userName || "Aorane User"}</div>
@@ -202,7 +205,9 @@ export async function exportDietPlanPDF(plan: DietPlan, userName?: string): Prom
     body { font-family: -apple-system, Arial, sans-serif; background: #f8fafc; color: #1a1a2e; }
     .page { max-width: 800px; margin: 0 auto; background: #fff; min-height: 100vh; }
     .header { background: linear-gradient(135deg, #0077B6, #1B998B); padding: 28px 32px; color: #fff; }
-    .logo { font-size: 26px; font-weight: 800; letter-spacing: 2px; }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo img { width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.18); padding: 4px; }
+    .logo span { font-size: 24px; font-weight: 800; letter-spacing: 2px; }
     .content { padding: 28px 32px; }
     .targets { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
     .target-card { flex: 1; min-width: 100px; background: linear-gradient(135deg, rgba(0,119,182,0.08), rgba(27,153,139,0.06)); border: 1px solid rgba(0,119,182,0.15); border-radius: 10px; padding: 12px; text-align: center; }
@@ -214,7 +219,7 @@ export async function exportDietPlanPDF(plan: DietPlan, userName?: string): Prom
 <body>
 <div class="page">
   <div class="header">
-    <div class="logo">Aorane</div>
+    <div class="logo"><img src="${AORANE_LOGO_DATAURI}" alt="Aorane"/><span>AORANE</span></div>
     <div style="font-size:12px;opacity:0.8;margin-top:2px">Your Health Coach — Personalized Indian Diet Plan</div>
     <div style="display:flex;gap:20px;margin-top:14px;flex-wrap:wrap">
       <div style="font-size:13px;opacity:0.9"><strong style="display:block;font-size:11px;opacity:0.7;text-transform:uppercase">Patient</strong>${userName || "Aorane User"}</div>

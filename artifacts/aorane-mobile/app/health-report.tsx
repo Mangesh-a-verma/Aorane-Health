@@ -10,6 +10,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { api } from "@/lib/api";
+import { AORANE_LOGO_DATAURI } from "@/lib/brand-logo";
 
 const { width: W } = Dimensions.get("window");
 
@@ -251,7 +252,7 @@ tr:nth-child(even) td{background:#FAFBFC}
 
   <!-- HEADER -->
   <div class="hdr">
-    <div class="hdr-logo">A</div>
+    <div class="hdr-logo"><img src="${AORANE_LOGO_DATAURI}" alt="Aorane" style="width:42px;height:42px;border-radius:10px"/></div>
     <div>
       <h1>${company.companyName}</h1>
       ${company.tagline ? `<p>${company.tagline}</p>` : ""}
