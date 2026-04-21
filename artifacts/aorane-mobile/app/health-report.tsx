@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Platform, Alert, Dimensions, ActivityIndicator,
+  Platform, Alert, Dimensions, ActivityIndicator, Image,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -576,7 +576,11 @@ export default function HealthReportScreen() {
               <LinearGradient colors={[P, company.accentColor || "#00B896"]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.lh}>
                 <View style={s.lhLogo}>
-                  <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 22 }}>A</Text>
+                  <Image
+                    source={require("../assets/images/icon.png")}
+                    style={{ width: 38, height: 38, borderRadius: 9 }}
+                    resizeMode="contain"
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.lhTitle}>{company.companyName}</Text>

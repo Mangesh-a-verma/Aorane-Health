@@ -11,6 +11,7 @@ import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import { api } from "@/lib/api";
 import QRCode from "react-native-qrcode-svg";
+import AoraneLogo from "@/components/AoraneLogo";
 
 const { width: W } = Dimensions.get("window");
 const CARD_W = Math.min(W - 32, 380);
@@ -285,6 +286,11 @@ export default function ScorecardScreen() {
       <LinearGradient colors={["#E0F2FE", "#BAE6FD", "#EFF6FF"]} style={StyleSheet.absoluteFill} />
 
       <ScrollView contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: 100, paddingHorizontal: 16 }}>
+
+        {/* Brand */}
+        <View style={{ alignItems: "center", marginBottom: 12 }}>
+          <AoraneLogo width={140} />
+        </View>
 
         {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>

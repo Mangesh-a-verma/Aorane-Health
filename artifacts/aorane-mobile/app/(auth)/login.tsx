@@ -325,7 +325,7 @@ export default function LoginScreen() {
             </Animated.View>
 
             {/* Logo */}
-            <AoraneLogo width={160} />
+            <AoraneLogo width={240} />
 
             {/* Tagline */}
             <View style={s.taglineRow}>

@@ -1,24 +1,23 @@
 import React from "react";
 import { Image, ImageStyle, StyleProp } from "react-native";
 
+const LOGO_ASPECT = 1342 / 757;
+
 type Props = {
-  /** Logo width in pixels. Height auto-scales (logo aspect ratio ~1:1). */
   width?: number;
-  /** @deprecated Older callers passed crossWidth — used as width fallback. */
   crossWidth?: number;
-  /** @deprecated tagline is now baked into the logo image */
   showTagline?: boolean;
-  /** @deprecated color is now baked into the logo image */
   color?: string;
   style?: StyleProp<ImageStyle>;
 };
 
 export default function AoraneLogo({ width, crossWidth, style }: Props) {
-  const w = width ?? crossWidth ?? 140;
+  const w = width ?? crossWidth ?? 180;
+  const h = w / LOGO_ASPECT;
   return (
     <Image
       source={require("../assets/images/aorane-logo.png")}
-      style={[{ width: w, height: w, resizeMode: "contain" }, style]}
+      style={[{ width: w, height: h, resizeMode: "contain" }, style]}
     />
   );
 }
