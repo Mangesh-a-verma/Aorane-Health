@@ -193,10 +193,40 @@ export const companySettingsTable = pgTable("company_settings", {
   reportLogoUrl: text("report_logo_url"),
   weeklyReportEnabled: boolean("weekly_report_enabled").default(true),
   monthlyReportEnabled: boolean("monthly_report_enabled").default(true),
+  // Social media URLs (public — used on landing/business footer)
+  socialTwitter: text("social_twitter"),
+  socialLinkedin: text("social_linkedin"),
+  socialInstagram: text("social_instagram"),
+  socialYoutube: text("social_youtube"),
+  socialFacebook: text("social_facebook"),
+  // Investor / Marketing assets
+  investorDeckUrl: text("investor_deck_url"),
+  // Mobile install URLs
+  androidPlayStoreUrl: text("android_play_store_url").default("https://play.google.com/store/apps/details?id=in.aorane.app"),
+  iosAppStoreUrl: text("ios_app_store_url"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
 export type CompanySettings = typeof companySettingsTable.$inferSelect;
+
+// ─── Enquiries (lead capture from landing/business portal) ───────────────────
+export const enquiriesTable = pgTable("enquiries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  type: text("type").notNull(),                    // 'expert' | 'investor_deck' | 'general'
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  mobile: text("mobile"),
+  city: text("city"),
+  accountType: text("account_type"),               // 'individual' | 'company'
+  companyName: text("company_name"),
+  message: text("message"),
+  source: text("source"),                          // 'landing' | 'business' | etc.
+  status: text("status").notNull().default("new"), // 'new' | 'contacted' | 'closed'
+  notifiedAt: timestamp("notified_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Enquiry = typeof enquiriesTable.$inferSelect;
 
 // ─── App Sessions — DAU/MAU tracking ─────────────────────────────────────────
 export const appSessionsTable = pgTable("app_sessions", {

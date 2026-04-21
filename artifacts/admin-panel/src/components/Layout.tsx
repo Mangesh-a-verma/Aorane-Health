@@ -6,7 +6,7 @@ import {
   Tag, Megaphone, Droplet, Languages, ClipboardList, LogOut,
   Menu, X, ShieldAlert, ChevronRight, CreditCard, BarChart3,
   DollarSign, MonitorPlay, Paintbrush2, Brain, Bell, Search,
-  Sun, Moon, IndianRupee, Sliders, Rocket, UserCircle, Sparkles, MessageSquare,
+  Sun, Moon, IndianRupee, Sliders, Rocket, UserCircle, Sparkles, MessageSquare, Inbox,
 } from "lucide-react";
 
 type NavItem = { path: string; icon: React.ElementType; label: string; color: string };
@@ -48,6 +48,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { path: "/blood-requests",   icon: Droplet,        label: "Blood Emergency",  color: "#DC2626" },
       { path: "/support-tickets",  icon: MessageSquare,  label: "Support Tickets",  color: "#F59E0B" },
+      { path: "/enquiries",        icon: Inbox,          label: "Enquiries & Leads", color: "#8B5CF6" },
     ],
   },
   {

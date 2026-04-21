@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Sparkles, Building2, Star, Zap, Crown, Users, Rocket } from "lucide-react";
+import { Check, Sparkles, Building2, Star, Zap, Crown, Users, Rocket, Smartphone, Apple, X } from "lucide-react";
+import { useSiteSettings } from "@/lib/useSiteSettings";
 
 interface Plan {
   planKey: string;
@@ -42,7 +43,7 @@ const planIcons: Record<string, React.ComponentType<{ className?: string; color?
   starter: Building2, growth: Star, enterprise: Rocket
 };
 
-function PlanCard({ plan, isYearly, highlight, onBusinessSignUp }: { plan: Plan; isYearly: boolean; highlight: boolean; onBusinessSignUp?: () => void }) {
+function PlanCard({ plan, isYearly, highlight, onBusinessSignUp, onMobileInstall }: { plan: Plan; isYearly: boolean; highlight: boolean; onBusinessSignUp?: () => void; onMobileInstall?: () => void }) {
   const Icon = planIcons[plan.planKey] || Sparkles;
   const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
   const isCustom = plan.planKey === "enterprise" || plan.monthlyPrice === "0" && plan.planKey !== "free";
@@ -132,7 +133,7 @@ function PlanCard({ plan, isYearly, highlight, onBusinessSignUp }: { plan: Plan;
         </motion.a>
       ) : (
         <motion.button
-          onClick={onBusinessSignUp}
+          onClick={plan.type === "individual" ? onMobileInstall : onBusinessSignUp}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className={`w-full py-3 rounded-2xl text-sm font-bold text-center transition-all ${
@@ -143,7 +144,7 @@ function PlanCard({ plan, isYearly, highlight, onBusinessSignUp }: { plan: Plan;
             : { borderColor: plan.color + "40", color: plan.color }
           }
         >
-          {isFree ? "Get Started Free" : "Choose Plan"}
+          {plan.type === "individual" ? (isFree ? "Install App — Free" : "Install App") : (isFree ? "Get Started Free" : "Choose Plan")}
         </motion.button>
       )}
     </motion.div>
@@ -156,6 +157,8 @@ export default function PricingSection({ onBusinessSignUp }: { onBusinessSignUp?
   const [indPlans, setIndPlans] = useState<Plan[]>(defaultIndividual);
   const [orgPlans, setOrgPlans] = useState<Plan[]>(defaultOrg);
   const [loading, setLoading] = useState(true);
+  const [installOpen, setInstallOpen] = useState(false);
+  const settings = useSiteSettings();
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -251,6 +254,7 @@ export default function PricingSection({ onBusinessSignUp }: { onBusinessSignUp?
                 isYearly={isYearly}
                 highlight={plan.planKey === highlightKey}
                 onBusinessSignUp={tab === "organization" ? onBusinessSignUp : undefined}
+                onMobileInstall={tab === "individual" ? () => setInstallOpen(true) : undefined}
               />
             ))}
           </motion.div>
@@ -267,6 +271,67 @@ export default function PricingSection({ onBusinessSignUp }: { onBusinessSignUp?
           Prices include GST. Cancel anytime.
         </motion.div>
       </div>
+
+      {/* Install App Modal — choose Android/iOS */}
+      <AnimatePresence>
+        {installOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setInstallOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="bg-white rounded-3xl max-w-md w-full p-7 shadow-2xl relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button onClick={() => setInstallOpen(false)} className="absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
+                <X className="w-4 h-4 text-gray-600" />
+              </button>
+              <div className="text-center mb-6">
+                <div className="w-14 h-14 rounded-2xl mx-auto mb-3 bg-gradient-to-br from-[#0747A6] to-[#10B981] flex items-center justify-center">
+                  <Smartphone className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-xl font-extrabold text-gray-900">Install Aorane App</h3>
+                <p className="text-sm text-gray-500 mt-1">Choose your device to start tracking your health</p>
+              </div>
+
+              <div className="space-y-3">
+                <a
+                  href={settings.androidPlayStoreUrl || "https://play.google.com/store/apps/details?id=in.aorane.app"}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-4 p-4 rounded-2xl border-2 border-[#0747A6] bg-[#0747A6] text-white hover:bg-[#0a3d8a] transition-all"
+                >
+                  <Smartphone className="w-7 h-7" />
+                  <div className="flex-1 text-left">
+                    <div className="text-xs opacity-80">Available now on</div>
+                    <div className="text-base font-bold">Google Play Store</div>
+                  </div>
+                  <span className="text-xs font-bold bg-white/20 px-2 py-1 rounded-full">Live</span>
+                </a>
+
+                <button
+                  disabled={!settings.iosAppStoreUrl}
+                  onClick={() => settings.iosAppStoreUrl && window.open(settings.iosAppStoreUrl, "_blank")}
+                  className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${settings.iosAppStoreUrl ? "border-gray-900 bg-gray-900 text-white hover:bg-gray-800 cursor-pointer" : "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"}`}
+                >
+                  <Apple className="w-7 h-7" />
+                  <div className="flex-1 text-left">
+                    <div className="text-xs opacity-80">{settings.iosAppStoreUrl ? "Available on" : "Coming soon to"}</div>
+                    <div className="text-base font-bold">Apple App Store</div>
+                  </div>
+                  {!settings.iosAppStoreUrl && <span className="text-xs font-bold bg-gray-200 text-gray-600 px-2 py-1 rounded-full">Soon</span>}
+                </button>
+              </div>
+
+              <p className="text-xs text-center text-gray-400 mt-5">
+                Free download · 30-day money-back guarantee · Secure & private
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

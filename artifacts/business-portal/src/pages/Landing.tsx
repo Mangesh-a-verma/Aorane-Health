@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
+import EnquiryModal from "@/components/EnquiryModal";
+import { useSiteSettings } from "@/lib/useSiteSettings";
 
 const PRIMARY = "#005d90";
 const TEAL = "#006b56";
@@ -119,6 +121,9 @@ export default function Landing() {
   const statsRef = useRef<HTMLDivElement>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [investorOpen, setInvestorOpen] = useState(false);
+  const [expertOpen, setExpertOpen] = useState(false);
+  const settings = useSiteSettings();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -611,7 +616,7 @@ export default function Landing() {
                   "Digital health platforms serving B2B segments show 3–5x better retention than B2C health apps."
                   <footer style={{ marginTop: 8, fontStyle: "normal", fontWeight: 600, fontSize: 13, color: "#9ca3af" }}>— Industry Research Report, 2024</footer>
                 </blockquote>
-                <button style={{ background: "transparent", border: `2px solid ${PRIMARY}`, color: PRIMARY, borderRadius: 99, padding: "14px 28px", fontWeight: 700, fontSize: 15, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <button onClick={() => setInvestorOpen(true)} style={{ background: "transparent", border: `2px solid ${PRIMARY}`, color: PRIMARY, borderRadius: 99, padding: "14px 28px", fontWeight: 700, fontSize: 15, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}>
                   <Icon name="download" size={18} color={PRIMARY} />
                   Download Investor Deck
                 </button>
@@ -689,6 +694,7 @@ export default function Landing() {
                 Get Started Free
               </button>
               <button
+                onClick={() => setExpertOpen(true)}
                 style={{ background: "rgba(255,255,255,0.14)", color: "white", border: "2px solid rgba(255,255,255,0.3)", borderRadius: 99, padding: "18px 44px", fontWeight: 700, fontSize: 17, cursor: "pointer", backdropFilter: "blur(10px)", transition: "all 0.2s" }}
               >
                 Talk to an Expert
@@ -738,8 +744,19 @@ export default function Landing() {
             ))}
           </div>
           <div style={{ borderTop: "1px solid rgba(191,199,209,0.35)", paddingTop: 24, display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-            <p style={{ fontSize: 13, color: "#9ca3af", margin: 0 }}>© 2025 Aorane Health Technologies Pvt. Ltd. All rights reserved.</p>
-            <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+            <p style={{ fontSize: 13, color: "#9ca3af", margin: 0 }}>© {new Date().getFullYear()} {settings.companyName || "Aorane"}. All rights reserved.</p>
+            <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center" }}>
+              {[
+                { url: settings.socialTwitter,   icon: "alternate_email", label: "Twitter" },
+                { url: settings.socialLinkedin,  icon: "business_center", label: "LinkedIn" },
+                { url: settings.socialInstagram, icon: "photo_camera",    label: "Instagram" },
+                { url: settings.socialYoutube,   icon: "smart_display",   label: "YouTube" },
+                { url: settings.socialFacebook,  icon: "thumb_up",        label: "Facebook" },
+              ].filter((x) => x.url).map((s) => (
+                <a key={s.label} href={s.url!} target="_blank" rel="noopener noreferrer" aria-label={s.label} style={{ width: 32, height: 32, borderRadius: 8, background: "white", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(191,199,209,0.4)", textDecoration: "none" }}>
+                  <Icon name={s.icon} size={16} color="#6b7280" />
+                </a>
+              ))}
               {["ISO 27001 Certified", "GDPR Compliant", "Made in India 🇮🇳"].map((badge, i) => (
                 <span key={i} style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase" as const, letterSpacing: 1 }}>{badge}</span>
               ))}
@@ -747,6 +764,26 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+
+      <EnquiryModal
+        open={investorOpen}
+        onClose={() => setInvestorOpen(false)}
+        type="investor_deck"
+        title="Download Investor Deck"
+        subtitle="Share your details and we'll send the deck instantly. We'll also follow up with our investor relations team."
+        source="business_portal_investor"
+        primaryColor={PRIMARY}
+        successDownload
+      />
+      <EnquiryModal
+        open={expertOpen}
+        onClose={() => setExpertOpen(false)}
+        type="expert"
+        title="Talk to a Wellness Expert"
+        subtitle="Book a free 30-minute consultation with our team to design a wellness program for your organization."
+        source="business_portal_expert"
+        primaryColor={PRIMARY}
+      />
     </div>
   );
 }

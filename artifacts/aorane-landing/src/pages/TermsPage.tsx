@@ -28,7 +28,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-white font-semibold text-lg mb-3">1. Acceptance of Terms</h2>
             <p>By downloading, installing, or using the Aorane mobile application or web platform ("Platform"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not use our Platform.</p>
-            <p className="mt-3">These Terms constitute a legally binding agreement between you and Aorane Health Technology ("Aorane", "we", "us", "our"). These Terms are governed by the laws of India.</p>
+            <p className="mt-3">These Terms constitute a legally binding agreement between you and Aorane ("Aorane", "we", "us", "our"). These Terms are governed by the laws of India.</p>
           </section>
 
           <section>
@@ -98,9 +98,9 @@ export default function TermsPage() {
           <section>
             <h2 className="text-white font-semibold text-lg mb-3">7. Intellectual Property</h2>
             <ul className="list-disc pl-5 space-y-1.5">
-              <li>All content, design, code, and AI models on Aorane are owned by Aorane Health Technology</li>
+              <li>All content, design, code, and AI models on Aorane are owned by Aorane</li>
               <li>You may not copy, distribute, or reverse-engineer any part of the Platform</li>
-              <li>The Aorane name and logo are trademarks of Aorane Health Technology</li>
+              <li>The Aorane name and logo are trademarks of Aorane</li>
               <li>Content you upload (food photos, blood reports) remains yours; you grant Aorane a licence to process it for service delivery</li>
             </ul>
           </section>
@@ -163,7 +163,7 @@ export default function TermsPage() {
       </main>
 
       <footer className="border-t border-white/10 py-8 text-center text-white/30 text-xs">
-        © {new Date().getFullYear()} Aorane Health Technology. All rights reserved.
+        © {new Date().getFullYear()} Aorane. All rights reserved.
       </footer>
     </div>
   );

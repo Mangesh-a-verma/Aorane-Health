@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Building2, Palette, FileImage, BarChart3, Save, RefreshCw,
   Globe, Phone, Mail, MapPin, Tag, Upload, Eye, Link2, FileText,
-  CheckCircle2, Loader2,
+  CheckCircle2, Loader2, Twitter, Linkedin, Instagram, Youtube, Facebook, Smartphone, Apple,
 } from "lucide-react";
 
 type CompanySettings = {
@@ -17,16 +17,23 @@ type CompanySettings = {
   scorecardBgGradientTo: string; reportHeaderText: string | null;
   reportFooterText: string | null; reportLogoUrl: string | null;
   weeklyReportEnabled: boolean; monthlyReportEnabled: boolean;
+  socialTwitter: string | null; socialLinkedin: string | null;
+  socialInstagram: string | null; socialYoutube: string | null; socialFacebook: string | null;
+  investorDeckUrl: string | null;
+  androidPlayStoreUrl: string | null; iosAppStoreUrl: string | null;
 };
 
 const DEFAULTS: CompanySettings = {
-  companyName: "Aorane Health", companyLogoUrl: null, tagline: "Your Health, In Your Hands",
+  companyName: "Aorane", companyLogoUrl: null, tagline: "Your Health, In Your Hands",
   website: "aorane.com", supportPhone: "+917307826291", supportEmail: "support@aorane.com", address: "Indra Nagar, Near Lekhraj Metro, Lucknow, Uttar Pradesh 226016",
   primaryColor: "#0077B6", accentColor: "#00B896",
   scorecardShowQr: true, scorecardShowBloodGroup: true, scorecardShowBmi: true,
   scorecardShowActivePercent: true, scorecardBgGradientFrom: "#023E8A", scorecardBgGradientTo: "#1B998B",
   reportHeaderText: null, reportFooterText: null, reportLogoUrl: null,
   weeklyReportEnabled: true, monthlyReportEnabled: true,
+  socialTwitter: null, socialLinkedin: null, socialInstagram: null, socialYoutube: null, socialFacebook: null,
+  investorDeckUrl: null,
+  androidPlayStoreUrl: "https://play.google.com/store/apps/details?id=in.aorane.app", iosAppStoreUrl: null,
 };
 
 function SectionHeader({ icon: Icon, title, desc }: { icon: React.ElementType; title: string; desc: string }) {
@@ -43,7 +50,7 @@ function SectionHeader({ icon: Icon, title, desc }: { icon: React.ElementType; t
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-xs text-muted-foreground mb-1.5 font-medium">{label}</label>
@@ -141,7 +148,7 @@ export default function BrandingPage() {
               desc="Name, logo and basic info — shown in scorecard footer and reports" />
             <div className="space-y-4">
               <Field label="Company Name *">
-                <Input value={settings.companyName} onChange={(v) => set("companyName", v)} placeholder="e.g. Aorane Health Pvt. Ltd." />
+                <Input value={settings.companyName} onChange={(v) => set("companyName", v)} placeholder="e.g. Aorane" />
               </Field>
               <Field label="Tagline">
                 <Input value={settings.tagline || ""} onChange={(v) => set("tagline", v)} placeholder="e.g. Your Health, In Your Hands" />
@@ -175,6 +182,47 @@ export default function BrandingPage() {
                   placeholder="123, Health Tower, Mumbai, Maharashtra - 400001"
                   rows={2}
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 resize-none" />
+              </Field>
+            </div>
+          </div>
+
+          {/* ── SOCIAL MEDIA ── */}
+          <div className="bg-card border border-border rounded-2xl p-6">
+            <SectionHeader icon={Globe} title="Social Media URLs"
+              desc="Public links — shown in landing page & business portal footer. Leave blank to hide that icon." />
+            <div className="space-y-3">
+              <Field label={<><Twitter size={12} className="inline mr-1" />Twitter / X</>}>
+                <Input value={settings.socialTwitter || ""} onChange={(v) => set("socialTwitter", v || null)} placeholder="https://twitter.com/aorane" />
+              </Field>
+              <Field label={<><Linkedin size={12} className="inline mr-1" />LinkedIn</>}>
+                <Input value={settings.socialLinkedin || ""} onChange={(v) => set("socialLinkedin", v || null)} placeholder="https://linkedin.com/company/aorane" />
+              </Field>
+              <Field label={<><Instagram size={12} className="inline mr-1" />Instagram</>}>
+                <Input value={settings.socialInstagram || ""} onChange={(v) => set("socialInstagram", v || null)} placeholder="https://instagram.com/aorane" />
+              </Field>
+              <Field label={<><Youtube size={12} className="inline mr-1" />YouTube</>}>
+                <Input value={settings.socialYoutube || ""} onChange={(v) => set("socialYoutube", v || null)} placeholder="https://youtube.com/@aorane" />
+              </Field>
+              <Field label={<><Facebook size={12} className="inline mr-1" />Facebook</>}>
+                <Input value={settings.socialFacebook || ""} onChange={(v) => set("socialFacebook", v || null)} placeholder="https://facebook.com/aorane" />
+              </Field>
+            </div>
+          </div>
+
+          {/* ── MARKETING & MOBILE INSTALL ── */}
+          <div className="bg-card border border-border rounded-2xl p-6">
+            <SectionHeader icon={FileText} title="Marketing & Mobile Install"
+              desc="Investor deck PDF link & mobile app store URLs — used by Pricing CTA and Business Portal." />
+            <div className="space-y-4">
+              <Field label="Investor Deck URL (PDF)">
+                <Input value={settings.investorDeckUrl || ""} onChange={(v) => set("investorDeckUrl", v || null)} placeholder="https://drive.google.com/file/d/.../view" />
+                <p className="text-xs text-muted-foreground mt-1.5">Leads will be captured first, then redirected to this URL for download.</p>
+              </Field>
+              <Field label={<><Smartphone size={12} className="inline mr-1" />Android — Play Store URL</>}>
+                <Input value={settings.androidPlayStoreUrl || ""} onChange={(v) => set("androidPlayStoreUrl", v || null)} placeholder="https://play.google.com/store/apps/details?id=in.aorane.app" />
+              </Field>
+              <Field label={<><Apple size={12} className="inline mr-1" />iOS — App Store URL (leave blank if Coming Soon)</>}>
+                <Input value={settings.iosAppStoreUrl || ""} onChange={(v) => set("iosAppStoreUrl", v || null)} placeholder="https://apps.apple.com/app/idXXXXXXXX" />
               </Field>
             </div>
           </div>

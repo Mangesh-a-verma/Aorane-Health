@@ -89,6 +89,22 @@ export type AuditLog = {
   id: string; adminId: string; action: string; targetType: string; targetId: string;
   details: Record<string, unknown> | null; createdAt: string;
 };
+export type Enquiry = {
+  id: string;
+  type: "expert" | "investor_deck" | "general";
+  name: string;
+  email: string;
+  mobile: string | null;
+  city: string | null;
+  accountType: string | null;
+  companyName: string | null;
+  message: string | null;
+  source: string | null;
+  status: "new" | "contacted" | "closed";
+  notifiedAt: string | null;
+  createdAt: string;
+};
+
 export type AdCampaign = {
   id: string;
   adType: "google" | "direct";
@@ -167,6 +183,18 @@ export const api = {
   getCompanySettings: () => req<{ settings: Record<string, unknown> }>("/admin/settings/company"),
   updateCompanySettings: (data: Record<string, unknown>) =>
     req<{ settings: Record<string, unknown>; success: boolean }>("/admin/settings/company", { method: "PUT", body: JSON.stringify(data) }),
+
+  enquiries: (params?: { status?: string; type?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set("status", params.status);
+    if (params?.type)   qs.set("type",   params.type);
+    const q = qs.toString();
+    return req<{ enquiries: Enquiry[]; stats: { total: number; newCount: number; contactedCount: number; closedCount: number } }>(`/admin/enquiries${q ? `?${q}` : ""}`);
+  },
+  updateEnquiry: (id: string, status: "new" | "contacted" | "closed") =>
+    req<{ success: boolean; enquiry: Enquiry }>(`/admin/enquiries/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  deleteEnquiry: (id: string) =>
+    req<{ success: boolean }>(`/admin/enquiries/${id}`, { method: "DELETE" }),
 
   revenue: () => req<{
     summary: {

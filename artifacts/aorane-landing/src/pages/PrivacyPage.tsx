@@ -27,7 +27,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-white font-semibold text-lg mb-3">1. Introduction</h2>
-            <p>Aorane Health Technology ("Aorane", "we", "us", or "our") is committed to protecting your personal health information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application, web platform, and related services (collectively, the "Platform").</p>
+            <p>Aorane ("Aorane", "we", "us", or "our") is committed to protecting your personal health information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application, web platform, and related services (collectively, the "Platform").</p>
             <p className="mt-3">By using Aorane, you agree to the collection and use of information in accordance with this policy. This policy is compliant with India's Digital Personal Data Protection Act, 2023 (DPDPA).</p>
           </section>
 
@@ -140,7 +140,7 @@ export default function PrivacyPage() {
             <h2 className="text-white font-semibold text-lg mb-3">11. Contact Us</h2>
             <p>For any privacy-related queries, data requests, or complaints:</p>
             <div className="mt-3 space-y-1">
-              <p><strong className="text-white">Data Protection Officer:</strong> Aorane Health Technology</p>
+              <p><strong className="text-white">Data Protection Officer:</strong> Aorane</p>
               <p><strong className="text-white">Email:</strong> <a href="mailto:privacy@aorane.com" className="text-blue-400 hover:underline">privacy@aorane.com</a></p>
               <p><strong className="text-white">Support:</strong> <a href="mailto:support@aorane.com" className="text-blue-400 hover:underline">support@aorane.com</a></p>
               <p><strong className="text-white">Phone:</strong> +91 73078 26291</p>
@@ -151,7 +151,7 @@ export default function PrivacyPage() {
       </main>
 
       <footer className="border-t border-white/10 py-8 text-center text-white/30 text-xs">
-        © {new Date().getFullYear()} Aorane Health Technology. All rights reserved.
+        © {new Date().getFullYear()} Aorane. All rights reserved.
       </footer>
     </div>
   );

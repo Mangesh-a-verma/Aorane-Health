@@ -108,7 +108,7 @@ export async function sendEmailOtp(email: string, otp: string): Promise<boolean>
           </div>
           <p style="font-size:11px;color:#9ca3af;text-align:center;margin:20px 0 0;">
             If you did not request this, please ignore this email.<br/>
-            &copy; ${new Date().getFullYear()} Aorane Health Technologies
+            &copy; ${new Date().getFullYear()} Aorane
           </p>
         </div>
       `,
