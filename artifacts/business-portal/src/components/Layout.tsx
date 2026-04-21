@@ -58,12 +58,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Logo */}
         <div className="px-6 pt-6 pb-4 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
-            <img src={import.meta.env.BASE_URL + 'logo-white.svg'} alt="Aorane" style={{ height: 44, width: "auto", objectFit: "contain" }} />
-            <div>
-              <div className="text-sidebar-foreground/50 text-xs">Business Portal</div>
-            </div>
-          </div>
+          <Link href="/">
+            <a className="flex items-center gap-3 cursor-pointer" aria-label="Business portal home">
+              <img src={import.meta.env.BASE_URL + 'logo-full.png'} alt="Aorane" style={{ height: 88, width: "auto", objectFit: "contain", background: "white", borderRadius: 8, padding: 4 }} />
+              <div>
+                <div className="text-sidebar-foreground/50 text-xs">Business Portal</div>
+              </div>
+            </a>
+          </Link>
 
           {/* Org info */}
           <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/8">

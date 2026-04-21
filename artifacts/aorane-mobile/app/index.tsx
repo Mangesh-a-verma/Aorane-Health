@@ -36,7 +36,7 @@ function SplashScreen() {
             style={styles.glowCircle}
           />
         </Animated.View>
-        <AoraneLogo color="#E8622A" crossWidth={90} showTagline />
+        <AoraneLogo width={180} />
       </Animated.View>
     </View>
   );

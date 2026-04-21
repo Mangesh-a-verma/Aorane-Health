@@ -66,7 +66,7 @@ export default function Login() {
         {/* Logo */}
         <div className="relative">
           <div className="flex items-center gap-3">
-            <img src={import.meta.env.BASE_URL + 'logo-white.svg'} alt="Aorane" style={{ height: 48, width: "auto", objectFit: "contain" }} />
+            <img src={import.meta.env.BASE_URL + 'logo-full.png'} alt="Aorane" style={{ height: 88, width: "auto", objectFit: "contain" }} />
             <div>
               <div className="text-[9px] font-mono tracking-[0.3em]"
                    style={{ color: "rgba(255,255,255,0.25)" }}>
@@ -150,7 +150,7 @@ export default function Login() {
 
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
-            <img src={import.meta.env.BASE_URL + 'logo-white.svg'} alt="Aorane" style={{ height: 44, width: "auto", objectFit: "contain", margin: "0 auto 8px" }} />
+            <img src={import.meta.env.BASE_URL + 'logo-full.png'} alt="Aorane" style={{ height: 88, width: "auto", objectFit: "contain", margin: "0 auto 8px" }} />
             <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>Admin Console</div>
           </div>
 

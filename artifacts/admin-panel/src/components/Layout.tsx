@@ -122,11 +122,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
           <div className="flex items-center gap-3">
-            <img src={import.meta.env.BASE_URL + 'logo-white.svg'} alt="Aorane" style={{ height: 44, width: "auto", objectFit: "contain" }} />
+            <Link href="/">
+              <a className="flex items-center cursor-pointer" aria-label="Admin home">
+                <img src={import.meta.env.BASE_URL + 'logo-full.png'} alt="Aorane" style={{ height: 88, width: "auto", objectFit: "contain", background: "white", borderRadius: 8, padding: 4 }} />
+              </a>
+            </Link>
             <div>
-              <div className="font-black text-sm tracking-widest gradient-text">Aorane</div>
               <div className="text-[9px] font-mono tracking-[0.25em] mt-0.5"
-                   style={{ color: "rgba(255,255,255,0.28)" }}>
+                   style={{ color: "rgba(255,255,255,0.45)" }}>
                 SUPER ADMIN
               </div>
             </div>

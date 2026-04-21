@@ -42,10 +42,10 @@ export default function Navbar({ audience, onAudienceChange, onSignIn, onSignUp 
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-2.5">
-            <img src={import.meta.env.BASE_URL + 'logo-dark.svg'} alt="Aorane" style={{ height: 44, width: "auto", objectFit: "contain" }} />
+          <a href="/" className="flex items-center gap-2.5 cursor-pointer" aria-label="Aorane home">
+            <img src={import.meta.env.BASE_URL + 'logo-full.png'} alt="Aorane" style={{ height: 88, width: "auto", objectFit: "contain" }} />
             <span className="hidden sm:inline-block text-xs font-semibold bg-[#10B981]/10 text-[#059669] px-2 py-0.5 rounded-full ml-1">Health+</span>
-          </div>
+          </a>
 
           <div className="hidden md:flex items-center gap-1">
             {links.map((l) => (

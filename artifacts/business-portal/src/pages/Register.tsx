@@ -161,7 +161,7 @@ export default function Register() {
       }} className="hide-on-mobile">
         <div>
           <div style={{ marginBottom: 56 }}>
-            <img src={import.meta.env.BASE_URL + 'logo-white.svg'} alt="Aorane" style={{ height: 44, width: "auto", objectFit: "contain" }} />
+            <img src={import.meta.env.BASE_URL + 'logo-full.png'} alt="Aorane" style={{ height: 88, width: "auto", objectFit: "contain" }} />
             <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", marginTop: 6, textTransform: "uppercase" as const }}>Business Suite</div>
           </div>
           <h2 style={{ fontSize: 32, fontWeight: 800, color: "white", lineHeight: 1.25, margin: "0 0 16px", fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
@@ -194,7 +194,7 @@ export default function Register() {
 
           {/* Mobile logo */}
           <div style={{ display: "none", alignItems: "center", gap: 10, marginBottom: 32 }} className="mobile-logo">
-            <img src={import.meta.env.BASE_URL + 'logo-dark.svg'} alt="Aorane" style={{ height: 44, width: "auto", objectFit: "contain" }} />
+            <img src={import.meta.env.BASE_URL + 'logo-full.png'} alt="Aorane" style={{ height: 88, width: "auto", objectFit: "contain" }} />
           </div>
 
           {/* Step Progress */}
