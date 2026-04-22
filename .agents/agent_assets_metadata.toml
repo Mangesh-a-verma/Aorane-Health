@@ -23,3 +23,9 @@ id = "zmDU-qY3GEu7ehu3l41vl"
 uri = "file://exports/AORANE_Blueprint.pdf"
 type = "pdf"
 title = "AORANE Platform — Complete Blueprint & Analysis (23 Pages)"
+
+[[outputs]]
+id = "4GygxH04m-sVbkO74AYxD"
+uri = "file://aorane-project-blueprint.pdf"
+type = "pdf"
+title = "Aorane Project Blueprint — Complete Technical Documentation"
