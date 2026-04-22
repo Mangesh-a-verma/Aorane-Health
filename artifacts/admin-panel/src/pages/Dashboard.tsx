@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "wouter";
 import Layout from "@/components/Layout";
 import { api } from "@/lib/api";
 import {
@@ -447,8 +448,8 @@ export default function Dashboard() {
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               {QUICK_LINKS.map(a => (
-                <a key={a.href} href={`/admin-panel${a.href}`}
-                   className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all hover:scale-[1.02] group"
+                <Link key={a.href} href={a.href}
+                   className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all hover:scale-[1.02] group cursor-pointer"
                    style={{
                      background: "rgba(255,255,255,0.04)",
                      color: "rgba(255,255,255,0.55)",
@@ -457,7 +458,7 @@ export default function Dashboard() {
                   <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: a.color }} />
                   <span className="truncate">{a.label}</span>
                   <ArrowRight size={10} className="ml-auto opacity-0 group-hover:opacity-60 transition-opacity" />
-                </a>
+                </Link>
               ))}
             </div>
           </div>

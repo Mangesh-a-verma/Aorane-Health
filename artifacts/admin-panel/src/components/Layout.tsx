@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useRoute } from "wouter";
 import { useAuth } from "@/context/AuthContext";
+import { api, type Enquiry } from "@/lib/api";
 import {
   LayoutDashboard, Users, Building2, Flag, UtensilsCrossed,
   Tag, Megaphone, Droplet, Languages, ClipboardList, LogOut,
@@ -89,6 +90,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { admin, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [dark, setDark] = useState(true);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifEnquiries, setNotifEnquiries] = useState<Enquiry[]>([]);
+  const [newCount, setNewCount] = useState(0);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("aorane_theme");
@@ -96,6 +102,32 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     setDark(isDark);
     document.documentElement.classList.toggle("dark", isDark);
   }, []);
+
+  useEffect(() => {
+    api.enquiries().then(d => {
+      setNewCount(d.stats?.newCount ?? 0);
+      setNotifEnquiries((d.enquiries ?? []).slice(0, 6));
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!notifOpen) return;
+    setNotifLoading(true);
+    api.enquiries().then(d => {
+      setNewCount(d.stats?.newCount ?? 0);
+      setNotifEnquiries((d.enquiries ?? []).slice(0, 6));
+    }).catch(() => {}).finally(() => setNotifLoading(false));
+  }, [notifOpen]);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    }
+    if (notifOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [notifOpen]);
 
   function toggleTheme() {
     const next = !dark;
@@ -245,14 +277,88 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               {dark ? <Sun size={14} /> : <Moon size={14} />}
             </button>
 
-            <button className="w-7 h-7 rounded-lg flex items-center justify-center relative"
-                    style={{ color: "rgba(255,255,255,0.45)" }}>
-              <Bell size={14} />
-              <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full text-[7px] font-bold flex items-center justify-center"
-                    style={{ background: "#0077B6", color: "white" }}>
-                3
-              </span>
-            </button>
+            <div ref={notifRef} className="relative">
+              <button
+                onClick={() => setNotifOpen(p => !p)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center relative transition-all"
+                style={{ color: notifOpen ? "white" : "rgba(255,255,255,0.45)", background: notifOpen ? "rgba(0,119,182,0.25)" : "transparent" }}
+              >
+                <Bell size={14} />
+                {newCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full text-[7px] font-bold flex items-center justify-center"
+                        style={{ background: "#0077B6", color: "white" }}>
+                    {newCount > 9 ? "9+" : newCount}
+                  </span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="absolute right-0 top-9 w-80 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                     style={{ background: "#0e1628", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div className="px-4 py-3 flex items-center justify-between"
+                       style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                    <span className="text-xs font-bold text-white">Notifications</span>
+                    {newCount > 0 && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                            style={{ background: "#0077B620", color: "#60b4e8" }}>
+                        {newCount} new
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="max-h-72 overflow-y-auto">
+                    {notifLoading ? (
+                      <div className="py-8 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>Loading…</div>
+                    ) : notifEnquiries.length === 0 ? (
+                      <div className="py-8 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                        <Inbox size={20} className="mx-auto mb-2 opacity-30" />
+                        No new enquiries
+                      </div>
+                    ) : (
+                      notifEnquiries.map(e => (
+                        <Link key={e.id} href="/enquiries" onClick={() => setNotifOpen(false)}>
+                          <a className="flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors"
+                             style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                             onMouseEnter={ev => (ev.currentTarget.style.background = "rgba(255,255,255,0.03)")}
+                             onMouseLeave={ev => (ev.currentTarget.style.background = "transparent")}>
+                            <div className="w-7 h-7 rounded-xl shrink-0 flex items-center justify-center mt-0.5"
+                                 style={{ background: e.status === "new" ? "#F59E0B22" : "#0077B622" }}>
+                              <MessageSquare size={12} style={{ color: e.status === "new" ? "#F59E0B" : "#60b4e8" }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-medium truncate" style={{ color: "rgba(255,255,255,0.85)" }}>
+                                  {e.name}
+                                </span>
+                                <span className="text-[9px] shrink-0 px-1.5 py-0.5 rounded-full font-bold uppercase"
+                                      style={{ background: e.status === "new" ? "#F59E0B22" : "#6b728022", color: e.status === "new" ? "#F59E0B" : "#9ca3af" }}>
+                                  {e.status}
+                                </span>
+                              </div>
+                              <div className="text-[10px] mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.35)" }}>
+                                {e.email}
+                              </div>
+                              <div className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }}>
+                                {new Date(e.createdAt).toLocaleDateString("en-IN")}
+                              </div>
+                            </div>
+                          </a>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+
+                  <Link href="/enquiries" onClick={() => setNotifOpen(false)}>
+                    <a className="block px-4 py-2.5 text-center text-xs font-medium cursor-pointer transition-colors"
+                       style={{ color: "#60b4e8", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+                       onMouseEnter={ev => (ev.currentTarget.style.background = "rgba(0,119,182,0.08)")}
+                       onMouseLeave={ev => (ev.currentTarget.style.background = "transparent")}>
+                      View all enquiries →
+                    </a>
+                  </Link>
+                </div>
+              )}
+            </div>
 
             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
                  style={{ background: "linear-gradient(135deg,#0077B6,#1B998B)" }}>

@@ -24,8 +24,8 @@ export default function EnquiriesPage() {
     setLoading(true);
     try {
       const data = await api.enquiries({ status: statusFilter || undefined, type: typeFilter || undefined });
-      setList(data.enquiries);
-      setStats(data.stats);
+      setList(data.enquiries ?? []);
+      setStats(data.stats ?? { total: 0, newCount: 0, contactedCount: 0, closedCount: 0 });
     } catch {
       toast({ title: "Error", description: "Failed to load enquiries", variant: "destructive" });
     }

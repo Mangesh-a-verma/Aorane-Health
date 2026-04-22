@@ -32,7 +32,7 @@ function formFromPlan(plan: PlanPricingItem): Form {
     maxSeats: plan.maxSeats?.toString() ?? "",
     badgeText: plan.badgeText ?? "",
     badgeColor: plan.badgeColor ?? "#0077B6",
-    features: [...plan.features],
+    features: [...(Array.isArray(plan.features) ? plan.features : [])],
     isActive: plan.isActive,
   };
 }
