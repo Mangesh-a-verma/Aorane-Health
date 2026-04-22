@@ -418,7 +418,18 @@ router.post("/auth/send-email-otp", async (req, res) => {
     }
     const otp = generateOtp(6);
     const hashed = hashOtp(otp);
-    cache.setOtp(`email:${email.toLowerCase()}`, hashed);
+    const emailKey = `email:${email.toLowerCase()}`;
+
+    // Store in memory cache (fast path)
+    cache.setOtp(emailKey, hashed);
+
+    // Also persist in DB so OTP survives server restarts & multiple instances
+    await db.delete(otpStoreTable).where(eq(otpStoreTable.phone, emailKey)).catch(() => {});
+    await db.insert(otpStoreTable).values({
+      phone: emailKey,
+      hashedOtp: hashed,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    }).catch(() => {});
 
     const sent = await sendEmailOtp(email, otp);
     const isDev = process.env.NODE_ENV !== "production";
@@ -449,16 +460,31 @@ router.post("/auth/verify-email-otp", async (req, res) => {
       res.status(400).json({ error: "Email and OTP required" });
       return;
     }
-    const storedHash = cache.getOtp(`email:${email.toLowerCase()}`);
+    const emailKey = `email:${email.toLowerCase()}`;
+
+    // Check memory cache first (fast path)
+    let storedHash: string | null = (cache.getOtp(emailKey) as string | null) ?? null;
+
+    // Fallback to DB — survives server restarts and multiple Render instances
+    if (!storedHash) {
+      const [dbRecord] = await db
+        .select()
+        .from(otpStoreTable)
+        .where(and(eq(otpStoreTable.phone, emailKey), gt(otpStoreTable.expiresAt, new Date())));
+      if (dbRecord) storedHash = dbRecord.hashedOtp;
+    }
+
     if (!storedHash) {
       res.status(400).json({ error: "OTP expired or not found. Please request a new one." });
       return;
     }
-    if (!verifyOtpHash(otp, storedHash as string)) {
+    if (!verifyOtpHash(otp, storedHash)) {
       res.status(400).json({ error: "Incorrect OTP. Please try again." });
       return;
     }
-    cache.deleteOtp(`email:${email.toLowerCase()}`);
+    // Clean up from both cache and DB
+    cache.deleteOtp(emailKey);
+    await db.delete(otpStoreTable).where(eq(otpStoreTable.phone, emailKey)).catch(() => {});
 
     let [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase()));
     let isNewUser = false;
