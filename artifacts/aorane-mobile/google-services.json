@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "294648735770",
+    "project_id": "aorane-51d93",
+    "storage_bucket": "aorane-51d93.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:294648735770:android:654c1b6c65eabf9116c9a3",
+        "android_client_info": {
+          "package_name": "com.aorane.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDIS80RmeITjq3BRekAs_2OnfDqiXZ89A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
