@@ -156,7 +156,7 @@ router.post("/payment/verify", requireAuth, async (req: AuthRequest, res) => {
     await db.insert(subscriptionsTable).values({
       userId: req.userId!, plan: plan as string, status: "active",
       source: "razorpay", expiresAt, paymentType: "one_time", autoRenew: false, nextRenewalAt: expiresAt,
-    });
+    }).onConflictDoNothing();
     await db.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, req.userId!));
     let inviteCode: string | null = null;
     if (plan === "family") inviteCode = await autoCreateFamilyGroup(req.userId!);
@@ -258,6 +258,20 @@ router.delete("/payment/subscription/cancel", requireAuth, async (req: AuthReque
     res.json({ success: true, message: "Auto-renew cancelled. Plan stays active until expiry.", expiresAt: sub.expiresAt });
   } catch {
     res.status(500).json({ error: "Failed to cancel auto-renew" });
+  }
+});
+
+// ─── GET: Check payment order status (for mobile polling after browser checkout)
+router.get("/payment/order-status", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { orderId } = req.query as { orderId?: string };
+    if (!orderId) { res.status(400).json({ error: "orderId required" }); return; }
+    const [payment] = await db.select().from(paymentsTable)
+      .where(and(eq(paymentsTable.razorpayOrderId, orderId), eq(paymentsTable.userId, req.userId!)));
+    if (!payment) { res.status(404).json({ error: "Order not found" }); return; }
+    res.json({ status: payment.status, plan: payment.plan, paymentId: payment.id, razorpayPaymentId: payment.razorpayPaymentId });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch order status" });
   }
 });
 

@@ -408,6 +408,8 @@ export const api = {
     request<{ success: boolean; message: string; inviteCode?: string | null; expiresAt?: string }>("POST", "/payment/verify", data),
   validatePromoCode: (code: string, plan: string) =>
     request<{ valid: boolean; discount: number; code: string; message: string }>("POST", "/payment/promo/validate", { code, plan }),
+  getOrderStatus: (orderId: string) =>
+    request<{ status: string; plan: string; paymentId: string; razorpayPaymentId: string | null }>("GET", `/payment/order-status?orderId=${encodeURIComponent(orderId)}`),
 
   // ── Scorecard ──────────────────────────────────────────────
   getScorecard: () =>

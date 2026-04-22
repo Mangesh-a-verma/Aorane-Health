@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   TextInput, Platform, useColorScheme, Alert, Linking,
@@ -145,11 +145,20 @@ export default function UpgradeScreen() {
   const [success, setSuccess] = useState(false);
   const [familyInviteCode, setFamilyInviteCode] = useState<string | null>(null);
   const [rzpReady, setRzpReady] = useState(false);
+  const [waitingForPayment, setWaitingForPayment] = useState(false);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollingOrderRef = useRef<{ orderId: string; paymentId: string; plan: string } | null>(null);
   const topPad = insets.top;
   const bg = isDark ? "#010814" : "#F0F9FF";
 
   const plan = (plans.find(p => p.key === selectedPlan) ?? plans[0])!;
   const finalPrice = Math.round((plan?.price ?? 0) * (1 - discount / 100));
+
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     api.getPlans("individual").then(res => {
@@ -188,7 +197,17 @@ export default function UpgradeScreen() {
     } finally { setValidatingPromo(false); }
   };
 
-  const onPaymentSuccess = async (paymentId: string, rzPaymentId: string, rzOrderId: string, rzSignature: string, isTestMode = false) => {
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    pollingOrderRef.current = null;
+    setWaitingForPayment(false);
+  }, []);
+
+  const onPaymentSuccess = useCallback(async (paymentId: string, rzPaymentId: string, rzOrderId: string, rzSignature: string, isTestMode = false) => {
+    stopPolling();
     try {
       const result = await api.verifyPayment({ paymentId, razorpayPaymentId: rzPaymentId, razorpayOrderId: rzOrderId, razorpaySignature: rzSignature, plan: selectedPlan, isTestMode });
       if (refreshUser) await refreshUser();
@@ -197,7 +216,45 @@ export default function UpgradeScreen() {
     } catch (e: unknown) {
       Alert.alert("Verification Failed", (e as Error).message || "Payment could not be verified");
     }
-  };
+  }, [selectedPlan, refreshUser, stopPolling]);
+
+  const startPollingForPayment = useCallback((orderId: string, paymentId: string, planKey: string) => {
+    pollingOrderRef.current = { orderId, paymentId, plan: planKey };
+    setWaitingForPayment(true);
+    let attempts = 0;
+    const maxAttempts = 100; // ~5 minutes at 3s intervals
+    pollingRef.current = setInterval(async () => {
+      attempts++;
+      if (attempts > maxAttempts) { stopPolling(); return; }
+      try {
+        const status = await api.getOrderStatus(orderId);
+        if (status.status === "success") {
+          stopPolling();
+          await onPaymentSuccess(paymentId, status.razorpayPaymentId || "", orderId, "", true);
+          setLoading(false);
+        }
+      } catch { /* ignore polling errors, keep retrying */ }
+    }, 3000);
+  }, [onPaymentSuccess, stopPolling]);
+
+  const checkPaymentNow = useCallback(async () => {
+    if (!pollingOrderRef.current) return;
+    const { orderId, paymentId } = pollingOrderRef.current;
+    setLoading(true);
+    try {
+      const status = await api.getOrderStatus(orderId);
+      if (status.status === "success") {
+        stopPolling();
+        await onPaymentSuccess(paymentId, status.razorpayPaymentId || "", orderId, "", true);
+      } else {
+        Alert.alert("Payment Pending", "Payment is not confirmed yet. Please complete payment in the browser and try again.");
+      }
+    } catch {
+      Alert.alert("Error", "Could not check payment status. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [onPaymentSuccess, stopPolling]);
 
   const openRazorpayNative = (orderRes: { paymentId: string; razorpayOrderId: string; razorpayKeyId: string; amount: number }) => {
     let callbackBase = process.env.EXPO_PUBLIC_API_URL?.replace("/api", "") || "";
@@ -215,6 +272,8 @@ export default function UpgradeScreen() {
     });
     const url = `https://api.razorpay.com/v1/checkout/embedded?${params.toString()}`;
     Linking.openURL(url);
+    // Start polling for payment confirmation after browser opens
+    startPollingForPayment(orderRes.razorpayOrderId, orderRes.paymentId, selectedPlan);
   };
 
   const handleUpgrade = async () => {
@@ -399,6 +458,26 @@ export default function UpgradeScreen() {
 
       {success && (
         <SuccessOverlay plan={selectedPlan} inviteCode={familyInviteCode} onDone={() => { setSuccess(false); setFamilyInviteCode(null); router.replace((selectedPlan === "family" ? "/family" : "/(tabs)") as never); }} />
+      )}
+
+      {waitingForPayment && !success && (
+        <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.88)", zIndex: 998, padding: 24 }]}>
+          <LinearGradient colors={["#0D2040", "#091526"]} style={{ borderRadius: 24, padding: 32, alignItems: "center", width: "100%", maxWidth: 320, borderWidth: 1, borderColor: "rgba(59,130,246,0.3)" }}>
+            <Text style={{ fontSize: 52, marginBottom: 16 }}>💳</Text>
+            <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 20, textAlign: "center", marginBottom: 8 }}>Payment Processing...</Text>
+            <Text style={{ color: "rgba(255,255,255,0.6)", fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center", marginBottom: 24, lineHeight: 20 }}>
+              Browser mein payment complete karein.{"\n"}Payment confirm hone par app automatically update ho jayega.
+            </Text>
+            <TouchableOpacity onPress={checkPaymentNow} disabled={loading} style={{ backgroundColor: "#3B82F6", borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14, width: "100%", alignItems: "center", marginBottom: 12, opacity: loading ? 0.6 : 1 }}>
+              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>
+                {loading ? "Checking..." : "✓ Payment Ho Gayi? Check Karo"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={stopPolling} style={{ paddingVertical: 10, paddingHorizontal: 20 }}>
+              <Text style={{ color: "rgba(255,255,255,0.4)", fontFamily: "Inter_400Regular", fontSize: 13 }}>Cancel / Wapas Jao</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
       )}
     </View>
   );
