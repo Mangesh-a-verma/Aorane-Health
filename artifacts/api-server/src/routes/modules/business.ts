@@ -443,6 +443,16 @@ router.get("/business/enrollment-codes", requireBusinessAuth, async (req: Busine
 });
 
 // ─── BUSINESS BILLING ─────────────────────────────────────────────────────────
+/** Map billing plan key → org plan enum value (basic | pro | max) */
+function billingPlanToOrgPlan(planKey: string): "basic" | "pro" | "max" {
+  const map: Record<string, "basic" | "pro" | "max"> = {
+    starter: "basic", basic: "basic",
+    growth: "pro",   pro: "pro",
+    enterprise: "max", max: "max",
+  };
+  return map[planKey] ?? "basic";
+}
+
 async function getOrgPlansFromDB() {
   const rows = await db.select().from(planPricingTable)
     .where(eq(planPricingTable.type, "organization"))
@@ -536,7 +546,7 @@ router.post("/business/billing/verify", requireBusinessAuth, async (req: Busines
     const expiresAt = new Date();
     expiresAt.setFullYear(expiresAt.getFullYear() + 1);
     await db.update(organizationsTable).set({
-      totalSeats: planInfo.seats, plan: "pro" as "basic" | "pro" | "max", isVerified: true,
+      totalSeats: planInfo.seats, plan: billingPlanToOrgPlan(plan as string), isVerified: true,
     }).where(eq(organizationsTable.id, req.orgId!));
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
     res.json({ success: true, org, message: `${planInfo.label} plan activated! ${planInfo.seats} seats unlocked.`, expiresAt });
@@ -563,7 +573,7 @@ router.post("/business/billing/subscription/create", requireBusinessAuth, async 
         autoRenew: true, nextRenewalAt: expiresAt,
       }).returning();
       await db.update(organizationsTable).set({
-        totalSeats: planInfo.seats, plan: "pro" as "basic" | "pro" | "max", isVerified: true,
+        totalSeats: planInfo.seats, plan: billingPlanToOrgPlan(plan), isVerified: true,
       }).where(eq(organizationsTable.id, req.orgId!));
       const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
       return res.json({
@@ -608,7 +618,7 @@ router.post("/business/billing/subscription/verify", requireBusinessAuth, async 
     expiresAt.setDate(expiresAt.getDate() + 30);
     await db.update(orgPaymentsTable).set({ status: "success", nextRenewalAt: expiresAt }).where(eq(orgPaymentsTable.id, paymentId));
     await db.update(organizationsTable).set({
-      totalSeats: planInfo.seats, plan: "pro" as "basic" | "pro" | "max", isVerified: true,
+      totalSeats: planInfo.seats, plan: billingPlanToOrgPlan(plan), isVerified: true,
     }).where(eq(organizationsTable.id, req.orgId!));
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
     res.json({ success: true, org, message: `${planInfo.label} auto-subscription activated!`, expiresAt });
@@ -1085,7 +1095,7 @@ router.post("/business/billing/seat-verify", requireBusinessAuth, async (req: Bu
     const seatCount = Number(seats) || 10;
     await db.update(organizationsTable).set({
       totalSeats: seatCount,
-      plan: (String(plan) === "pro" ? "pro" : "max") as "max" | "pro" | "basic",
+      plan: billingPlanToOrgPlan(String(plan)),
       isVerified: true,
     }).where(eq(organizationsTable.id, req.orgId!));
 
