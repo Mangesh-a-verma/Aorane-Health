@@ -147,6 +147,30 @@ export default function Billing() {
     setSuccess("");
     try {
       const order = await api.createSeatOrder(selectedPlan, seatCount, billing, orgGstin, orgState);
+
+      if (order.isTestMode) {
+        // Test mode: skip Razorpay checkout, verify directly
+        const result = await api.verifySeatPayment({
+          paymentId: order.paymentId,
+          razorpayPaymentId: "test_" + Date.now(),
+          razorpayOrderId: order.razorpayOrderId || "test_order",
+          razorpaySignature: "test_sig",
+          seats: seatCount,
+          plan: selectedPlan,
+          billingCycle: billing,
+          isTestMode: true,
+        });
+        if (result.org) setOrg?.(result.org);
+        setSuccess((result.message || `${seatCount} seats activated!`) + " [Test Mode]");
+        setSubscription({ plan: selectedPlan, status: "success", payment_type: "one_time", expires_at: result.expiresAt });
+        return;
+      }
+
+      if (!order.razorpayKeyId) {
+        setError("Payment gateway not ready. Please contact support.");
+        return;
+      }
+
       const ok = await loadRazorpay();
       if (!ok) { setError("Razorpay checkout failed to load. Check your internet connection and try again."); return; }
       await new Promise<void>((resolve, reject) => {

@@ -29,6 +29,7 @@ import Profile from "@/pages/Profile";
 import AIFoodDiscovery from "@/pages/AIFoodDiscovery";
 import SupportTickets from "@/pages/SupportTickets";
 import Enquiries from "@/pages/Enquiries";
+import Invoices from "@/pages/Invoices";
 
 const queryClient = new QueryClient();
 
@@ -100,6 +101,7 @@ function Router() {
       <Route path="/ai-food-discovery"   component={() => <Protected component={AIFoodDiscovery} />} />
       <Route path="/support-tickets"     component={() => <Protected component={SupportTickets} />} />
       <Route path="/enquiries"           component={() => <Protected component={Enquiries} />} />
+      <Route path="/invoices"            component={() => <Protected component={Invoices} />} />
       <Route component={NotFound} />
     </Switch>
   );

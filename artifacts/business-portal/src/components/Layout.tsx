@@ -64,14 +64,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Logo / Wordmark */}
         <div className="px-5 pt-5 pb-4 border-b border-sidebar-border">
           <Link href="/dashboard">
-            <a className="flex items-center gap-3 cursor-pointer" aria-label="Business portal home">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-sm shrink-0">
-                <span className="text-white font-bold text-lg font-display">A</span>
-              </div>
-              <div className="leading-tight">
-                <div className="font-display font-extrabold text-lg tracking-tight text-foreground">AORANE</div>
-                <div className="text-[11px] text-primary/80 -mt-0.5 font-medium tracking-wide">Business CRM</div>
-              </div>
+            <a className="flex items-center gap-2 cursor-pointer" aria-label="Business portal home">
+              <img
+                src={import.meta.env.BASE_URL + "logo-full.png"}
+                alt="Aorane"
+                className="h-9 w-auto object-contain"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              />
+              <div className="text-[11px] text-primary/80 font-medium tracking-wide leading-tight mt-0.5">Business CRM</div>
             </a>
           </Link>
 

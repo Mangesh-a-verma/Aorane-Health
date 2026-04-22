@@ -9,9 +9,10 @@ import bcrypt from "bcryptjs";
 import { generateOtp, hashOtp, verifyOtpHash, sendEmailOtp } from "../../lib/otp";
 import { verifyAndMigratePassword } from "../../lib/auth-utils";
 import {
-  isLiveMode, createPlan, createSubscription, cancelSubscription,
+  isLiveMode, isTestMode, createPlan, createSubscription, cancelSubscription,
   verifySubscriptionSignature, verifyPaymentSignature, createOrder,
 } from "../../lib/razorpay";
+import { sendInvoiceEmail } from "../../lib/invoice-email";
 
 const router = Router();
 
@@ -888,12 +889,18 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
     const invoiceSeq = Math.floor(Math.random() * 9000) + 1000;
     const invoiceNumber = `AOR/${fy}/${invoiceSeq}`;
 
-    const { createOrder, isLiveMode } = await import("../../lib/razorpay.js");
-    if (!isLiveMode()) {
+    const liveMode = isLiveMode();
+    const testModeActive = isTestMode();
+
+    if (!liveMode && !testModeActive) {
       res.status(503).json({ error: "Payment gateway not configured. Please contact support." }); return;
     }
-    const order = await createOrder({ amount: totalAmount, receipt: `biz_${req.orgId!.substring(0, 8)}` });
-    const razorpayOrderId = order.id;
+
+    let razorpayOrderId: string | null = null;
+    if (liveMode) {
+      const rzOrder = await createOrder({ amount: totalAmount, receipt: `biz_${req.orgId!.substring(0, 8)}` });
+      razorpayOrderId = rzOrder.id;
+    }
 
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
     const [payment] = await db.insert(orgPaymentsTable).values({
@@ -901,7 +908,7 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
       plan,
       seats,
       amount: String(totalAmount),
-      razorpayOrderId,
+      razorpayOrderId: razorpayOrderId || undefined,
       status: "pending",
     }).returning();
 
@@ -928,7 +935,7 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
       aoranGstin: await getAoraneGstin(),
       razorpayOrderId,
       razorpayKeyId: process.env["RAZORPAY_KEY_ID"] || null,
-      isTestMode: false,
+      isTestMode: testModeActive && !liveMode,
     });
   } catch (e) {
     console.error("[seat-order]", e);
@@ -966,6 +973,50 @@ router.post("/business/billing/seat-verify", requireBusinessAuth, async (req: Bu
     }).where(eq(organizationsTable.id, req.orgId!));
 
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
+
+    // Send invoice email
+    const [payment] = await db.select().from(orgPaymentsTable).where(eq(orgPaymentsTable.id, String(paymentId)));
+    if (payment && org?.contactEmail) {
+      const year = new Date().getFullYear();
+      const fy = new Date().getMonth() >= 3 ? `${year}-${String(year + 1).slice(2)}` : `${year - 1}-${String(year).slice(2)}`;
+      const invoiceSeq = Math.floor(Math.random() * 9000) + 1000;
+      const invoiceNumber = `AOR/${fy}/${invoiceSeq}`;
+      const planInfo = SEAT_PLANS[String(plan)] ?? { label: String(plan), pricePerSeat: 0, yearlyPricePerSeat: 0 };
+      const months = billingCycle === "yearly" ? 12 : 1;
+      const pricePerSeat = billingCycle === "yearly" ? planInfo.yearlyPricePerSeat : planInfo.pricePerSeat;
+      const baseAmt = pricePerSeat * seatCount * months;
+      const isSameState = (org.state || "").toUpperCase() === AORANE_STATE;
+      const gstAmt = Math.round(baseAmt * GST_RATE);
+      const cgstAmt = isSameState ? Math.round(gstAmt / 2) : 0;
+      const sgstAmt = isSameState ? Math.round(gstAmt / 2) : 0;
+      const igstAmt = isSameState ? 0 : gstAmt;
+      const totalAmt = baseAmt + gstAmt;
+      sendInvoiceEmail({
+        toEmail: org.contactEmail,
+        orgName: org.name,
+        invoiceData: {
+          invoiceNumber,
+          invoiceDate: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+          orgName: org.name,
+          orgGstin: org.gstin || undefined,
+          orgState: org.state || undefined,
+          planLabel: planInfo.label,
+          seats: seatCount,
+          billingCycle: String(billingCycle || "monthly"),
+          pricePerSeat,
+          months,
+          baseAmount: baseAmt,
+          cgstAmount: cgstAmt,
+          sgstAmount: sgstAmt,
+          igstAmount: igstAmt,
+          gstAmount: gstAmt,
+          totalAmount: totalAmt,
+          isSameState,
+          razorpayPaymentId: String(razorpayPaymentId || ""),
+        },
+      }).catch((err) => console.warn("[Invoice Email] fire-and-forget error:", err));
+    }
+
     res.json({ success: true, message: `${seatCount} seats activated! Your enrollment code is ready.`, org, expiresAt });
   } catch (e) {
     console.error("[seat-verify]", e);

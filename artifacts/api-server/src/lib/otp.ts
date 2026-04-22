@@ -83,7 +83,7 @@ export async function sendSmsOtp(phone: string, otp: string): Promise<boolean> {
 
 export async function sendEmailOtp(email: string, otp: string): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL || "otp@aorane.com";
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "support@aorane.com";
   if (!apiKey) {
     console.warn("[Email OTP] RESEND_API_KEY not set — skipping email send");
     return false;

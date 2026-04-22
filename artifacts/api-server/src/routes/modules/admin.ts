@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, foodScanCacheTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable, planPricingTable } from "@workspace/db";
+import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, foodScanCacheTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable, planPricingTable, orgPaymentsTable } from "@workspace/db";
 import { eq, desc, ilike, count, or, sql, and } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import { signAdminToken } from "../../lib/jwt";
@@ -721,6 +721,32 @@ router.get("/admin/food-cache/export", requireAdmin, async (req, res) => {
       res.json({ exportedAt: new Date().toISOString(), filter, count: rows.length, entries: rows });
     }
   } catch { res.status(500).json({ error: "Export failed" }); }
+});
+
+// ─── Business Org Invoices ────────────────────────────────────────────────────
+router.get("/admin/org-invoices", requireAdmin, async (_req: AdminRequest, res) => {
+  try {
+    const invoices = await db.select({
+      id: orgPaymentsTable.id,
+      orgId: orgPaymentsTable.orgId,
+      orgName: organizationsTable.name,
+      orgEmail: organizationsTable.contactEmail,
+      plan: orgPaymentsTable.plan,
+      seats: orgPaymentsTable.seats,
+      amount: orgPaymentsTable.amount,
+      currency: orgPaymentsTable.currency,
+      status: orgPaymentsTable.status,
+      paymentType: orgPaymentsTable.paymentType,
+      razorpayPaymentId: orgPaymentsTable.razorpayPaymentId,
+      razorpayOrderId: orgPaymentsTable.razorpayOrderId,
+      expiresAt: orgPaymentsTable.expiresAt,
+      createdAt: orgPaymentsTable.createdAt,
+    })
+    .from(orgPaymentsTable)
+    .innerJoin(organizationsTable, eq(orgPaymentsTable.orgId, organizationsTable.id))
+    .orderBy(desc(orgPaymentsTable.createdAt));
+    res.json({ invoices });
+  } catch { res.status(500).json({ error: "Failed to fetch org invoices" }); }
 });
 
 router.post("/admin/change-password", requireAdmin, async (req: AdminRequest, res) => {

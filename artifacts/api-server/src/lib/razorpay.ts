@@ -16,6 +16,11 @@ export function isLiveMode() {
   return !!keyId && keyId.startsWith("rzp_live_");
 }
 
+export function isTestMode() {
+  const keyId = RAZORPAY_KEY_ID();
+  return !!keyId && keyId.startsWith("rzp_test_");
+}
+
 async function rzPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
   const auth = authHeader();
   if (!auth) throw new Error("Razorpay keys not configured");
