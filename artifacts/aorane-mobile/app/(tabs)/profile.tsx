@@ -317,6 +317,7 @@ export default function ProfileScreen() {
             </View>
             {[
               { Icon: Diamond,    label: "Upgrade Plan",              color: DS.color.purple, bg: DS.color.purpleSoft, onPress: () => router.push("/upgrade" as never) },
+              { Icon: Briefcase,  label: "Join Organization",         color: "#0077B6",       bg: "#EBF5FB",            onPress: () => router.push("/enrollment" as never) },
               { Icon: Bell,       label: "Notifications & Reminders", color: P,               bg: DS.color.primarySoft, onPress: () => router.push("/notification-settings" as never) },
               { Icon: HelpCircle, label: "Help & Support",            color: G,               bg: DS.color.greenSoft,   onPress: () => router.push("/help" as never) },
             ].map((item, idx) => (

@@ -336,9 +336,71 @@ router.post("/business/enroll", requireAuth, async (req, res) => {
     await db.insert(orgMembersTable).values({ orgId: org.id, userId, enrolledViaCode: orgCode });
     await db.update(organizationsTable).set({ usedSeats: org.usedSeats + 1 }).where(eq(organizationsTable.id, org.id));
 
-    res.status(201).json({ success: true, org: { name: org.name, type: org.orgType } });
+    // Upgrade user plan to org's plan (the whole point of org enrollment!)
+    const orgPlan = (org.plan === "max" ? "max" : "pro") as "pro" | "max";
+    const expiresAt = new Date();
+    expiresAt.setFullYear(expiresAt.getFullYear() + 1); // 1-year access via org
+    await db.update(usersTable).set({ plan: orgPlan }).where(eq(usersTable.id, userId));
+    await db.insert(subscriptionsTable).values({
+      userId, plan: orgPlan, status: "active", source: "organization",
+      expiresAt, paymentType: "one_time", autoRenew: false, nextRenewalAt: expiresAt,
+    }).onConflictDoNothing();
+
+    res.status(201).json({ success: true, planUpgraded: orgPlan, org: { name: org.name, type: org.orgType } });
   } catch {
     res.status(500).json({ error: "Failed to enroll in organization" });
+  }
+});
+
+// ─── POST: Use enrollment code (from enrollmentCodesTable) → upgrade user plan ─
+router.post("/business/use-enrollment-code", requireAuth, async (req, res) => {
+  try {
+    const { code } = req.body as { code: string };
+    const userId = (req as unknown as { userId: string }).userId;
+    if (!code) { res.status(400).json({ error: "Enrollment code required" }); return; }
+
+    const [enrollCode] = await db.select().from(enrollmentCodesTable)
+      .where(and(eq(enrollmentCodesTable.code, code.toUpperCase().trim()), eq(enrollmentCodesTable.isActive, true)));
+    if (!enrollCode) { res.status(404).json({ error: "Invalid enrollment code" }); return; }
+    if (enrollCode.expiresAt && new Date(enrollCode.expiresAt) < new Date()) {
+      res.status(400).json({ error: "This enrollment code has expired" }); return;
+    }
+    if (enrollCode.usedSeats >= enrollCode.totalSeats) {
+      res.status(400).json({ error: "All seats for this code are taken" }); return;
+    }
+
+    const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, enrollCode.orgId));
+    if (!org || !org.isActive) { res.status(404).json({ error: "Organization not found or inactive" }); return; }
+
+    // Check if user already enrolled in this org
+    const existing = await db.select().from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, userId)));
+    if (existing.length) { res.status(409).json({ error: "Already enrolled in this organization" }); return; }
+
+    // Enroll user
+    await db.insert(orgMembersTable).values({ orgId: org.id, userId, enrolledViaCode: code });
+    await db.update(enrollmentCodesTable).set({ usedSeats: enrollCode.usedSeats + 1 }).where(eq(enrollmentCodesTable.id, enrollCode.id));
+    await db.update(organizationsTable).set({ usedSeats: org.usedSeats + 1 }).where(eq(organizationsTable.id, org.id));
+
+    // Upgrade user plan based on enrollment code's planType
+    const planToGrant = (["pro", "max", "family"].includes(enrollCode.planType) ? enrollCode.planType : "pro") as "pro" | "max" | "family";
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + enrollCode.validityDays);
+    await db.update(usersTable).set({ plan: planToGrant }).where(eq(usersTable.id, userId));
+    await db.insert(subscriptionsTable).values({
+      userId, plan: planToGrant, status: "active", source: "organization",
+      expiresAt, paymentType: "one_time", autoRenew: false, nextRenewalAt: expiresAt,
+    }).onConflictDoNothing();
+
+    res.status(201).json({
+      success: true,
+      planUpgraded: planToGrant,
+      expiresAt,
+      org: { name: org.name, type: org.orgType },
+      message: `${planToGrant.toUpperCase()} plan activated via ${org.name}!`,
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to use enrollment code" });
   }
 });
 
@@ -450,10 +512,22 @@ router.post("/business/billing/order", requireBusinessAuth, async (req: Business
 // ─── verify one-time payment ──────────────────────────────────────────────────
 router.post("/business/billing/verify", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
-    const { paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature, plan, isTestMode } = req.body as Record<string, unknown>;
-    if (!isTestMode && isLiveMode()) {
+    const { paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature, plan } = req.body as Record<string, unknown>;
+    // ALWAYS verify signature in LIVE mode — no isTestMode bypass allowed
+    if (isLiveMode()) {
+      if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+        res.status(400).json({ error: "Payment details missing" }); return;
+      }
       const valid = verifyPaymentSignature(razorpayOrderId as string, razorpayPaymentId as string, razorpaySignature as string);
       if (!valid) { res.status(400).json({ error: "Payment signature invalid" }); return; }
+    }
+    // Verify payment belongs to this org
+    const [existingPayment] = await db.select().from(orgPaymentsTable)
+      .where(and(eq(orgPaymentsTable.id, paymentId as string), eq(orgPaymentsTable.orgId, req.orgId!)));
+    if (!existingPayment) { res.status(404).json({ error: "Payment not found" }); return; }
+    if (existingPayment.status === "success") {
+      const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
+      res.json({ success: true, org, message: "Already activated", alreadyDone: true }); return;
     }
     const orgPlansVerify = await getOrgPlansFromDB();
     const planInfo = orgPlansVerify[plan as string];
@@ -946,13 +1020,25 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
 
 router.post("/business/billing/seat-verify", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
-    const { paymentId, razorpayPaymentId, razorpayOrderId, razorpaySignature, seats, plan, billingCycle, isTestMode } = req.body as Record<string, unknown>;
+    const { paymentId, razorpayPaymentId, razorpayOrderId, razorpaySignature, seats, plan, billingCycle } = req.body as Record<string, unknown>;
     if (!paymentId) { res.status(400).json({ error: "paymentId required" }); return; }
 
-    if (!isTestMode) {
+    // ALWAYS verify signature in LIVE mode — no isTestMode bypass allowed
+    if (isLiveMode()) {
+      if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+        res.status(400).json({ error: "Payment details missing" }); return;
+      }
       const { verifyPaymentSignature } = await import("../../lib/razorpay.js");
       const valid = verifyPaymentSignature(String(razorpayOrderId), String(razorpayPaymentId), String(razorpaySignature));
       if (!valid) { res.status(400).json({ error: "Payment verification failed" }); return; }
+    }
+    // Verify payment belongs to this org
+    const [existingPay] = await db.select().from(orgPaymentsTable)
+      .where(and(eq(orgPaymentsTable.id, String(paymentId)), eq(orgPaymentsTable.orgId, req.orgId!)));
+    if (!existingPay) { res.status(404).json({ error: "Payment not found" }); return; }
+    if (existingPay.status === "success") {
+      const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
+      res.json({ success: true, org, message: "Already activated", alreadyDone: true }); return;
     }
 
     const months = billingCycle === "yearly" ? 12 : 1;

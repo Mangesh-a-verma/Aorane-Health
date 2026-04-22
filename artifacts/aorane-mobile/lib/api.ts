@@ -397,6 +397,12 @@ export const api = {
   logPeriod: (data: { startDate: string; endDate?: string; symptoms?: string[]; flow?: string; notes?: string }) =>
     request<{ success: boolean; log: Record<string, unknown>; prediction: Record<string, unknown> | null }>("POST", "/period/log", data),
 
+  // ── Org Enrollment ─────────────────────────────────────────
+  enrollWithOrgCode: (orgCode: string) =>
+    request<{ success: boolean; planUpgraded: string; org: { name: string; type: string } }>("POST", "/business/enroll", { orgCode }),
+  useEnrollmentCode: (code: string) =>
+    request<{ success: boolean; planUpgraded: string; expiresAt: string; org: { name: string; type: string }; message: string }>("POST", "/business/use-enrollment-code", { code }),
+
   // ── Plans / Pricing ────────────────────────────────────────
   getPlans: (type?: string) =>
     request<{ plans: Array<{ planKey: string; displayName: string; type: string; monthlyPrice: string; yearlyPrice: string | null; maxSeats: number | null; features: string[]; badgeText: string | null; badgeColor: string | null; gradientColors: [string,string] | null; isActive: boolean; sortOrder: number }> }>("GET", `/plans${type ? `?type=${type}` : ""}`),
