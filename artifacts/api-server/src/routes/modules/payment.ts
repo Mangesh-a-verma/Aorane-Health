@@ -101,7 +101,7 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { plan, promoCode } = req.body as { plan: string; promoCode?: string };
     const planData = await getPlanFromDB(plan);
-    if (!planData || planData.type !== "individual" || planData.planKey === "free") {
+    if (!planData || !["individual", "family"].includes(planData.type) || planData.planKey === "free" || Number(planData.monthlyPrice) <= 0) {
       res.status(400).json({ error: "Invalid plan" }); return;
     }
     let discount = 0;
@@ -171,7 +171,7 @@ router.post("/payment/subscription/create", requireAuth, async (req: AuthRequest
   try {
     const { plan, promoCode } = req.body as { plan: string; promoCode?: string };
     const planData = await getPlanFromDB(plan);
-    if (!planData || planData.type !== "individual" || planData.planKey === "free") {
+    if (!planData || !["individual", "family"].includes(planData.type) || planData.planKey === "free" || Number(planData.monthlyPrice) <= 0) {
       res.status(400).json({ error: "Invalid plan" }); return;
     }
     let discount = 0;

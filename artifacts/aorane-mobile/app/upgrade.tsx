@@ -218,8 +218,8 @@ export default function UpgradeScreen() {
     }
   }, [selectedPlan, refreshUser, stopPolling]);
 
-  const startPollingForPayment = useCallback((orderId: string, paymentId: string, planKey: string) => {
-    pollingOrderRef.current = { orderId, paymentId, plan: planKey };
+  const startPollingForPayment = useCallback((orderId: string, _paymentId: string, _planKey: string) => {
+    pollingOrderRef.current = { orderId, paymentId: _paymentId, plan: _planKey };
     setWaitingForPayment(true);
     let attempts = 0;
     const maxAttempts = 100; // ~5 minutes at 3s intervals
@@ -230,22 +230,26 @@ export default function UpgradeScreen() {
         const status = await api.getOrderStatus(orderId);
         if (status.status === "success") {
           stopPolling();
-          await onPaymentSuccess(paymentId, status.razorpayPaymentId || "", orderId, "", true);
+          // Callback already processed payment & updated DB — just refresh user state
+          if (refreshUser) await refreshUser();
+          setSuccess(true);
           setLoading(false);
         }
       } catch { /* ignore polling errors, keep retrying */ }
     }, 3000);
-  }, [onPaymentSuccess, stopPolling]);
+  }, [refreshUser, stopPolling]);
 
   const checkPaymentNow = useCallback(async () => {
     if (!pollingOrderRef.current) return;
-    const { orderId, paymentId } = pollingOrderRef.current;
+    const { orderId } = pollingOrderRef.current;
     setLoading(true);
     try {
       const status = await api.getOrderStatus(orderId);
       if (status.status === "success") {
         stopPolling();
-        await onPaymentSuccess(paymentId, status.razorpayPaymentId || "", orderId, "", true);
+        // Callback already processed payment & updated DB — just refresh user state
+        if (refreshUser) await refreshUser();
+        setSuccess(true);
       } else {
         Alert.alert("Payment Pending", "Payment is not confirmed yet. Please complete payment in the browser and try again.");
       }
@@ -254,7 +258,7 @@ export default function UpgradeScreen() {
     } finally {
       setLoading(false);
     }
-  }, [onPaymentSuccess, stopPolling]);
+  }, [refreshUser, stopPolling]);
 
   const openRazorpayNative = (orderRes: { paymentId: string; razorpayOrderId: string; razorpayKeyId: string; amount: number }) => {
     let callbackBase = process.env.EXPO_PUBLIC_API_URL?.replace("/api", "") || "";
