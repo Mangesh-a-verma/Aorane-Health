@@ -162,7 +162,7 @@ export default function Register() {
         <div>
           <div style={{ marginBottom: 56 }}>
             <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: 32, color: "white", letterSpacing: "-0.02em", lineHeight: 1 }}>AORANE</div>
-            <div style={{ fontFamily: "'Noto Sans Devanagari', sans-serif", fontSize: 14, color: "rgba(255,255,255,0.85)", marginTop: 4, letterSpacing: 0.5 }}>आज़ाद जीवन</div>
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", marginTop: 4, letterSpacing: 0.5, fontWeight: 500 }}>Business CRM</div>
             <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 11, fontWeight: 700, letterSpacing: "0.2em", marginTop: 10, textTransform: "uppercase" as const }}>Business Suite</div>
           </div>
           <h2 style={{ fontSize: 32, fontWeight: 800, color: "white", lineHeight: 1.25, margin: "0 0 16px", fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
@@ -196,7 +196,7 @@ export default function Register() {
           {/* Mobile logo */}
           <div style={{ display: "none", flexDirection: "column", gap: 2, marginBottom: 28 }} className="mobile-logo">
             <span style={{ fontSize: 28, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.02em", lineHeight: 1 }}>AORANE</span>
-            <span style={{ fontSize: 13, fontFamily: "'Noto Sans Devanagari', sans-serif", color: PRIMARY }}>आज़ाद जीवन · Business Suite</span>
+            <span style={{ fontSize: 13, color: PRIMARY }}>Aorane · Business Suite</span>
           </div>
 
           {/* Step Progress */}

@@ -70,7 +70,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </div>
               <div className="leading-tight">
                 <div className="font-display font-extrabold text-lg tracking-tight text-foreground">AORANE</div>
-                <div className="font-deva text-[11px] text-primary/80 -mt-0.5">आज़ाद जीवन</div>
+                <div className="text-[11px] text-primary/80 -mt-0.5 font-medium tracking-wide">Business CRM</div>
               </div>
             </a>
           </Link>
