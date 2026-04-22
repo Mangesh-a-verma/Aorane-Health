@@ -353,17 +353,16 @@ export default function PlanPricing() {
           </div>
         </div>
 
-        {/* Current plan summary strip */}
-        <div className="flex flex-wrap gap-3">
-          {[
-            { name: "Free", price: "₹0", color: "#4B5563" },
-            { name: "Max", price: "₹199/mo", color: "#0077B6" },
-            { name: "Pro", price: "₹249/mo", color: "#8B5CF6" },
-            { name: "Family", price: "₹399/mo", color: "#F59E0B" },
-          ].map(p => (
-            <div key={p.name} className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
-                 style={{ background: `${p.color}15`, color: p.color, border: `1px solid ${p.color}25` }}>
-              {p.name} — {p.price}
+        {/* Current plan summary strip — dynamic from DB */}
+        <div className="flex flex-wrap gap-2">
+          {plans.map(p => (
+            <div key={p.planKey}
+                 onClick={() => setActiveType(p.type === "organization" ? "organization" : "individual")}
+                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
+                 style={{ background: `${p.badgeColor || "#4B5563"}15`, color: p.badgeColor || "#4B5563", border: `1px solid ${p.badgeColor || "#4B5563"}25` }}
+                 title={`${p.type} plan`}>
+              {p.type === "organization" ? <Building2 size={10} /> : <Smartphone size={10} />}
+              {p.displayName} — {p.monthlyPrice === "0" ? "Free" : `₹${p.monthlyPrice}/mo`}
             </div>
           ))}
         </div>

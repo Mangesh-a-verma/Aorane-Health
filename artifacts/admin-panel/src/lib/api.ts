@@ -75,8 +75,10 @@ export type Flag = {
   enabledForPlans: string[]; config: Record<string, unknown> | null;
 };
 export type FoodItem = {
-  id: string; name: string; calories: number; protein: number; carbs: number;
-  fat: number; category: string; isVerified: boolean;
+  id: string; foodNameEn: string; foodNameLocal?: Record<string, string> | null;
+  calories: string | number; proteinG: string | number; carbsG: string | number; fatG: string | number;
+  servingSizeG?: string | number | null; servingDescription?: string | null;
+  category: string; isVerified: boolean; aiGenerated?: boolean;
 };
 export type PromoCode = {
   id: string; code: string; discountPct: number; applicablePlans: string[];

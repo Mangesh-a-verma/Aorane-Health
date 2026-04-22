@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { api } from "@/lib/api";
-import { DollarSign, Server, Users, TrendingDown } from "lucide-react";
+import { IndianRupee, Server, Users, TrendingDown } from "lucide-react";
 
 type Cost = { category: string; monthlyUSD: number; description: string };
 type CostData = { costs: Cost[]; totalMonthlyUSD: number; totalMonthlyINR: number; userCount: number; costPerUser: number };
@@ -53,22 +53,22 @@ export default function PlatformCosts() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-card border border-border rounded-xl p-5">
                 <div className="flex items-start justify-between mb-3">
-                  <span className="text-muted-foreground text-sm">Monthly Cost (USD)</span>
+                  <span className="text-muted-foreground text-sm">Monthly Cost (INR)</span>
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#0077B6]/12">
-                    <DollarSign size={17} className="text-[#0077B6]" />
+                    <IndianRupee size={17} className="text-[#0077B6]" />
                   </div>
                 </div>
-                <div className="text-3xl font-bold text-foreground">${data.totalMonthlyUSD}</div>
+                <div className="text-3xl font-bold text-foreground">₹{data.totalMonthlyINR.toLocaleString("en-IN")}</div>
                 <div className="text-xs text-muted-foreground mt-1">Per month</div>
               </div>
               <div className="bg-card border border-border rounded-xl p-5">
                 <div className="flex items-start justify-between mb-3">
-                  <span className="text-muted-foreground text-sm">Monthly Cost (INR)</span>
+                  <span className="text-muted-foreground text-sm">USD Equivalent</span>
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#10B981]/12">
-                    <span className="text-sm font-bold" style={{ color: "#10B981" }}>₹</span>
+                    <span className="text-sm font-bold" style={{ color: "#10B981" }}>$</span>
                   </div>
                 </div>
-                <div className="text-3xl font-bold text-foreground">₹{data.totalMonthlyINR.toLocaleString()}</div>
+                <div className="text-3xl font-bold text-foreground">${data.totalMonthlyUSD}</div>
                 <div className="text-xs text-muted-foreground mt-1">@ ₹{INR_RATE}/USD</div>
               </div>
               <div className="bg-card border border-border rounded-xl p-5">
@@ -88,7 +88,7 @@ export default function PlatformCosts() {
                     <TrendingDown size={17} className="text-[#F59E0B]" />
                   </div>
                 </div>
-                <div className="text-3xl font-bold text-foreground">${data.costPerUser}</div>
+                <div className="text-3xl font-bold text-foreground">₹{(data.costPerUser * INR_RATE).toFixed(2)}</div>
                 <div className="text-xs text-muted-foreground mt-1">Per user/month</div>
               </div>
             </div>
@@ -112,7 +112,7 @@ export default function PlatformCosts() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-medium text-foreground text-sm">{cost.category}</span>
-                          <span className="font-bold text-foreground text-sm">${cost.monthlyUSD}/mo</span>
+                          <span className="font-bold text-foreground text-sm">₹{Math.round(cost.monthlyUSD * INR_RATE).toLocaleString("en-IN")}/mo</span>
                         </div>
                         <div className="text-muted-foreground text-xs mb-2">{cost.description}</div>
                         <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -128,7 +128,7 @@ export default function PlatformCosts() {
               <div className="mt-5 pt-4 border-t border-border flex items-center justify-between">
                 <div className="font-semibold text-foreground">Total Monthly Cost</div>
                 <div className="text-right">
-                  <div className="font-bold text-xl text-foreground">${data.totalMonthlyUSD}/mo</div>
+                  <div className="font-bold text-xl text-foreground">₹{data.totalMonthlyINR.toLocaleString("en-IN")}/mo</div>
                   <div className="text-muted-foreground text-xs">≈ ₹{data.totalMonthlyINR.toLocaleString()}/mo</div>
                 </div>
               </div>

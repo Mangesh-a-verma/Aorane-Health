@@ -73,6 +73,75 @@ export default function Invoices() {
   const paidCount = invoices.filter(i => i.status === "success").length;
   const pendingCount = invoices.filter(i => i.status === "pending").length;
 
+  function downloadInvoice(inv: OrgInvoice, idx: number) {
+    const invNo = `AOR-${String(idx + 1).padStart(4, "0")}`;
+    const date = new Date(inv.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<style>
+  body{font-family:Arial,sans-serif;margin:0;padding:40px;color:#1a1a1a;background:#fff}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:24px;border-bottom:2px solid #0077B6}
+  .brand{font-size:26px;font-weight:800;color:#0077B6;letter-spacing:-0.5px}
+  .brand small{display:block;font-size:12px;font-weight:400;color:#666;margin-top:2px}
+  .inv-meta{text-align:right}
+  .inv-meta .label{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.5px}
+  .inv-meta .val{font-size:16px;font-weight:700;margin-bottom:4px}
+  table{width:100%;border-collapse:collapse;margin:24px 0}
+  th{background:#f4f8fb;border:1px solid #e2e8f0;padding:10px 14px;text-align:left;font-size:12px;text-transform:uppercase;color:#555;letter-spacing:0.4px}
+  td{border:1px solid #e2e8f0;padding:11px 14px;font-size:14px}
+  .total-row{background:#0077B6;color:#fff;font-weight:700;font-size:16px}
+  .status{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;background:${inv.status === "success" ? "#d1fae5" : "#fef3c7"};color:${inv.status === "success" ? "#065f46" : "#92400e"}}
+  .footer{margin-top:40px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:11px;color:#888;text-align:center}
+</style></head><body>
+<div class="header">
+  <div>
+    <div class="brand">Aorane Health<small>Your Health, In Your Hands</small></div>
+    <div style="margin-top:16px;font-size:13px;color:#555">support@aorane.in &nbsp;|&nbsp; aorane.in</div>
+  </div>
+  <div class="inv-meta">
+    <div class="label">Invoice Number</div>
+    <div class="val">${invNo}</div>
+    <div class="label" style="margin-top:8px">Date</div>
+    <div style="font-size:14px;color:#333">${date}</div>
+    <div style="margin-top:10px"><span class="status">${inv.status === "success" ? "PAID" : inv.status.toUpperCase()}</span></div>
+  </div>
+</div>
+
+<div style="margin-bottom:24px">
+  <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Billed To</div>
+  <div style="font-size:17px;font-weight:700;color:#1a1a1a">${inv.orgName}</div>
+  <div style="font-size:14px;color:#555;margin-top:2px">${inv.orgEmail}</div>
+</div>
+
+<table>
+  <thead><tr><th>Description</th><th>Plan</th><th>Seats</th><th>Payment Type</th><th style="text-align:right">Amount</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Aorane Business Subscription — ${inv.plan.charAt(0).toUpperCase() + inv.plan.slice(1)} Plan</td>
+      <td>${inv.plan.charAt(0).toUpperCase() + inv.plan.slice(1)}</td>
+      <td>${inv.seats ?? "—"}</td>
+      <td>${inv.paymentType ?? "Online"}</td>
+      <td style="text-align:right;font-weight:700">₹${Number(inv.amount || 0).toLocaleString("en-IN")}</td>
+    </tr>
+    <tr class="total-row">
+      <td colspan="4" style="text-align:right">Total (INR)</td>
+      <td style="text-align:right">₹${Number(inv.amount || 0).toLocaleString("en-IN")}</td>
+    </tr>
+  </tbody>
+</table>
+
+${inv.razorpayPaymentId ? `<div style="margin:20px 0;font-size:13px;color:#555"><strong>Payment ID:</strong> ${inv.razorpayPaymentId}</div>` : ""}
+${inv.razorpayOrderId ? `<div style="font-size:13px;color:#555"><strong>Order ID:</strong> ${inv.razorpayOrderId}</div>` : ""}
+${inv.expiresAt ? `<div style="margin-top:8px;font-size:13px;color:#555"><strong>Subscription Valid Till:</strong> ${new Date(inv.expiresAt).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}</div>` : ""}
+
+<div class="footer">This is a computer-generated invoice. For queries, contact support@aorane.in<br>Aorane Health &copy; ${new Date().getFullYear()}</div>
+</body></html>`;
+    const blob = new Blob([html], { type: "text/html" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${invNo}-${inv.orgName.replace(/\s+/g, "-")}.html`;
+    a.click();
+  }
+
   function exportCsv() {
     const header = "Invoice,Org,Email,Plan,Seats,Amount,Status,Payment ID,Date";
     const rows = filtered.map((inv, i) => [
@@ -186,6 +255,7 @@ export default function Invoices() {
                     <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Payment ID</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Invoice</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -225,6 +295,15 @@ export default function Invoices() {
                             Expires: {new Date(inv.expiresAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                           </div>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => downloadInvoice(inv, i)}
+                          title="Download Invoice"
+                          className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        >
+                          <Download size={12} /> Download
+                        </button>
                       </td>
                     </tr>
                   ))}

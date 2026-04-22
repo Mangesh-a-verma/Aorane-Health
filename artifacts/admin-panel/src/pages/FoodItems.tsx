@@ -1,38 +1,56 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
-import { api, type FoodItem } from "@/lib/api";
-import { UtensilsCrossed, Plus, Search, X, CheckCircle } from "lucide-react";
+import { api, adminRequest, type FoodItem } from "@/lib/api";
+import { UtensilsCrossed, Plus, Search, X, CheckCircle, AlertCircle } from "lucide-react";
 
 export default function FoodItems() {
   const [items, setItems] = useState<FoodItem[]>([]);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({
-    name: "", calories: "", protein: "", carbs: "", fat: "", category: "vegetable",
+    foodNameEn: "", calories: "", proteinG: "", carbsG: "", fatG: "", category: "vegetable",
   });
 
-  useEffect(() => {
-    api.foodItems().then((r) => setItems(r.items)).catch(console.error).finally(() => setLoading(false));
-  }, []);
+  const fetchItems = (q = "") => {
+    setLoading(true);
+    setLoadError("");
+    const url = q ? `/admin/food-items?limit=200&search=${encodeURIComponent(q)}` : `/admin/food-items?limit=200`;
+    adminRequest<{ items: FoodItem[]; total?: number }>(url)
+      .then((r) => {
+        setItems(r.items || []);
+        setTotalCount(r.total ?? null);
+      })
+      .catch((err) => setLoadError((err as Error).message || "Failed to load food items"))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchItems(); }, []);
 
   const create = async () => {
     setCreating(true);
     try {
       const res = await api.createFoodItem({
-        name: form.name, calories: Number(form.calories),
-        protein: Number(form.protein), carbs: Number(form.carbs),
-        fat: Number(form.fat), category: form.category,
+        foodNameEn: form.foodNameEn,
+        calories: Number(form.calories),
+        proteinG: Number(form.proteinG),
+        carbsG: Number(form.carbsG),
+        fatG: Number(form.fatG),
+        category: form.category,
       });
       setItems((i) => [res.item, ...i]);
       setShowModal(false);
-      setForm({ name: "", calories: "", protein: "", carbs: "", fat: "", category: "vegetable" });
+      setForm({ foodNameEn: "", calories: "", proteinG: "", carbsG: "", fatG: "", category: "vegetable" });
     } catch (err) { alert((err as Error).message); }
     finally { setCreating(false); }
   };
 
-  const filtered = items.filter((i) => !search || i.name?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = items.filter((i) =>
+    !search || i.foodNameEn?.toLowerCase().includes(search.toLowerCase())
+  );
 
   const CATEGORIES = ["vegetable", "fruit", "grain", "protein", "dairy", "snack", "beverage", "fast-food", "sweet", "oil"];
 
@@ -42,7 +60,12 @@ export default function FoodItems() {
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Food Database</h1>
-            <p className="text-muted-foreground text-sm">{items.length} food items</p>
+            <p className="text-muted-foreground text-sm">
+              {totalCount !== null ? `${totalCount.toLocaleString()} total` : `${items.length}`} food items
+              {items.length > 0 && totalCount !== null && items.length < totalCount
+                ? ` — showing ${items.length}`
+                : ""}
+            </p>
           </div>
           <button onClick={() => setShowModal(true)}
             className="flex items-center gap-2 bg-primary text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-primary/90">
@@ -52,9 +75,22 @@ export default function FoodItems() {
 
         <div className="relative mb-4">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search food item name..."
+          <input type="search" value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              if (e.target.value.length === 0) fetchItems();
+            }}
+            onKeyDown={(e) => { if (e.key === "Enter") fetchItems(search); }}
+            placeholder="Search food item name... (press Enter to search)"
             className="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-primary transition-all" />
         </div>
+
+        {loadError && (
+          <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl p-4 mb-4 text-sm">
+            <AlertCircle size={15} />
+            {loadError}
+          </div>
+        )}
 
         {loading ? (
           <div className="bg-card border border-border rounded-xl overflow-hidden animate-pulse">
@@ -64,6 +100,12 @@ export default function FoodItems() {
           <div className="flex flex-col items-center py-16 text-center">
             <UtensilsCrossed size={36} className="text-muted-foreground/30 mb-3" />
             <p className="text-muted-foreground">No food items found</p>
+            {search && (
+              <button onClick={() => { setSearch(""); fetchItems(); }}
+                className="mt-3 text-sm text-primary hover:underline flex items-center gap-1">
+                <X size={13} /> Clear search
+              </button>
+            )}
           </div>
         ) : (
           <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -79,11 +121,11 @@ export default function FoodItems() {
                 <tbody>
                   {filtered.map((item) => (
                     <tr key={item.id} className="border-b border-border last:border-0 hover:bg-muted/20">
-                      <td className="px-4 py-2.5 font-medium text-foreground">{item.name}</td>
+                      <td className="px-4 py-2.5 font-medium text-foreground">{item.foodNameEn}</td>
                       <td className="px-4 py-2.5 text-orange-500 font-semibold">{item.calories}</td>
-                      <td className="px-4 py-2.5 text-blue-500">{item.protein}g</td>
-                      <td className="px-4 py-2.5 text-yellow-500">{item.carbs}g</td>
-                      <td className="px-4 py-2.5 text-red-400">{item.fat}g</td>
+                      <td className="px-4 py-2.5 text-blue-500">{item.proteinG}g</td>
+                      <td className="px-4 py-2.5 text-yellow-500">{item.carbsG}g</td>
+                      <td className="px-4 py-2.5 text-red-400">{item.fatG}g</td>
                       <td className="px-4 py-2.5">
                         <span className="text-xs capitalize bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{item.category}</span>
                       </td>
@@ -108,16 +150,16 @@ export default function FoodItems() {
             </div>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Name *</label>
-                <input value={form.name} onChange={(e) => setForm((x) => ({ ...x, name: e.target.value }))} placeholder="e.g., Palak Paneer"
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Food Name *</label>
+                <input value={form.foodNameEn} onChange={(e) => setForm((x) => ({ ...x, foodNameEn: e.target.value }))} placeholder="e.g., Palak Paneer"
                   className="w-full bg-background border border-border rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-primary" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Calories (kcal)", key: "calories" },
-                  { label: "Protein (g)", key: "protein" },
-                  { label: "Carbs (g)", key: "carbs" },
-                  { label: "Fat (g)", key: "fat" },
+                  { label: "Protein (g)", key: "proteinG" },
+                  { label: "Carbs (g)", key: "carbsG" },
+                  { label: "Fat (g)", key: "fatG" },
                 ].map((f) => (
                   <div key={f.key}>
                     <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{f.label}</label>
@@ -134,7 +176,7 @@ export default function FoodItems() {
                   {CATEGORIES.map((c) => <option key={c} value={c} className="capitalize">{c}</option>)}
                 </select>
               </div>
-              <button onClick={create} disabled={creating || !form.name} className="w-full bg-primary text-white py-2.5 rounded-xl font-medium text-sm disabled:opacity-50 mt-1">
+              <button onClick={create} disabled={creating || !form.foodNameEn} className="w-full bg-primary text-white py-2.5 rounded-xl font-medium text-sm disabled:opacity-50 mt-1">
                 {creating ? "Adding..." : "Add Food Item"}
               </button>
             </div>

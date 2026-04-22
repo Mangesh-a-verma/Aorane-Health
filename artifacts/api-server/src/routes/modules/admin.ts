@@ -168,10 +168,14 @@ router.patch("/admin/feature-flags/:key", requireAdmin, async (req: AdminRequest
 
 router.get("/admin/food-items", requireAdmin, async (req: AdminRequest, res) => {
   try {
-    const { search, limit = "50" } = req.query as Record<string, string>;
-    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 500);
-    const items = await db.select().from(foodItemsTable).limit(limitNum);
-    res.json({ items });
+    const { search, limit = "200" } = req.query as Record<string, string>;
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 200, 1), 500);
+    const where = search ? ilike(foodItemsTable.foodNameEn, `%${search}%`) : undefined;
+    const [totalRow] = await db.select({ total: count() }).from(foodItemsTable);
+    const items = where
+      ? await db.select().from(foodItemsTable).where(where).limit(limitNum)
+      : await db.select().from(foodItemsTable).limit(limitNum);
+    res.json({ items, total: totalRow?.total ?? 0 });
   } catch {
     res.status(500).json({ error: "Failed to fetch food items" });
   }
