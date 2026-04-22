@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, pool, usersTable, userPreferencesTable, userPrivacySettingsTable, userProfilesTable, otpStoreTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { generateOtp, hashOtp, verifyOtpHash, sendSmsOtp, sendWhatsappOtp, sendEmailOtp } from "../../lib/otp";
+import { sendWelcomeEmail } from "../../lib/welcome-email";
 import { cache } from "../../lib/redis";
 import { signUserToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -368,6 +369,8 @@ router.post("/auth/google", async (req, res) => {
         fullName: googleData.name,
         profilePhotoUrl: googleData.picture,
       });
+      // Send welcome email to new Google-auth users (fire & forget)
+      sendWelcomeEmail({ toEmail: googleData.email, name: googleData.name }).catch(() => {});
     }
 
     await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
@@ -497,6 +500,8 @@ router.post("/auth/verify-email-otp", async (req, res) => {
       }).returning();
       user = newUser;
       isNewUser = true;
+      // Send welcome email to new email-OTP users (fire & forget)
+      sendWelcomeEmail({ toEmail: email.toLowerCase() }).catch(() => {});
     }
     await pool.query(`INSERT INTO user_preferences (user_id, language_code) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [user.id, languageCode]).catch(() => {});
     await pool.query(`INSERT INTO user_privacy_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});

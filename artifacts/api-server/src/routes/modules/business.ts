@@ -13,6 +13,7 @@ import {
   verifySubscriptionSignature, verifyPaymentSignature, createOrder,
 } from "../../lib/razorpay";
 import { sendInvoiceEmail } from "../../lib/invoice-email";
+import { sendBusinessWelcomeEmail } from "../../lib/welcome-email";
 
 const router = Router();
 
@@ -57,6 +58,13 @@ router.post("/business/register", async (req, res) => {
     }).returning();
 
     const token = signBusinessToken({ orgAdminId: admin.id, orgId: org.id, role: admin.role });
+    // Send business welcome email (fire & forget)
+    sendBusinessWelcomeEmail({
+      toEmail: contactEmail as string,
+      adminName: adminName as string,
+      orgName: name as string,
+      orgCode,
+    }).catch(() => {});
     res.status(201).json({ success: true, org, admin: { id: admin.id, fullName: admin.fullName, role: admin.role }, token, orgCode });
   } catch (err) {
     res.status(500).json({ error: "Failed to register organization" });

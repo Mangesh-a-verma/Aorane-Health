@@ -42,7 +42,7 @@ async function sendEnquiryEmail(e: { type: string; name: string; email: string; 
       </div>
     </div>`;
     await resend.emails.send({
-      from: "Aorane Enquiries <onboarding@resend.dev>",
+      from: "Aorane <support@aorane.com>",
       to: [to],
       replyTo: e.email,
       subject: `[Aorane] ${typeLabel} — ${e.name}`,
