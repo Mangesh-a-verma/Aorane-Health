@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { api, type EnrollmentCode } from "@/lib/api";
-import { QrCode, Plus, Copy, Check, Clock, Users, AlertCircle, X } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { QrCode, Plus, Copy, Check, Clock, Users, AlertCircle, X, Lock } from "lucide-react";
 
 function CodeBadge({ code }: { code: EnrollmentCode }) {
   const [copied, setCopied] = useState(false);
@@ -56,6 +57,7 @@ function CodeBadge({ code }: { code: EnrollmentCode }) {
 }
 
 export default function EnrollmentCodes() {
+  const { isPaidActive, subscriptionLoading } = useAuth();
   const [codes, setCodes] = useState<EnrollmentCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -102,13 +104,20 @@ export default function EnrollmentCodes() {
             <h1 className="font-display font-extrabold text-3xl md:text-4xl text-foreground tracking-tight">Enrollment Codes</h1>
             <p className="text-muted-foreground text-sm mt-1.5">Generate codes to invite members to your organization.</p>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-5 py-2.5 rounded-full text-sm transition-all shadow-md shadow-primary/20"
-          >
-            <Plus size={16} />
-            New Code
-          </button>
+          {!subscriptionLoading && !isPaidActive ? (
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-muted border border-border text-muted-foreground text-sm font-semibold cursor-not-allowed opacity-60">
+              <Lock size={14} /> Requires Active Plan
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowModal(true)}
+              disabled={subscriptionLoading}
+              className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-5 py-2.5 rounded-full text-sm transition-all shadow-md shadow-primary/20 disabled:opacity-60"
+            >
+              <Plus size={16} />
+              New Code
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -128,12 +137,19 @@ export default function EnrollmentCodes() {
             </div>
             <p className="font-display font-semibold text-foreground">No enrollment codes created yet</p>
             <p className="text-muted-foreground text-sm mt-1 max-w-xs">Click the New Code button to create your first enrollment code.</p>
-            <button
-              onClick={() => setShowModal(true)}
-              className="mt-4 flex items-center gap-2 bg-primary/10 hover:bg-primary/15 text-primary px-4 py-2 rounded-full text-sm font-semibold transition-all"
-            >
-              <Plus size={15} /> Code Banayein
-            </button>
+            {isPaidActive && (
+              <button
+                onClick={() => setShowModal(true)}
+                className="mt-4 flex items-center gap-2 bg-primary/10 hover:bg-primary/15 text-primary px-4 py-2 rounded-full text-sm font-semibold transition-all"
+              >
+                <Plus size={15} /> Create First Code
+              </button>
+            )}
+            {!isPaidActive && !subscriptionLoading && (
+              <a href="/billing" className="mt-4 flex items-center gap-2 bg-amber-100 hover:bg-amber-200 text-amber-800 px-4 py-2 rounded-full text-sm font-semibold transition-all">
+                <Lock size={14} /> Activate Plan to Create Codes
+              </a>
+            )}
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -214,7 +230,7 @@ export default function EnrollmentCodes() {
                 disabled={creating}
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-full disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
               >
-                {creating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Code Banayein"}
+                {creating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Create Enrollment Code"}
               </button>
             </div>
           </div>

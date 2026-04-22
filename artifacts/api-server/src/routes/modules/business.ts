@@ -343,6 +343,15 @@ router.post("/business/enroll", requireAuth, async (req, res) => {
 
 router.post("/business/enrollment-codes", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
+    // PAYMENT GATE: only orgs with an active payment can create enrollment codes
+    const [activePayment] = await db.select({ id: orgPaymentsTable.id })
+      .from(orgPaymentsTable)
+      .where(and(eq(orgPaymentsTable.orgId, req.orgId!), eq(orgPaymentsTable.status, "success")))
+      .limit(1);
+    if (!activePayment) {
+      res.status(403).json({ error: "Active subscription required to create enrollment codes. Please complete payment first." });
+      return;
+    }
     const { planType = "basic", totalSeats = 10, validityDays = 365 } = req.body as Record<string, unknown>;
     const code = generateOrgCode();
     const expiresAt = new Date();
@@ -699,6 +708,51 @@ router.post("/business/members/:userId/remove", requireBusinessAuth, async (req:
     }
     res.json({ success: true });
   } catch { res.status(500).json({ error: "Failed to remove member" }); }
+});
+
+// ─── SUSPEND ACCESS (block code usage, keep seat) ─────────────────────────────
+router.post("/business/members/:userId/suspend", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const userId = String(req.params.userId);
+    const [member] = await db.select().from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId), eq(orgMembersTable.isActive, true)));
+    if (!member) { res.status(404).json({ error: "Active member not found in your organization" }); return; }
+    await db.update(orgMembersTable).set({ isActive: false })
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId)));
+    // Seat is NOT decremented — they are suspended but seat is reserved
+    res.json({ success: true, message: "Member access suspended. They cannot use enrollment codes or appear in member data until restored." });
+  } catch { res.status(500).json({ error: "Failed to suspend member" }); }
+});
+
+// ─── RESTORE ACCESS ───────────────────────────────────────────────────────────
+router.post("/business/members/:userId/restore", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const userId = String(req.params.userId);
+    const [member] = await db.select().from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId)));
+    if (!member) { res.status(404).json({ error: "Member not found in your organization" }); return; }
+    if (member.isActive) { res.json({ success: true, message: "Member is already active" }); return; }
+    await db.update(orgMembersTable).set({ isActive: true })
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId)));
+    res.json({ success: true, message: "Member access restored." });
+  } catch { res.status(500).json({ error: "Failed to restore member" }); }
+});
+
+// ─── SUSPENDED MEMBERS LIST ───────────────────────────────────────────────────
+router.get("/business/members/suspended", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const members = await db.select({
+      memberId: orgMembersTable.id,
+      userId: orgMembersTable.userId,
+      role: orgMembersTable.role,
+      joinedAt: orgMembersTable.joinedAt,
+      fullName: userProfilesTable.fullName,
+      bloodGroup: userProfilesTable.bloodGroup,
+    }).from(orgMembersTable)
+      .leftJoin(userProfilesTable, eq(orgMembersTable.userId, userProfilesTable.userId))
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.isActive, false)));
+    res.json({ members });
+  } catch { res.status(500).json({ error: "Failed to fetch suspended members" }); }
 });
 
 // ─── HEALTH ANALYTICS (aggregate, privacy-safe) ────────────────────────────

@@ -165,6 +165,15 @@ export const api = {
   removeMember: (userId: string) =>
     request<{ success: boolean }>(`/business/members/${userId}/remove`, { method: "POST" }),
 
+  suspendMember: (userId: string) =>
+    request<{ success: boolean; message: string }>(`/business/members/${userId}/suspend`, { method: "POST" }),
+
+  restoreMember: (userId: string) =>
+    request<{ success: boolean; message: string }>(`/business/members/${userId}/restore`, { method: "POST" }),
+
+  getSuspendedMembers: () =>
+    request<{ members: Member[] }>("/business/members/suspended"),
+
   cancelMemberSubscription: (userId: string) =>
     request<{ success: boolean; message: string }>(`/business/members/${userId}/cancel-subscription`, { method: "POST" }),
 

@@ -5,7 +5,7 @@ import { api, type Overview } from "@/lib/api";
 import {
   Users, Server, TrendingUp, Activity, Copy, Check,
   Building2, MapPin, Mail, Phone, Shield, Heart, Droplets, Dumbbell, Pill,
-  AlertTriangle, UserCheck, UserX,
+  AlertTriangle, UserCheck, UserX, Zap,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -179,7 +179,7 @@ export default function Dashboard() {
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <StatCard label="Total Members" value={loading ? "..." : overview?.memberCount || 0}
             sub="Active enrolled users" icon={Users} color="#0077B6" />
           <StatCard label="Seats Used" value={`${org?.usedSeats || 0}/${org?.totalSeats || 0}`}
@@ -189,6 +189,56 @@ export default function Dashboard() {
           <StatCard label="Avg Health Score" value={analyticsLoading ? "..." : analytics?.avgHealthScore || 0}
             sub="Out of 100" icon={Activity} color="#10B981" />
         </div>
+
+        {/* Stress Index Banner */}
+        {!analyticsLoading && analytics && analytics.totalMembers > 0 && (() => {
+          const stressIdx = Math.max(0, 100 - (analytics.avgHealthScore || 0));
+          const atRiskPct = Math.round((analytics.atRiskCount / analytics.totalMembers) * 100);
+          const inactivePct = Math.round((analytics.inactiveCount / analytics.totalMembers) * 100);
+          const level = stressIdx < 25 ? "Low" : stressIdx < 50 ? "Moderate" : stressIdx < 70 ? "High" : "Critical";
+          const colors: Record<string, { bg: string; text: string; bar: string; badge: string }> = {
+            Low:      { bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-800", bar: "#10B981", badge: "bg-emerald-100 text-emerald-700" },
+            Moderate: { bg: "bg-amber-50 border-amber-200",   text: "text-amber-800",   bar: "#F59E0B", badge: "bg-amber-100 text-amber-700" },
+            High:     { bg: "bg-orange-50 border-orange-200", text: "text-orange-800",  bar: "#F97316", badge: "bg-orange-100 text-orange-700" },
+            Critical: { bg: "bg-red-50 border-red-200",       text: "text-red-800",     bar: "#EF4444", badge: "bg-red-100 text-red-700" },
+          };
+          const c = colors[level];
+          return (
+            <div className={`mb-6 rounded-2xl border p-5 ${c.bg}`}>
+              <div className="flex items-center justify-between flex-wrap gap-4 mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: c.bar + "20" }}>
+                    <Zap size={18} style={{ color: c.bar }} />
+                  </div>
+                  <div>
+                    <div className={`font-display font-bold text-lg ${c.text}`}>Workforce Stress Index</div>
+                    <div className={`text-xs ${c.text} opacity-70`}>Inverse of average health score — lower is better</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className={`kpi-number text-4xl ${c.text}`}>{stressIdx}<span className="text-base font-normal opacity-60">%</span></div>
+                  <span className={`pill-chip font-semibold ${c.badge}`}>{level}</span>
+                </div>
+              </div>
+              <div className="h-2 bg-black/10 rounded-full overflow-hidden mb-3">
+                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${stressIdx}%`, background: c.bar }} />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "Healthy", count: analytics.healthyCount, color: "#10B981", pct: Math.round((analytics.healthyCount / analytics.totalMembers) * 100) },
+                  { label: "At Risk", count: analytics.atRiskCount, color: "#F59E0B", pct: atRiskPct },
+                  { label: "Inactive", count: analytics.inactiveCount, color: "#EF4444", pct: inactivePct },
+                ].map(({ label, count, color, pct }) => (
+                  <div key={label} className="rounded-xl bg-white/60 px-3 py-2 text-center">
+                    <div className="font-display font-bold text-xl" style={{ color }}>{count}</div>
+                    <div className="text-[10px] text-gray-500 uppercase tracking-wider">{label}</div>
+                    <div className="text-[11px] font-medium" style={{ color }}>{pct}%</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Health Analytics Section */}
         <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 mb-6">

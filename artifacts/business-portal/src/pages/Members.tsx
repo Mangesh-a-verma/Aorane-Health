@@ -4,7 +4,7 @@ import { api, type Member, type MemberSearchResult, type MemberDetail } from "@/
 import {
   Users, Search, UserCheck, Droplet, RefreshCw, Fingerprint, X,
   Download, ChevronRight, Activity, Calendar, TrendingUp, UserMinus, Loader2,
-  ShieldCheck,
+  ShieldCheck, PauseCircle, PlayCircle, EyeOff,
 } from "lucide-react";
 
 // DPDP-safe gradient avatars (no real photos)
@@ -52,6 +52,7 @@ function MemberDetailDrawer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [removing, setRemoving] = useState(false);
+  const [suspending, setSuspending] = useState(false);
   const [cancellingSubscription, setCancellingSubscription] = useState(false);
 
   useEffect(() => {
@@ -70,6 +71,19 @@ function MemberDetailDrawer({
     } catch (e: unknown) {
       alert((e as Error).message || "Failed to remove member");
       setRemoving(false);
+    }
+  };
+
+  const handleSuspend = async () => {
+    if (!confirm(`Suspend ${name || "this member"}'s access? Their seat is reserved but they will be hidden from your organization until restored.`)) return;
+    setSuspending(true);
+    try {
+      await api.suspendMember(userId);
+      alert("Member access suspended. You can restore them from the suspended section.");
+      onClose();
+    } catch (e: unknown) {
+      alert((e as Error).message || "Failed to suspend member");
+      setSuspending(false);
     }
   };
 
@@ -267,6 +281,14 @@ function MemberDetailDrawer({
               </button>
             )}
             <button
+              onClick={handleSuspend}
+              disabled={suspending}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-semibold text-orange-700 border border-orange-300 hover:bg-orange-50 transition-all disabled:opacity-50"
+            >
+              {suspending ? <Loader2 size={14} className="animate-spin" /> : <PauseCircle size={14} />}
+              Suspend Access
+            </button>
+            <button
               onClick={handleRemove}
               disabled={removing}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-semibold text-destructive border border-destructive/30 hover:bg-destructive/5 transition-all disabled:opacity-50"
@@ -282,7 +304,7 @@ function MemberDetailDrawer({
 }
 
 /* ============ SEARCH RESULT CARD (Aorane ID search) ============ */
-function SearchResultCard({ r, idx }: { r: MemberSearchResult; idx: number }) {
+function SearchResultCard({ r, idx, onClick }: { r: MemberSearchResult; idx: number; onClick?: () => void }) {
   const planColors: Record<string, string> = {
     free: "bg-muted text-muted-foreground",
     max: "bg-primary/10 text-primary",
@@ -291,7 +313,10 @@ function SearchResultCard({ r, idx }: { r: MemberSearchResult; idx: number }) {
   };
   const grad = AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length];
   return (
-    <div className="bg-card border border-primary/20 rounded-2xl p-4 hover:shadow-md transition-all">
+    <div
+      className="bg-card border border-primary/20 rounded-2xl p-4 hover:shadow-md hover:border-primary/40 transition-all cursor-pointer group"
+      onClick={onClick}
+    >
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${grad} flex items-center justify-center text-white font-display font-bold text-sm`}>
@@ -340,15 +365,31 @@ export default function Members() {
   const [detailUserId, setDetailUserId] = useState<string | null>(null);
   const [detailName, setDetailName] = useState<string | null>(null);
   const [detailGradient, setDetailGradient] = useState<string>(AVATAR_GRADIENTS[0]);
+  const [suspendedMembers, setSuspendedMembers] = useState<Member[]>([]);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchMembers = () => {
     setLoading(true);
     setError("");
-    api.members()
-      .then((res) => setMembers(res.members))
+    Promise.all([api.members(), api.getSuspendedMembers()])
+      .then(([res, susp]) => {
+        setMembers(res.members);
+        setSuspendedMembers(susp.members);
+      })
       .catch(() => setError("Failed to load members"))
       .finally(() => setLoading(false));
+  };
+
+  const handleRestore = async (userId: string) => {
+    if (!confirm("Restore this member's access?")) return;
+    setRestoringId(userId);
+    try {
+      await api.restoreMember(userId);
+      fetchMembers();
+    } catch (e: unknown) {
+      alert((e as Error).message || "Failed to restore member");
+    } finally { setRestoringId(null); }
   };
 
   useEffect(() => { fetchMembers(); }, []);
@@ -461,7 +502,18 @@ export default function Members() {
                 <div>
                   <div className="text-xs text-muted-foreground mb-3">{searchResults.length} member{searchResults.length !== 1 ? "s" : ""} found</div>
                   <div className="grid md:grid-cols-2 gap-3">
-                    {searchResults.map((r, i) => <SearchResultCard key={r.userId} r={r} idx={i} />)}
+                    {searchResults.map((r, i) => (
+                      <SearchResultCard
+                        key={r.userId}
+                        r={r}
+                        idx={i}
+                        onClick={() => {
+                          setDetailUserId(r.userId);
+                          setDetailName(r.name);
+                          setDetailGradient(AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length]);
+                        }}
+                      />
+                    ))}
                   </div>
                 </div>
               )}
@@ -576,6 +628,47 @@ export default function Members() {
             </div>
           )}
         </div>
+
+        {/* Suspended Members Section */}
+        {suspendedMembers.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <EyeOff size={16} className="text-orange-500" />
+              <h2 className="font-display font-bold text-lg text-foreground">Suspended Members</h2>
+              <span className="pill-chip bg-orange-100 text-orange-700 tabular-nums">{suspendedMembers.length}</span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">These members have suspended access. Their seat is reserved. You can restore them at any time.</p>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {suspendedMembers.map((m, idx) => {
+                const grad = AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length];
+                return (
+                  <div key={m.memberId} className="bg-card border border-orange-200/60 rounded-2xl p-4 opacity-75">
+                    <div className="flex items-start gap-3">
+                      <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${grad} flex items-center justify-center text-white font-display font-bold text-sm shrink-0 shadow-sm grayscale`}>
+                        {getInitials(m.fullName)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-display font-semibold text-foreground text-sm truncate">{m.fullName || "Unknown User"}</div>
+                        <span className="pill-chip bg-orange-100 text-orange-700 text-[10px] mt-1">Suspended</span>
+                        <div className="text-[11px] text-muted-foreground/70 mt-1">
+                          Joined {new Date(m.joinedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRestore(m.userId)}
+                        disabled={restoringId === m.userId}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 border border-emerald-300 hover:bg-emerald-50 px-3 py-1.5 rounded-full transition-all disabled:opacity-50 shrink-0"
+                      >
+                        {restoringId === m.userId ? <Loader2 size={12} className="animate-spin" /> : <PlayCircle size={12} />}
+                        Restore
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {detailUserId && (
