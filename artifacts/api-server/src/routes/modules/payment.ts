@@ -43,8 +43,8 @@ router.get("/payment/self-test", async (req, res) => {
   try {
     const { signUserToken } = await import("../../lib/jwt.js");
 
-    // 1. Create a real test payment record
-    const testUserId = "self-test-user-00000000";
+    // 1. Create a real test payment record using a real user ID
+    const testUserId = (req.query["userId"] as string) || "9bcecc0e-1e1b-4d6e-aa6b-137515c27ea7";
     const testOrderId = "order_selftest_" + Date.now();
     const [payment] = await db.insert(paymentsTable).values({
       userId: testUserId, amount: "249", currency: "INR",
