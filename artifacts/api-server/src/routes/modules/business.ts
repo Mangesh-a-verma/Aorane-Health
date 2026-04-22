@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable, subscriptionsTable, companySettingsTable } from "@workspace/db";
+import { db, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable, subscriptionsTable, companySettingsTable, stressLogsTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte, desc, ilike, sql } from "drizzle-orm";
 import { requireBusinessAuth } from "../../middlewares/business-auth";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -838,7 +838,7 @@ router.get("/business/health-analytics", requireBusinessAuth, async (req: Busine
       .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.isActive, true)));
     const memberIds = memberRows.map((m) => m.userId);
     if (!memberIds.length) {
-      res.json({ totalMembers: 0, activeToday: 0, activeLast7Days: 0, avgHealthScore: 0, avgFood: 0, avgWater: 0, avgExercise: 0, avgMedicine: 0, healthyCount: 0, atRiskCount: 0, inactiveCount: 0, dailyActiveTrend: [] });
+      res.json({ totalMembers: 0, activeToday: 0, activeLast7Days: 0, avgHealthScore: 0, avgFood: 0, avgWater: 0, avgExercise: 0, avgMedicine: 0, healthyCount: 0, atRiskCount: 0, inactiveCount: 0, dailyActiveTrend: [], avgStressScore: null, highStressCount: 0, moderateStressCount: 0, lowStressCount: 0, stressTrackedCount: 0 });
       return;
     }
 
@@ -901,6 +901,31 @@ router.get("/business/health-analytics", requireBusinessAuth, async (req: Busine
       .slice(-30)
       .map(([date, users]) => ({ date, activeCount: users.size }));
 
+    // ── Real Stress Analytics (from stress_logs table) ──────────────
+    const stressLogs = await db.select({
+      userId: stressLogsTable.userId,
+      stressScore: stressLogsTable.stressScore,
+      stressType: stressLogsTable.stressType,
+    }).from(stressLogsTable)
+      .where(and(
+        inArray(stressLogsTable.userId, memberIds),
+        gte(stressLogsTable.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+      ));
+
+    // Latest stress score per user
+    const latestStressByUser = new Map<string, number>();
+    for (const log of stressLogs) {
+      latestStressByUser.set(log.userId, log.stressScore);
+    }
+    const stressValues = Array.from(latestStressByUser.values());
+    const avgStressScore = stressValues.length
+      ? Math.round(stressValues.reduce((a, b) => a + b, 0) / stressValues.length)
+      : null;
+    const highStressCount = stressValues.filter(v => v >= 70).length;
+    const moderateStressCount = stressValues.filter(v => v >= 40 && v < 70).length;
+    const lowStressCount = stressValues.filter(v => v < 40).length;
+    const stressTrackedCount = stressValues.length;
+
     res.json({
       totalMembers: memberIds.length,
       activeToday: activeTodayIds.size,
@@ -914,6 +939,12 @@ router.get("/business/health-analytics", requireBusinessAuth, async (req: Busine
       atRiskCount,
       inactiveCount,
       dailyActiveTrend,
+      // Real stress data
+      avgStressScore,
+      highStressCount,
+      moderateStressCount,
+      lowStressCount,
+      stressTrackedCount,
     });
   } catch (e) {
     console.error("[health-analytics]", e);

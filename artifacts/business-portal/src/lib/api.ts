@@ -84,6 +84,11 @@ export interface HealthAnalytics {
   atRiskCount: number;
   inactiveCount: number;
   dailyActiveTrend: { date: string; activeCount: number }[];
+  avgStressScore: number | null;
+  highStressCount: number;
+  moderateStressCount: number;
+  lowStressCount: number;
+  stressTrackedCount: number;
 }
 
 export interface SeatOrder {
