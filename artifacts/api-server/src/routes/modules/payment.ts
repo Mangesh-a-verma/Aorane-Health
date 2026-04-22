@@ -145,10 +145,21 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
 // ─── POST: verify one-time payment ───────────────────────────────────────────
 router.post("/payment/verify", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature, plan, isTestMode } = req.body as Record<string, unknown>;
-    if (!isTestMode && isLiveMode()) {
+    const { paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature, plan } = req.body as Record<string, unknown>;
+    // ALWAYS verify signature in LIVE mode — no bypass allowed
+    if (isLiveMode()) {
+      if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+        res.status(400).json({ error: "Payment details missing" }); return;
+      }
       const valid = verifyPaymentSignature(razorpayOrderId as string, razorpayPaymentId as string, razorpaySignature as string);
-      if (!valid) { res.status(400).json({ error: "Payment signature invalid" }); return; }
+      if (!valid) { res.status(400).json({ error: "Payment signature invalid — payment not verified" }); return; }
+    }
+    // Ensure payment belongs to this user and is still pending
+    const [existingPayment] = await db.select().from(paymentsTable)
+      .where(and(eq(paymentsTable.id, paymentId as string), eq(paymentsTable.userId, req.userId!)));
+    if (!existingPayment) { res.status(404).json({ error: "Payment not found" }); return; }
+    if (existingPayment.status === "success") {
+      res.json({ success: true, message: "Payment already verified", alreadyDone: true }); return;
     }
     await db.update(paymentsTable).set({ status: "success", razorpayPaymentId: razorpayPaymentId as string }).where(eq(paymentsTable.id, paymentId as string));
     const expiresAt = new Date();
@@ -340,13 +351,16 @@ router.get("/payment/checkout/:orderId", async (req, res) => {
         image: "https://aorane.in/logo.png",
         redirect: true,
         callback_url: "${callbackUrl}",
-        cancel_url: "${callbackUrl}?cancelled=true",
         theme: { color: "#E8622A" },
         modal: {
           backdropclose: false,
           escape: false,
           ondismiss: function() {
-            document.getElementById('open-btn').style.display = 'block';
+            document.getElementById('loading-card').innerHTML =
+              '<div style="font-size:48px;margin-bottom:16px">❌</div>' +
+              '<h2 style="color:#f87171;margin:0 0 8px">Payment Cancelled</h2>' +
+              '<p style="color:rgba(255,255,255,0.5);font-size:14px;margin-bottom:16px">Aapne payment cancel ki. App mein wapas jaake dobara try karein.</p>' +
+              '<button class="retry-btn" onclick="openRazorpay()">Dobara Try Karo</button>';
           }
         }
       };

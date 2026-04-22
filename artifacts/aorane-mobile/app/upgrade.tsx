@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Platform, useColorScheme, Alert, Linking,
+  TextInput, Platform, useColorScheme, Alert, Linking, AppState, AppStateStatus,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -197,6 +197,8 @@ export default function UpgradeScreen() {
     } finally { setValidatingPromo(false); }
   };
 
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
       clearInterval(pollingRef.current);
@@ -206,10 +208,54 @@ export default function UpgradeScreen() {
     setWaitingForPayment(false);
   }, []);
 
-  const onPaymentSuccess = useCallback(async (paymentId: string, rzPaymentId: string, rzOrderId: string, rzSignature: string, isTestMode = false) => {
+  // When user comes back to app from browser — ask if they completed payment
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", async (nextState: AppStateStatus) => {
+      const wasBackground = appStateRef.current === "background" || appStateRef.current === "inactive";
+      const isNowActive = nextState === "active";
+      appStateRef.current = nextState;
+
+      if (wasBackground && isNowActive && pollingOrderRef.current) {
+        // User returned from browser — check payment status immediately
+        const { orderId } = pollingOrderRef.current;
+        try {
+          const status = await api.getOrderStatus(orderId);
+          if (status.status === "success") {
+            stopPolling();
+            if (refreshUser) await refreshUser();
+            setSuccess(true);
+          } else {
+            // Payment not complete — ask user what happened
+            Alert.alert(
+              "Payment Status",
+              "Kya aapne payment complete ki?",
+              [
+                {
+                  text: "Nahi, Cancel Ki",
+                  style: "destructive",
+                  onPress: () => {
+                    stopPolling();
+                    setLoading(false);
+                    Alert.alert("Payment Cancelled", "Aapki payment cancel ho gayi. Dobara try karne ke liye 'Upgrade' button dabao.");
+                  },
+                },
+                {
+                  text: "Haan, Complete Ki",
+                  onPress: () => { /* polling will detect success */ },
+                },
+              ]
+            );
+          }
+        } catch { /* ignore errors, keep polling */ }
+      }
+    });
+    return () => sub.remove();
+  }, [refreshUser, stopPolling]);
+
+  const onPaymentSuccess = useCallback(async (paymentId: string, rzPaymentId: string, rzOrderId: string, rzSignature: string) => {
     stopPolling();
     try {
-      const result = await api.verifyPayment({ paymentId, razorpayPaymentId: rzPaymentId, razorpayOrderId: rzOrderId, razorpaySignature: rzSignature, plan: selectedPlan, isTestMode });
+      const result = await api.verifyPayment({ paymentId, razorpayPaymentId: rzPaymentId, razorpayOrderId: rzOrderId, razorpaySignature: rzSignature, plan: selectedPlan });
       if (refreshUser) await refreshUser();
       if (result?.inviteCode) setFamilyInviteCode(result.inviteCode);
       setSuccess(true);
@@ -291,12 +337,7 @@ export default function UpgradeScreen() {
           theme: { color: plan.color },
           handler: async (response) => {
             setLoading(true);
-            await onPaymentSuccess(
-              orderRes.paymentId,
-              response.razorpay_payment_id,
-              response.razorpay_order_id,
-              response.razorpay_signature
-            );
+            await onPaymentSuccess(orderRes.paymentId, response.razorpay_payment_id, response.razorpay_order_id, response.razorpay_signature);
             setLoading(false);
           },
           modal: {
@@ -469,8 +510,12 @@ export default function UpgradeScreen() {
                 {loading ? "Checking..." : "✓ Payment Ho Gayi? Check Karo"}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={stopPolling} style={{ paddingVertical: 10, paddingHorizontal: 20 }}>
-              <Text style={{ color: "rgba(255,255,255,0.4)", fontFamily: "Inter_400Regular", fontSize: 13 }}>Cancel / Wapas Jao</Text>
+            <TouchableOpacity onPress={() => {
+              stopPolling();
+              setLoading(false);
+              Alert.alert("Payment Cancelled", "Koi baat nahi! Jab chahein dobara 'Upgrade' button dabao.");
+            }} style={{ paddingVertical: 10, paddingHorizontal: 20 }}>
+              <Text style={{ color: "rgba(255,255,255,0.4)", fontFamily: "Inter_400Regular", fontSize: 13 }}>❌ Payment Cancel Karo</Text>
             </TouchableOpacity>
           </LinearGradient>
         </View>
