@@ -63,29 +63,6 @@ router.get("/payment/razorpay-test", async (_req, res) => {
   }
 });
 
-// ─── GET: Admin test — create real Razorpay order and return checkout URL ─────
-router.get("/payment/admin-test-checkout", async (req, res) => {
-  const secret = req.headers["x-admin-secret"];
-  if (secret !== "aorane_admin_test_2026") {
-    res.status(403).json({ error: "Forbidden" }); return;
-  }
-  try {
-    if (!isLiveMode()) {
-      res.json({ error: "Not in live mode", keyId: process.env["RAZORPAY_KEY_ID"] }); return;
-    }
-    const order = await createOrder({ amount: 1, receipt: "admin_test_001" }); // ₹1 test order
-    const [payment] = await db.insert(paymentsTable).values({
-      userId: null as unknown as string, amount: "1", currency: "INR",
-      plan: "pro", seats: 1, razorpayOrderId: order.id, status: "pending",
-    }).returning();
-    const serverBase = process.env["RENDER_EXTERNAL_URL"] || "https://aorane.onrender.com";
-    const checkoutUrl = `${serverBase}/api/payment/checkout/${order.id}`;
-    res.json({ ok: true, orderId: order.id, paymentId: payment.id, checkoutUrl, amount: order.amount });
-  } catch (e) {
-    res.status(500).json({ error: (e as Error).message });
-  }
-});
-
 // ─── GET: current subscription status ────────────────────────────────────────
 router.get("/payment/subscription", requireAuth, async (req: AuthRequest, res) => {
   try {
