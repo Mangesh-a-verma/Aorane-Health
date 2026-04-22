@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
-import { api } from "@/lib/api";
+import { api, apiBase } from "@/lib/api";
 import {
   IndianRupee, Users, TrendingUp, TrendingDown, CreditCard,
   ArrowUpRight, ArrowDownRight, RefreshCw, Receipt, Wallet,
@@ -101,10 +101,13 @@ export default function Revenue() {
 
   useEffect(() => {
     load();
-    fetch(`${import.meta.env.BASE_URL}api/payment/razorpay-test`)
-      .then(r => r.json())
+    fetch(`${apiBase}/payment/razorpay-test`)
+      .then(async r => {
+        const text = await r.text();
+        return JSON.parse(text) as RzpStatus;
+      })
       .then((d: RzpStatus) => setRzp(d))
-      .catch(() => setRzp({ ok: false, networkError: "Cannot reach API" }));
+      .catch((err) => setRzp({ ok: false, networkError: err?.message || "Cannot reach API" }));
   }, []);
 
   const s = data?.summary;

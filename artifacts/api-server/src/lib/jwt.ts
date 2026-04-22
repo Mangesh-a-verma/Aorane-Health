@@ -40,7 +40,7 @@ export function verifyRefreshToken(token: string): UserTokenPayload {
 }
 
 export function signAdminToken(payload: AdminTokenPayload): string {
-  return jwt.sign(payload, ADMIN_JWT_SECRET, { expiresIn: "12h" });
+  return jwt.sign(payload, ADMIN_JWT_SECRET, { expiresIn: "7d" });
 }
 
 export function verifyAdminToken(token: string): AdminTokenPayload {

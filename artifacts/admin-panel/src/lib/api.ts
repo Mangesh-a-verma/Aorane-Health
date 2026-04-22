@@ -2,7 +2,17 @@ const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : `${import.meta.env.BASE_URL}api`;
 
+export const apiBase = API_BASE;
+
 export function getToken(): string | null { return localStorage.getItem("ap_token"); }
+
+function clearSessionAndRedirect() {
+  localStorage.removeItem("ap_token");
+  localStorage.removeItem("ap_admin");
+  if (!window.location.pathname.endsWith("/") || window.location.pathname !== import.meta.env.BASE_URL) {
+    window.location.href = import.meta.env.BASE_URL || "/admin-panel/";
+  }
+}
 
 export async function adminRequest<T>(path: string, opts?: { method?: string; body?: Record<string, unknown> }): Promise<T> {
   return req<T>(path, {
@@ -43,6 +53,10 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   } catch {
     console.error("[API] Non-JSON response:", text.slice(0, 200));
     throw new Error(`Server error (${res.status}) — please try again`);
+  }
+  if (res.status === 401) {
+    clearSessionAndRedirect();
+    throw new Error("Session expired. Please log in again.");
   }
   if (!res.ok) throw new Error((data as { error?: string }).error || `Request failed (${res.status})`);
   return data as T;
