@@ -21,7 +21,7 @@ export async function adminRequest<T>(path: string, opts?: { method?: string; bo
   });
 }
 
-async function req<T>(path: string, opts?: RequestInit): Promise<T> {
+async function req<T>(path: string, opts?: RequestInit, skipAutoLogout = false): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -54,7 +54,7 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
     console.error("[API] Non-JSON response:", text.slice(0, 200));
     throw new Error(`Server error (${res.status}) — please try again`);
   }
-  if (res.status === 401) {
+  if (res.status === 401 && !skipAutoLogout) {
     clearSessionAndRedirect();
     throw new Error("Session expired. Please log in again.");
   }
@@ -146,7 +146,7 @@ export type AdCampaign = {
 
 export const api = {
   login: (email: string, password: string) =>
-    req<{ token: string; admin: { id: string; fullName: string; role: string } }>("/admin/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+    req<{ token: string; admin: { id: string; fullName: string; role: string } }>("/admin/login", { method: "POST", body: JSON.stringify({ email, password }) }, true),
 
   overview: () => req<{ stats: { totalUsers: number; totalOrganizations: number } }>("/admin/overview"),
   users: (params?: { limit?: number; offset?: number }) =>
