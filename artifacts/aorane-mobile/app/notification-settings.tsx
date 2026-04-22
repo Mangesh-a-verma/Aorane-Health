@@ -11,6 +11,7 @@ import * as Haptics from "expo-haptics";
 import { api } from "@/lib/api";
 import {
   scheduleWaterReminders, cancelWaterReminders,
+  scheduleFoodReminders, cancelFoodReminders,
   schedulePeriodReminders, cancelPeriodReminders,
   requestNotificationPermissions,
 } from "@/lib/notifications";
@@ -148,6 +149,13 @@ export default function NotificationSettingsScreen() {
         await scheduleWaterReminders(settings.wakeUpTime, settings.bedTime, settings.waterGoalGlasses);
       } else {
         await cancelWaterReminders();
+      }
+
+      // Food / Meal reminders
+      if (notifEnabled && settings.foodReminders) {
+        await scheduleFoodReminders(settings.wakeUpTime, settings.bedTime);
+      } else {
+        await cancelFoodReminders();
       }
 
       // Period reminders — fetch next period date and schedule

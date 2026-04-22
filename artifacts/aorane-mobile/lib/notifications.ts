@@ -110,6 +110,56 @@ export async function cancelAllMedicineReminders(): Promise<void> {
   } catch { }
 }
 
+// ─── Food / Meal Reminders ────────────────────────────────────────────────────
+// Schedules breakfast, lunch, and dinner reminders.
+export async function scheduleFoodReminders(
+  wakeUpTime = "07:00",
+  bedTime = "22:30",
+): Promise<string[]> {
+  if (Platform.OS === "web") return [];
+  const granted = await checkNotificationPermissions();
+  if (!granted) return [];
+
+  await cancelByType("food_reminder");
+
+  const [wakeH] = wakeUpTime.split(":").map(Number);
+  // Derive meals from wake time; cap at sensible max hours
+  const meals: Array<{ hour: number; minute: number; label: string; body: string }> = [
+    { hour: Math.min(wakeH + 1, 10), minute: 0,  label: "🍳 Breakfast Time!",    body: "Time for a healthy breakfast — fuel your day right!" },
+    { hour: 13,                      minute: 0,  label: "🍱 Lunch Time!",        body: "Noon meal reminder — log your food in Aorane after eating." },
+    { hour: 19,                      minute: 30, label: "🌙 Dinner Time!",       body: "Evening reminder — eat light and healthy for better sleep." },
+  ];
+
+  const [bedH, bedM] = bedTime.split(":").map(Number);
+  const bedTotalMins = bedH * 60 + bedM;
+
+  const ids: string[] = [];
+  for (const meal of meals) {
+    if (meal.hour * 60 + meal.minute >= bedTotalMins) continue;
+    try {
+      const id = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: meal.label,
+          body: meal.body,
+          sound: true,
+          data: { type: "food_reminder" },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour: meal.hour,
+          minute: meal.minute,
+        },
+      });
+      ids.push(id);
+    } catch { }
+  }
+  return ids;
+}
+
+export async function cancelFoodReminders(): Promise<void> {
+  await cancelByType("food_reminder");
+}
+
 export async function scheduleHealthTipNotification(): Promise<void> {
   if (Platform.OS === "web") return;
   const granted = await checkNotificationPermissions();
