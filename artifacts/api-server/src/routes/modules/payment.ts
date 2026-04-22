@@ -275,6 +275,104 @@ router.get("/payment/order-status", requireAuth, async (req: AuthRequest, res) =
   }
 });
 
+// ─── GET: Server-rendered Razorpay checkout page (for mobile browser) ────────
+// Mobile app opens this URL in browser — loads checkout.js + opens payment modal
+router.get("/payment/checkout/:orderId", async (req, res) => {
+  const { orderId } = req.params as { orderId: string };
+  try {
+    const [payment] = await db.select().from(paymentsTable)
+      .where(eq(paymentsTable.razorpayOrderId, orderId));
+    if (!payment || payment.status !== "pending") {
+      res.status(404).setHeader("Content-Type", "text/html").send(
+        `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+         <body style="margin:0;background:#0A1628;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;color:#fff;">
+         <div style="text-align:center;padding:40px;max-width:340px">
+           <div style="font-size:56px;margin-bottom:16px">⚠️</div>
+           <h2 style="color:#f87171;margin:0 0 8px">Order Not Found</h2>
+           <p style="color:rgba(255,255,255,0.5);font-size:14px">This payment link is invalid or already used. Please go back to the app and try again.</p>
+         </div></body></html>`
+      );
+      return;
+    }
+    const keyId = process.env["RAZORPAY_KEY_ID"] || "";
+    const amountPaise = Math.round(Number(payment.amount) * 100);
+    const serverBase = process.env["RENDER_EXTERNAL_URL"] || `https://aorane.onrender.com`;
+    const callbackUrl = `${serverBase}/api/payment/rzp-callback`;
+    const planLabel = (payment.plan || "Premium").replace(/^\w/, c => c.toUpperCase());
+
+    res.setHeader("Content-Type", "text/html");
+    res.send(`<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+  <title>Aorane Payment</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0A1628;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif}
+    .card{background:#0D2040;border:1px solid rgba(59,130,246,0.3);border-radius:24px;padding:40px 32px;text-align:center;max-width:340px;width:90%}
+    h2{color:#fff;font-size:20px;margin-bottom:8px}
+    p{color:rgba(255,255,255,0.55);font-size:14px;line-height:1.5}
+    .loader{width:40px;height:40px;border:3px solid rgba(255,255,255,0.1);border-top-color:#3B82F6;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 20px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .retry-btn{margin-top:20px;padding:12px 24px;background:#3B82F6;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;width:100%}
+  </style>
+</head>
+<body>
+  <div class="card" id="loading-card">
+    <div class="loader"></div>
+    <h2>Aorane Payment</h2>
+    <p>Secure checkout kholna...</p>
+    <button class="retry-btn" id="open-btn" style="display:none" onclick="openRazorpay()">Payment Karo</button>
+  </div>
+
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    var rzpInstance = null;
+    function openRazorpay() {
+      if (rzpInstance) { rzpInstance.open(); return; }
+      var options = {
+        key: "${keyId}",
+        order_id: "${orderId}",
+        amount: ${amountPaise},
+        currency: "INR",
+        name: "Aorane Health",
+        description: "${planLabel} Plan - 1 Month",
+        image: "https://aorane.in/logo.png",
+        redirect: true,
+        callback_url: "${callbackUrl}",
+        cancel_url: "${callbackUrl}?cancelled=true",
+        theme: { color: "#E8622A" },
+        modal: {
+          backdropclose: false,
+          escape: false,
+          ondismiss: function() {
+            document.getElementById('open-btn').style.display = 'block';
+          }
+        }
+      };
+      rzpInstance = new Razorpay(options);
+      rzpInstance.open();
+    }
+    // Auto-open when page loads
+    window.addEventListener('load', function() {
+      setTimeout(openRazorpay, 500);
+    });
+    // Show retry button after 4 seconds in case auto-open fails
+    setTimeout(function() {
+      document.getElementById('open-btn').style.display = 'block';
+    }, 4000);
+  </script>
+</body>
+</html>`);
+  } catch {
+    res.status(500).setHeader("Content-Type", "text/html").send(
+      `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+       <body style="margin:0;background:#0A1628;display:flex;align-items:center;justify-content:center;min-height:100vh;color:#fff;font-family:sans-serif">
+       <div style="text-align:center;padding:40px"><h2>Server Error</h2><p>Please go back to the app and try again.</p></div></body></html>`
+    );
+  }
+});
+
 // ─── GET/POST: Razorpay native mobile checkout callback ──────────────────────
 // Razorpay embedded checkout redirects here after payment on native browser
 router.post("/payment/rzp-callback", async (req, res) => {

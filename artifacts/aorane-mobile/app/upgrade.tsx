@@ -261,21 +261,13 @@ export default function UpgradeScreen() {
   }, [refreshUser, stopPolling]);
 
   const openRazorpayNative = (orderRes: { paymentId: string; razorpayOrderId: string; razorpayKeyId: string; amount: number }) => {
-    let callbackBase = process.env.EXPO_PUBLIC_API_URL?.replace("/api", "") || "";
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      callbackBase = window.location.origin;
-    }
-    const callbackUrl = `${callbackBase}/api/payment/rzp-callback`;
-    const params = new URLSearchParams({
-      key: orderRes.razorpayKeyId,
-      order_id: orderRes.razorpayOrderId,
-      name: "Aorane Health",
-      description: `${plan.label} Plan - 1 Month`,
-      callback_url: callbackUrl,
-      cancel_url: callbackUrl,
-    });
-    const url = `https://api.razorpay.com/v1/checkout/embedded?${params.toString()}`;
-    Linking.openURL(url);
+    // Use server-rendered checkout page (checkout.js hosted on our server)
+    // This avoids the Razorpay API endpoint which returns 401 in browser
+    const serverBase = Platform.OS === "web" && typeof window !== "undefined"
+      ? window.location.origin
+      : (process.env.EXPO_PUBLIC_API_URL?.replace("/api", "") || "https://aorane.onrender.com");
+    const checkoutUrl = `${serverBase}/api/payment/checkout/${orderRes.razorpayOrderId}`;
+    Linking.openURL(checkoutUrl);
     // Start polling for payment confirmation after browser opens
     startPollingForPayment(orderRes.razorpayOrderId, orderRes.paymentId, selectedPlan);
   };
