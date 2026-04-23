@@ -212,7 +212,8 @@ export default function WearableScreen() {
     setConnectingGoogle(true);
     try {
       if (Platform.OS === "web" && typeof window !== "undefined") {
-        const d = await api.getGoogleFitAuthUrl();
+        const returnUrl = window.location.href.split("?")[0];
+        const d = await api.getGoogleFitAuthUrl(returnUrl);
         const { authUrl } = d as { authUrl: string };
         window.location.href = authUrl;
         return;

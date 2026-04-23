@@ -10,12 +10,146 @@ import { router, useFocusEffect } from "expo-router";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import { DS } from "@/lib/theme";
 import {
   Flame, Droplets, Dumbbell,
   Utensils, Pill, ScanLine, Brain, FileText,
   ChevronRight, Sparkles, Plus, Beef, Wheat,
 } from "lucide-react-native";
+
+// ── WEATHER ─────────────────────────────────────────────────────────────────
+type WeatherInfo = {
+  temp: number; feelsLike: number; humidity: number;
+  windspeed: number; emoji: string; description: string;
+  city: string; healthTip: string; isDay: boolean;
+};
+
+function wmoEmoji(code: number, isDay: boolean): string {
+  if (code === 0) return isDay ? "☀️" : "🌙";
+  if (code <= 2)  return "🌤️";
+  if (code === 3) return "☁️";
+  if (code <= 48) return "🌫️";
+  if (code <= 55) return "🌦️";
+  if (code <= 65) return "🌧️";
+  if (code <= 77) return "❄️";
+  if (code <= 82) return "🌦️";
+  if (code <= 86) return "🌨️";
+  return "⛈️";
+}
+function wmoDesc(code: number): string {
+  if (code === 0) return "Clear sky";
+  if (code <= 2)  return "Partly cloudy";
+  if (code === 3) return "Overcast";
+  if (code <= 48) return "Foggy";
+  if (code <= 55) return "Drizzle";
+  if (code <= 65) return "Rainy";
+  if (code <= 77) return "Snowy";
+  if (code <= 82) return "Rain showers";
+  return "Thunderstorm";
+}
+function weatherHealthTip(code: number, temp: number): string {
+  if (temp >= 38) return "🔥 Bahut garmi hai — pani zyada piyein, outdoor exercise avoid karein";
+  if (temp >= 32) return "☀️ Stay hydrated! Heat affects energy & focus";
+  if (temp <= 12) return "🧣 Thandi hai — warm up well before exercising";
+  if (code >= 51 && code <= 82) return "🌧️ Rainy day — indoor workout kaafi accha rahega";
+  if (code >= 95) return "⛈️ Thunderstorm — ghar ke andar rehna safer hai";
+  return "🌿 Great weather for a walk or outdoor exercise!";
+}
+
+function useWeather() {
+  const [weather, setWeather] = useState<WeatherInfo | null>(null);
+  const [wLoading, setWLoading] = useState(false);
+
+  useEffect(() => { fetchW(); }, []);
+
+  const fetchW = async () => {
+    setWLoading(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") { setWLoading(false); return; }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+      const { latitude, longitude } = loc.coords;
+      const [geo] = await Location.reverseGeocodeAsync({ latitude, longitude });
+      const city = geo?.city || geo?.subregion || geo?.region || "Your Location";
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude.toFixed(4)}&longitude=${longitude.toFixed(4)}&current_weather=true&hourly=relativehumidity_2m,apparent_temperature&forecast_days=1&timezone=auto`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      const d = await res.json() as {
+        current_weather: { temperature: number; windspeed: number; weathercode: number; is_day: number };
+        hourly: { relativehumidity_2m: number[]; apparent_temperature: number[] };
+      };
+      const hr = new Date().getHours();
+      const temp = Math.round(d.current_weather.temperature);
+      const code = d.current_weather.weathercode;
+      const isDay = d.current_weather.is_day === 1;
+      setWeather({
+        temp,
+        feelsLike: Math.round(d.hourly.apparent_temperature[hr] ?? temp),
+        humidity: d.hourly.relativehumidity_2m[hr] ?? 0,
+        windspeed: Math.round(d.current_weather.windspeed),
+        emoji: wmoEmoji(code, isDay),
+        description: wmoDesc(code),
+        city,
+        healthTip: weatherHealthTip(code, temp),
+        isDay,
+      });
+    } catch { }
+    setWLoading(false);
+  };
+
+  return { weather, wLoading, refetchWeather: fetchW };
+}
+
+function WeatherCard({ weather, loading }: { weather: WeatherInfo | null; loading: boolean }) {
+  if (loading) {
+    return (
+      <View style={wc.card}>
+        <ActivityIndicator size="small" color="#0077B6" />
+        <Text style={wc.loadTxt}>Fetching weather...</Text>
+      </View>
+    );
+  }
+  if (!weather) return null;
+  return (
+    <LinearGradient
+      colors={weather.isDay ? ["#1565C0", "#0D47A1"] : ["#1A237E", "#283593"]}
+      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+      style={wc.card}
+    >
+      <View style={wc.top}>
+        <View style={{ flex: 1 }}>
+          <Text style={wc.city}>📍 {weather.city}</Text>
+          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 6 }}>
+            <Text style={wc.emoji}>{weather.emoji}</Text>
+            <Text style={wc.temp}>{weather.temp}°C</Text>
+            <Text style={wc.desc}>{weather.description}</Text>
+          </View>
+        </View>
+        <View style={wc.statsCol}>
+          <Text style={wc.statTxt}>🌡️ Feels {weather.feelsLike}°C</Text>
+          <Text style={wc.statTxt}>💧 {weather.humidity}%</Text>
+          <Text style={wc.statTxt}>🌬️ {weather.windspeed} km/h</Text>
+        </View>
+      </View>
+      <View style={wc.tipRow}>
+        <Text style={wc.tip}>{weather.healthTip}</Text>
+      </View>
+    </LinearGradient>
+  );
+}
+const wc = StyleSheet.create({
+  card:    { borderRadius: 18, padding: 16, marginBottom: 12 },
+  top:     { flexDirection: "row", alignItems: "center", gap: 8 },
+  city:    { fontSize: 11, color: "rgba(255,255,255,0.7)", fontFamily: "Inter_500Medium", marginBottom: 4 },
+  emoji:   { fontSize: 32 },
+  temp:    { fontSize: 36, color: "#FFF", fontFamily: "Inter_700Bold", lineHeight: 40 },
+  desc:    { fontSize: 13, color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", paddingBottom: 4 },
+  statsCol: { gap: 4, alignItems: "flex-end" },
+  statTxt: { fontSize: 12, color: "rgba(255,255,255,0.85)", fontFamily: "Inter_500Medium" },
+  tipRow:  { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.15)" },
+  tip:     { fontSize: 12, color: "rgba(255,255,255,0.9)", fontFamily: "Inter_400Regular", lineHeight: 18 },
+  loadTxt: { fontSize: 12, color: "#7A90A4", fontFamily: "Inter_400Regular", marginLeft: 8 },
+});
 
 function todayDate() { return new Date().toISOString().slice(0, 10); }
 
@@ -407,6 +541,7 @@ const mealLabels: Record<string, string> = {
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { weather, wLoading } = useWeather();
 
   const [healthScore, setHealthScore] = useState(0);
   const [water,       setWater]       = useState({ current: 0, goal: 8 });
@@ -544,6 +679,9 @@ export default function DashboardScreen() {
             exerciseMin={exerciseMin}
             activityPct={activityPct}
           />
+
+          {/* 1b. WEATHER CARD */}
+          <WeatherCard weather={weather} loading={wLoading} />
 
           {/* 2. QUICK SERVICES */}
           <View style={s.surfaceCard}>
