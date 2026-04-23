@@ -1,0 +1,21 @@
+{
+  "name": "AORANE Business Portal",
+  "short_name": "AORANE Biz",
+  "description": "AI-powered employee health monitoring & wellness management platform.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0747A6",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

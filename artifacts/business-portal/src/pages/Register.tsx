@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
@@ -144,6 +145,11 @@ export default function Register() {
 
   return (
     <div style={{ minHeight: "100vh", background: BG, fontFamily: "'Inter', sans-serif", display: "flex" }}>
+      <Helmet>
+        <title>Register Your Organisation — AORANE Business Portal</title>
+        <meta name="description" content="Register your company on AORANE Business Portal. Set up employee health monitoring, stress tracking, and wellness analytics for your workforce in minutes." />
+        <link rel="canonical" href="https://business.aorane.com/register" />
+      </Helmet>
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
         @keyframes spin { to { transform: rotate(360deg); } }

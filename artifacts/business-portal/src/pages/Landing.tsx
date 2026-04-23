@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Helmet } from "react-helmet-async";
 import { useLocation } from "wouter";
 import EnquiryModal from "@/components/EnquiryModal";
 import { useSiteSettings } from "@/lib/useSiteSettings";
@@ -203,6 +204,14 @@ export default function Landing() {
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: BG, color: "#181c20", overflowX: "hidden" }}>
+      <Helmet>
+        <title>AORANE Business Portal — Employee Wellness Management Platform</title>
+        <meta name="description" content="Manage your workforce health with AI-powered analytics. Monitor employee stress, track wellness KPIs, generate DPDPA-compliant reports & integrate with your HRMS. Trusted by Indian enterprises." />
+        <link rel="canonical" href="https://business.aorane.com/" />
+        <meta property="og:title" content="AORANE Business Portal — Employee Wellness Management" />
+        <meta property="og:description" content="AI-powered employee health monitoring, stress analytics & compliance reports for Indian enterprises." />
+        <meta property="og:url" content="https://business.aorane.com/" />
+      </Helmet>
       <style>{`
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }

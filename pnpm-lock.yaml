@@ -796,6 +796,10 @@ importers:
         version: 3.1.0
 
   artifacts/business-portal:
+    dependencies:
+      react-helmet-async:
+        specifier: ^3.0.0
+        version: 3.0.0(react@19.1.0)
     devDependencies:
       '@hookform/resolvers':
         specifier: ^3.10.0

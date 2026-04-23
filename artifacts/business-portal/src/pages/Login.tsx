@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
@@ -125,6 +126,12 @@ export default function Login() {
 
   return (
     <div style={{ minHeight: "100vh", background: BG, fontFamily: "'Inter', sans-serif", display: "flex" }}>
+      <Helmet>
+        <title>Sign In — AORANE Business Portal</title>
+        <meta name="description" content="Sign in to your AORANE Business Portal account to access employee wellness dashboards, analytics, and health reports." />
+        <link rel="canonical" href="https://business.aorane.com/login" />
+        <meta name="robots" content="noindex, follow" />
+      </Helmet>
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
         @keyframes spin { to { transform: rotate(360deg); } }
