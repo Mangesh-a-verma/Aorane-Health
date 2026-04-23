@@ -327,6 +327,69 @@ router.get("/business/members/search", requireBusinessAuth, async (req: Business
   }
 });
 
+// ─── Per-employee stress data (business portal) ──────────────────────────────
+router.get("/business/members/:userId/stress", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const userId = req.params["userId"] as string;
+
+    // Verify the member belongs to this org
+    const [member] = await db.select({ id: orgMembersTable.id })
+      .from(orgMembersTable)
+      .where(and(
+        eq(orgMembersTable.orgId, req.orgId!),
+        eq(orgMembersTable.userId, userId),
+        eq(orgMembersTable.isActive, true),
+      ))
+      .limit(1);
+
+    if (!member) { res.status(404).json({ error: "Member not found in organization" }); return; }
+
+    // Profile name
+    const [profile] = await db.select({ fullName: userProfilesTable.fullName })
+      .from(userProfilesTable)
+      .where(eq(userProfilesTable.userId, userId))
+      .limit(1);
+
+    // Stress logs — last 30 days, most recent first
+    const logs = await db.select({
+      stressScore: stressLogsTable.stressScore,
+      createdAt: stressLogsTable.createdAt,
+    })
+      .from(stressLogsTable)
+      .where(and(
+        eq(stressLogsTable.userId, userId),
+        gte(stressLogsTable.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)),
+      ))
+      .orderBy(desc(stressLogsTable.createdAt))
+      .limit(30);
+
+    const latestScore = logs.length > 0 ? logs[0].stressScore : null;
+    const avgScore = logs.length > 0
+      ? Math.round(logs.reduce((s, l) => s + l.stressScore, 0) / logs.length)
+      : null;
+    const burnoutRisk = logs.length >= 3 && logs.slice(0, 3).every((l) => l.stressScore >= 70);
+    const level =
+      latestScore == null ? "No Data"
+      : latestScore < 30  ? "Low"
+      : latestScore < 55  ? "Moderate"
+      : latestScore < 75  ? "High"
+      : "Critical";
+
+    // Daily trend — last unique date per day
+    const trendMap = new Map<string, number>();
+    for (const log of [...logs].reverse()) {
+      const date = new Date(log.createdAt).toISOString().slice(0, 10);
+      trendMap.set(date, log.stressScore);
+    }
+    const trend = Array.from(trendMap.entries()).map(([date, score]) => ({ date, score })).slice(-14);
+
+    res.json({ userId, name: profile?.fullName ?? null, latestScore, avgScore, logsCount: logs.length, burnoutRisk, level, trend });
+  } catch (err) {
+    console.error("Member stress fetch error:", err);
+    res.status(500).json({ error: "Failed to fetch member stress data" });
+  }
+});
+
 router.post("/business/enroll", requireAuth, async (req, res) => {
   try {
     const { orgCode } = req.body as { orgCode: string };

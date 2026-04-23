@@ -129,6 +129,17 @@ export interface MemberDetail {
   recentScores: { scoreDate: string; overallScore: number | null }[];
 }
 
+export interface MemberStress {
+  userId: string;
+  name: string | null;
+  latestScore: number | null;
+  avgScore: number | null;
+  logsCount: number;
+  burnoutRisk: boolean;
+  level: string;
+  trend: { date: string; score: number }[];
+}
+
 export const api = {
   login: (email: string, password: string) =>
     request<{ requiresOtp: boolean; message: string; devOtp?: string; sent: boolean }>("/business/login", { method: "POST", body: JSON.stringify({ email, password }) }),
@@ -166,6 +177,9 @@ export const api = {
 
   getMemberDetail: (userId: string) =>
     request<MemberDetail>(`/business/members/${userId}/detail`),
+
+  getMemberStress: (userId: string) =>
+    request<MemberStress>(`/business/members/${userId}/stress`),
 
   removeMember: (userId: string) =>
     request<{ success: boolean }>(`/business/members/${userId}/remove`, { method: "POST" }),

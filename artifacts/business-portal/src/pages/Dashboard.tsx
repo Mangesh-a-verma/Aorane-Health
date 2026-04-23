@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
-import { api, type Overview, type HealthAnalytics } from "@/lib/api";
+import { api, type Overview, type HealthAnalytics, type MemberStress, type MemberSearchResult } from "@/lib/api";
 import {
   Users, Server, TrendingUp, Activity, Copy, Check,
   Building2, MapPin, Mail, Phone, Shield, Heart, Droplets, Dumbbell, Pill,
-  AlertTriangle, UserCheck, UserX, Zap,
+  AlertTriangle, UserCheck, UserX, Zap, Search, Brain, X as XIcon, Loader2,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -74,6 +74,15 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
+  // Employee stress lookup state
+  const [stressQuery, setStressQuery] = useState("");
+  const [stressResults, setStressResults] = useState<MemberSearchResult[]>([]);
+  const [stressSearching, setStressSearching] = useState(false);
+  const [stressSearchErr, setStressSearchErr] = useState("");
+  const [selectedStressUser, setSelectedStressUser] = useState<MemberSearchResult | null>(null);
+  const [memberStress, setMemberStress] = useState<MemberStress | null>(null);
+  const [stressLookupLoading, setStressLookupLoading] = useState(false);
+
   useEffect(() => {
     api.overview().then(setOverview).catch(console.error).finally(() => setLoading(false));
     api.getHealthAnalytics().then(setAnalytics).catch(console.error).finally(() => setAnalyticsLoading(false));
@@ -84,6 +93,39 @@ export default function Dashboard() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  };
+
+  const handleStressSearch = async (q: string) => {
+    setStressQuery(q);
+    setStressSearchErr("");
+    if (q.trim().length < 4) { setStressResults([]); return; }
+    setStressSearching(true);
+    try {
+      const res = await api.searchMembers(q.trim());
+      setStressResults(res.results);
+    } catch { setStressSearchErr("Search failed. Try again."); }
+    finally { setStressSearching(false); }
+  };
+
+  const handleSelectStressUser = async (m: MemberSearchResult) => {
+    setSelectedStressUser(m);
+    setStressResults([]);
+    setStressQuery(m.name || m.aoraneId || "");
+    setMemberStress(null);
+    setStressLookupLoading(true);
+    try {
+      const stress = await api.getMemberStress(m.userId);
+      setMemberStress(stress);
+    } catch { setMemberStress(null); }
+    finally { setStressLookupLoading(false); }
+  };
+
+  const clearStressLookup = () => {
+    setStressQuery("");
+    setStressResults([]);
+    setSelectedStressUser(null);
+    setMemberStress(null);
+    setStressSearchErr("");
   };
 
   const seatPct = org ? Math.min(100, (org.usedSeats / org.totalSeats) * 100) : 0;
@@ -246,6 +288,154 @@ export default function Dashboard() {
             </div>
           );
         })()}
+
+        {/* Employee Stress Lookup */}
+        {!analyticsLoading && analytics && analytics.totalMembers > 0 && (
+          <div className="mb-6 rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50 p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                <Brain size={18} className="text-violet-600" />
+              </div>
+              <div>
+                <div className="font-display font-bold text-lg text-violet-900">Employee Stress Lookup</div>
+                <div className="text-xs text-violet-600/70">Search by name or Aorane ID — individual stress data (DPDP compliant)</div>
+              </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative mb-3">
+              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                {stressSearching
+                  ? <Loader2 size={15} className="text-violet-400 animate-spin" />
+                  : <Search size={15} className="text-violet-400" />
+                }
+              </div>
+              <input
+                type="text"
+                value={stressQuery}
+                onChange={(e) => handleStressSearch(e.target.value)}
+                placeholder="Type employee name or Aorane ID (min 4 chars)…"
+                className="w-full pl-9 pr-10 py-2.5 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-300 placeholder-gray-400"
+              />
+              {(stressQuery || selectedStressUser) && (
+                <button
+                  onClick={clearStressLookup}
+                  className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  <XIcon size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Search Error */}
+            {stressSearchErr && (
+              <div className="text-xs text-red-500 mb-2">{stressSearchErr}</div>
+            )}
+
+            {/* Search Results Dropdown */}
+            {stressResults.length > 0 && !selectedStressUser && (
+              <div className="bg-white border border-violet-200 rounded-xl shadow-lg overflow-hidden mb-3 max-h-48 overflow-y-auto">
+                {stressResults.map((m) => (
+                  <button
+                    key={m.userId}
+                    onClick={() => handleSelectStressUser(m)}
+                    className="w-full text-left px-4 py-2.5 hover:bg-violet-50 flex items-center gap-3 transition-colors border-b border-violet-50 last:border-0"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                      {(m.name || "?").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800">{m.name || "Unknown"}</div>
+                      <div className="text-[11px] text-gray-400">{m.aoraneId ? `ID: ${m.aoraneId}` : ""} {m.city || ""}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* No results */}
+            {stressQuery.trim().length >= 4 && !stressSearching && stressResults.length === 0 && !selectedStressUser && (
+              <div className="text-xs text-gray-400 mb-2">No members found matching "{stressQuery}"</div>
+            )}
+
+            {/* Selected Employee Stress Card */}
+            {selectedStressUser && (
+              <div className="bg-white rounded-2xl border border-violet-100 p-4">
+                {stressLookupLoading ? (
+                  <div className="flex items-center gap-2 py-3 justify-center">
+                    <Loader2 size={16} className="text-violet-400 animate-spin" />
+                    <span className="text-sm text-violet-400">Loading stress data…</span>
+                  </div>
+                ) : memberStress ? (() => {
+                  const score = memberStress.latestScore;
+                  const levelColors: Record<string, { bg: string; text: string; bar: string; badge: string }> = {
+                    "Low":      { bg: "bg-emerald-50",  text: "text-emerald-700", bar: "#10B981", badge: "bg-emerald-100 text-emerald-700" },
+                    "Moderate": { bg: "bg-amber-50",    text: "text-amber-700",   bar: "#F59E0B", badge: "bg-amber-100 text-amber-700" },
+                    "High":     { bg: "bg-orange-50",   text: "text-orange-700",  bar: "#F97316", badge: "bg-orange-100 text-orange-700" },
+                    "Critical": { bg: "bg-red-50",      text: "text-red-700",     bar: "#EF4444", badge: "bg-red-100 text-red-700" },
+                    "No Data":  { bg: "bg-gray-50",     text: "text-gray-500",    bar: "#9CA3AF", badge: "bg-gray-100 text-gray-500" },
+                  };
+                  const c = levelColors[memberStress.level] || levelColors["No Data"];
+                  return (
+                    <>
+                      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                            {(selectedStressUser.name || "?").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-sm text-gray-800">{selectedStressUser.name || "Member"}</div>
+                            <div className="text-[11px] text-gray-400">{memberStress.logsCount} check-in{memberStress.logsCount !== 1 ? "s" : ""} in last 30 days</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {memberStress.burnoutRisk && (
+                            <span className="pill-chip bg-red-100 text-red-600 font-semibold text-[10px]">⚠️ Burnout Risk</span>
+                          )}
+                          <span className={`pill-chip font-semibold ${c.badge}`}>{memberStress.level}</span>
+                          <div className={`kpi-number text-2xl ${c.text}`}>
+                            {score !== null ? score : "—"}<span className="text-sm font-normal opacity-60">{score !== null ? "/100" : ""}</span>
+                          </div>
+                        </div>
+                      </div>
+                      {score !== null && (
+                        <div className="mb-3">
+                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${score}%`, background: c.bar }} />
+                          </div>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-2 mt-1">
+                        <div className="rounded-xl bg-gray-50 px-3 py-2 text-center">
+                          <div className="font-bold text-base text-gray-800">{memberStress.avgScore !== null ? memberStress.avgScore : "—"}</div>
+                          <div className="text-[10px] text-gray-400 uppercase tracking-wider">30-day Avg</div>
+                        </div>
+                        <div className="rounded-xl bg-gray-50 px-3 py-2 text-center">
+                          <div className="font-bold text-base text-gray-800">{memberStress.logsCount}</div>
+                          <div className="text-[10px] text-gray-400 uppercase tracking-wider">Check-ins</div>
+                        </div>
+                      </div>
+                      {memberStress.trend.length > 0 && (
+                        <div className="mt-3">
+                          <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Stress Trend (Last 14 days)</div>
+                          <ResponsiveContainer width="100%" height={60}>
+                            <BarChart data={memberStress.trend} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
+                              <YAxis domain={[0, 100]} tick={false} axisLine={false} tickLine={false} />
+                              <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 11 }} formatter={(v: number) => [v, "Stress Score"]} />
+                              <Bar dataKey="score" fill={c.bar} radius={[3, 3, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </>
+                  );
+                })() : (
+                  <div className="text-sm text-gray-400 text-center py-3">Could not load stress data for this member.</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Health Analytics Section */}
         <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 mb-6">
