@@ -547,7 +547,7 @@ export default function BloodEmergencyScreen() {
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
                         <Ionicons name="navigate" size={11} color={C.green} />
                         <Text style={{ color: C.green, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>
-                          {d.distanceKm < 1 ? "<1 km" : `~${Math.round(d.distanceKm)} km`} aapse
+                          {d.distanceKm < 1 ? "<1 km" : `~${Math.round(d.distanceKm)} km`} away
                         </Text>
                       </View>
                     )}

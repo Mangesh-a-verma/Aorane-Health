@@ -77,7 +77,7 @@ export default function EnrollmentScreen() {
           Enter Enrollment Code
         </Text>
         <Text style={{ color: subText, fontFamily: "Inter_400Regular", fontSize: 14, textAlign: "center", marginBottom: 32, lineHeight: 20 }}>
-          Apni company ya organization ka enrollment code ya org code enter karo. Aapka plan automatically upgrade ho jayega.
+          Enter your company or organization's enrollment code. Your plan will automatically upgrade once verified.
         </Text>
 
         {/* Code Input */}
@@ -113,10 +113,10 @@ export default function EnrollmentScreen() {
 
         {/* Info Box */}
         <View style={{ backgroundColor: isDark ? "rgba(59,130,246,0.08)" : "rgba(0,119,182,0.06)", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: isDark ? "rgba(59,130,246,0.2)" : "rgba(0,119,182,0.12)" }}>
-          <Text style={{ color: isDark ? "rgba(59,130,246,0.9)" : "#0077B6", fontFamily: "Inter_600SemiBold", fontSize: 13, marginBottom: 6 }}>ℹ️ Kahan se milega code?</Text>
+          <Text style={{ color: isDark ? "rgba(59,130,246,0.9)" : "#0077B6", fontFamily: "Inter_600SemiBold", fontSize: 13, marginBottom: 6 }}>ℹ️ Where do I get the code?</Text>
           <Text style={{ color: subText, fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 18 }}>
-            Apni company ke HR ya admin se enrollment code maango. Woh Aorane Business Portal se code create karte hain.{"\n\n"}
-            Code enter karne ke baad aapka plan automatically upgrade ho jayega — koi payment nahi.
+            Ask your company's HR or admin for the enrollment code. They can generate it from the Aorane Business Portal.{"\n\n"}
+            Once the code is entered, your plan will automatically upgrade — no payment needed.
           </Text>
         </View>
 
