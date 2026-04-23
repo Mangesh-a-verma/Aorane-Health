@@ -35,3 +35,21 @@ id = "L1dkreKTI5_1oKvKm_yY9"
 uri = "file://AORANE_Project_Report.pdf"
 type = "pdf"
 title = "AORANE — Complete Project Status & Business Report"
+
+[[outputs]]
+id = "3tlxwp4yr5IiTNZBikMWS"
+uri = "file://AORANE_Corporate_Benefits.pdf"
+type = "pdf"
+title = "AORANE — Corporate Benefits Guide (B2B)"
+
+[[outputs]]
+id = "4XUwngSBabm7WDUyNS8-4"
+uri = "file://AORANE_Individual_Benefits.pdf"
+type = "pdf"
+title = "AORANE — Individual User Benefits Guide"
+
+[[outputs]]
+id = "7FhY6oZ6S1HC743V677J6"
+uri = "file://AORANE_Investor_Deck.pdf"
+type = "pdf"
+title = "AORANE — Investor Deck (Seed Round)"
