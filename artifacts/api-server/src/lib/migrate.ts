@@ -47,6 +47,9 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE exercise_logs ADD COLUMN IF NOT EXISTS met_value NUMERIC(5,2)`,
     `ALTER TABLE exercise_logs ADD COLUMN IF NOT EXISTS input_method TEXT DEFAULT 'manual'`,
     `ALTER TABLE exercise_logs ADD COLUMN IF NOT EXISTS notes TEXT`,
+    `ALTER TABLE exercise_logs ADD COLUMN IF NOT EXISTS sets INTEGER`,
+    `ALTER TABLE exercise_logs ADD COLUMN IF NOT EXISTS reps INTEGER`,
+    `ALTER TABLE exercise_logs ADD COLUMN IF NOT EXISTS steps INTEGER`,
 
     // ── food_items table (needed for food scan + food logs) ──────────────────
     `CREATE TABLE IF NOT EXISTS food_items (

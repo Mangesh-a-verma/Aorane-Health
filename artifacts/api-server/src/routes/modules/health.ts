@@ -10,22 +10,46 @@ const router = Router();
 // MET values for each exercise (per kg per hour)
 // ─────────────────────────────────────────────────────────
 const MET_VALUES: Record<string, { light: number; moderate: number; intense: number }> = {
-  "Walking":          { light: 2.5,  moderate: 3.5,  intense: 4.5  },
-  "Running":          { light: 7.0,  moderate: 9.8,  intense: 13.5 },
-  "Yoga":             { light: 2.0,  moderate: 2.5,  intense: 4.0  },
-  "Cycling":          { light: 4.0,  moderate: 7.5,  intense: 10.0 },
-  "Swimming":         { light: 5.0,  moderate: 8.0,  intense: 11.0 },
-  "Weight Training":  { light: 3.0,  moderate: 5.0,  intense: 7.0  },
-  "Dancing":          { light: 3.0,  moderate: 4.5,  intense: 7.0  },
-  "Cricket":          { light: 3.5,  moderate: 5.0,  intense: 7.0  },
-  "Badminton":        { light: 4.0,  moderate: 5.5,  intense: 7.5  },
-  "Skipping":         { light: 8.0,  moderate: 11.0, intense: 13.5 },
-  "HIIT":             { light: 7.0,  moderate: 10.0, intense: 14.0 },
-  "Pilates":          { light: 2.5,  moderate: 3.5,  intense: 5.0  },
-  "Zumba":            { light: 4.0,  moderate: 6.0,  intense: 8.0  },
-  "Climbing":         { light: 5.0,  moderate: 7.5,  intense: 11.0 },
-  "Football":         { light: 5.0,  moderate: 7.0,  intense: 10.0 },
-  "Basketball":       { light: 4.5,  moderate: 6.5,  intense: 9.0  },
+  // ── Cardio ────────────────────────────────────────────────────────────────
+  "Walking":            { light: 2.5,  moderate: 3.5,  intense: 4.5  },
+  "Running":            { light: 7.0,  moderate: 9.8,  intense: 13.5 },
+  "Cycling":            { light: 4.0,  moderate: 7.5,  intense: 10.0 },
+  "Swimming":           { light: 5.0,  moderate: 8.0,  intense: 11.0 },
+  "Skipping":           { light: 8.0,  moderate: 11.0, intense: 13.5 },
+  "HIIT":               { light: 7.0,  moderate: 10.0, intense: 14.0 },
+  "Treadmill":          { light: 3.5,  moderate: 7.0,  intense: 10.0 },
+  "Elliptical":         { light: 4.5,  moderate: 7.0,  intense: 9.5  },
+  "Rowing":             { light: 4.5,  moderate: 7.0,  intense: 10.0 },
+  "Stair Climbing":     { light: 4.0,  moderate: 7.5,  intense: 10.0 },
+  // ── Strength / Gym ────────────────────────────────────────────────────────
+  "Weight Training":    { light: 3.0,  moderate: 5.0,  intense: 7.0  },
+  "Bench Press":        { light: 3.0,  moderate: 4.5,  intense: 6.0  },
+  "Squats":             { light: 3.5,  moderate: 5.0,  intense: 7.0  },
+  "Deadlifts":          { light: 4.0,  moderate: 5.5,  intense: 7.5  },
+  "Shoulder Press":     { light: 3.0,  moderate: 4.5,  intense: 6.0  },
+  "Bicep Curls":        { light: 2.5,  moderate: 3.5,  intense: 5.0  },
+  "Pull-ups":           { light: 4.0,  moderate: 6.0,  intense: 8.5  },
+  "Push-ups":           { light: 3.5,  moderate: 5.0,  intense: 7.0  },
+  "Lunges":             { light: 3.0,  moderate: 4.5,  intense: 6.0  },
+  "Plank":              { light: 2.5,  moderate: 3.5,  intense: 4.5  },
+  "Leg Press":          { light: 3.0,  moderate: 4.5,  intense: 6.5  },
+  "Lat Pulldown":       { light: 3.0,  moderate: 4.5,  intense: 6.0  },
+  "Cable Rows":         { light: 3.0,  moderate: 4.5,  intense: 6.0  },
+  "Tricep Dips":        { light: 3.0,  moderate: 4.5,  intense: 6.5  },
+  // ── Yoga / Flexibility ────────────────────────────────────────────────────
+  "Yoga":               { light: 2.0,  moderate: 2.5,  intense: 4.0  },
+  "Pilates":            { light: 2.5,  moderate: 3.5,  intense: 5.0  },
+  "Surya Namaskar":     { light: 3.5,  moderate: 5.0,  intense: 7.0  },
+  // ── Dance / Group ─────────────────────────────────────────────────────────
+  "Dancing":            { light: 3.0,  moderate: 4.5,  intense: 7.0  },
+  "Zumba":              { light: 4.0,  moderate: 6.0,  intense: 8.0  },
+  // ── Sports ────────────────────────────────────────────────────────────────
+  "Cricket":            { light: 3.5,  moderate: 5.0,  intense: 7.0  },
+  "Badminton":          { light: 4.0,  moderate: 5.5,  intense: 7.5  },
+  "Football":           { light: 5.0,  moderate: 7.0,  intense: 10.0 },
+  "Basketball":         { light: 4.5,  moderate: 6.5,  intense: 9.0  },
+  "Volleyball":         { light: 3.0,  moderate: 4.5,  intense: 6.5  },
+  "Climbing":           { light: 5.0,  moderate: 7.5,  intense: 11.0 },
 };
 
 function calculateCalories(
@@ -77,7 +101,7 @@ router.post("/health/exercise/calculate", requireAuth, async (req: AuthRequest, 
 
 router.post("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { exerciseType, durationMinutes, intensity, caloriesBurned, inputMethod, notes } = req.body as Record<string, unknown>;
+    const { exerciseType, durationMinutes, intensity, caloriesBurned, inputMethod, notes, sets, reps, steps } = req.body as Record<string, unknown>;
 
     const profRes = await pool.query(`SELECT weight_kg, gender FROM user_profiles WHERE user_id=$1`, [req.userId!]);
     const weightKg = Number(profRes.rows[0]?.weight_kg || 70);
@@ -100,9 +124,10 @@ router.post("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO exercise_logs (user_id, exercise_type, duration_minutes, intensity, calories_burned, met_value, input_method, notes, logged_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING *`,
+      `INSERT INTO exercise_logs (user_id, exercise_type, duration_minutes, intensity, sets, reps, steps, calories_burned, met_value, input_method, notes, logged_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW()) RETURNING *`,
       [req.userId!, exerciseType, Number(durationMinutes), intensity || "moderate",
+       sets ? Number(sets) : null, reps ? Number(reps) : null, steps ? Number(steps) : null,
        String(finalCalories), String(finalMet), inputMethod || "manual", notes || null]
     );
     res.status(201).json({
@@ -132,6 +157,9 @@ router.get("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
       exerciseType:    r.exercise_type,
       durationMinutes: r.duration_minutes,
       intensity:       r.intensity,
+      sets:            r.sets,
+      reps:            r.reps,
+      steps:           r.steps,
       caloriesBurned:  r.calories_burned,
       metValue:        r.met_value,
       inputMethod:     r.input_method,

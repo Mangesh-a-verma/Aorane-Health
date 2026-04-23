@@ -8,10 +8,10 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
-import { router, useFocusEffect } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { api, cachedGet } from "@/lib/api";
 import { DS } from "@/lib/theme";
-import { Plus, Timer, Flame, Trophy, X, Dumbbell, Trash2 } from "lucide-react-native";
+import { Plus, Timer, Flame, Trophy, X, Dumbbell, Trash2, ChevronDown } from "lucide-react-native";
 import { useOfflineLog } from "@/hooks/useOfflineLog";
 
 const { width: W } = Dimensions.get("window");
@@ -21,34 +21,73 @@ const G = DS.color.green;
 type ExerciseLog = {
   id: string; exerciseType: string; durationMinutes: number;
   intensity: string; caloriesBurned?: string; metValue?: string;
+  sets?: number | null; reps?: number | null; steps?: number | null;
 };
 
 type SessionEntry = {
-  id: string;
-  exerciseType: string;
-  duration: string;
-  intensity: string;
-  estimatedCalories: number | null;
-  met: number | null;
+  id: string; exerciseType: string; duration: string; intensity: string;
+  estimatedCalories: number | null; met: number | null;
+  sets?: string; reps?: string; steps?: string;
 };
 
-const EXERCISES = [
-  { name: "Walking",         icon: "walk",           color: "#34C759" },
-  { name: "Running",         icon: "run-fast",       color: "#FF3B30" },
-  { name: "Yoga",            icon: "yoga",           color: "#AF52DE" },
-  { name: "Cycling",         icon: "bike",           color: "#FF9500" },
-  { name: "Swimming",        icon: "swim",           color: "#32ADE6" },
-  { name: "Weight Training", icon: "weight-lifter",  color: "#5856D6" },
-  { name: "Dancing",         icon: "dance-ballroom", color: "#FF2D55" },
-  { name: "Cricket",         icon: "cricket",        color: "#34C759" },
-  { name: "Badminton",       icon: "badminton",      color: P },
-  { name: "Skipping",        icon: "jump-rope",      color: "#FF9500" },
-  { name: "HIIT",            icon: "fire",           color: "#FF3B30" },
-  { name: "Zumba",           icon: "music",          color: "#FF2D55" },
-  { name: "Pilates",         icon: "human-handsdown", color: "#AF52DE" },
-  { name: "Climbing",        icon: "slope-uphill",   color: "#FF9500" },
-  { name: "Football",        icon: "soccer",         color: "#34C759" },
-  { name: "Basketball",      icon: "basketball",     color: "#FF9500" },
+// ── Exercise Categories ────────────────────────────────────────────────────────
+type Category = "All" | "Cardio" | "Strength" | "Yoga" | "Sports";
+
+const EXERCISE_LIST: { name: string; icon: string; color: string; category: Exclude<Category, "All"> }[] = [
+  // ── Cardio ──
+  { name: "Walking",       icon: "walk",               color: "#34C759", category: "Cardio"   },
+  { name: "Running",       icon: "run-fast",            color: "#FF3B30", category: "Cardio"   },
+  { name: "Cycling",       icon: "bike",                color: "#FF9500", category: "Cardio"   },
+  { name: "Swimming",      icon: "swim",                color: "#32ADE6", category: "Cardio"   },
+  { name: "Skipping",      icon: "jump-rope",           color: "#FF9500", category: "Cardio"   },
+  { name: "HIIT",          icon: "fire",                color: "#FF3B30", category: "Cardio"   },
+  { name: "Treadmill",     icon: "run",                 color: "#34C759", category: "Cardio"   },
+  { name: "Elliptical",    icon: "skiing",              color: "#5856D6", category: "Cardio"   },
+  { name: "Rowing",        icon: "rowing",              color: "#32ADE6", category: "Cardio"   },
+  { name: "Stair Climbing",icon: "stairs",              color: "#FF6B35", category: "Cardio"   },
+  { name: "Dancing",       icon: "dance-ballroom",      color: "#FF2D55", category: "Cardio"   },
+  { name: "Zumba",         icon: "music",               color: "#FF2D55", category: "Cardio"   },
+  // ── Strength / Gym ──
+  { name: "Weight Training",icon: "weight-lifter",      color: "#5856D6", category: "Strength" },
+  { name: "Bench Press",   icon: "dumbbell",            color: "#7C3AED", category: "Strength" },
+  { name: "Squats",        icon: "human-handsdown",     color: "#EF4444", category: "Strength" },
+  { name: "Deadlifts",     icon: "weight",              color: "#DC2626", category: "Strength" },
+  { name: "Shoulder Press",icon: "arm-flex",            color: "#6366F1", category: "Strength" },
+  { name: "Bicep Curls",   icon: "arm-flex-outline",    color: "#8B5CF6", category: "Strength" },
+  { name: "Pull-ups",      icon: "human-handsup",       color: "#0284C7", category: "Strength" },
+  { name: "Push-ups",      icon: "human",               color: "#0369A1", category: "Strength" },
+  { name: "Lunges",        icon: "human-male",          color: "#7C3AED", category: "Strength" },
+  { name: "Plank",         icon: "yoga",                color: "#059669", category: "Strength" },
+  { name: "Leg Press",     icon: "seat",                color: "#DC2626", category: "Strength" },
+  { name: "Lat Pulldown",  icon: "cable-data",          color: "#2563EB", category: "Strength" },
+  { name: "Cable Rows",    icon: "weight-lifter",       color: "#1D4ED8", category: "Strength" },
+  { name: "Tricep Dips",   icon: "arm-flex",            color: "#7C3AED", category: "Strength" },
+  // ── Yoga / Flexibility ──
+  { name: "Yoga",          icon: "yoga",                color: "#AF52DE", category: "Yoga"     },
+  { name: "Pilates",       icon: "human-handsdown",     color: "#AF52DE", category: "Yoga"     },
+  { name: "Surya Namaskar",icon: "weather-sunny",       color: "#FF9500", category: "Yoga"     },
+  // ── Sports ──
+  { name: "Cricket",       icon: "cricket",             color: "#34C759", category: "Sports"   },
+  { name: "Badminton",     icon: "badminton",           color: P,          category: "Sports"   },
+  { name: "Football",      icon: "soccer",              color: "#34C759", category: "Sports"   },
+  { name: "Basketball",    icon: "basketball",          color: "#FF9500", category: "Sports"   },
+  { name: "Volleyball",    icon: "volleyball",          color: "#F59E0B", category: "Sports"   },
+  { name: "Climbing",      icon: "slope-uphill",        color: "#FF9500", category: "Sports"   },
+];
+
+const STEPS_EXERCISES = new Set(["Walking", "Running", "Treadmill", "Stair Climbing"]);
+const STRENGTH_EXERCISES = new Set([
+  "Weight Training","Bench Press","Squats","Deadlifts","Shoulder Press",
+  "Bicep Curls","Pull-ups","Push-ups","Lunges","Plank","Leg Press",
+  "Lat Pulldown","Cable Rows","Tricep Dips",
+]);
+
+const CATEGORIES: { key: Category; label: string; icon: string }[] = [
+  { key: "All",      label: "All",      icon: "all-inclusive"   },
+  { key: "Cardio",   label: "Cardio",   icon: "run-fast"        },
+  { key: "Strength", label: "Gym",      icon: "dumbbell"        },
+  { key: "Yoga",     label: "Yoga",     icon: "yoga"            },
+  { key: "Sports",   label: "Sports",   icon: "soccer"          },
 ];
 
 const INTENSITIES = [
@@ -65,18 +104,20 @@ export default function ExerciseScreen() {
   const [logs,             setLogs]             = useState<ExerciseLog[]>([]);
   const [isLoading,        setIsLoading]        = useState(true);
   const [showModal,        setShowModal]        = useState(false);
+  const [activeCategory,   setActiveCategory]   = useState<Category>("All");
 
-  // ── Session: multiple exercises ──────────────────────────────────────────
   const [session,          setSession]          = useState<SessionEntry[]>([]);
   const [selectedExercise, setSelectedExercise] = useState("");
   const [duration,         setDuration]         = useState("");
   const [intensity,        setIntensity]        = useState("moderate");
+  const [sets,             setSets]             = useState("");
+  const [reps,             setReps]             = useState("");
+  const [steps,            setSteps]            = useState("");
   const [isCalculating,    setIsCalculating]    = useState(false);
   const [liveEstimate,     setLiveEstimate]     = useState<{ calories: number; met: number; formula: string; weightKg: number; gender: string } | null>(null);
   const [isSubmitting,     setIsSubmitting]     = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
-
   const { logEntry, onSync } = useOfflineLog();
 
   const loadLogs = useCallback(async () => {
@@ -88,14 +129,14 @@ export default function ExerciseScreen() {
   }, []);
 
   useEffect(() => { loadLogs(); }, [loadLogs]);
-
-  // Refresh when offline queue syncs
   useEffect(() => onSync(loadLogs), [onSync, loadLogs]);
 
   const totalMin = logs.reduce((s, l) => s + l.durationMinutes, 0);
   const totalCal = logs.reduce((s, l) => s + Number(l.caloriesBurned || 0), 0);
 
-  // Live calorie estimate for the current input
+  const isStrength = STRENGTH_EXERCISES.has(selectedExercise);
+  const isStepsBased = STEPS_EXERCISES.has(selectedExercise);
+
   useEffect(() => {
     if (!selectedExercise || !duration || parseInt(duration) < 1) { setLiveEstimate(null); return; }
     const timeout = setTimeout(async () => {
@@ -113,22 +154,22 @@ export default function ExerciseScreen() {
     return () => clearTimeout(timeout);
   }, [selectedExercise, duration, intensity]);
 
-  // Add current entry to session list
+  const resetForm = () => {
+    setSelectedExercise(""); setDuration(""); setLiveEstimate(null);
+    setIntensity("moderate"); setSets(""); setReps(""); setSteps("");
+  };
+
   const handleAddToSession = () => {
     if (!selectedExercise || !duration || parseInt(duration) < 1) {
       Alert.alert("Required", "Select exercise and enter duration"); return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSession(prev => [...prev, {
-      id: uid(),
-      exerciseType: selectedExercise,
-      duration,
-      intensity,
-      estimatedCalories: liveEstimate?.calories ?? null,
-      met: liveEstimate?.met ?? null,
+      id: uid(), exerciseType: selectedExercise, duration, intensity,
+      estimatedCalories: liveEstimate?.calories ?? null, met: liveEstimate?.met ?? null,
+      sets: sets || undefined, reps: reps || undefined, steps: steps || undefined,
     }]);
-    // Reset form for next entry
-    setSelectedExercise(""); setDuration(""); setLiveEstimate(null); setIntensity("moderate");
+    resetForm();
   };
 
   const removeFromSession = (id: string) => {
@@ -138,12 +179,11 @@ export default function ExerciseScreen() {
 
   const sessionTotalCal = session.reduce((s, e) => s + (e.estimatedCalories ?? 0), 0);
 
-  // Log all exercises in the session
   const handleLogAll = async () => {
     const toLog = session.length > 0
       ? session
       : selectedExercise && duration
-        ? [{ id: uid(), exerciseType: selectedExercise, duration, intensity, estimatedCalories: liveEstimate?.calories ?? null, met: liveEstimate?.met ?? null }]
+        ? [{ id: uid(), exerciseType: selectedExercise, duration, intensity, estimatedCalories: liveEstimate?.calories ?? null, met: liveEstimate?.met ?? null, sets: sets || undefined, reps: reps || undefined, steps: steps || undefined }]
         : [];
 
     if (toLog.length === 0) { Alert.alert("Nothing to log", "Add at least one exercise."); return; }
@@ -154,24 +194,30 @@ export default function ExerciseScreen() {
       for (const e of toLog) {
         const result = await logEntry({
           path: "/health/exercise",
-          body: { exerciseType: e.exerciseType, durationMinutes: parseInt(e.duration), intensity: e.intensity },
+          body: {
+            exerciseType: e.exerciseType,
+            durationMinutes: parseInt(e.duration),
+            intensity: e.intensity,
+            sets: e.sets ? parseInt(e.sets) : undefined,
+            reps: e.reps ? parseInt(e.reps) : undefined,
+            steps: e.steps ? parseInt(e.steps) : undefined,
+          },
           category: "exercise",
           onSynced: loadLogs,
           onOptimistic: () => {
-            // Optimistic: add to logs immediately
             setLogs((prev) => [...prev, {
-              id: "offline-" + e.id,
-              exerciseType: e.exerciseType,
-              durationMinutes: parseInt(e.duration),
-              intensity: e.intensity,
+              id: "offline-" + e.id, exerciseType: e.exerciseType,
+              durationMinutes: parseInt(e.duration), intensity: e.intensity,
               caloriesBurned: String(e.estimatedCalories ?? 0),
+              sets: e.sets ? parseInt(e.sets) : null,
+              reps: e.reps ? parseInt(e.reps) : null,
+              steps: e.steps ? parseInt(e.steps) : null,
             }]);
           },
         });
         if (result.offline) anyOffline = true;
       }
-      setShowModal(false);
-      setSession([]); setSelectedExercise(""); setDuration(""); setLiveEstimate(null); setIntensity("moderate");
+      setShowModal(false); setSession([]); resetForm();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       if (!anyOffline) loadLogs();
     } catch {
@@ -181,9 +227,7 @@ export default function ExerciseScreen() {
     }
   };
 
-  const closeModal = () => {
-    setShowModal(false); setSession([]); setSelectedExercise(""); setDuration(""); setLiveEstimate(null); setIntensity("moderate");
-  };
+  const closeModal = () => { setShowModal(false); setSession([]); resetForm(); };
 
   useFocusEffect(useCallback(() => {
     loadLogs();
@@ -193,11 +237,15 @@ export default function ExerciseScreen() {
   const topPad = insets.top;
   const ringPct = Math.min(1, totalMin / 60);
 
+  const filteredExercises = activeCategory === "All"
+    ? EXERCISE_LIST
+    : EXERCISE_LIST.filter(e => e.category === activeCategory);
+
   return (
     <View style={s.root}>
       <View style={[StyleSheet.absoluteFill, { backgroundColor: DS.color.bgSoft }]} />
 
-      {/* ── Glass Header ── */}
+      {/* ── Header ── */}
       <View style={[s.headerWrap, { paddingTop: topPad }]}>
         {Platform.OS === "ios"
           ? <BlurView intensity={80} tint="extraLight" style={StyleSheet.absoluteFill} />
@@ -226,9 +274,9 @@ export default function ExerciseScreen() {
         <View style={s.card}>
           <View style={s.statsRow}>
             {[
-              { Icon: Timer,  label: "Minutes",  value: `${totalMin}`,          color: G },
+              { Icon: Timer,  label: "Minutes",  value: `${totalMin}`,             color: G },
               { Icon: Flame,  label: "Calories", value: `${Math.round(totalCal)}`, color: DS.color.orange },
-              { Icon: Trophy, label: "Sessions", value: `${logs.length}`,        color: P },
+              { Icon: Trophy, label: "Sessions", value: `${logs.length}`,           color: P },
             ].map((item, i, arr) => (
               <React.Fragment key={item.label}>
                 <View style={s.statItem}>
@@ -261,7 +309,7 @@ export default function ExerciseScreen() {
               <Dumbbell size={42} color={G} strokeWidth={1.5} />
             </View>
             <Text style={s.emptyTitle}>Log your exercises today</Text>
-            <Text style={s.emptyDesc}>You can log multiple exercises at once</Text>
+            <Text style={s.emptyDesc}>Cardio, Gym, Yoga, Sports — sab ek jagah</Text>
             <Text style={s.emptyFormula}>Formula: MET × Weight × Time × Gender factor</Text>
             <TouchableOpacity style={s.emptyBtn} onPress={() => setShowModal(true)} activeOpacity={0.85}>
               <LinearGradient colors={[P, G]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.emptyBtnGrad}>
@@ -271,9 +319,11 @@ export default function ExerciseScreen() {
           </View>
         ) : (
           logs.map((log) => {
-            const ex  = EXERCISES.find((e) => e.name === log.exerciseType);
+            const ex  = EXERCISE_LIST.find((e) => e.name === log.exerciseType);
             const clr = ex?.color || P;
             const ico = ex?.icon || "run-fast";
+            const hasStrengthDetails = log.sets || log.reps;
+            const hasSteps = log.steps && Number(log.steps) > 0;
             return (
               <View key={log.id} style={s.logCard}>
                 <View style={[s.logIcon, { backgroundColor: clr + "18" }]}>
@@ -285,6 +335,27 @@ export default function ExerciseScreen() {
                     {log.durationMinutes} min · {log.intensity}
                     {log.metValue ? ` · MET ${Number(log.metValue).toFixed(1)}` : ""}
                   </Text>
+                  {hasStrengthDetails && (
+                    <View style={s.detailPills}>
+                      {log.sets ? (
+                        <View style={s.pill}>
+                          <Text style={s.pillText}>{log.sets} sets</Text>
+                        </View>
+                      ) : null}
+                      {log.reps ? (
+                        <View style={s.pill}>
+                          <Text style={s.pillText}>{log.reps} reps</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  )}
+                  {hasSteps && (
+                    <View style={s.detailPills}>
+                      <View style={[s.pill, { backgroundColor: G + "18" }]}>
+                        <Text style={[s.pillText, { color: G }]}>👣 {Number(log.steps).toLocaleString()} steps</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
                 <View style={s.logCal}>
                   <Text style={[s.logCalNum, { color: DS.color.orange }]}>{Math.round(Number(log.caloriesBurned || 0))}</Text>
@@ -308,7 +379,7 @@ export default function ExerciseScreen() {
 
           <ScrollView contentContainerStyle={s.modalBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-            {/* ── Session list (exercises added so far) ── */}
+            {/* ── Session list ── */}
             {session.length > 0 && (
               <View style={s.sessionBox}>
                 <View style={s.sessionHeader}>
@@ -316,7 +387,15 @@ export default function ExerciseScreen() {
                   <Text style={[s.sessionCal, { color: DS.color.orange }]}>~{sessionTotalCal} kcal total</Text>
                 </View>
                 {session.map((entry) => {
-                  const ex = EXERCISES.find(e => e.name === entry.exerciseType);
+                  const ex = EXERCISE_LIST.find(e => e.name === entry.exerciseType);
+                  const detailParts = [
+                    `${entry.duration} min`,
+                    entry.intensity,
+                    entry.sets ? `${entry.sets} sets` : null,
+                    entry.reps ? `${entry.reps} reps` : null,
+                    entry.steps ? `${parseInt(entry.steps).toLocaleString()} steps` : null,
+                    entry.estimatedCalories ? `~${entry.estimatedCalories} kcal` : null,
+                  ].filter(Boolean).join(" · ");
                   return (
                     <View key={entry.id} style={s.sessionEntry}>
                       <View style={[s.sessionEntryIcon, { backgroundColor: (ex?.color || P) + "18" }]}>
@@ -324,7 +403,7 @@ export default function ExerciseScreen() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={s.sessionEntryName}>{entry.exerciseType}</Text>
-                        <Text style={s.sessionEntryDetail}>{entry.duration} min · {entry.intensity}{entry.estimatedCalories ? ` · ~${entry.estimatedCalories} kcal` : ""}</Text>
+                        <Text style={s.sessionEntryDetail}>{detailParts}</Text>
                       </View>
                       <TouchableOpacity onPress={() => removeFromSession(entry.id)} style={s.removeBtn}>
                         <Trash2 size={15} color="#EF4444" strokeWidth={2} />
@@ -335,11 +414,34 @@ export default function ExerciseScreen() {
               </View>
             )}
 
-            {/* ── Add another exercise ── */}
+            {/* ── Category Tabs ── */}
             <Text style={s.modalLabel}>{session.length > 0 ? "Add Another Exercise" : "Exercise Type"}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}>
+              {CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat.key}
+                  onPress={() => setActiveCategory(cat.key)}
+                  activeOpacity={0.8}
+                >
+                  {activeCategory === cat.key ? (
+                    <LinearGradient colors={[P, G]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.catChipActive}>
+                      <MaterialCommunityIcons name={cat.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={13} color="#FFF" />
+                      <Text style={[s.catLabel, { color: "#FFF" }]}>{cat.label}</Text>
+                    </LinearGradient>
+                  ) : (
+                    <View style={s.catChipOff}>
+                      <MaterialCommunityIcons name={cat.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={13} color={DS.color.muted} />
+                      <Text style={[s.catLabel, { color: DS.color.muted }]}>{cat.label}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* ── Exercise Grid ── */}
             <View style={s.exGrid}>
-              {EXERCISES.map((ex) => (
-                <TouchableOpacity key={ex.name} onPress={() => setSelectedExercise(ex.name)} activeOpacity={0.8}>
+              {filteredExercises.map((ex) => (
+                <TouchableOpacity key={ex.name} onPress={() => { setSelectedExercise(ex.name); setSets(""); setReps(""); setSteps(""); }} activeOpacity={0.8}>
                   {selectedExercise === ex.name ? (
                     <LinearGradient colors={[ex.color, ex.color + "CC"]} style={s.exChip}>
                       <MaterialCommunityIcons name={ex.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={14} color="#FFF" />
@@ -365,6 +467,50 @@ export default function ExerciseScreen() {
               onChangeText={setDuration}
             />
 
+            {/* ── Sets + Reps (Strength only) ── */}
+            {isStrength && (
+              <>
+                <Text style={s.modalLabel}>Sets & Reps <Text style={s.optionalText}>(optional)</Text></Text>
+                <View style={s.twoCol}>
+                  <View style={[s.input, s.twoColInput]}>
+                    <TextInput
+                      style={s.inlineInput}
+                      placeholder="Sets  e.g. 3"
+                      placeholderTextColor={DS.color.muted}
+                      keyboardType="numeric"
+                      value={sets}
+                      onChangeText={setSets}
+                    />
+                  </View>
+                  <View style={[s.input, s.twoColInput]}>
+                    <TextInput
+                      style={s.inlineInput}
+                      placeholder="Reps  e.g. 12"
+                      placeholderTextColor={DS.color.muted}
+                      keyboardType="numeric"
+                      value={reps}
+                      onChangeText={setReps}
+                    />
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* ── Steps (Walking / Running / Treadmill) ── */}
+            {isStepsBased && (
+              <>
+                <Text style={s.modalLabel}>Steps <Text style={s.optionalText}>(optional)</Text></Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="e.g. 8000"
+                  placeholderTextColor={DS.color.muted}
+                  keyboardType="numeric"
+                  value={steps}
+                  onChangeText={setSteps}
+                />
+              </>
+            )}
+
             <Text style={s.modalLabel}>Intensity</Text>
             <View style={s.intensityRow}>
               {INTENSITIES.map((item) => (
@@ -387,7 +533,7 @@ export default function ExerciseScreen() {
               ))}
             </View>
 
-            {/* Live calorie estimate */}
+            {/* ── Live calorie estimate ── */}
             {(isCalculating || liveEstimate) && (
               <View style={s.estimateCard}>
                 {isCalculating ? (
@@ -404,6 +550,21 @@ export default function ExerciseScreen() {
                         <Text style={s.estimateProfile}>{liveEstimate.weightKg}kg · {liveEstimate.gender}</Text>
                       </View>
                     </View>
+                    {isStrength && (sets || reps) && (
+                      <View style={[s.formulaBox, { backgroundColor: "#5856D618" }]}>
+                        <Text style={[s.formulaText, { color: "#5856D6" }]}>
+                          💪 {sets ? `${sets} sets` : ""}{sets && reps ? " × " : ""}{reps ? `${reps} reps` : ""}
+                          {sets && reps ? `  =  ${parseInt(sets || "0") * parseInt(reps || "0")} total reps` : ""}
+                        </Text>
+                      </View>
+                    )}
+                    {isStepsBased && steps && (
+                      <View style={[s.formulaBox, { backgroundColor: G + "18" }]}>
+                        <Text style={[s.formulaText, { color: G }]}>
+                          👣 {parseInt(steps).toLocaleString()} steps  ≈  {Math.round(parseInt(steps) * 0.04)} cal (avg)
+                        </Text>
+                      </View>
+                    )}
                     <View style={s.formulaBox}>
                       <Text style={s.formulaText}>📐 {liveEstimate.formula}</Text>
                     </View>
@@ -412,7 +573,7 @@ export default function ExerciseScreen() {
               </View>
             )}
 
-            {/* Add to session button */}
+            {/* ── Add to session ── */}
             {(selectedExercise && duration) && (
               <TouchableOpacity onPress={handleAddToSession} activeOpacity={0.85} style={s.addMoreBtn}>
                 <Plus size={16} color={P} strokeWidth={2.5} />
@@ -422,7 +583,6 @@ export default function ExerciseScreen() {
 
             <View style={s.divider} />
 
-            {/* Log all button */}
             <TouchableOpacity
               onPress={handleLogAll}
               disabled={isSubmitting || (session.length === 0 && !selectedExercise)}
@@ -498,89 +658,88 @@ const s = StyleSheet.create({
 
   logCard: {
     backgroundColor: "#FFF", borderRadius: DS.radius.lg,
-    padding: 14, flexDirection: "row", alignItems: "center", gap: 14,
+    padding: 14, flexDirection: "row", alignItems: "flex-start", gap: 14,
     borderWidth: 1, borderColor: DS.color.border, ...DS.shadow.sm,
   },
   logIcon:    { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
-  logName:    { fontSize: 15, fontFamily: "Inter_600SemiBold", color: DS.color.text, marginBottom: 4 },
-  logDetails: { fontSize: 12, fontFamily: "Inter_400Regular", color: DS.color.muted },
-  logCal:     { alignItems: "center" },
+  logName:    { fontSize: 15, fontFamily: "Inter_600SemiBold", color: DS.color.text },
+  logDetails: { fontSize: 12, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: 2 },
+  logCal:     { alignItems: "flex-end" },
   logCalNum:  { fontSize: 18, fontFamily: "Inter_700Bold" },
   logCalUnit: { fontSize: 10, fontFamily: "Inter_400Regular", color: DS.color.muted },
 
-  // Modal
+  detailPills: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 5 },
+  pill: {
+    backgroundColor: "#5856D618", borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  pillText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#5856D6" },
+
   modalRoot:   { flex: 1, backgroundColor: "#FFF" },
-  modalHeader: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    padding: 20, paddingTop: 56,
-    borderBottomWidth: 1, borderBottomColor: DS.color.borderLight,
-  },
-  modalTitle:  { fontSize: 20, fontFamily: "Inter_700Bold", color: DS.color.text },
-  closeBtn: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: DS.color.bgSoft,
-    alignItems: "center", justifyContent: "center",
-  },
-  modalBody:   { padding: 20, paddingBottom: 60 },
-  modalLabel:  { fontSize: 14, fontFamily: "Inter_600SemiBold", color: DS.color.text, marginBottom: 12 },
+  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 20, borderBottomWidth: 1, borderBottomColor: DS.color.borderLight },
+  modalTitle:  { fontSize: 18, fontFamily: "Inter_700Bold", color: DS.color.text },
+  closeBtn:    { width: 34, height: 34, borderRadius: 17, backgroundColor: DS.color.bgSoft, alignItems: "center", justifyContent: "center" },
+  modalBody:   { padding: 16, gap: 8, paddingBottom: 48 },
+  modalLabel:  { fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.text, marginTop: 6, marginBottom: 2 },
+  optionalText:{ fontFamily: "Inter_400Regular", color: DS.color.muted, fontSize: 12 },
 
-  // Session box
-  sessionBox: {
-    backgroundColor: "#F0FDF4", borderRadius: 14, padding: 14, marginBottom: 24,
-    borderWidth: 1, borderColor: "#BBF7D0", gap: 10,
-  },
-  sessionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  sessionTitle:  { fontSize: 13, fontFamily: "Inter_700Bold", color: "#166534" },
-  sessionCal:    { fontSize: 14, fontFamily: "Inter_700Bold" },
-  sessionEntry:  { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#FFF", borderRadius: 10, padding: 10 },
-  sessionEntryIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  sessionEntryName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.text },
-  sessionEntryDetail: { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted },
-  removeBtn: { padding: 4 },
+  catChipActive: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 },
+  catChipOff:    { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: DS.color.bgSoft, borderWidth: 1, borderColor: DS.color.border },
+  catLabel:      { fontSize: 12, fontFamily: "Inter_600SemiBold" },
 
-  exGrid:   { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 24 },
-  exChip:   { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12 },
-  exChipOff:{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, backgroundColor: DS.color.bgSoft, borderWidth: 1, borderColor: DS.color.border },
-  exName:   { fontSize: 13, fontFamily: "Inter_500Medium" },
+  exGrid:    { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
+  exChip:    { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 },
+  exChipOff: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: DS.color.bgSoft, borderWidth: 1, borderColor: DS.color.border },
+  exName:    { fontSize: 12, fontFamily: "Inter_500Medium" },
 
   input: {
-    borderWidth: 1, borderRadius: 14, height: 52, paddingHorizontal: 16,
-    fontSize: 16, fontFamily: "Inter_400Regular",
-    backgroundColor: DS.color.bgSoft, borderColor: DS.color.border,
-    color: DS.color.text, marginBottom: 24,
+    borderWidth: 1, borderColor: DS.color.border, borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 13,
+    fontSize: 15, fontFamily: "Inter_400Regular", color: DS.color.text,
+    backgroundColor: "#FFF",
   },
+  twoCol:      { flexDirection: "row", gap: 10 },
+  twoColInput: { flex: 1, paddingVertical: 0 },
+  inlineInput: { fontSize: 15, fontFamily: "Inter_400Regular", color: DS.color.text, paddingVertical: 13 },
 
-  intensityRow: { flexDirection: "row", gap: 8, marginBottom: 24 },
-  intensityBtn: { paddingVertical: 14, alignItems: "center", borderRadius: 14 },
+  intensityRow: { flexDirection: "row", gap: 8, marginBottom: 4 },
+  intensityBtn: { paddingVertical: 12, alignItems: "center", borderRadius: 14 },
   intensityOff: { backgroundColor: DS.color.bgSoft, borderWidth: 1, borderColor: DS.color.border },
-  intensityText:{ fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  intensityText:{ fontSize: 12, fontFamily: "Inter_600SemiBold" },
 
   estimateCard: {
-    backgroundColor: DS.color.bgSoft, borderRadius: DS.radius.md,
-    padding: 16, marginBottom: 16, gap: 12,
-    borderWidth: 1, borderColor: DS.color.border,
+    backgroundColor: DS.color.bgSoft, borderRadius: DS.radius.lg,
+    padding: 14, borderWidth: 1, borderColor: DS.color.border, gap: 8,
   },
-  estimateLabel:  { fontSize: 12, fontFamily: "Inter_400Regular", color: DS.color.muted, marginBottom: 4 },
-  estimateCal:    { fontSize: 28, fontFamily: "Inter_700Bold" },
-  estimateMet:    { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  estimateProfile:{ fontSize: 12, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: 4 },
-  formulaBox: {
-    borderWidth: 1, borderRadius: 10, padding: 10,
-    backgroundColor: "#FFF", borderColor: DS.color.border,
-  },
-  formulaText:{ fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, lineHeight: 16 },
+  estimateLabel:  { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted },
+  estimateCal:    { fontSize: 24, fontFamily: "Inter_700Bold" },
+  estimateMet:    { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  estimateProfile:{ fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted },
+  formulaBox:     { backgroundColor: "rgba(0,119,182,0.07)", borderRadius: 10, padding: 10 },
+  formulaText:    { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, lineHeight: 16 },
 
   addMoreBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-    borderWidth: 1.5, borderColor: P, borderRadius: 14, paddingVertical: 13, marginBottom: 16,
-    backgroundColor: "#FFF5F0",
+    flexDirection: "row", alignItems: "center", gap: 6,
+    alignSelf: "center", paddingHorizontal: 20, paddingVertical: 12,
+    borderRadius: 14, borderWidth: 1.5, borderColor: P,
+    borderStyle: "dashed",
   },
   addMoreText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: P },
 
-  divider: { height: 1, backgroundColor: DS.color.borderLight, marginBottom: 16 },
+  divider: { height: 1, backgroundColor: DS.color.borderLight, marginVertical: 4 },
 
-  saveBtn:  { height: 56, alignItems: "center", justifyContent: "center", borderRadius: 16 },
-  saveText: { color: "#FFF", fontSize: 17, fontFamily: "Inter_700Bold" },
+  saveBtn:  { borderRadius: DS.radius.lg, paddingVertical: 16, alignItems: "center" },
+  saveText: { color: "#FFF", fontSize: 16, fontFamily: "Inter_600SemiBold" },
 
-  sessionHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: DS.color.muted, textAlign: "center", marginTop: 10 },
+  sessionBox:       { backgroundColor: DS.color.bgSoft, borderRadius: DS.radius.lg, padding: 14, borderWidth: 1, borderColor: DS.color.border, gap: 8 },
+  sessionHeader:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  sessionTitle:     { fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.text },
+  sessionCal:       { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  sessionEntry:     { flexDirection: "row", alignItems: "center", gap: 10 },
+  sessionEntryIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  sessionEntryName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.text },
+  sessionEntryDetail:{ fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: 1 },
+  removeBtn:        { padding: 4 },
+
+  sessionHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: DS.color.muted, textAlign: "center", marginTop: 4 },
 });
