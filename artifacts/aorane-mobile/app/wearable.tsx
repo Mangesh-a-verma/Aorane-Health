@@ -261,7 +261,7 @@ export default function WearableScreen() {
       } else {
         Alert.alert(
           "Sync Complete — No Data Found",
-          "Google Fit se connect toh hai, lekin aaj ka koi data nahi mila (steps, heart rate, etc.).\n\n📱 Google Fit app kholo → kuch steps walk karo ya manually data add karo → phir Sync karo.",
+          "Connected to Google Fit, but no activity data was found for today (steps, heart rate, etc.).\n\n📱 Open the Google Fit app → record some activity or add it manually → then tap Sync again.",
           [{ text: "OK" }]
         );
       }
@@ -270,8 +270,8 @@ export default function WearableScreen() {
       const code = errObj?.body?.code;
       if (code === "REAUTH_REQUIRED" || errObj?.status === 401) {
         Alert.alert(
-          "Google Fit Reconnect Karo",
-          "Google Fit ka token expire ho gaya hai. Ek baar phir Google se connect karo.",
+          "Reconnect Google Fit",
+          "Your Google Fit session has expired. Please reconnect with Google to continue syncing.",
           [
             { text: "Cancel", style: "cancel" },
             { text: "Reconnect", onPress: () => connectGoogleFit() },
@@ -280,7 +280,7 @@ export default function WearableScreen() {
       } else {
         Alert.alert(
           "Sync Failed",
-          errObj?.body?.error || "Data sync nahi ho saka. Dobara try karo.",
+          errObj?.body?.error || "Data sync failed. Please try again.",
           [{ text: "OK" }]
         );
       }
@@ -442,11 +442,11 @@ export default function WearableScreen() {
                 <View style={[styles.emptyCard, { paddingVertical: 32 }]}>
                   <Text style={{ fontSize: 48, marginBottom: 12 }}>📊</Text>
                   <Text style={{ fontFamily: "Inter_700Bold", fontSize: 16, color: "#0D1F33", textAlign: "center" }}>
-                    {activeConnections.length > 0 ? "Google Fit Mein Data Nahi" : "No Health Data Yet"}
+                    {activeConnections.length > 0 ? "No Data in Google Fit" : "No Health Data Yet"}
                   </Text>
                   <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: "#7A90A4", textAlign: "center", marginTop: 6, lineHeight: 20 }}>
                     {activeConnections.length > 0
-                      ? "Google Fit app mein koi recorded data nahi mila (steps, heart rate etc). Apne phone pe Google Fit open karo aur kuch activity record karo, phir Sync karo."
+                      ? "No recorded data found in Google Fit (steps, heart rate, etc.). Open Google Fit on your phone, record some activity, then tap Sync."
                       : "Connect a device or manually log your health data to see metrics here."}
                   </Text>
                   {activeConnections.length > 0 && (

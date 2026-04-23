@@ -317,7 +317,7 @@ export default function LoginScreen() {
                   </View>
                   <TextInput
                     style={s.input}
-                    placeholder="aapka@email.com"
+                    placeholder="your@email.com"
                     placeholderTextColor="#9CB8C8"
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -377,7 +377,7 @@ export default function LoginScreen() {
                       ? <View style={{ alignItems: "center", gap: 4 }}>
                           <ActivityIndicator color="#FFF" />
                           <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, fontFamily: "Inter_400Regular" }}>
-                            Connecting... (30 sec lag sakta hai)
+                            Connecting... (may take ~30 sec)
                           </Text>
                         </View>
                       : <>
