@@ -2,12 +2,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { setCachedResponse, getCachedResponse, setOnlineState } from "./offlineQueue";
 
-// On web browser → use relative path so web-server.js proxy handles it (local API, devOtp works)
+// On web browser → use EXPO_PUBLIC_API_URL if set (production), else relative /api (local proxy)
 // On native (Expo Go / APK) → use production URL from env or fallback
 const API_BASE =
   Platform.OS === "web"
-    ? "/api"
-    : process.env.EXPO_PUBLIC_API_URL || "http://localhost:8080/api";
+    ? (process.env.EXPO_PUBLIC_API_URL || "/api")
+    : (process.env.EXPO_PUBLIC_API_URL || "http://localhost:8080/api");
 
 let _onUnauthorized: (() => void) | null = null;
 
