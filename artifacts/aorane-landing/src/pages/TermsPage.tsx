@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 import { Link } from "wouter";
 import { Activity, ArrowLeft } from "lucide-react";
 
@@ -7,6 +8,12 @@ export default function TermsPage() {
   const updated = "April 1, 2025";
   return (
     <div className="min-h-screen bg-gray-950 text-white">
+      <Helmet>
+        <title>Terms of Service | AORANE</title>
+        <meta name="description" content="AORANE Terms of Service — usage rules, subscription terms, medical disclaimer, and user responsibilities for India's AI health platform." />
+        <link rel="canonical" href="https://aorane.com/terms" />
+        <meta name="robots" content="noindex, follow" />
+      </Helmet>
       <nav className="border-b border-white/10 px-6 py-4 flex items-center gap-4">
         <Link href="/" className="flex items-center gap-2 text-white/60 hover:text-white transition-colors text-sm">
           <ArrowLeft size={16} /> Back to Home

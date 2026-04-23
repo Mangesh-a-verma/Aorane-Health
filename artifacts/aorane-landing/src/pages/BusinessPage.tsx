@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { Helmet } from "react-helmet-async";
 import { Building2, Brain, Activity, FileCheck, Globe, Shield, TrendingUp, Users, BarChart3, Bell, ArrowRight, CheckCircle, Calculator } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -132,6 +133,14 @@ export default function BusinessPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+      <Helmet>
+        <title>Business Wellness Solutions — Corporate Health Platform | AORANE</title>
+        <meta name="description" content="AORANE for Business: AI-powered employee health monitoring, population analytics, stress tracking, compliance reports & HRMS integrations. Reduce absenteeism & boost productivity across your workforce." />
+        <link rel="canonical" href="https://aorane.com/business" />
+        <meta property="og:title" content="AORANE Business — Population Health Management for Indian Enterprises" />
+        <meta property="og:description" content="AI health analytics, employee stress monitoring, DPDPA-compliant reports & HRMS integration. Manage workforce wellness with live dashboards." />
+        <meta property="og:url" content="https://aorane.com/business" />
+      </Helmet>
       <Navbar audience={audience} onAudienceChange={setAudience} />
 
       <section className="pt-16 min-h-[80vh] flex items-center px-4 sm:px-6 lg:px-8" style={{ background: "linear-gradient(135deg, #090e1c 0%, #0D1B3E 60%, #0747A6 100%)" }}>

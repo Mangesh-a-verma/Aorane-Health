@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Helmet } from "react-helmet-async";
 import { Scan, Brain, Dumbbell, Camera, Users, Lock, Smartphone, Activity, Heart, Moon, Droplets, CheckCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -84,6 +85,14 @@ export default function FeaturesPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Helmet>
+        <title>Features — AI Food Scanner, Stress & Vitals Tracking | AORANE</title>
+        <meta name="description" content="Explore AORANE's powerful features: AI food scanner for Indian dishes, stress monitoring, sleep analysis, exercise tracking with MET, medical report scanning, and NVIDIA health insights." />
+        <link rel="canonical" href="https://aorane.com/features" />
+        <meta property="og:title" content="AORANE Features — AI-Powered Health Tracking" />
+        <meta property="og:description" content="AI food scanner for Indian dishes, stress monitoring, sleep analysis, exercise tracking & NVIDIA health insights. Everything you need for complete health management." />
+        <meta property="og:url" content="https://aorane.com/features" />
+      </Helmet>
       <Navbar audience={audience} onAudienceChange={setAudience} />
 
       <div className="pt-16 bg-gradient-to-r from-[#0747A6] to-[#1565C0] py-16 px-4">

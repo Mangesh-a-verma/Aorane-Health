@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { Helmet } from "react-helmet-async";
 import { Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -58,6 +59,14 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+      <Helmet>
+        <title>Pricing — Free & Premium Health Plans Starting ₹199/mo | AORANE</title>
+        <meta name="description" content="AORANE pricing plans made for India. Free forever plan + Pro at ₹199/mo, Max at ₹349/mo, Family plan. AI features, NVIDIA insights & corporate wellness packages. No hidden fees." />
+        <link rel="canonical" href="https://aorane.com/pricing" />
+        <meta property="og:title" content="AORANE Pricing — Affordable Health Plans for India" />
+        <meta property="og:description" content="Free plan + Pro ₹199/mo + Max ₹349/mo + Family plan. AI food scanner, NVIDIA insights & more. Start free, upgrade anytime." />
+        <meta property="og:url" content="https://aorane.com/pricing" />
+      </Helmet>
       <Navbar audience={audience} onAudienceChange={setAudience} />
 
       <div className="pt-16 bg-gradient-to-r from-[#0747A6] to-[#1565C0] py-16 px-4">

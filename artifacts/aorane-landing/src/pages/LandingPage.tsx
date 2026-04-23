@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import StatsBar from "@/components/StatsBar";
@@ -17,6 +18,15 @@ export default function LandingPage() {
   const [authModal, setAuthModal] = useState<null | "signin" | "signup">(null);
 
   return (
+    <>
+      <Helmet>
+        <title>AORANE — India's AI Health Intelligence Platform | Free App</title>
+        <meta name="description" content="Track meals with AI food scanner, monitor stress, sleep & vitals. NVIDIA-powered health insights. Free app for individuals. Business wellness solutions for corporates. Download on Play Store." />
+        <link rel="canonical" href="https://aorane.com/" />
+        <meta property="og:title" content="AORANE — India's AI Health Intelligence Platform" />
+        <meta property="og:description" content="AI food scanning, stress tracking, NVIDIA health insights & corporate wellness. India's most comprehensive health companion. Free on Play Store." />
+        <meta property="og:url" content="https://aorane.com/" />
+      </Helmet>
     <div className="min-h-screen overflow-x-hidden">
       <Navbar
         audience={audience}
@@ -42,5 +52,6 @@ export default function LandingPage() {
         />
       )}
     </div>
+    </>
   );
 }

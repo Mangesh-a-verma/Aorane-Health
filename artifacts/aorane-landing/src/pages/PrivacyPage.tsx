@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 import { Link } from "wouter";
 import { Activity, ArrowLeft } from "lucide-react";
 
@@ -7,6 +8,12 @@ export default function PrivacyPage() {
   const updated = "April 1, 2025";
   return (
     <div className="min-h-screen bg-gray-950 text-white">
+      <Helmet>
+        <title>Privacy Policy | AORANE</title>
+        <meta name="description" content="AORANE Privacy Policy — how we collect, use and protect your health data. DPDPA 2023 compliant. Your health data stays private and secure." />
+        <link rel="canonical" href="https://aorane.com/privacy" />
+        <meta name="robots" content="noindex, follow" />
+      </Helmet>
       <nav className="border-b border-white/10 px-6 py-4 flex items-center gap-4">
         <Link href="/" className="flex items-center gap-2 text-white/60 hover:text-white transition-colors text-sm">
           <ArrowLeft size={16} /> Back to Home
