@@ -29,3 +29,9 @@ id = "4GygxH04m-sVbkO74AYxD"
 uri = "file://aorane-project-blueprint.pdf"
 type = "pdf"
 title = "Aorane Project Blueprint — Complete Technical Documentation"
+
+[[outputs]]
+id = "L1dkreKTI5_1oKvKm_yY9"
+uri = "file://AORANE_Project_Report.pdf"
+type = "pdf"
+title = "AORANE — Complete Project Status & Business Report"
