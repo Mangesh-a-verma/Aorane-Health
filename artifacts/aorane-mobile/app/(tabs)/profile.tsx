@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { DS } from "@/lib/theme";
 import {
-  Briefcase, Heart, Shield, User, Bell, Diamond,
+  Briefcase, Heart, Shield, User, Users, Bell, Diamond,
   HelpCircle, LogOut, ChevronRight, Lock, Pencil,
 } from "lucide-react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -310,6 +310,7 @@ export default function ProfileScreen() {
             {[
               { Icon: Diamond,    label: "Upgrade Plan",              color: DS.color.purple, bg: DS.color.purpleSoft, onPress: () => router.push("/upgrade" as never) },
               { Icon: Briefcase,  label: "Join Organization",         color: "#0077B6",       bg: "#EBF5FB",            onPress: () => router.push("/enrollment" as never) },
+              { Icon: Users,      label: "Family Health",             color: "#10B981",       bg: "#ECFDF5",            onPress: () => router.push("/family" as never) },
               { Icon: Bell,       label: "Notifications & Reminders", color: P,               bg: DS.color.primarySoft, onPress: () => router.push("/notification-settings" as never) },
               { Icon: HelpCircle, label: "Help & Support",            color: G,               bg: DS.color.greenSoft,   onPress: () => router.push("/help" as never) },
             ].map((item, idx) => (

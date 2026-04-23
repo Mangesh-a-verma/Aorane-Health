@@ -29,12 +29,13 @@ type Ad = {
   slidePosition: number | null;
 };
 
+const SITE_URL = "https://aorane.in";
 const PLACEHOLDER_ADS: Ad[] = [
-  { id: "ph1", title: "Aorane Premium — 3 Months Free! 🏆", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 1 },
-  { id: "ph2", title: "Family Health Plan — For your entire family 👨‍👩‍👧‍👦", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 2 },
-  { id: "ph3", title: "AI Food Scan — Know your meal calories with AI 🥗", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 3 },
-  { id: "ph4", title: "Medicine Reminder — Never miss your medicines 💊", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 4 },
-  { id: "ph5", title: "Health Score — Score 100%, stay fit ❤️", bannerUrl: null, linkUrl: null, adType: "direct", slidePosition: 5 },
+  { id: "ph1", title: "Aorane Premium — 3 Months Free! 🏆", bannerUrl: null, linkUrl: SITE_URL, adType: "direct", slidePosition: 1 },
+  { id: "ph2", title: "Family Health Plan — For your entire family 👨‍👩‍👧‍👦", bannerUrl: null, linkUrl: SITE_URL, adType: "direct", slidePosition: 2 },
+  { id: "ph3", title: "AI Food Scan — Know your meal calories with AI 🥗", bannerUrl: null, linkUrl: SITE_URL, adType: "direct", slidePosition: 3 },
+  { id: "ph4", title: "Medicine Reminder — Never miss your medicines 💊", bannerUrl: null, linkUrl: SITE_URL, adType: "direct", slidePosition: 4 },
+  { id: "ph5", title: "Health Score — Score 100%, stay fit ❤️", bannerUrl: null, linkUrl: SITE_URL, adType: "direct", slidePosition: 5 },
 ];
 
 const PLACEHOLDER_GRADIENTS: [string, string][] = [
@@ -80,7 +81,10 @@ function AdSlide({ ad, index, onImpression }: { ad: Ad; index: number; onImpress
   useEffect(() => { onImpression(ad.id); }, []);
   const isPlaceholder = ad.id.startsWith("ph");
   const handlePress = async () => {
-    if (isPlaceholder) return;
+    if (isPlaceholder) {
+      if (ad.linkUrl) { try { await Linking.openURL(ad.linkUrl); } catch { } }
+      return;
+    }
     try {
       const res = await api.recordAdClick(ad.id);
       const url = res.linkUrl || ad.linkUrl;
@@ -90,7 +94,7 @@ function AdSlide({ ad, index, onImpression }: { ad: Ad; index: number; onImpress
     }
   };
   return (
-    <TouchableOpacity onPress={handlePress} activeOpacity={isPlaceholder ? 1 : 0.9} style={{ width: SLIDE_W }}>
+    <TouchableOpacity onPress={handlePress} activeOpacity={0.88} style={{ width: SLIDE_W }}>
       {ad.bannerUrl ? (
         <Image source={{ uri: ad.bannerUrl }} style={slides.image} resizeMode="cover" />
       ) : (

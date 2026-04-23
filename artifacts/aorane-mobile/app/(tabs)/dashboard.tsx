@@ -57,29 +57,36 @@ function weatherHealthTip(code: number, temp: number): string {
   return "🌿 Great weather for a walk or outdoor exercise!";
 }
 
+const DELHI = { lat: 28.6139, lon: 77.2090, city: "New Delhi" };
+
 function useWeather() {
   const [weather, setWeather] = useState<WeatherInfo | null>(null);
-  const [wLoading, setWLoading] = useState(false);
+  const [wLoading, setWLoading] = useState(true);
 
   useEffect(() => { fetchW(); }, []);
 
   const fetchW = async () => {
     setWLoading(true);
     try {
-      let lat: number, lon: number, city: string;
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === "granted") {
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
-        lat = loc.coords.latitude; lon = loc.coords.longitude;
-        const [geo] = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
-        city = geo?.city || geo?.subregion || geo?.region || "Your Location";
-      } else {
-        const ip = await fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(5000) });
-        const ipd = await ip.json() as { latitude: number; longitude: number; city: string };
-        lat = ipd.latitude; lon = ipd.longitude; city = ipd.city || "Your Location";
-      }
+      let lat = DELHI.lat, lon = DELHI.lon, city = DELHI.city;
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+          lat = loc.coords.latitude; lon = loc.coords.longitude;
+          const [geo] = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
+          city = geo?.city || geo?.subregion || geo?.region || city;
+        } else {
+          try {
+            const ip = await fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(4000) });
+            const ipd = await ip.json() as { latitude: number; longitude: number; city: string };
+            if (ipd.latitude) { lat = ipd.latitude; lon = ipd.longitude; city = ipd.city || city; }
+          } catch { /* use Delhi fallback */ }
+        }
+      } catch { /* location error — use Delhi fallback */ }
+
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current_weather=true&hourly=relativehumidity_2m,apparent_temperature&forecast_days=1&timezone=auto`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
       const d = await res.json() as {
         current_weather: { temperature: number; windspeed: number; weathercode: number; is_day: number };
         hourly: { relativehumidity_2m: number[]; apparent_temperature: number[] };
@@ -113,11 +120,18 @@ function WeatherPill({
     return (
       <TouchableOpacity style={wp.pill} onPress={onPress} activeOpacity={0.85}>
         <ActivityIndicator size="small" color="#FFF" style={{ width: 16, height: 16 }} />
-        <Text style={wp.pillTxt}>Weather…</Text>
+        <Text style={wp.pillTxt}>Loading weather…</Text>
       </TouchableOpacity>
     );
   }
-  if (!weather) return null;
+  if (!weather) {
+    return (
+      <TouchableOpacity style={[wp.pill, { backgroundColor: "rgba(0,0,0,0.35)" }]} onPress={onPress} activeOpacity={0.85}>
+        <Text style={wp.pillEmoji}>🌤️</Text>
+        <Text style={wp.pillTxt}>Tap for weather</Text>
+      </TouchableOpacity>
+    );
+  }
   return (
     <TouchableOpacity style={wp.pill} onPress={onPress} activeOpacity={0.85}>
       <Text style={wp.pillEmoji}>{weather.emoji}</Text>
@@ -571,7 +585,7 @@ const mealLabels: Record<string, string> = {
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { weather, wLoading } = useWeather();
+  const { weather, wLoading, refetchWeather } = useWeather();
   const [showWeatherModal, setShowWeatherModal] = useState(false);
 
   const [healthScore, setHealthScore] = useState(0);
@@ -789,35 +803,38 @@ export default function DashboardScreen() {
           {/* 7. ADS SLIDER */}
           <AdsSlider />
 
-          {/* 8. HEALTH TOOLS CHIPS */}
+          {/* 8. HEALTH TOOLS — 4+4 card grid */}
           <View style={s.surfaceCard}>
             <Text style={s.secTitle}>Health Tools</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-              {[
-                { emoji: "🪪", label: "Health ID",      route: "/scorecard",   color: "#7C3AED" },
-                { emoji: "⌚", label: "Wearables",       route: "/wearable",    color: "#34A853" },
-                { emoji: "💧", label: "Water",           route: "/water",       color: "#0EA5E9" },
-                { emoji: "🧘", label: "Stress",          route: "/stress",      color: "#8B5CF6" },
-                { emoji: "👨‍👩‍👧‍👦", label: "Family",      route: "/family",      color: "#10B981" },
-                ...(userGender === "female" ? [{ emoji: "🌸", label: "Period Tracker", route: "/period", color: "#EC4899" }] : []),
-              ].map((t) => (
-                <TouchableOpacity
-                  key={t.label}
-                  onPress={() => router.push(t.route as never)}
-                  activeOpacity={0.75}
-                  style={{
-                    flexDirection: "row", alignItems: "center", gap: 5,
-                    paddingHorizontal: 11, paddingVertical: 7,
-                    borderRadius: 20,
-                    backgroundColor: t.color + "12",
-                    borderWidth: 1, borderColor: t.color + "30",
-                  }}
-                >
-                  <Text style={{ fontSize: 13 }}>{t.emoji}</Text>
-                  <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: t.color }}>{t.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {[
+              [
+                { emoji: "🪪", label: "Health ID",  sub: "Your card",      route: "/scorecard",          colors: ["#7C3AED","#A855F7"] as [string,string] },
+                { emoji: "⌚", label: "Wearables",   sub: "Device sync",    route: "/wearable",            colors: ["#059669","#10B981"] as [string,string] },
+                { emoji: "💧", label: "Water",       sub: "Hydration",      route: "/water",               colors: ["#0EA5E9","#38BDF8"] as [string,string] },
+                { emoji: "🧘", label: "Stress",      sub: "Mood check",     route: "/stress",              colors: ["#8B5CF6","#A78BFA"] as [string,string] },
+              ],
+              [
+                { emoji: "🏃", label: "Exercise",    sub: "Workouts",       route: "/(tabs)/exercise",     colors: ["#F97316","#FB923C"] as [string,string] },
+                { emoji: "💊", label: "Medicine",    sub: "Reminders",      route: "/(tabs)/medicine",     colors: ["#0284C7","#0EA5E9"] as [string,string] },
+                { emoji: "📊", label: "Reports",     sub: "Health report",  route: "/health-report",       colors: ["#475569","#64748B"] as [string,string] },
+                userGender === "female"
+                  ? { emoji: "🌸", label: "Period",  sub: "Cycle tracker",  route: "/period",              colors: ["#EC4899","#F472B6"] as [string,string] }
+                  : { emoji: "🔥", label: "Calories", sub: "Nutrition",     route: "/(tabs)/food",         colors: ["#DC2626","#EF4444"] as [string,string] },
+              ],
+            ].map((row, ri) => (
+              <View key={ri} style={[s.aiGrid, ri === 1 && { marginTop: 6 }]}>
+                {row.map((t) => (
+                  <TouchableOpacity key={t.label} style={{ flex: 1 }} onPress={() => router.push(t.route as never)} activeOpacity={0.88}>
+                    <LinearGradient colors={t.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.aiCard}>
+                      <View style={s.aiShine} />
+                      <Text style={{ fontSize: 18, marginBottom: 2 }}>{t.emoji}</Text>
+                      <Text style={s.aiTitle}>{t.label}</Text>
+                      <Text style={s.aiSub}>{t.sub}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
           </View>
 
           {/* 9. AI FEATURES — 4-column equal layout */}
@@ -906,19 +923,17 @@ export default function DashboardScreen() {
         onSaved={() => { loadData(); }}
       />
 
-      {/* FLOATING WEATHER PILL — bottom above tab bar */}
-      {(weather || wLoading) && (
-        <View style={{
-          position: "absolute", bottom: insets.bottom + 68,
-          alignSelf: "center", zIndex: 99,
-        }}>
-          <WeatherPill
-            weather={weather}
-            loading={wLoading}
-            onPress={() => setShowWeatherModal(true)}
-          />
-        </View>
-      )}
+      {/* FLOATING WEATHER PILL — always visible above tab bar */}
+      <View style={{
+        position: "absolute", bottom: insets.bottom + 68,
+        alignSelf: "center", zIndex: 99,
+      }}>
+        <WeatherPill
+          weather={weather}
+          loading={wLoading}
+          onPress={() => { if (weather) setShowWeatherModal(true); else refetchWeather(); }}
+        />
+      </View>
 
       <WeatherModal
         weather={weather}

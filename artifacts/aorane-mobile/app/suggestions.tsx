@@ -178,7 +178,15 @@ export default function SuggestionsScreen() {
   const medicalWarnings = (s?.medicalWarnings as MedicalWarning[]) || [];
   const motivation = s?.motivation as string || "";
   const targetProgress = s?.targetProgress as TargetProgress | undefined;
-  const greeting = s?.greeting as string || "Hello! 🙏";
+  const rawGreeting = s?.greeting as string || "";
+  const timeGreeting = (() => {
+    const h = new Date().getHours();
+    if (h < 5)  return "Good Night 🌙";
+    if (h < 12) return "Good Morning ☀️";
+    if (h < 17) return "Good Afternoon 🌤️";
+    return "Good Evening 🌆";
+  })();
+  const greeting = rawGreeting || `${timeGreeting} — Here's your personalised health plan for today!`;
 
   if (loading) {
     return (

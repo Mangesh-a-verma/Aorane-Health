@@ -228,19 +228,19 @@ export default function UpgradeScreen() {
             // Payment not complete — ask user what happened
             Alert.alert(
               "Payment Status",
-              "Kya aapne payment complete ki?",
+              "Did you complete the payment?",
               [
                 {
-                  text: "Nahi, Cancel Ki",
+                  text: "No, I Cancelled",
                   style: "destructive",
                   onPress: () => {
                     stopPolling();
                     setLoading(false);
-                    Alert.alert("Payment Cancelled", "Aapki payment cancel ho gayi. Dobara try karne ke liye 'Upgrade' button dabao.");
+                    Alert.alert("Payment Cancelled", "Your payment was cancelled. Tap 'Upgrade' to try again.");
                   },
                 },
                 {
-                  text: "Haan, Complete Ki",
+                  text: "Yes, Payment Done",
                   onPress: () => { /* polling will detect success */ },
                 },
               ]
@@ -503,19 +503,19 @@ export default function UpgradeScreen() {
             <Text style={{ fontSize: 52, marginBottom: 16 }}>💳</Text>
             <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 20, textAlign: "center", marginBottom: 8 }}>Payment Processing...</Text>
             <Text style={{ color: "rgba(255,255,255,0.6)", fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center", marginBottom: 24, lineHeight: 20 }}>
-              Browser mein payment complete karein.{"\n"}Payment confirm hone par app automatically update ho jayega.
+              Complete your payment in the browser.{"\n"}The app will update automatically once payment is confirmed.
             </Text>
             <TouchableOpacity onPress={checkPaymentNow} disabled={loading} style={{ backgroundColor: "#3B82F6", borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14, width: "100%", alignItems: "center", marginBottom: 12, opacity: loading ? 0.6 : 1 }}>
               <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>
-                {loading ? "Checking..." : "✓ Payment Ho Gayi? Check Karo"}
+                {loading ? "Checking..." : "✓ I've Completed Payment"}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => {
               stopPolling();
               setLoading(false);
-              Alert.alert("Payment Cancelled", "Koi baat nahi! Jab chahein dobara 'Upgrade' button dabao.");
+              Alert.alert("Payment Cancelled", "No problem! Tap 'Upgrade' whenever you're ready.");
             }} style={{ paddingVertical: 10, paddingHorizontal: 20 }}>
-              <Text style={{ color: "rgba(255,255,255,0.4)", fontFamily: "Inter_400Regular", fontSize: 13 }}>❌ Payment Cancel Karo</Text>
+              <Text style={{ color: "rgba(255,255,255,0.4)", fontFamily: "Inter_400Regular", fontSize: 13 }}>❌ Cancel Payment</Text>
             </TouchableOpacity>
           </LinearGradient>
         </View>
