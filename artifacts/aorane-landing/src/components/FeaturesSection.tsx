@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Scan, Brain, Dumbbell, Users, Building2, Lock, Camera, Sparkles, Shield, Activity, Heart, Bell, MessageSquare, Zap } from "lucide-react";
+import { Scan, Brain, Dumbbell, Users, Building2, Lock, Camera, Sparkles, Shield, Activity, Heart, Bell, MessageSquare, Zap, Barcode, FileText } from "lucide-react";
 
 const b2cFeatures = [
   {
@@ -47,10 +47,29 @@ const b2cFeatures = [
   {
     icon: MessageSquare,
     title: "WhatsApp Health Bot",
-    desc: "Log meals, exercise & water directly on WhatsApp. Bot reminds you like a friend — medicine alerts, meal nudges, weekly reports. Coming to Pro plan!",
+    desc: "Log meals, water & exercise directly on WhatsApp. Bot sends reminders, weekly reports — no app open needed.",
     color: "#25D366",
     bg: "#F0FFF4",
     comingSoon: true,
+    comingLabel: "Coming Soon",
+  },
+  {
+    icon: Barcode,
+    title: "Packaged Food Scanner",
+    desc: "Scan any barcode on chips, biscuits, drinks or packaged food — instant nutrition from FSSAI database. No AI cost, instant result.",
+    color: "#F97316",
+    bg: "#FFF7ED",
+    comingSoon: true,
+    comingLabel: "Coming Soon",
+  },
+  {
+    icon: FileText,
+    title: "Weekly Health Reports",
+    desc: "Every Sunday, get a full AI-written health summary delivered on WhatsApp & email — calories, macros, stress, exercise trends.",
+    color: "#3B82F6",
+    bg: "#EFF6FF",
+    comingSoon: true,
+    comingLabel: "Coming Soon",
   },
 ];
 
@@ -104,12 +123,26 @@ const b2bFeatures = [
     color: "#25D366",
     bg: "#F0FFF4",
     comingSoon: true,
+    comingLabel: "Coming Soon",
+  },
+  {
+    icon: Barcode,
+    title: "Cafeteria Nutrition Tracker",
+    desc: "Employees scan packaged snacks from office cafeteria — nutrition auto-logged. Helps HR track workforce diet quality.",
+    color: "#F97316",
+    bg: "#FFF7ED",
+    comingSoon: true,
+    comingLabel: "Coming Soon",
   },
 ];
 
 interface FeaturesSectionProps {
   audience: "b2c" | "b2b";
 }
+
+const BADGE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
+  "Coming Soon": { bg: "#F3F4F6", text: "#374151", dot: "#9CA3AF" },
+};
 
 export default function FeaturesSection({ audience }: FeaturesSectionProps) {
   const features = audience === "b2c" ? b2cFeatures : b2bFeatures;
@@ -118,94 +151,102 @@ export default function FeaturesSection({ audience }: FeaturesSectionProps) {
     : { pre: "Enterprise wellness", highlight: "built for Indian businesses" };
 
   return (
-    <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+    <section id="features" className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-14"
+          className="text-center mb-10"
         >
           <span className="text-xs font-bold text-[#10B981] bg-[#10B981]/10 px-3 py-1 rounded-full uppercase tracking-widest">
             {audience === "b2c" ? "Features" : "Enterprise Features"}
           </span>
-          <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-gray-900">
+          <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold text-gray-900">
             {title.pre}{" "}
             <span className="gradient-text">{title.highlight}</span>
           </h2>
-          <p className="mt-3 text-gray-500 max-w-xl mx-auto">
+          <p className="mt-2 text-gray-500 max-w-xl mx-auto text-sm">
             {audience === "b2c"
               ? "From AI food scanning to family health tracking — Aorane covers every aspect of your wellness journey."
               : "Aorane Business gives HR teams and leadership the tools to build a healthier, more productive workforce."}
           </p>
         </motion.div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((f, i) => (
-            <motion.div
-              key={f.title}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.07 }}
-              className="group bg-white rounded-3xl border p-6 card-hover cursor-default relative overflow-hidden"
-              style={{
-                borderColor: (f as { comingSoon?: boolean }).comingSoon ? "#25D36633" : "rgb(243,244,246)",
-              }}
-            >
-              {(f as { comingSoon?: boolean }).comingSoon && (
-                <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                  style={{ background: "#25D36618", color: "#16a34a", border: "1px solid #25D36630" }}>
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                  Coming Soon
-                </div>
-              )}
-              <div
-                className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110"
-                style={{ background: f.bg }}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {features.map((f, i) => {
+            const cs = (f as { comingSoon?: boolean }).comingSoon;
+            const csLabel = (f as { comingLabel?: string }).comingLabel ?? "Coming Soon";
+            return (
+              <motion.div
+                key={f.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.06 }}
+                className="group bg-white rounded-2xl border p-4 card-hover cursor-default relative overflow-hidden"
+                style={{
+                  borderColor: cs ? f.color + "40" : "rgb(243,244,246)",
+                  background: cs ? f.bg + "60" : "white",
+                }}
               >
-                <f.icon className="w-6 h-6" style={{ color: f.color }} />
-              </div>
-              <h3 className="text-base font-bold text-gray-900 mb-2">{f.title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
-            </motion.div>
-          ))}
+                {cs && (
+                  <div
+                    className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide"
+                    style={{ background: f.color + "18", color: f.color, border: `1px solid ${f.color}30` }}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: f.color }} />
+                    {csLabel}
+                  </div>
+                )}
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110"
+                  style={{ background: f.bg }}
+                >
+                  <f.icon className="w-4.5 h-4.5" style={{ color: f.color, width: 18, height: 18 }} />
+                </div>
+                <h3 className="text-sm font-bold text-gray-900 mb-1">{f.title}</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">{f.desc}</p>
+              </motion.div>
+            );
+          })}
         </div>
 
-        {/* WhatsApp Coming Soon banner */}
+        {/* Upcoming highlights banner */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.3 }}
-          className="mt-10 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-5"
+          transition={{ delay: 0.2 }}
+          className="mt-8 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-4"
           style={{
-            background: "linear-gradient(135deg, #F0FFF4 0%, #DCFCE7 100%)",
+            background: "linear-gradient(135deg, #F0FFF4 0%, #DCFCE7 50%, #FFF7ED 100%)",
             border: "1.5px solid #86EFAC",
           }}
         >
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
-            style={{ background: "#25D366" }}>
-            <MessageSquare className="w-7 h-7 text-white" />
+          <div className="flex -space-x-2 shrink-0">
+            {[
+              { icon: MessageSquare, color: "#25D366", bg: "#25D366" },
+              { icon: Barcode, color: "#F97316", bg: "#F97316" },
+              { icon: FileText, color: "#3B82F6", bg: "#3B82F6" },
+            ].map(({ icon: Icon, bg }, idx) => (
+              <div key={idx} className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm border-2 border-white" style={{ background: bg }}>
+                <Icon className="w-4 h-4 text-white" />
+              </div>
+            ))}
           </div>
           <div className="flex-1 text-center sm:text-left">
-            <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                style={{ background: "#25D36618", color: "#15803d" }}>
-                🚀 Coming Next Month — Pro Plan
-              </span>
-            </div>
-            <h3 className="text-lg font-extrabold text-gray-900">
-              WhatsApp Health Bot
+            <p className="text-xs font-bold text-green-700 mb-0.5">🚀 Coming Very Soon — Pro & Max Plan</p>
+            <h3 className="text-sm font-extrabold text-gray-900">
+              WhatsApp Bot · Barcode Scanner · Weekly Reports & More
             </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              The easiest health tracking in India — just message on WhatsApp.
-              Log food, exercise, and water instantly. The bot will remind you too!
+            <p className="text-xs text-gray-500 mt-0.5">
+              Track health without opening the app. Scan packaged food. Get Sunday summaries automatically.
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Zap className="w-4 h-4" style={{ color: "#25D366" }} />
-            <span className="text-sm font-bold" style={{ color: "#15803d" }}>Notify me</span>
+          <div className="flex items-center gap-1.5 shrink-0 text-xs font-bold text-green-700 cursor-pointer hover:text-green-800 transition-colors">
+            <Zap className="w-3.5 h-3.5" />
+            Notify me
           </div>
         </motion.div>
       </div>

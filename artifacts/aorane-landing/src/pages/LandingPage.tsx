@@ -12,6 +12,7 @@ import AppDownloadSection from "@/components/AppDownloadSection";
 import TrustSection from "@/components/TrustSection";
 import Footer from "@/components/Footer";
 import BusinessAuthModal from "@/components/BusinessAuthModal";
+import UpcomingSection from "@/components/UpcomingSection";
 
 export default function LandingPage() {
   const [audience, setAudience] = useState<"b2c" | "b2b">("b2c");
@@ -38,6 +39,7 @@ export default function LandingPage() {
       <StatsBar />
       <BentoSection />
       <FeaturesSection audience={audience} />
+      <UpcomingSection />
       <HowItWorks />
       <TestimonialsSlider />
       <PricingSection onBusinessSignUp={() => setAuthModal("signup")} />
