@@ -21,7 +21,7 @@ import OfflineBanner from "@/components/OfflineBanner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { useNetworkSync } from "@/hooks/useNetworkSync";
-import { rawRequest } from "@/lib/api";
+import { rawRequest, warmupServer } from "@/lib/api";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -98,6 +98,11 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  // Warm up server on app launch so Render wakes up before user tries to login
+  useEffect(() => {
+    warmupServer();
+  }, []);
 
   if (!fontsLoaded && !fontError) return null;
 

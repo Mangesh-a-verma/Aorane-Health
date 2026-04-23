@@ -374,7 +374,12 @@ export default function LoginScreen() {
                     style={s.ctaBtn}
                   >
                     {anyLoading
-                      ? <ActivityIndicator color="#FFF" />
+                      ? <View style={{ alignItems: "center", gap: 4 }}>
+                          <ActivityIndicator color="#FFF" />
+                          <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, fontFamily: "Inter_400Regular" }}>
+                            Connecting... (30 sec lag sakta hai)
+                          </Text>
+                        </View>
                       : <>
                           <Text style={s.ctaText}>
                             {loginMode === "pin" ? t("pinLogin") : loginMode === "email" ? "📧 Send Email OTP" : "💬 Send OTP on WhatsApp"}

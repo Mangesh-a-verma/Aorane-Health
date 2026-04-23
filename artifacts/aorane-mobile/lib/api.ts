@@ -20,6 +20,16 @@ async function getToken(): Promise<string | null> {
 }
 
 /** Exported so syncOfflineQueue can use it directly */
+// Ping the server on app startup so Render wakes up before user tries to login
+export async function warmupServer(): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60000);
+    await fetch(`${API_BASE}/health`, { method: "GET", signal: controller.signal });
+    clearTimeout(timer);
+  } catch { /* silent — warmup is best-effort */ }
+}
+
 export async function rawRequest<T>(
   method: string,
   path: string,
@@ -32,16 +42,25 @@ export async function rawRequest<T>(
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
+  // 60s timeout — handles Render free-tier cold start (can take 30-50s)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
+
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
     setOnlineState(true);
-  } catch {
+  } catch (err) {
+    clearTimeout(timeoutId);
     setOnlineState(false);
+    const isTimeout = (err as Error)?.name === "AbortError";
+    if (isTimeout) throw new Error("Server is starting up — please try again in a moment");
     throw new Error("Network error — check your internet connection");
   }
 
