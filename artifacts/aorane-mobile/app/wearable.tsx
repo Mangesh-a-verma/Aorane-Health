@@ -175,10 +175,12 @@ export default function WearableScreen() {
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const topPad = insets.top;
 
+  useEffect(() => { loadAll(); }, []);
+
   useEffect(() => {
-    loadAll();
     if (params.connected) {
-      Alert.alert("✅ Connected!", `${PROVIDER_META[params.connected]?.name || params.connected} connected successfully! Syncing initial data...`);
+      Alert.alert("✅ Connected!", `${PROVIDER_META[params.connected]?.name || params.connected} connected successfully! Data sync ho raha hai...`);
+      loadAll();
     }
     if (params.error) {
       const msgs: Record<string, string> = {
@@ -189,7 +191,7 @@ export default function WearableScreen() {
       };
       Alert.alert("Connection Failed", msgs[params.error] || "Unknown error occurred.");
     }
-  }, []);
+  }, [params.connected, params.error]);
 
   const loadAll = async () => {
     try {
@@ -429,10 +431,23 @@ export default function WearableScreen() {
               <View style={styles.section}>
                 <View style={[styles.emptyCard, { paddingVertical: 32 }]}>
                   <Text style={{ fontSize: 48, marginBottom: 12 }}>📊</Text>
-                  <Text style={{ fontFamily: "Inter_700Bold", fontSize: 16, color: "#0D1F33", textAlign: "center" }}>No Health Data Yet</Text>
-                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: "#7A90A4", textAlign: "center", marginTop: 6, lineHeight: 20 }}>
-                    Connect a device or manually log your health data to see metrics here.
+                  <Text style={{ fontFamily: "Inter_700Bold", fontSize: 16, color: "#0D1F33", textAlign: "center" }}>
+                    {activeConnections.length > 0 ? "Google Fit Mein Data Nahi" : "No Health Data Yet"}
                   </Text>
+                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: "#7A90A4", textAlign: "center", marginTop: 6, lineHeight: 20 }}>
+                    {activeConnections.length > 0
+                      ? "Google Fit app mein koi recorded data nahi mila (steps, heart rate etc). Apne phone pe Google Fit open karo aur kuch activity record karo, phir Sync karo."
+                      : "Connect a device or manually log your health data to see metrics here."}
+                  </Text>
+                  {activeConnections.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => syncProvider(activeConnections[0].provider)}
+                      disabled={!!syncingProvider}
+                      style={{ backgroundColor: "#0077B6", borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 16, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      {syncingProvider ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={{ fontSize: 16 }}>🔄</Text>}
+                      <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>Sync Now</Text>
+                    </TouchableOpacity>
+                  )}
                   <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
                     <TouchableOpacity onPress={() => setShowConnect(true)}
                       style={{ backgroundColor: "#0077B6", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 }}>

@@ -188,13 +188,18 @@ router.get("/wearable/oauth/google-fit/url", requireAuth, async (req: AuthReques
   }
   const { returnUrl } = req.query as { returnUrl?: string };
   const state = Buffer.from(JSON.stringify({ userId: req.userId, ts: Date.now(), returnUrl: returnUrl || null })).toString("base64url");
+  // Check if user already has a refresh token — if yes, skip forced consent
+  const [existing] = await db.select().from(wearableConnectionsTable)
+    .where(and(eq(wearableConnectionsTable.userId, req.userId!), eq(wearableConnectionsTable.provider, "google_fit")));
+  const needsConsent = !existing?.refreshToken;
+
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: GOOGLE_REDIRECT_URI,
     response_type: "code",
     scope: GOOGLE_SCOPES,
     access_type: "offline",
-    prompt: "consent",
+    ...(needsConsent ? { prompt: "consent" } : { prompt: "select_account" }),
     state,
   });
   res.json({ authUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` });
