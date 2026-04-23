@@ -786,9 +786,6 @@ export default function DashboardScreen() {
             fat={nutrition.fat}
           />
 
-          {/* 6. STRESS CHECK-IN */}
-          <StressCard data={stressToday} onPress={() => setShowStressModal(true)} />
-
           {/* 7. ADS SLIDER */}
           <AdsSlider />
 
@@ -823,7 +820,7 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          {/* 9. AI FEATURES — 3-column equal layout */}
+          {/* 9. AI FEATURES — 4-column equal layout */}
           <View style={s.aiGrid}>
             <TouchableOpacity
               style={{ flex: 1 }}
@@ -836,10 +833,10 @@ export default function DashboardScreen() {
                 style={s.aiCard}
               >
                 <View style={s.aiShine} />
-                <View style={s.aiBadge}><Sparkles size={9} color="#FFF" strokeWidth={2} /><Text style={s.aiBadgeTxt}> AI</Text></View>
-                <View style={s.aiIconBox}><Sparkles size={18} color="#FFF" strokeWidth={1.8} /></View>
+                <View style={s.aiBadge}><Sparkles size={8} color="#FFF" strokeWidth={2} /><Text style={s.aiBadgeTxt}> AI</Text></View>
+                <View style={s.aiIconBox}><Sparkles size={15} color="#FFF" strokeWidth={1.8} /></View>
                 <Text style={s.aiTitle}>Daily Coach</Text>
-                <Text style={s.aiSub}>AI nutrition insights</Text>
+                <Text style={s.aiSub}>AI nutrition</Text>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -855,9 +852,27 @@ export default function DashboardScreen() {
               >
                 <View style={s.aiShine} />
                 <View style={s.aiBadge}><Text style={s.aiBadgeTxt}>🔬 AI</Text></View>
-                <View style={s.aiIconBox}><Brain size={18} color="#FFF" strokeWidth={1.8} /></View>
+                <View style={s.aiIconBox}><Brain size={15} color="#FFF" strokeWidth={1.8} /></View>
                 <Text style={s.aiTitle}>Intelligence</Text>
-                <Text style={s.aiSub}>Deep health analysis</Text>
+                <Text style={s.aiSub}>Deep analysis</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={() => setShowStressModal(true)}
+              activeOpacity={0.88}
+            >
+              <LinearGradient
+                colors={["#0891B2", "#0EA5E9"]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={s.aiCard}
+              >
+                <View style={s.aiShine} />
+                <View style={s.aiBadge}><Text style={s.aiBadgeTxt}>🧘 Zen</Text></View>
+                <View style={s.aiIconBox}><Brain size={15} color="#FFF" strokeWidth={1.8} /></View>
+                <Text style={s.aiTitle}>Stress</Text>
+                <Text style={s.aiSub}>Mood & breathe</Text>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -874,10 +889,10 @@ export default function DashboardScreen() {
                 <View style={s.aiShine} />
                 <View style={[s.aiBadge, { backgroundColor: "rgba(255,255,255,0.25)" }]}><Text style={s.aiBadgeTxt}>🩸 SOS</Text></View>
                 <View style={[s.aiIconBox, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
-                  <Text style={{ fontSize: 18 }}>🆘</Text>
+                  <Text style={{ fontSize: 15 }}>🆘</Text>
                 </View>
-                <Text style={s.aiTitle}>Blood Emergency</Text>
-                <Text style={s.aiSub}>Find donors fast</Text>
+                <Text style={s.aiTitle}>Blood SOS</Text>
+                <Text style={s.aiSub}>Find donors</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -934,12 +949,12 @@ const s = StyleSheet.create({
   medName:  { fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.text },
   medSub:   { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: 1 },
 
-  aiGrid:    { flexDirection: "row", gap: 8 },
-  aiCard:    { flex: 1, borderRadius: 18, padding: 11, minHeight: 108, overflow: "hidden", gap: 6 },
-  aiShine:   { position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(255,255,255,0.1)" },
-  aiBadge:   { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20, paddingHorizontal: 7, paddingVertical: 3, alignSelf: "flex-start" },
-  aiBadgeTxt:{ color: "#FFF", fontSize: 8.5, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
-  aiIconBox: { width: 36, height: 36, borderRadius: 11, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
-  aiTitle:   { fontSize: 14, fontFamily: "Inter_700Bold", color: "#FFF", lineHeight: 18 },
-  aiSub:     { fontSize: 10.5, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.82)", lineHeight: 14 },
+  aiGrid:    { flexDirection: "row", gap: 6 },
+  aiCard:    { flex: 1, borderRadius: 16, padding: 9, minHeight: 96, overflow: "hidden", gap: 4 },
+  aiShine:   { position: "absolute", top: -18, right: -18, width: 64, height: 64, borderRadius: 32, backgroundColor: "rgba(255,255,255,0.1)" },
+  aiBadge:   { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20, paddingHorizontal: 5, paddingVertical: 2, alignSelf: "flex-start" },
+  aiBadgeTxt:{ color: "#FFF", fontSize: 7.5, fontFamily: "Inter_700Bold", letterSpacing: 0.2 },
+  aiIconBox: { width: 28, height: 28, borderRadius: 9, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
+  aiTitle:   { fontSize: 12, fontFamily: "Inter_700Bold", color: "#FFF", lineHeight: 15 },
+  aiSub:     { fontSize: 9, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.82)", lineHeight: 12 },
 });
