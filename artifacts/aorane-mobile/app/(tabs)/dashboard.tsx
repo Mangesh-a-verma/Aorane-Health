@@ -100,55 +100,79 @@ function useWeather() {
   return { weather, wLoading, refetchWeather: fetchW };
 }
 
-function WeatherCard({ weather, loading }: { weather: WeatherInfo | null; loading: boolean }) {
+function WeatherPill({
+  weather, loading, onPress,
+}: { weather: WeatherInfo | null; loading: boolean; onPress: () => void }) {
   if (loading) {
     return (
-      <View style={wc.card}>
-        <ActivityIndicator size="small" color="#0077B6" />
-        <Text style={wc.loadTxt}>Fetching weather...</Text>
-      </View>
+      <TouchableOpacity style={wp.pill} onPress={onPress} activeOpacity={0.85}>
+        <ActivityIndicator size="small" color="#FFF" style={{ width: 16, height: 16 }} />
+        <Text style={wp.pillTxt}>Weather…</Text>
+      </TouchableOpacity>
     );
   }
   if (!weather) return null;
   return (
-    <LinearGradient
-      colors={weather.isDay ? ["#1565C0", "#0D47A1"] : ["#1A237E", "#283593"]}
-      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-      style={wc.card}
-    >
-      <View style={wc.top}>
-        <View style={{ flex: 1 }}>
-          <Text style={wc.city}>📍 {weather.city}</Text>
-          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 6 }}>
-            <Text style={wc.emoji}>{weather.emoji}</Text>
-            <Text style={wc.temp}>{weather.temp}°C</Text>
-            <Text style={wc.desc}>{weather.description}</Text>
-          </View>
-        </View>
-        <View style={wc.statsCol}>
-          <Text style={wc.statTxt}>🌡️ Feels {weather.feelsLike}°C</Text>
-          <Text style={wc.statTxt}>💧 {weather.humidity}%</Text>
-          <Text style={wc.statTxt}>🌬️ {weather.windspeed} km/h</Text>
-        </View>
-      </View>
-      <View style={wc.tipRow}>
-        <Text style={wc.tip}>{weather.healthTip}</Text>
-      </View>
-    </LinearGradient>
+    <TouchableOpacity style={wp.pill} onPress={onPress} activeOpacity={0.85}>
+      <Text style={wp.pillEmoji}>{weather.emoji}</Text>
+      <Text style={wp.pillTxt}>{weather.temp}°C · {weather.city}</Text>
+    </TouchableOpacity>
   );
 }
-const wc = StyleSheet.create({
-  card:    { borderRadius: 18, padding: 16, marginBottom: 12 },
-  top:     { flexDirection: "row", alignItems: "center", gap: 8 },
-  city:    { fontSize: 11, color: "rgba(255,255,255,0.7)", fontFamily: "Inter_500Medium", marginBottom: 4 },
-  emoji:   { fontSize: 32 },
-  temp:    { fontSize: 36, color: "#FFF", fontFamily: "Inter_700Bold", lineHeight: 40 },
-  desc:    { fontSize: 13, color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", paddingBottom: 4 },
-  statsCol: { gap: 4, alignItems: "flex-end" },
-  statTxt: { fontSize: 12, color: "rgba(255,255,255,0.85)", fontFamily: "Inter_500Medium" },
-  tipRow:  { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.15)" },
-  tip:     { fontSize: 12, color: "rgba(255,255,255,0.9)", fontFamily: "Inter_400Regular", lineHeight: 18 },
-  loadTxt: { fontSize: 12, color: "#7A90A4", fontFamily: "Inter_400Regular", marginLeft: 8 },
+
+function WeatherModal({
+  weather, visible, onClose,
+}: { weather: WeatherInfo | null; visible: boolean; onClose: () => void }) {
+  if (!weather) return null;
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={wp.overlay} activeOpacity={1} onPress={onClose}>
+        <LinearGradient
+          colors={weather.isDay ? ["#1565C0", "#0D47A1"] : ["#1A237E", "#283593"]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={wp.modal}
+        >
+          <Text style={wp.mCity}>📍 {weather.city}</Text>
+          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, marginTop: 4 }}>
+            <Text style={{ fontSize: 40 }}>{weather.emoji}</Text>
+            <Text style={wp.mTemp}>{weather.temp}°C</Text>
+            <Text style={wp.mDesc}>{weather.description}</Text>
+          </View>
+          <View style={wp.mStats}>
+            <Text style={wp.mStat}>🌡️ Feels {weather.feelsLike}°C</Text>
+            <Text style={wp.mStat}>💧 Humidity {weather.humidity}%</Text>
+            <Text style={wp.mStat}>🌬️ Wind {weather.windspeed} km/h</Text>
+          </View>
+          <View style={wp.tipRow}>
+            <Text style={wp.tip}>{weather.healthTip}</Text>
+          </View>
+          <Text style={wp.mClose}>Tap anywhere to close</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+const wp = StyleSheet.create({
+  pill:      {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: "rgba(21,101,192,0.88)", borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 7,
+    shadowColor: "#1565C0", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35, shadowRadius: 6, elevation: 5,
+  },
+  pillEmoji: { fontSize: 16 },
+  pillTxt:   { fontSize: 13, color: "#FFF", fontFamily: "Inter_600SemiBold" },
+  overlay:   { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end", padding: 16 },
+  modal:     { borderRadius: 22, padding: 20, marginBottom: 90 },
+  mCity:     { fontSize: 12, color: "rgba(255,255,255,0.7)", fontFamily: "Inter_500Medium" },
+  mTemp:     { fontSize: 42, color: "#FFF", fontFamily: "Inter_700Bold", lineHeight: 48 },
+  mDesc:     { fontSize: 14, color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", paddingBottom: 6 },
+  mStats:    { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 },
+  mStat:     { fontSize: 13, color: "rgba(255,255,255,0.9)", fontFamily: "Inter_500Medium" },
+  tipRow:    { marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.18)" },
+  tip:       { fontSize: 13, color: "#FFF", fontFamily: "Inter_400Regular", lineHeight: 20 },
+  mClose:    { marginTop: 14, fontSize: 11, color: "rgba(255,255,255,0.45)", textAlign: "center", fontFamily: "Inter_400Regular" },
 });
 
 function todayDate() { return new Date().toISOString().slice(0, 10); }
@@ -542,6 +566,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { weather, wLoading } = useWeather();
+  const [showWeatherModal, setShowWeatherModal] = useState(false);
 
   const [healthScore, setHealthScore] = useState(0);
   const [water,       setWater]       = useState({ current: 0, goal: 8 });
@@ -680,8 +705,6 @@ export default function DashboardScreen() {
             activityPct={activityPct}
           />
 
-          {/* 1b. WEATHER CARD */}
-          <WeatherCard weather={weather} loading={wLoading} />
 
           {/* 2. QUICK SERVICES */}
           <View style={s.surfaceCard}>
@@ -827,6 +850,26 @@ export default function DashboardScreen() {
         visible={showStressModal}
         onClose={() => setShowStressModal(false)}
         onSaved={() => { loadData(); }}
+      />
+
+      {/* FLOATING WEATHER PILL — bottom above tab bar */}
+      {(weather || wLoading) && (
+        <View style={{
+          position: "absolute", bottom: insets.bottom + 68,
+          alignSelf: "center", zIndex: 99,
+        }}>
+          <WeatherPill
+            weather={weather}
+            loading={wLoading}
+            onPress={() => setShowWeatherModal(true)}
+          />
+        </View>
+      )}
+
+      <WeatherModal
+        weather={weather}
+        visible={showWeatherModal}
+        onClose={() => setShowWeatherModal(false)}
       />
     </View>
   );

@@ -19,7 +19,6 @@ const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/fitness.heart_rate.read",
   "https://www.googleapis.com/auth/fitness.sleep.read",
   "https://www.googleapis.com/auth/fitness.body.read",
-  "https://www.googleapis.com/auth/fitness.blood_oxygen.read",
 ].join(" ");
 
 // ─── Supported Providers ──────────────────────────────────────────────────────
