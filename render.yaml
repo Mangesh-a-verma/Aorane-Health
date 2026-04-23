@@ -1,4 +1,5 @@
 services:
+  # ── API Server (Node.js) ────────────────────────────────────
   - type: web
     name: aorane-api
     runtime: node
@@ -8,7 +9,6 @@ services:
     startCommand: npx pnpm@10 --filter @workspace/api-server start
     autoDeploy: true
     envVars:
-      # ── Non-secret config ─────────────────────────────────────────
       - key: NODE_ENV
         value: production
       - key: LOG_LEVEL
@@ -18,15 +18,11 @@ services:
       - key: API_BASE_URL
         value: https://aorane.onrender.com/api
       - key: ALLOWED_ORIGIN
-        value: https://aorane.com
+        value: https://aorane.com,https://aorane-landing.onrender.com,https://aorane-admin.onrender.com,https://aorane-business.onrender.com
       - key: RESEND_FROM_EMAIL
         value: noreply@aorane.in
-
-      # ── Secrets — set these in Render Dashboard → Environment ─────
-      # Database (use your Supabase connection string)
       - key: DATABASE_URL
         sync: false
-      # Auth tokens
       - key: JWT_SECRET
         sync: false
       - key: JWT_REFRESH_SECRET
@@ -35,34 +31,87 @@ services:
         sync: false
       - key: BUSINESS_JWT_SECRET
         sync: false
-      # Email
       - key: RESEND_API_KEY
         sync: false
-      # AI
       - key: NVIDIA_API_KEY
         sync: false
-      # Payments
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET
         sync: false
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false
-      # Google OAuth / Fit
       - key: GOOGLE_FIT_CLIENT_ID
         sync: false
       - key: GOOGLE_FIT_CLIENT_SECRET
         sync: false
-      # Optional — SMS (Twilio)
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN
         sync: false
       - key: TWILIO_FROM_NUMBER
         sync: false
-      # Optional — Weather
       - key: OPENWEATHER_API_KEY
         sync: false
-      # Optional — WhatsApp
       - key: WHATSAPP_VERIFY_TOKEN
         sync: false
+
+  # ── Landing Page (Static Site) ──────────────────────────────
+  - type: web
+    name: aorane-landing
+    runtime: static
+    region: singapore
+    autoDeploy: true
+    buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile && VITE_API_URL=https://aorane.onrender.com npx pnpm@10 --filter @workspace/aorane-landing build
+    staticPublishPath: artifacts/aorane-landing/dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # ── Admin Panel (Static Site) ───────────────────────────────
+  - type: web
+    name: aorane-admin
+    runtime: static
+    region: singapore
+    autoDeploy: true
+    buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile && VITE_API_URL=https://aorane.onrender.com npx pnpm@10 --filter @workspace/admin-panel build
+    staticPublishPath: artifacts/admin-panel/dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # ── Business Portal (Static Site) ──────────────────────────
+  - type: web
+    name: aorane-business
+    runtime: static
+    region: singapore
+    autoDeploy: true
+    buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile && VITE_API_URL=https://aorane.onrender.com npx pnpm@10 --filter @workspace/business-portal build
+    staticPublishPath: artifacts/business-portal/dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
