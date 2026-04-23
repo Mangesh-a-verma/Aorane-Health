@@ -991,9 +991,10 @@ router.get("/business/health-analytics", requireBusinessAuth, async (req: Busine
       .where(and(
         inArray(stressLogsTable.userId, memberIds),
         gte(stressLogsTable.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
-      ));
+      ))
+      .orderBy(stressLogsTable.createdAt); // ASC so the last Map write per user = most recent log
 
-    // Latest stress score per user
+    // Latest stress score per user (Map overwrites older with newer because rows are ASC ordered)
     const latestStressByUser = new Map<string, number>();
     for (const log of stressLogs) {
       latestStressByUser.set(log.userId, log.stressScore);
