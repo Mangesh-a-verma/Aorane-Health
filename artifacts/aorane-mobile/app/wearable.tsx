@@ -42,29 +42,21 @@ type ProviderConfig = {
   available: boolean; requiresCredentials: boolean;
 };
 
-// ─── Metric Card ──────────────────────────────────────────────────────────────
-function MetricCard({ icon, label, value, unit, sub, grad, small }: {
+// ─── Metric Row (compact) ─────────────────────────────────────────────────────
+function MetricCard({ icon, label, value, unit, color }: {
   icon: string; label: string; value: string | number | null; unit?: string;
-  sub?: string; grad: [string, string]; small?: boolean;
+  color: string; grad?: [string, string]; sub?: string; small?: boolean;
 }) {
-  const isEmpty = value === null || value === undefined;
+  const hasData = value !== null && value !== undefined;
   return (
-    <View style={[styles.metricCard, small && { width: (W - 48) / 2 }]}>
-      <LinearGradient colors={grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.metricGrad}>
-        <Text style={{ fontSize: small ? 22 : 28, marginBottom: 4 }}>{icon}</Text>
-        <Text style={styles.metricLabel}>{label}</Text>
-        <View style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
-          {isEmpty ? (
-            <Text style={styles.metricEmpty}>—</Text>
-          ) : (
-            <>
-              <Text style={[styles.metricValue, small && { fontSize: 22 }]}>{value}</Text>
-              {unit && <Text style={styles.metricUnit}>{unit}</Text>}
-            </>
-          )}
-        </View>
-        {sub && <Text style={styles.metricSub}>{sub}</Text>}
-      </LinearGradient>
+    <View style={styles.metricRow}>
+      <View style={[styles.metricRowIcon, { backgroundColor: color + "18" }]}>
+        <Text style={{ fontSize: 18 }}>{icon}</Text>
+      </View>
+      <Text style={styles.metricRowLabel}>{label}</Text>
+      <Text style={[styles.metricRowValue, { color: hasData ? color : "#CBD5E1" }]}>
+        {hasData ? `${value}${unit ? ` ${unit}` : ""}` : "—"}
+      </Text>
     </View>
   );
 }
@@ -386,20 +378,13 @@ export default function WearableScreen() {
                     {PROVIDER_META[latest.provider]?.emoji} {PROVIDER_META[latest.provider]?.name || latest.provider}
                   </Text>
                 </View>
-                {/* Steps - big */}
-                <MetricCard
-                  icon="👟" label="Steps" value={latest.steps?.toLocaleString() ?? null}
-                  unit="" sub="Today's steps count"
-                  grad={["#0077B6", "#1B998B"]}
-                />
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 12 }}>
-                  <MetricCard icon="❤️" label="Heart Rate" value={latest.heartRateAvg} unit="bpm" sub={latest.heartRateMin && latest.heartRateMax ? `${latest.heartRateMin}–${latest.heartRateMax} bpm` : "avg"} grad={["#EF4444", "#DC2626"]} small />
-                  <MetricCard icon="🔥" label="Calories" value={latest.caloriesBurned ? Math.round(parseFloat(latest.caloriesBurned)) : null} unit="kcal" sub="Burned today" grad={["#F97316", "#EA580C"]} small />
-                  <MetricCard icon="😴" label="Sleep" value={latest.sleepHours ? parseFloat(latest.sleepHours).toFixed(1) : null} unit="hrs" sub="Last night" grad={["#8B5CF6", "#7C3AED"]} small />
-                  <MetricCard icon="🩸" label="SpO2" value={latest.bloodOxygen ? parseFloat(latest.bloodOxygen).toFixed(1) : null} unit="%" sub="Blood oxygen" grad={["#EC4899", "#DB2777"]} small />
-                  <MetricCard icon="⚡" label="Active" value={latest.activeMinutes} unit="min" sub="Active minutes" grad={["#10B981", "#059669"]} small />
-                  <MetricCard icon="🛤️" label="Distance" value={latest.distanceKm ? parseFloat(latest.distanceKm).toFixed(2) : null} unit="km" sub="Covered today" grad={["#06B6D4", "#0891B2"]} small />
-                </View>
+                <MetricCard icon="👟" label="Steps"      value={latest.steps?.toLocaleString() ?? null} color="#0077B6" />
+                <MetricCard icon="❤️" label="Heart Rate"  value={latest.heartRateAvg}                   unit="bpm"  color="#EF4444" />
+                <MetricCard icon="🔥" label="Calories"    value={latest.caloriesBurned ? Math.round(parseFloat(latest.caloriesBurned)) : null} unit="kcal" color="#F97316" />
+                <MetricCard icon="😴" label="Sleep"       value={latest.sleepHours ? parseFloat(latest.sleepHours).toFixed(1) : null} unit="hrs" color="#8B5CF6" />
+                <MetricCard icon="🩸" label="SpO2"        value={latest.bloodOxygen ? parseFloat(latest.bloodOxygen).toFixed(1) : null} unit="%" color="#EC4899" />
+                <MetricCard icon="⚡" label="Active Min"  value={latest.activeMinutes} unit="min" color="#10B981" />
+                <MetricCard icon="🛤️" label="Distance"   value={latest.distanceKm ? parseFloat(latest.distanceKm).toFixed(2) : null} unit="km" color="#06B6D4" />
               </View>
             )}
 
@@ -574,16 +559,16 @@ const styles = StyleSheet.create({
     backdropFilter: "blur(10px)",
   },
   sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 16, color: "#0D1F33" },
-  metricCard: {
-    borderRadius: 16, overflow: "hidden", marginBottom: 0,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3,
+  metricRow: {
+    flexDirection: "row", alignItems: "center",
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#F0F4F8",
   },
-  metricGrad: { padding: 16 },
-  metricLabel: { color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_500Medium", marginBottom: 4, letterSpacing: 0.5 },
-  metricValue: { color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 28 },
-  metricEmpty: { color: "rgba(255,255,255,0.4)", fontFamily: "Inter_700Bold", fontSize: 24 },
-  metricUnit: { color: "rgba(255,255,255,0.7)", fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 3 },
-  metricSub: { color: "rgba(255,255,255,0.55)", fontSize: 9, fontFamily: "Inter_400Regular", marginTop: 4 },
+  metricRowIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: "center", justifyContent: "center", marginRight: 12,
+  },
+  metricRowLabel: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#374151" },
+  metricRowValue: { fontSize: 15, fontFamily: "Inter_700Bold" },
   deviceCard: { borderRadius: 14, overflow: "hidden" },
   deviceCardGrad: { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: "rgba(0,119,182,0.1)" },
   deviceIcon: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },

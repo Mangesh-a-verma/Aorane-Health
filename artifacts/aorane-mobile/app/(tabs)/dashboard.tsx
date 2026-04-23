@@ -66,13 +66,19 @@ function useWeather() {
   const fetchW = async () => {
     setWLoading(true);
     try {
+      let lat: number, lon: number, city: string;
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") { setWLoading(false); return; }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
-      const { latitude, longitude } = loc.coords;
-      const [geo] = await Location.reverseGeocodeAsync({ latitude, longitude });
-      const city = geo?.city || geo?.subregion || geo?.region || "Your Location";
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude.toFixed(4)}&longitude=${longitude.toFixed(4)}&current_weather=true&hourly=relativehumidity_2m,apparent_temperature&forecast_days=1&timezone=auto`;
+      if (status === "granted") {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+        lat = loc.coords.latitude; lon = loc.coords.longitude;
+        const [geo] = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
+        city = geo?.city || geo?.subregion || geo?.region || "Your Location";
+      } else {
+        const ip = await fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(5000) });
+        const ipd = await ip.json() as { latitude: number; longitude: number; city: string };
+        lat = ipd.latitude; lon = ipd.longitude; city = ipd.city || "Your Location";
+      }
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current_weather=true&hourly=relativehumidity_2m,apparent_temperature&forecast_days=1&timezone=auto`;
       const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
       const d = await res.json() as {
         current_weather: { temperature: number; windspeed: number; weathercode: number; is_day: number };
@@ -579,6 +585,7 @@ export default function DashboardScreen() {
   const [isLoading,   setIsLoading]   = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
   const [userName,    setUserName]    = useState("");
+  const [userGender,  setUserGender]  = useState("");
   const [medicines,   setMedicines]   = useState<Array<{
     id: string; medicineName: string; dosage?: string;
     mealTiming: string; reminderTimes: string[]; isActive: boolean;
@@ -625,6 +632,7 @@ export default function DashboardScreen() {
         const p = profileRes.value.profile as Record<string, string>;
         const name = p?.full_name || p?.fullName || "";
         setUserName(name.split(" ")[0] || "");
+        setUserGender(p?.gender || "");
       }
       if (medRes.status === "fulfilled") {
         setMedicines(
@@ -784,7 +792,38 @@ export default function DashboardScreen() {
           {/* 7. ADS SLIDER */}
           <AdsSlider />
 
-          {/* 8. AI FEATURES — 3-column equal layout */}
+          {/* 8. HEALTH TOOLS CHIPS */}
+          <View style={s.surfaceCard}>
+            <Text style={s.secTitle}>Health Tools</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+              {[
+                { emoji: "🪪", label: "Health ID",      route: "/scorecard",   color: "#7C3AED" },
+                { emoji: "⌚", label: "Wearables",       route: "/wearable",    color: "#34A853" },
+                { emoji: "💧", label: "Water",           route: "/water",       color: "#0EA5E9" },
+                { emoji: "🧘", label: "Stress",          route: "/stress",      color: "#8B5CF6" },
+                { emoji: "👨‍👩‍👧‍👦", label: "Family",      route: "/family",      color: "#10B981" },
+                ...(userGender === "female" ? [{ emoji: "🌸", label: "Period Tracker", route: "/period", color: "#EC4899" }] : []),
+              ].map((t) => (
+                <TouchableOpacity
+                  key={t.label}
+                  onPress={() => router.push(t.route as never)}
+                  activeOpacity={0.75}
+                  style={{
+                    flexDirection: "row", alignItems: "center", gap: 5,
+                    paddingHorizontal: 11, paddingVertical: 7,
+                    borderRadius: 20,
+                    backgroundColor: t.color + "12",
+                    borderWidth: 1, borderColor: t.color + "30",
+                  }}
+                >
+                  <Text style={{ fontSize: 13 }}>{t.emoji}</Text>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: t.color }}>{t.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* 9. AI FEATURES — 3-column equal layout */}
           <View style={s.aiGrid}>
             <TouchableOpacity
               style={{ flex: 1 }}

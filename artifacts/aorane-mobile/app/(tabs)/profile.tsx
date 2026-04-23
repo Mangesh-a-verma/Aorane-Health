@@ -235,41 +235,33 @@ export default function ProfileScreen() {
             </Text>
           </View>
 
-          {/* ── Health Tools ── */}
-          <View style={s.section}>
-            <View style={s.sectionHead}>
-              <View style={[s.sectionIcon, { backgroundColor: DS.color.greenSoft }]}>
-                <Heart size={16} color={G} strokeWidth={2} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.sectionTitle}>Health Tools</Text>
-                <Text style={s.sectionSub}>All health features in one place</Text>
-              </View>
-            </View>
-            {[
-              { emoji: "🪪", label: "Health Scorecard (Aorane ID)", desc: "ATM card style health ID + QR code",          route: "/scorecard",         color: P },
-              { emoji: "⌚", label: "Smart Watch & Wearables",      desc: "Google Fit, Smart Band, steps, heart rate",   route: "/wearable",          color: "#34A853" },
-              { emoji: "💧", label: "Water Tracker",                desc: "Track 8 glasses of water daily",              route: "/water",             color: DS.color.sky },
-              { emoji: "🧘", label: "Stress Tracker",               desc: "Mood + 5-Pillar + 4-7-8 Breathing",          route: "/stress",            color: DS.color.purple },
-              { emoji: "👨‍👩‍👧‍👦", label: "Family Health",               desc: "Manage whole family health together",        route: "/family",            color: G },
-              { emoji: "🌸", label: "Period Tracker",               desc: "Cycle log + AI prediction + symptoms",        route: "/period",            color: "#FF2D55" },
-            ].map((item, idx) => (
-              <TouchableOpacity
-                key={item.label}
-                onPress={() => router.push(item.route as never)}
-                style={[s.menuRow, idx > 0 && s.menuBorder]}
-              >
-                <View style={[s.menuEmoji, { backgroundColor: item.color + "15" }]}>
-                  <Text style={{ fontSize: 18 }}>{item.emoji}</Text>
+          {/* ── Period Tracker (female only) ── */}
+          {profile.gender === "female" && (
+            <View style={s.section}>
+              <View style={s.sectionHead}>
+                <View style={[s.sectionIcon, { backgroundColor: "#FF2D5515" }]}>
+                  <Heart size={16} color="#FF2D55" strokeWidth={2} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.menuLabel}>{item.label}</Text>
-                  <Text style={s.menuDesc}>{item.desc}</Text>
+                  <Text style={s.sectionTitle}>Women's Health</Text>
+                  <Text style={s.sectionSub}>Cycle tracking & predictions</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => router.push("/period" as never)}
+                style={s.menuRow}
+              >
+                <View style={[s.menuEmoji, { backgroundColor: "#FF2D5515" }]}>
+                  <Text style={{ fontSize: 18 }}>🌸</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.menuLabel}>Period Tracker</Text>
+                  <Text style={s.menuDesc}>Cycle log + AI prediction + symptoms</Text>
                 </View>
                 <ChevronRight size={16} color={DS.color.muted} strokeWidth={1.8} />
               </TouchableOpacity>
-            ))}
-          </View>
+            </View>
+          )}
 
           {/* ── Privacy ── */}
           <View style={s.section}>
