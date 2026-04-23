@@ -92,8 +92,10 @@ async function refreshGoogleToken(conn: typeof wearableConnectionsTable.$inferSe
 // ─── Utility: Get valid Google access token ───────────────────────────────────
 async function getGoogleToken(conn: typeof wearableConnectionsTable.$inferSelect): Promise<string | null> {
   if (!conn.accessToken) return null;
-  const isExpired = conn.tokenExpiresAt && conn.tokenExpiresAt < new Date(Date.now() + 60000);
-  if (isExpired) return await refreshGoogleToken(conn);
+  // Refresh if expired or expiring within 5 minutes, or if no expiry set
+  const bufferMs = 5 * 60 * 1000;
+  const needsRefresh = !conn.tokenExpiresAt || conn.tokenExpiresAt < new Date(Date.now() + bufferMs);
+  if (needsRefresh) return await refreshGoogleToken(conn);
   return conn.accessToken;
 }
 
@@ -124,7 +126,11 @@ async function fetchGoogleFitData(
       body: JSON.stringify(body),
     }
   );
-  if (!res.ok) return {};
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => "unknown");
+    console.error(`[GFit] API error ${res.status}: ${errBody}`);
+    throw new Error(`Google Fit API returned ${res.status}: ${errBody}`);
+  }
   const data = await res.json() as { bucket?: Array<{ dataset?: Array<{ dataSourceId?: string; point?: Array<{ value?: Array<{ intVal?: number; fpVal?: number }> }> }> }> };
   const result: Record<string, number | null> = {
     steps: null, heartRateAvg: null, caloriesBurned: null,
@@ -303,10 +309,36 @@ router.post("/wearable/sync/:provider", requireAuth, async (req: AuthRequest, re
     }
     if (provider === "google_fit") {
       const token = await getGoogleToken(conn);
-      if (!token) { res.status(401).json({ error: "Token expired. Please reconnect Google Fit." }); return; }
+      if (!token) {
+        res.status(401).json({ error: "Token expired or refresh failed. Please reconnect Google Fit.", code: "TOKEN_EXPIRED" });
+        return;
+      }
       const endMs = Date.now();
       const startMs = endMs - 24 * 60 * 60 * 1000; // Last 24h
-      const fitData = await fetchGoogleFitData(token, startMs, endMs);
+      let fitData: Record<string, number | null>;
+      try {
+        fitData = await fetchGoogleFitData(token, startMs, endMs);
+      } catch (fitErr) {
+        const msg = fitErr instanceof Error ? fitErr.message : String(fitErr);
+        console.error("[Sync] Google Fit fetch failed:", msg);
+        // If it's an auth error, suggest reconnect
+        if (msg.includes("401") || msg.includes("403")) {
+          // Try to refresh and retry once
+          const newToken = await refreshGoogleToken(conn);
+          if (newToken) {
+            try { fitData = await fetchGoogleFitData(newToken, startMs, endMs); }
+            catch { res.status(401).json({ error: "Google Fit auth failed. Please reconnect.", code: "REAUTH_REQUIRED" }); return; }
+          } else {
+            res.status(401).json({ error: "Google Fit token expired. Please reconnect.", code: "REAUTH_REQUIRED" });
+            return;
+          }
+        } else {
+          res.status(502).json({ error: "Google Fit API unavailable. Try again later.", detail: msg });
+          return;
+        }
+      }
+      // Check if any real data was returned
+      const hasData = Object.values(fitData).some((v) => v !== null && v !== undefined);
       const [inserted] = await db.insert(wearableDataTable).values({
         userId: req.userId!, provider: "google_fit",
         recordedAt: new Date(),
@@ -320,13 +352,18 @@ router.post("/wearable/sync/:provider", requireAuth, async (req: AuthRequest, re
       }).returning();
       await db.update(wearableConnectionsTable)
         .set({ lastSyncedAt: new Date() }).where(eq(wearableConnectionsTable.id, conn.id));
-      res.json({ success: true, data: inserted });
+      res.json({
+        success: true,
+        hasData,
+        message: hasData ? "Data synced successfully" : "Synced but no activity recorded in Google Fit today. Open Google Fit app and record some activity.",
+        data: inserted,
+      });
     } else {
       res.status(400).json({ error: `${provider} sync not yet supported` });
     }
   } catch (e) {
     console.error("Sync error:", e);
-    res.status(500).json({ error: "Sync failed" });
+    res.status(500).json({ error: "Sync failed", detail: e instanceof Error ? e.message : String(e) });
   }
 });
 

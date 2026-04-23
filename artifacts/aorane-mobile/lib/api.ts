@@ -489,7 +489,7 @@ export const api = {
   getGoogleFitAuthUrl: (returnUrl?: string) =>
     request<{ authUrl: string }>("GET", `/wearable/oauth/google-fit/url${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ""}`),
   syncWearableProvider: (provider: string) =>
-    request<{ success: boolean; data: unknown }>("POST", `/wearable/sync/${provider}`, {}),
+    request<{ success: boolean; hasData: boolean; message: string; data: unknown; code?: string }>("POST", `/wearable/sync/${provider}`, {}),
   addManualWearableData: (data: Record<string, unknown>) =>
     request<{ success: boolean; data: unknown }>("POST", "/wearable/data/manual", data),
   disconnectWearable: (provider: string) =>

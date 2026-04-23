@@ -254,11 +254,36 @@ export default function WearableScreen() {
   const syncProvider = async (provider: string) => {
     setSyncingProvider(provider);
     try {
-      await api.syncWearableProvider(provider);
+      const result = await api.syncWearableProvider(provider);
       await loadAll();
-      Alert.alert("✅ Synced!", "Latest data synced successfully.");
-    } catch {
-      Alert.alert("Sync Failed", "Could not sync data. Please try again.");
+      if (result.hasData) {
+        Alert.alert("✅ Synced!", "Google Fit data updated successfully!");
+      } else {
+        Alert.alert(
+          "Sync Complete — No Data Found",
+          "Google Fit se connect toh hai, lekin aaj ka koi data nahi mila (steps, heart rate, etc.).\n\n📱 Google Fit app kholo → kuch steps walk karo ya manually data add karo → phir Sync karo.",
+          [{ text: "OK" }]
+        );
+      }
+    } catch (err: unknown) {
+      const errObj = err as { status?: number; body?: { code?: string; error?: string } };
+      const code = errObj?.body?.code;
+      if (code === "REAUTH_REQUIRED" || errObj?.status === 401) {
+        Alert.alert(
+          "Google Fit Reconnect Karo",
+          "Google Fit ka token expire ho gaya hai. Ek baar phir Google se connect karo.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Reconnect", onPress: () => connectGoogleFit() },
+          ]
+        );
+      } else {
+        Alert.alert(
+          "Sync Failed",
+          errObj?.body?.error || "Data sync nahi ho saka. Dobara try karo.",
+          [{ text: "OK" }]
+        );
+      }
     }
     setSyncingProvider(null);
   };
