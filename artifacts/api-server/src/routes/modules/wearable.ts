@@ -249,7 +249,8 @@ router.get("/wearable/oauth/google-fit/callback", async (req, res) => {
     });
     const tokens = await tokenRes.json() as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
     if (!tokens.access_token) {
-      const errDest = returnUrl ? `${returnUrl}?error=token_failed` : `${webBase}/wearable?error=token_failed`;
+      console.error("[GFit OAuth] Token exchange failed:", JSON.stringify(tokens));
+      const errDest = returnUrl ? `${returnUrl}?error=token_failed` : `${APP_URL_BASE}/wearable?error=token_failed`;
       res.redirect(errDest);
       return;
     }

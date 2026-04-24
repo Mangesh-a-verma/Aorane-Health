@@ -247,28 +247,31 @@ export default function WearableScreen() {
       const d = await api.getGoogleFitAuthUrl(returnUrl);
       const { authUrl } = d as { authUrl: string };
 
-      if (Platform.OS === "ios") {
-        // iOS: openAuthSessionAsync intercepts the deep link correctly
-        await WebBrowser.warmUpAsync();
-        const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl);
-        await WebBrowser.coolDownAsync();
-        if (result.type === "success") {
-          await handleOAuthUrl(result.url);
-        } else {
-          // User cancelled — don't show error, just reset state
-          setConnectingGoogle(false);
-        }
+      // Both iOS and Android: openAuthSessionAsync handles custom scheme redirects
+      // iOS: SFAuthenticationSession/ASWebAuthenticationSession
+      // Android: Chrome Custom Tabs with intent filter for aorane:// scheme
+      if (Platform.OS !== "web") {
+        await WebBrowser.warmUpAsync().catch(() => {});
+      }
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl, {
+        showInRecents: false,
+        preferEphemeralSession: false,
+      });
+      if (Platform.OS !== "web") {
+        await WebBrowser.coolDownAsync().catch(() => {});
+      }
+      if (result.type === "success") {
+        await handleOAuthUrl(result.url);
+      } else if (result.type === "cancel" || result.type === "dismiss") {
+        // User cancelled — don't show error, just reset state
+        setConnectingGoogle(false);
       } else {
-        // Android: Chrome Custom Tabs can't intercept custom scheme deep links.
-        // Instead, open browser and rely on Linking.addEventListener to catch the return.
-        // The listener above will fire when the app is brought back via aorane:// deep link.
-        await WebBrowser.openBrowserAsync(authUrl, {
-          showTitle: false,
-          enableBarCollapsing: true,
-        });
-        // connectingGoogle stays true until Linking listener fires or user cancels manually
-        // Add a timeout fallback — if no response in 120s, reset
-        setTimeout(() => setConnectingGoogle(false), 120_000);
+        // Locked or other failure — show a gentle message
+        Alert.alert(
+          "Browser Closed",
+          "Google Fit connection was cancelled. Please try again.",
+        );
+        setConnectingGoogle(false);
       }
     } catch (e: unknown) {
       const msg = (e as Error)?.message || "";
