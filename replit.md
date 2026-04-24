@@ -30,6 +30,42 @@ AORANE's architecture consists of three main components: a mobile app (built wit
 - **Global Readiness:** Tables are designed to support `country_code`, `language_code`, and RTL (Right-to-Left) for future internationalization.
 - **Data Entry Flexibility:** Supports Photo, Text, and Voice input for logging Food, Exercise, and Water.
 
+## Landing Page Overhaul (April 2026)
+
+**Features made LIVE (removed from Coming Soon):**
+- Weekly Health Report — now live feature card in FeaturesSection
+- AI Diet Chart Generator — now live feature card in FeaturesSection
+- Family Health Hub — updated to "4 members" specifically
+
+**Upcoming section simplified — only 3 cards remain:**
+- WhatsApp Health Bot (Next Release)
+- Packaged Food Scanner (Next Release)
+- Doctor & Dietitian Connect (Q3 2026)
+
+**Notify Me Lead Generation:**
+- `NotifyModal.tsx` — multi-step form: Name, Age, Gender, Email+OTP, Phone
+- `POST /api/leads/send-otp` — in-memory OTP Map (10min TTL), sends via Resend
+- `POST /api/enquiries` with `type: "notify_me"` + OTP verification
+- Age/gender stored as JSON in `message` field of enquiries table
+- Admin Panel Enquiries page updated: shows "Notify Me Lead" type with age/gender/feature badges
+
+**New Pages Created:**
+- `/about` — About Us (mission, values, timeline, contact strip)
+- `/contact` — Contact Us (form + contact info, submits to /api/enquiries)
+- `/blog`, `/careers` — ComingSoonPage (no 404)
+
+**Footer Fixes:**
+- "Business Portal" → `/business` (business landing page, not CRM)
+- "Press Kit" — removed completely
+- "Contact Us" → `/contact` (was mailto:)
+- "About Aorane" → `/about` (was 404)
+
+**TrustSection Legal Fixes (Important):**
+- "ISO 27001 Certified" → "ISO 27001 Framework" (not formally certified)
+- "HIPAA Ready" → "HIPAA-Grade Practices" (not formally audited)
+- "India Data Residency" → "Secure Cloud Infrastructure (Asia-Pacific)" (Supabase = Singapore)
+- DPDPA 2023 Aligned, AES-256 Encryption, Transparent Privacy — kept as-is ✅
+
 ## Security Scan & Business Portal Update (April 2026)
 
 **Security Fixes Applied:**
