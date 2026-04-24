@@ -206,11 +206,19 @@ export default function PricingSection({ onBusinessSignUp }: { onBusinessSignUp?
         ]);
         if (indRes.ok) {
           const d = await indRes.json();
-          if (d.plans?.length) setIndPlans(d.plans);
+          if (d.plans?.length) setIndPlans(d.plans.map((p: Record<string, unknown>) => ({
+            ...p,
+            badge: p.badgeText ?? "",
+            color: p.badgeColor ?? "#6B7280",
+          })));
         }
         if (orgRes.ok) {
           const d = await orgRes.json();
-          if (d.plans?.length) setOrgPlans(d.plans);
+          if (d.plans?.length) setOrgPlans(d.plans.map((p: Record<string, unknown>) => ({
+            ...p,
+            badge: p.badgeText ?? "",
+            color: p.badgeColor ?? "#6B7280",
+          })));
         }
       } catch {
       } finally {
