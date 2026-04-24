@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 import { Heart, Target, Shield, Users, Zap, Award, MapPin, Mail, Phone } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -142,9 +143,9 @@ export default function AboutPage() {
                 <a href="mailto:support@aorane.com" className="flex items-center gap-2 px-5 py-3 bg-white text-[#0747A6] rounded-2xl font-bold text-sm hover:bg-gray-50 transition-colors">
                   <Mail className="w-4 h-4" /> support@aorane.com
                 </a>
-                <a href="/contact" className="flex items-center gap-2 px-5 py-3 bg-white/15 text-white rounded-2xl font-bold text-sm border border-white/25 hover:bg-white/25 transition-colors">
+                <Link href="/contact" className="flex items-center gap-2 px-5 py-3 bg-white/15 text-white rounded-2xl font-bold text-sm border border-white/25 hover:bg-white/25 transition-colors">
                   Contact Form
-                </a>
+                </Link>
               </div>
               <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4 text-white/60 text-xs">
                 <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> +91 73078 26291</span>

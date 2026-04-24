@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 import { Clock, ArrowLeft } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -39,13 +40,13 @@ export default function ComingSoonPage({ title, desc }: ComingSoonPageProps) {
             <h1 className="text-3xl font-extrabold text-gray-900 mb-3">{title}</h1>
             <p className="text-gray-500 text-sm leading-relaxed mb-8">{desc}</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <a href="/" className="flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm border border-gray-200 hover:bg-gray-50 transition-colors text-gray-700">
+              <Link href="/" className="flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm border border-gray-200 hover:bg-gray-50 transition-colors text-gray-700">
                 <ArrowLeft className="w-4 h-4" /> Wapas Home
-              </a>
-              <a href="/contact" className="flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm text-white transition-all hover:opacity-90"
+              </Link>
+              <Link href="/contact" className="flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm text-white transition-all hover:opacity-90"
                 style={{ background: "#0747A6" }}>
                 Contact Us
-              </a>
+              </Link>
             </div>
           </motion.div>
         </div>

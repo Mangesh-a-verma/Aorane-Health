@@ -26,7 +26,14 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
   const [error, setError] = useState("");
   const [otpError, setOtpError] = useState("");
 
-  const isFormValid = name.trim() && age.trim() && gender && email.trim() && /^\S+@\S+\.\S+$/.test(email) && phone.trim().length >= 10;
+  const isFormValid = Boolean(
+    name.trim() &&
+    age.trim() &&
+    gender &&
+    email.trim() &&
+    /^\S+@\S+\.\S+$/.test(email) &&
+    phone.trim().replace(/\D/g, "").length >= 10
+  );
 
   async function sendOtp() {
     setOtpSending(true);
@@ -75,11 +82,23 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}>
-      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="px-6 pt-6 pb-4" style={{ background: "linear-gradient(135deg, #0747A6 0%, #1565C0 100%)" }}>
-          <button onClick={onClose} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors">
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors z-10"
+          >
             <X className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-3 mb-2">
@@ -119,12 +138,13 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                 <div>
                   <label className="text-xs font-semibold text-gray-600 mb-1 block">Umar (Age) *</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     placeholder="25"
-                    min="10"
-                    max="100"
+                    maxLength={3}
                     value={age}
-                    onChange={(e) => setAge(e.target.value)}
+                    onChange={(e) => setAge(e.target.value.replace(/\D/g, ""))}
                     className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
@@ -170,7 +190,8 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
-                    type="tel"
+                    type="text"
+                    inputMode="tel"
                     placeholder="+91 98765 43210"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
