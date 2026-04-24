@@ -53,3 +53,9 @@ id = "7FhY6oZ6S1HC743V677J6"
 uri = "file://AORANE_Investor_Deck.pdf"
 type = "pdf"
 title = "AORANE — Investor Deck (Seed Round)"
+
+[[outputs]]
+id = "VU4ZbPBokkkBKJRurm6Mo"
+uri = "file://.local/exports/AORANE_Project_Analysis.pdf"
+type = "pdf"
+title = "AORANE — Complete Project Analysis Document"
