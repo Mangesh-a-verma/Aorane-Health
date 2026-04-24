@@ -186,16 +186,15 @@ export default function WearableScreen() {
   }, [params.connected, params.error]);
 
   const loadAll = async () => {
-    try {
-      const [d, c, p] = await Promise.all([
-        api.getWearableData(),
-        api.getWearableConnections(),
-        api.getWearableProviders(),
-      ]);
-      setData(d as typeof data);
-      setConnections((c as { connections: Connection[] }).connections);
-      setProviders((p as { providers: ProviderConfig[] }).providers);
-    } catch { }
+    // Use allSettled so one failed request doesn't hide the others
+    const [wearableResult, connectionsResult, providersResult] = await Promise.allSettled([
+      api.getWearableData(),
+      api.getWearableConnections(),
+      api.getWearableProviders(),
+    ]);
+    if (wearableResult.status === "fulfilled") setData(wearableResult.value as typeof data);
+    if (connectionsResult.status === "fulfilled") setConnections((connectionsResult.value as { connections: Connection[] }).connections);
+    if (providersResult.status === "fulfilled") setProviders((providersResult.value as { providers: ProviderConfig[] }).providers);
     setLoading(false);
     setRefreshing(false);
   };
@@ -229,7 +228,7 @@ export default function WearableScreen() {
             await loadAll();
           } else if (err) {
             const msgs: Record<string, string> = {
-              google_fit_denied: "Google Fit access was denied.",
+              google_fit_denied: "Google Fit access was denied. Please try again and tap 'Allow'.",
               token_failed: "Failed to get access token. Please try again.",
               callback_failed: "Connection failed. Please try again.",
               invalid_state: "Session expired. Please try again.",
@@ -238,7 +237,12 @@ export default function WearableScreen() {
           }
         } catch { }
       } else if (result.type === "cancel") {
-        // User cancelled — do nothing
+        // User closed browser — could be redirect_uri_mismatch or user dismissed
+        Alert.alert(
+          "Not Connected",
+          "Google Fit connection was not completed.\n\nIf you're seeing a 'redirect_uri_mismatch' error, please add this URL to your Google Cloud Console authorized redirect URIs:\nhttps://aorane.onrender.com/api/wearable/oauth/google-fit/callback",
+          [{ text: "OK" }]
+        );
       }
     } catch (e: unknown) {
       const msg = (e as Error)?.message || "";

@@ -18,7 +18,7 @@ router.get("/config-status", (_req, res) => {
     razorpay: { keyIdSet: Boolean(process.env.RAZORPAY_KEY_ID) },
     resend: { apiKeySet: Boolean(process.env.RESEND_API_KEY) },
     nvidia: { apiKeySet: Boolean(process.env.NVIDIA_API_KEY) },
-    database: { urlSet: Boolean(process.env.SUPABASE_DATABASE_URL) },
+    database: { urlSet: Boolean(process.env.DATABASE_URL) },
     appUrl: process.env.APP_URL || "(not set — defaulting to https://api.aorane.com)",
     apiBaseUrl: process.env.API_BASE_URL || "(not set — defaulting to https://aorane.onrender.com/api)",
   });
