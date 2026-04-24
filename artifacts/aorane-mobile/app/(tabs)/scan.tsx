@@ -152,23 +152,23 @@ function PlanGate({ onDismiss }: { onDismiss: () => void }) {
     <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,248,243,0.95)", zIndex: 100, alignItems: "center", justifyContent: "center", padding: 32 }}>
       <View style={{ backgroundColor: "#FFF", borderRadius: 28, padding: 28, alignItems: "center", gap: 14, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 20, elevation: 8, borderWidth: 1, borderColor: "#F0E6E0" }}>
         <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: PRIMARY + "15", alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ fontSize: 36 }}>🔒</Text>
+          <Text style={{ fontSize: 36 }}>✨</Text>
         </View>
         <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: "#1A1A1A", textAlign: "center" }}>AI Smart Scan</Text>
         <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: "#6B7280", textAlign: "center", lineHeight: 21 }}>
-          AI-powered food scanning, lab report analysis & medicine lookup is available on Max & Pro plans.
+          Scan food, lab reports & medicines with AI. Free daily scans included — upgrade for unlimited usage and priority processing.
         </Text>
-        <View style={{ backgroundColor: "#FEF3E2", borderRadius: 12, padding: 12, width: "100%" }}>
-          <Text style={{ color: "#92400E", fontFamily: "Inter_600SemiBold", fontSize: 12, textAlign: "center" }}>📦 Free Plan · Limited Access</Text>
+        <View style={{ backgroundColor: "#F0FDF4", borderRadius: 12, padding: 12, width: "100%" }}>
+          <Text style={{ color: "#166534", fontFamily: "Inter_600SemiBold", fontSize: 12, textAlign: "center" }}>✅ Free Plan · Daily Scans Available</Text>
         </View>
-        <TouchableOpacity onPress={() => router.push("/upgrade" as never)} style={{ width: "100%", borderRadius: 16, overflow: "hidden" }}>
+        <TouchableOpacity onPress={onDismiss} style={{ width: "100%", borderRadius: 16, overflow: "hidden" }}>
           <LinearGradient colors={[PRIMARY, SKY]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ padding: 16, alignItems: "center" }}>
-            <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>Upgrade to Max ✨</Text>
-            <Text style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>Starting ₹199/month</Text>
+            <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>Start Scanning — Free</Text>
+            <Text style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>Powered by Google Gemini AI</Text>
           </LinearGradient>
         </TouchableOpacity>
-        <TouchableOpacity onPress={onDismiss} style={{ paddingVertical: 8 }}>
-          <Text style={{ color: "#9CA3AF", fontFamily: "Inter_400Regular", fontSize: 13 }}>Maybe later — use text search</Text>
+        <TouchableOpacity onPress={() => router.push("/upgrade" as never)} style={{ paddingVertical: 8 }}>
+          <Text style={{ color: PRIMARY, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Upgrade for Unlimited Scans ✨</Text>
         </TouchableOpacity>
       </View>
     </View>
