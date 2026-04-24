@@ -123,7 +123,7 @@ export interface Announcement {
 }
 
 export interface MemberDetail {
-  member: { userId: string; role: string; joinedAt: string };
+  member: { userId: string; role: string; joinedAt: string; isActive: boolean };
   profile: { fullName: string | null; bloodGroup: string | null; gender: string | null; bmi: string | null; dateOfBirth: string | null } | null;
   user: { plan: string; aoraneId: string | null };
   recentScores: { scoreDate: string; overallScore: number | null }[];
@@ -142,13 +142,22 @@ export interface MemberStress {
 
 export const api = {
   login: (email: string, password: string) =>
-    request<{ requiresOtp: boolean; message: string; devOtp?: string; sent: boolean }>("/business/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+    request<{ token: string; admin: Admin; org: Org }>("/business/login", { method: "POST", body: JSON.stringify({ email, password }) }),
 
   verifyLoginOtp: (email: string, otp: string) =>
     request<{ token: string; admin: Admin; org: Org }>("/business/login/verify-otp", { method: "POST", body: JSON.stringify({ email, otp }) }),
 
   sendBusinessEmailOtp: (email: string) =>
     request<{ success: boolean; message: string; devOtp?: string; sent: boolean }>("/business/login/send-email-otp", { method: "POST", body: JSON.stringify({ email }) }),
+
+  forgotPassword: (email: string) =>
+    request<{ sent: boolean; message: string; devOtp?: string }>("/business/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
+
+  forgotPasswordVerify: (email: string, otp: string, newPassword: string) =>
+    request<{ success: boolean; message: string }>("/business/forgot-password/verify", { method: "POST", body: JSON.stringify({ email, otp, newPassword }) }),
+
+  toggleMemberActive: (userId: string) =>
+    request<{ success: boolean; isActive: boolean; message: string }>(`/business/members/${userId}/toggle-active`, { method: "POST" }),
 
   getMe: (token: string) =>
     request<{ admin: Admin; org: Org }>("/business/me", { headers: { Authorization: `Bearer ${token}` } }),

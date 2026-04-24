@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { api, type Admin, type Org } from "@/lib/api";
+
+const INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes
 
 interface AuthState {
   token: string | null;
@@ -22,6 +24,23 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ token: null, admin: null, org: null, isLoading: true, subscriptionStatus: null, subscriptionLoading: false });
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearSession = useCallback(() => {
+    localStorage.removeItem("bp_token");
+    localStorage.removeItem("bp_admin");
+    localStorage.removeItem("bp_org");
+    localStorage.removeItem("bp_last_active");
+    setState({ token: null, admin: null, org: null, isLoading: false, subscriptionStatus: null, subscriptionLoading: false });
+  }, []);
+
+  const resetInactivityTimer = useCallback(() => {
+    localStorage.setItem("bp_last_active", Date.now().toString());
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    inactivityTimer.current = setTimeout(() => {
+      clearSession();
+    }, INACTIVITY_MS);
+  }, [clearSession]);
 
   const fetchSubscription = async () => {
     setState((s) => ({ ...s, subscriptionLoading: true }));
@@ -37,6 +56,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem("bp_token");
     const adminStr = localStorage.getItem("bp_admin");
     const orgStr = localStorage.getItem("bp_org");
+    const lastActive = localStorage.getItem("bp_last_active");
+
+    // Check if session expired due to inactivity
+    if (lastActive && Date.now() - parseInt(lastActive) > INACTIVITY_MS) {
+      clearSession();
+      return;
+    }
+
     if (token && token !== "undefined" && token !== "null" && adminStr && orgStr) {
       try {
         const admin = JSON.parse(adminStr);
@@ -44,15 +71,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (admin?.id && org?.id) {
           setState({ token, admin, org, isLoading: false, subscriptionStatus: null, subscriptionLoading: true });
           fetchSubscription();
+          resetInactivityTimer();
           return;
         }
       } catch { /* fall through */ }
     }
-    localStorage.removeItem("bp_token");
-    localStorage.removeItem("bp_admin");
-    localStorage.removeItem("bp_org");
-    setState((s) => ({ ...s, isLoading: false }));
+    clearSession();
   }, []);
+
+  // Attach activity listeners when logged in
+  useEffect(() => {
+    if (!state.token) return;
+    const events = ["mousedown", "mousemove", "keydown", "touchstart", "scroll", "click"];
+    const handler = () => resetInactivityTimer();
+    events.forEach((e) => window.addEventListener(e, handler, { passive: true }));
+    resetInactivityTimer();
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, handler));
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    };
+  }, [state.token, resetInactivityTimer]);
+
+  // On tab close / page hide — save last active timestamp so on return we can check
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && state.token) {
+        localStorage.setItem("bp_last_active", Date.now().toString());
+      }
+      if (document.visibilityState === "visible" && state.token) {
+        const lastActive = localStorage.getItem("bp_last_active");
+        if (lastActive && Date.now() - parseInt(lastActive) > INACTIVITY_MS) {
+          clearSession();
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [state.token, clearSession]);
 
   const login = (token: string, admin: Admin, org: Org) => {
     if (!token || token === "undefined" || !admin?.id || !org?.id) {
@@ -62,16 +117,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("bp_token", token);
     localStorage.setItem("bp_admin", JSON.stringify(admin));
     localStorage.setItem("bp_org", JSON.stringify(org));
+    localStorage.setItem("bp_last_active", Date.now().toString());
     setState({ token, admin, org, isLoading: false, subscriptionStatus: null, subscriptionLoading: true });
     fetchSubscription();
   };
 
-  const logout = () => {
-    localStorage.removeItem("bp_token");
-    localStorage.removeItem("bp_admin");
-    localStorage.removeItem("bp_org");
-    setState({ token: null, admin: null, org: null, isLoading: false, subscriptionStatus: null, subscriptionLoading: false });
-  };
+  const logout = () => { clearSession(); };
 
   const setOrg = (org: Org) => {
     localStorage.setItem("bp_org", JSON.stringify(org));

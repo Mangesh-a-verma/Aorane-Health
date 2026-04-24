@@ -101,21 +101,54 @@ router.post("/business/login", async (req, res) => {
       return;
     }
 
-    // Password verified — now require email OTP as 2nd factor
-    const otp = generateOtp(6);
-    const hashed = hashOtp(otp);
-    cache.setOtp(`biz_login_otp:${email.toLowerCase()}`, hashed);
-    const sent = await sendEmailOtp(email, otp);
-    const isDev = process.env.NODE_ENV !== "production";
-
-    res.json({
-      requiresOtp: true,
-      message: sent ? "OTP sent to your email" : (isDev ? "Dev mode — OTP below" : "Email service unavailable"),
-      ...(isDev ? { devOtp: otp } : {}),
-      sent,
-    });
+    // Password verified — issue JWT directly (no OTP required)
+    await db.update(orgAdminsTable).set({ lastLoginAt: new Date() }).where(eq(orgAdminsTable.id, admin.id));
+    const token = signBusinessToken({ orgAdminId: admin.id, orgId: admin.orgId, role: admin.role });
+    const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, admin.orgId));
+    res.json({ token, admin: { id: admin.id, fullName: admin.fullName, role: admin.role }, org });
   } catch {
     res.status(500).json({ error: "Login failed" });
+  }
+});
+
+// ─── FORGOT PASSWORD ─────────────────────────────────────────────────────────
+router.post("/business/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body as { email: string };
+    if (!email) { res.status(400).json({ error: "Email required" }); return; }
+    const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.email, email.toLowerCase()));
+    if (!admin || !admin.isActive) {
+      // Don't reveal if email exists
+      res.json({ sent: true, message: "If this email is registered, a reset code has been sent." });
+      return;
+    }
+    const { cache } = await import("../../lib/redis");
+    const otp = generateOtp(6);
+    const hashed = hashOtp(otp);
+    cache.setOtp(`biz_forgot_otp:${email.toLowerCase()}`, hashed);
+    const sent = await sendEmailOtp(email, otp);
+    const isDev = process.env.NODE_ENV !== "production";
+    res.json({ sent, message: "Reset code sent to your email.", ...(isDev ? { devOtp: otp } : {}) });
+  } catch {
+    res.status(500).json({ error: "Failed to send reset code" });
+  }
+});
+
+router.post("/business/forgot-password/verify", async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body as { email: string; otp: string; newPassword: string };
+    if (!email || !otp || !newPassword) { res.status(400).json({ error: "Email, OTP and new password required" }); return; }
+    if (newPassword.length < 6) { res.status(400).json({ error: "Password must be at least 6 characters" }); return; }
+    const { cache } = await import("../../lib/redis");
+    const storedHash = cache.getOtp(`biz_forgot_otp:${email.toLowerCase()}`);
+    if (!storedHash) { res.status(400).json({ error: "Reset code expired or invalid. Request a new one." }); return; }
+    if (!verifyOtpHash(otp, storedHash as string)) { res.status(400).json({ error: "Incorrect code. Please try again." }); return; }
+    cache.deleteOtp(`biz_forgot_otp:${email.toLowerCase()}`);
+    const newHash = await bcrypt.hash(newPassword, 12);
+    await db.update(orgAdminsTable).set({ passwordHash: newHash }).where(eq(orgAdminsTable.email, email.toLowerCase()));
+    res.json({ success: true, message: "Password updated successfully. Please log in." });
+  } catch {
+    res.status(500).json({ error: "Failed to reset password" });
   }
 });
 
@@ -892,6 +925,20 @@ router.post("/business/members/:userId/restore", requireBusinessAuth, async (req
       .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId)));
     res.json({ success: true, message: "Member access restored." });
   } catch { res.status(500).json({ error: "Failed to restore member" }); }
+});
+
+// ─── TOGGLE MEMBER ACTIVE STATUS (one-click enable/disable) ─────────────────
+router.post("/business/members/:userId/toggle-active", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const userId = String(req.params.userId);
+    const [member] = await db.select().from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId)));
+    if (!member) { res.status(404).json({ error: "Member not found in your organization" }); return; }
+    const newActive = !member.isActive;
+    await db.update(orgMembersTable).set({ isActive: newActive })
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId)));
+    res.json({ success: true, isActive: newActive, message: newActive ? "Member enabled." : "Member disabled." });
+  } catch { res.status(500).json({ error: "Failed to toggle member status" }); }
 });
 
 // ─── SUSPENDED MEMBERS LIST ───────────────────────────────────────────────────

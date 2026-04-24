@@ -290,7 +290,7 @@ export default function Dashboard() {
         })()}
 
         {/* Employee Stress Lookup */}
-        {!analyticsLoading && analytics && analytics.totalMembers > 0 && (
+        {!analyticsLoading && (
           <div className="mb-6 rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50 p-5">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">

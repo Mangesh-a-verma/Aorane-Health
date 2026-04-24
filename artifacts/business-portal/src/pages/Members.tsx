@@ -54,13 +54,25 @@ function MemberDetailDrawer({
   const [removing, setRemoving] = useState(false);
   const [suspending, setSuspending] = useState(false);
   const [cancellingSubscription, setCancellingSubscription] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const [isActiveCurrent, setIsActiveCurrent] = useState<boolean | null>(null);
 
   useEffect(() => {
     api.getMemberDetail(userId)
-      .then(setDetail)
+      .then(d => { setDetail(d); setIsActiveCurrent(d.member.isActive); })
       .catch(e => setError((e as Error).message || "Failed to load"))
       .finally(() => setLoading(false));
   }, [userId]);
+
+  const handleToggleActive = async () => {
+    setToggling(true);
+    try {
+      const res = await api.toggleMemberActive(userId);
+      setIsActiveCurrent(res.isActive);
+    } catch (e: unknown) {
+      alert((e as Error).message || "Failed to update member status");
+    } finally { setToggling(false); }
+  };
 
   const handleRemove = async () => {
     if (!confirm(`Remove ${name || "this member"} from your organization?`)) return;
@@ -270,6 +282,19 @@ function MemberDetailDrawer({
         {/* Footer actions */}
         {detail && (
           <div className="border-t border-border px-5 py-4 space-y-2 shrink-0 bg-card">
+            {/* One-click Enable / Disable toggle */}
+            <button
+              onClick={handleToggleActive}
+              disabled={toggling || isActiveCurrent === null}
+              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-semibold border transition-all disabled:opacity-50 ${
+                isActiveCurrent
+                  ? "text-orange-700 border-orange-300 hover:bg-orange-50"
+                  : "text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+              }`}
+            >
+              {toggling ? <Loader2 size={14} className="animate-spin" /> : isActiveCurrent ? <PauseCircle size={14} /> : <PlayCircle size={14} />}
+              {isActiveCurrent ? "Disable Member" : "Enable Member"}
+            </button>
             {detail.user?.plan && detail.user.plan !== "free" && (
               <button
                 onClick={handleCancelSubscription}
