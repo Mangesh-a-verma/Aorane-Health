@@ -67,6 +67,12 @@ function useWeather() {
 
   const fetchW = async () => {
     setWLoading(true);
+    // Cross-platform fetch with timeout (AbortSignal.timeout not available on all RN versions)
+    const fetchWithTimeout = (url: string, ms: number) => {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), ms);
+      return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(tid));
+    };
     try {
       let lat = DELHI.lat, lon = DELHI.lon, city = DELHI.city;
       try {
@@ -74,11 +80,13 @@ function useWeather() {
         if (status === "granted") {
           const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
           lat = loc.coords.latitude; lon = loc.coords.longitude;
-          const [geo] = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
-          city = geo?.city || geo?.subregion || geo?.region || city;
+          try {
+            const [geo] = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
+            city = geo?.city || geo?.subregion || geo?.region || city;
+          } catch { /* geocode failed, keep coords */ }
         } else {
           try {
-            const ip = await fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(4000) });
+            const ip = await fetchWithTimeout("https://ipapi.co/json/", 4000);
             const ipd = await ip.json() as { latitude: number; longitude: number; city: string };
             if (ipd.latitude) { lat = ipd.latitude; lon = ipd.longitude; city = ipd.city || city; }
           } catch { /* use Delhi fallback */ }
@@ -86,7 +94,7 @@ function useWeather() {
       } catch { /* location error — use Delhi fallback */ }
 
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current_weather=true&hourly=relativehumidity_2m,apparent_temperature&forecast_days=1&timezone=auto`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      const res = await fetchWithTimeout(url, 10000);
       const d = await res.json() as {
         current_weather: { temperature: number; windspeed: number; weathercode: number; is_day: number };
         hourly: { relativehumidity_2m: number[]; apparent_temperature: number[] };

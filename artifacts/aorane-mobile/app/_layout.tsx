@@ -29,11 +29,35 @@ const queryClient = new QueryClient();
 
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(onboarding)" />
-      <Stack.Screen name="(tabs)" />
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        gestureEnabled: true,
+        animation: "slide_from_right",
+      }}
+    >
+      <Stack.Screen name="index" options={{ gestureEnabled: false, animation: "none" }} />
+      <Stack.Screen name="(auth)" options={{ gestureEnabled: false, animation: "none" }} />
+      <Stack.Screen name="(onboarding)" options={{ gestureEnabled: false, animation: "none" }} />
+      <Stack.Screen name="(tabs)" options={{ gestureEnabled: false, animation: "none" }} />
+      {/* Sub-pages — enable swipe-back and slide animation */}
+      <Stack.Screen name="water" />
+      <Stack.Screen name="stress" />
+      <Stack.Screen name="period" />
+      <Stack.Screen name="family" />
+      <Stack.Screen name="edit-profile" />
+      <Stack.Screen name="edit-work-profile" />
+      <Stack.Screen name="help" />
+      <Stack.Screen name="intelligence" />
+      <Stack.Screen name="medical-emergency" />
+      <Stack.Screen name="health-report" />
+      <Stack.Screen name="scorecard" />
+      <Stack.Screen name="wearable" />
+      <Stack.Screen name="upgrade" />
+      <Stack.Screen name="enrollment" />
+      <Stack.Screen name="blood" />
+      <Stack.Screen name="suggestions" />
+      <Stack.Screen name="notification-settings" />
     </Stack>
   );
 }

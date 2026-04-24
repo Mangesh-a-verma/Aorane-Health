@@ -100,7 +100,16 @@ export async function cachedGet<T>(path: string): Promise<{ data: T; fromCache: 
     return { data, fromCache: false };
   } catch (e: unknown) {
     const msg = (e as Error).message || "";
-    const isNetworkError = msg.toLowerCase().includes("network") || msg.toLowerCase().includes("fetch");
+    const name = (e as Error).name || "";
+    const isNetworkError =
+      msg.toLowerCase().includes("network") ||
+      msg.toLowerCase().includes("fetch") ||
+      msg.toLowerCase().includes("timeout") ||
+      msg.toLowerCase().includes("starting up") ||
+      msg.toLowerCase().includes("abort") ||
+      msg.toLowerCase().includes("failed to connect") ||
+      name === "AbortError" ||
+      name === "TypeError";
     if (isNetworkError) {
       const cached = await getCachedResponse<T>(path);
       if (cached) return { data: cached, fromCache: true };

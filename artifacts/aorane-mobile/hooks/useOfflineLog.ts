@@ -57,8 +57,18 @@ export function useOfflineLog() {
         return { saved: true, offline: false };
       } catch (e: unknown) {
         const msg = (e as Error).message || "";
-        const isNet = msg.toLowerCase().includes("network") || msg.toLowerCase().includes("fetch");
-        if (!isNet) throw e; // Real error — don't queue
+        const name = (e as Error).name || "";
+        // Treat network/timeout/abort/cold-start as retryable offline errors
+        const isNet =
+          msg.toLowerCase().includes("network") ||
+          msg.toLowerCase().includes("fetch") ||
+          msg.toLowerCase().includes("timeout") ||
+          msg.toLowerCase().includes("starting up") ||
+          msg.toLowerCase().includes("abort") ||
+          msg.toLowerCase().includes("failed to connect") ||
+          name === "AbortError" ||
+          name === "TypeError";
+        if (!isNet) throw e; // Real error (e.g. 400 validation) — don't queue
         // Fall through to offline handling below
       }
     }

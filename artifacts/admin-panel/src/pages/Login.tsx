@@ -205,7 +205,7 @@ export default function Login() {
                 <input
                   type="email" value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@aorane.in"
+                  placeholder="admin@aorane.com"
                   className="w-full rounded-xl px-4 py-2.5 text-sm outline-none transition-all"
                   style={{
                     background: "rgba(255,255,255,0.06)",
