@@ -63,7 +63,7 @@ services:
     region: singapore
     autoDeploy: true
     buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile && VITE_API_URL=https://aorane.onrender.com npx pnpm@10 --filter @workspace/aorane-landing build
-    staticPublishPath: artifacts/aorane-landing/dist
+    staticPublishPath: artifacts/aorane-landing/dist/public
     headers:
       - path: /*
         name: Cache-Control
@@ -83,7 +83,7 @@ services:
     region: singapore
     autoDeploy: true
     buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile && VITE_API_URL=https://aorane.onrender.com npx pnpm@10 --filter @workspace/admin-panel build
-    staticPublishPath: artifacts/admin-panel/dist
+    staticPublishPath: artifacts/admin-panel/dist/public
     headers:
       - path: /*
         name: Cache-Control
@@ -103,7 +103,7 @@ services:
     region: singapore
     autoDeploy: true
     buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile && VITE_API_URL=https://aorane.onrender.com npx pnpm@10 --filter @workspace/business-portal build
-    staticPublishPath: artifacts/business-portal/dist
+    staticPublishPath: artifacts/business-portal/dist/public
     headers:
       - path: /*
         name: Cache-Control
