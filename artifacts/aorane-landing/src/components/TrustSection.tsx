@@ -32,8 +32,8 @@ const compliance = [
   },
   {
     icon: Server,
-    title: "Secure Cloud Infrastructure",
-    desc: "Health data stored on enterprise-grade cloud infrastructure (Supabase, Asia-Pacific region) with regular backups and 99.9% uptime.",
+    title: "India Data Residency",
+    desc: "Aapka health data India mein hi rehta hai — Supabase South Asia (Mumbai) region pe hosted, enterprise-grade backups aur 99.9% uptime ke saath.",
     color: "#EF4444",
     bg: "#FFF1F2",
   },
