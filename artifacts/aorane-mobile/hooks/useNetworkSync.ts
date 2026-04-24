@@ -29,18 +29,22 @@ function notifySyncListeners() {
 // ── Network detection ────────────────────────────────────────────────────────
 
 async function checkConnectivity(): Promise<boolean> {
-  // Fast check via navigator.onLine
-  if (typeof navigator !== "undefined" && typeof navigator.onLine === "boolean" && !navigator.onLine) {
-    return false;
+  // Primary check: navigator.onLine (fast, works on both web & native)
+  if (typeof navigator !== "undefined" && typeof navigator.onLine === "boolean") {
+    if (!navigator.onLine) return false;
   }
-  // Verify with an actual request (short timeout)
+
+  // On native, trust navigator.onLine — don't ping the server
+  // (server may be cold-starting on Render, causing false "offline" for 30-50s)
+  if (Platform.OS !== "web") {
+    return true;
+  }
+
+  // Web only: verify with a real HEAD request
   try {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 3000);
-    await fetch(
-      Platform.OS === "web" ? "/api/health" : (process.env.EXPO_PUBLIC_API_URL || "http://localhost:8080") + "/api/health",
-      { method: "HEAD", signal: ctrl.signal }
-    );
+    const tid = setTimeout(() => ctrl.abort(), 4000);
+    await fetch("/api/health", { method: "HEAD", signal: ctrl.signal });
     clearTimeout(tid);
     return true;
   } catch {

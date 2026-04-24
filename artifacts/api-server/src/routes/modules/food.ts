@@ -3,7 +3,7 @@ import { db, foodLogsTable, foodItemsTable, foodScanCacheTable, userProfilesTabl
 import { eq, and, gte, lte, ilike, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { aiRateLimit } from "../../middlewares/ai-rate-limit";
+import { aiRateLimit, planAiRateLimit } from "../../middlewares/ai-rate-limit";
 import { callAI } from "../../lib/ai";
 import { getWeatherContext } from "../../lib/weather";
 import { cache } from "../../lib/redis";
@@ -248,7 +248,7 @@ router.get("/food/favorites", requireAuth, async (req: AuthRequest, res) => {
 
 // ── AI Food Scan — 4-level lookup: History → DB → AI-Cache → Gemini AI ───────
 // This is the core of AI cost reduction: personal history is checked FIRST
-router.post("/food/scan", requireAuth, aiRateLimit("food_scan", 50), async (req: AuthRequest, res) => {
+router.post("/food/scan", requireAuth, planAiRateLimit("food_scan", { free: 5, paid: 50 }), async (req: AuthRequest, res) => {
   try {
     const { foodName, imageBase64, mimeType } = req.body as { foodName?: string; imageBase64?: string; mimeType?: string };
     const searchTerm = foodName?.toLowerCase().trim();

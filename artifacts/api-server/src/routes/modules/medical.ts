@@ -3,6 +3,8 @@ import { db, medicalReportsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { aiRateLimit } from "../../middlewares/ai-rate-limit";
+import { requireFeature } from "../../middlewares/feature-check";
 
 const router = Router();
 
@@ -38,7 +40,7 @@ router.get("/medical/reports/:id", requireAuth, async (req: AuthRequest, res) =>
 // ─────────────────────────────────────────────────────────
 // POST — scan + analyse medical report image via Gemini Vision
 // ─────────────────────────────────────────────────────────
-router.post("/medical/scan", requireAuth, async (req: AuthRequest, res) => {
+router.post("/medical/scan", requireAuth, requireFeature("medical_report"), aiRateLimit("medical_scan", 5), async (req: AuthRequest, res) => {
   try {
     const { imageBase64, reportType = "blood_test", mimeType = "image/jpeg" } = req.body as {
       imageBase64?: string;

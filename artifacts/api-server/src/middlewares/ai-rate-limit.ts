@@ -30,8 +30,10 @@ function todayIST(): string {
 }
 
 const FEATURE_LABELS: Record<string, string> = {
-  food_scan:           "Food Scan",
+  food_scan:           "AI Food Scan",
   food_scan_image:     "Food Image Scan",
+  smart_scan:          "Smart Image Scan",
+  medical_scan:        "Medical Report Scan",
   weather_suggestions: "Weather Food Suggestions",
   health_prediction:   "Health Prediction",
   diet_chart:          "Diet Chart",
@@ -42,9 +44,11 @@ const FEATURE_LABELS: Record<string, string> = {
   daily_suggestions:   "Daily Suggestions",
 };
 
+/** Paid plans (anything except free) */
+const PAID_PLANS = new Set(["max", "pro", "family", "starter", "growth", "enterprise"]);
+
 /**
- * Returns Express middleware that limits a user to `limitPerDay` calls
- * for the given `feature` key per day (resets at midnight IST).
+ * Fixed-limit rate limiting — same limit for all plans.
  */
 export function aiRateLimit(feature: string, limitPerDay: number) {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
@@ -59,7 +63,7 @@ export function aiRateLimit(feature: string, limitPerDay: number) {
     if (count > limitPerDay) {
       const label = FEATURE_LABELS[feature] ?? feature;
       res.status(429).json({
-        error: `Daily AI limit reached for ${label}. Limit: ${limitPerDay} per day. Resets at midnight IST.`,
+        error: `Daily limit reached for ${label}. Limit: ${limitPerDay}/day. Resets at midnight IST.`,
         feature,
         limitPerDay,
         usedToday: count - 1,
@@ -71,6 +75,56 @@ export function aiRateLimit(feature: string, limitPerDay: number) {
     res.setHeader("X-AI-RateLimit-Feature",   feature);
     res.setHeader("X-AI-RateLimit-Limit",     String(limitPerDay));
     res.setHeader("X-AI-RateLimit-Remaining", String(Math.max(0, limitPerDay - count)));
+
+    next();
+  };
+}
+
+/**
+ * Plan-aware rate limiting — free plan gets fewer calls than paid.
+ * limits.free  = calls/day for Free plan
+ * limits.paid  = calls/day for Max / Pro / Family / Org plans
+ */
+export function planAiRateLimit(
+  feature: string,
+  limits: { free: number; paid: number }
+) {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+    const userId = req.userId;
+    if (!userId) { next(); return; }
+
+    const plan       = (req.userPlan || "free").toLowerCase();
+    const isPaid     = PAID_PLANS.has(plan);
+    const limitPerDay = isPaid ? limits.paid : limits.free;
+
+    const date  = todayIST();
+    const key   = `${feature}:${userId}:${date}`;
+    const ttl   = secondsUntilMidnight();
+    const count = cache.incrementRateLimitFixed(key, ttl);
+
+    if (count > limitPerDay) {
+      const label = FEATURE_LABELS[feature] ?? feature;
+      const upgradeNote = !isPaid
+        ? ` Free plan: ${limits.free}/day. Upgrade to Max (₹199/mo) for ${limits.paid}/day.`
+        : ` Limit: ${limitPerDay}/day.`;
+      res.status(429).json({
+        error: `Daily limit reached for ${label}.${upgradeNote} Resets at midnight IST.`,
+        feature,
+        limitPerDay,
+        freeLimitPerDay: limits.free,
+        paidLimitPerDay: limits.paid,
+        usedToday: count - 1,
+        currentPlan: plan,
+        resetsAt: "midnight IST",
+        upgradeSuggested: !isPaid,
+      });
+      return;
+    }
+
+    res.setHeader("X-AI-RateLimit-Feature",   feature);
+    res.setHeader("X-AI-RateLimit-Limit",     String(limitPerDay));
+    res.setHeader("X-AI-RateLimit-Remaining", String(Math.max(0, limitPerDay - count)));
+    res.setHeader("X-AI-RateLimit-Plan",      plan);
 
     next();
   };

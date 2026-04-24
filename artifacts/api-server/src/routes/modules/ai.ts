@@ -3,7 +3,7 @@ import { db, usersTable, userProfilesTable, userPreferencesTable, userMedicalCon
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { aiRateLimit } from "../../middlewares/ai-rate-limit";
+import { aiRateLimit, planAiRateLimit } from "../../middlewares/ai-rate-limit";
 import { requireFeature } from "../../middlewares/feature-check";
 import { callAI } from "../../lib/ai";
 
@@ -143,7 +143,7 @@ Return ONLY valid JSON:
 });
 
 // smart-scan uses VISION (image analysis) — requires Gemini (via Replit proxy or user key)
-router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), async (req: AuthRequest, res) => {
+router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), aiRateLimit("smart_scan", 10), async (req: AuthRequest, res) => {
   try {
     const { imageBase64, mimeType = "image/jpeg" } = req.body as { imageBase64?: string; mimeType?: string };
     if (!imageBase64) { res.status(400).json({ error: "imageBase64 required" }); return; }

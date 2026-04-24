@@ -6,20 +6,42 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PricingSection from "@/components/PricingSection";
 
-const comparisonRows = [
-  { feature: "Food logging", free: true, pro: true, max: true, family: true },
-  { feature: "AI Food Scanner", free: false, pro: true, max: true, family: true },
-  { feature: "NVIDIA AI insights", free: false, pro: true, max: true, family: true },
-  { feature: "Exercise tracking (MET)", free: "Basic", pro: true, max: true, family: true },
-  { feature: "Medical report scan", free: false, pro: true, max: true, family: true },
-  { feature: "Family members", free: "1", pro: "1", max: "1", family: "4" },
-  { feature: "Sleep stage analysis", free: false, pro: false, max: true, family: true },
-  { feature: "Blood sugar & BP tracking", free: false, pro: false, max: true, family: true },
-  { feature: "Period & stress tracking", free: false, pro: false, max: true, family: true },
-  { feature: "Health history", free: "7 days", pro: "Unlimited", max: "Unlimited", family: "Unlimited" },
-  { feature: "Data export", free: false, pro: false, max: true, family: true },
-  { feature: "Priority support", free: false, pro: false, max: true, family: true },
-  { feature: "Google Fit sync", free: false, pro: true, max: true, family: true },
+type CompRow =
+  | { section: true; feature: string; free?: never; max?: never; pro?: never; family?: never }
+  | { section?: false; feature: string; free: boolean | string; max: boolean | string; pro: boolean | string; family: boolean | string };
+
+const comparisonRows: CompRow[] = [
+  { section: true,  feature: "📊 Basic Features" },
+  { feature: "Food logging (manual)",   free: true,       max: true,        pro: true,        family: true       },
+  { feature: "Water tracker & reminders",free: true,      max: true,        pro: true,        family: true       },
+  { feature: "Exercise logging (MET)",  free: "Basic",    max: true,        pro: true,        family: true       },
+  { feature: "Health score",            free: "Basic",    max: "Advanced",  pro: "Advanced",  family: "Advanced" },
+  { feature: "Health history",          free: "7 days",   max: "Unlimited", pro: "Unlimited", family: "Unlimited"},
+  { feature: "Community forum",         free: true,       max: true,        pro: true,        family: true       },
+
+  { section: true,  feature: "🤖 AI Features" },
+  { feature: "AI Food Scan (text)",     free: "5/day",    max: "50/day",    pro: "50/day",    family: "50/day"   },
+  { feature: "AI Food Scanner (photo)", free: false,      max: "10/day",    pro: "10/day",    family: "10/day"   },
+  { feature: "Medical Report Scan",     free: false,      max: "5/day",     pro: "5/day",     family: "5/day"    },
+  { feature: "AI Diet Plan",            free: false,      max: "5/day",     pro: "5/day",     family: "5/day"    },
+  { feature: "AI Health Coach & Tips",  free: false,      max: "10/day",    pro: "10/day",    family: "10/day"   },
+  { feature: "AI Meal Swap",            free: false,      max: "20/day",    pro: "20/day",    family: "20/day"   },
+
+  { section: true,  feature: "⚕️ Health Tracking" },
+  { feature: "Google Fit / Wearable",   free: false,      max: true,        pro: true,        family: true       },
+  { feature: "Blood sugar & BP",        free: false,      max: true,        pro: true,        family: true       },
+  { feature: "Sleep stage analysis",    free: false,      max: true,        pro: true,        family: true       },
+  { feature: "Period cycle tracker",    free: false,      max: false,       pro: true,        family: true       },
+  { feature: "Stress & burnout AI",     free: false,      max: false,       pro: true,        family: true       },
+  { feature: "AI health predictions",   free: false,      max: false,       pro: true,        family: true       },
+  { feature: "Export data (PDF/CSV)",   free: false,      max: false,       pro: true,        family: true       },
+  { feature: "Support",                 free: "Community",max: "Email",     pro: "24/7",      family: "24/7"     },
+
+  { section: true,  feature: "👨‍👩‍👧‍👦 Family Plan" },
+  { feature: "Members included",        free: "1",        max: "1",         pro: "1",         family: "4"        },
+  { feature: "Family health dashboard", free: false,      max: false,       pro: false,       family: true       },
+  { feature: "Elderly monitoring",      free: false,      max: false,       pro: false,       family: true       },
+  { feature: "Family challenges",       free: false,      max: false,       pro: false,       family: true       },
 ];
 
 const faqs = [
@@ -96,26 +118,37 @@ export default function PricingPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 w-48">Feature</th>
-                    {["Free", "Pro", "Max", "Family"].map((plan, i) => (
-                      <th key={plan} className={`px-4 py-4 text-center text-sm font-bold ${i === 1 ? "text-[#0747A6] bg-[#EEF4FF]" : "text-gray-700"}`}>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 w-56">Feature</th>
+                    {(["Free", "Max", "Pro", "Family"] as const).map((plan) => (
+                      <th key={plan} className={`px-4 py-4 text-center text-sm font-bold ${plan === "Max" ? "text-[#0747A6] bg-[#EEF4FF]" : "text-gray-700"}`}>
                         {plan}
-                        {i === 1 && <span className="block text-xs font-normal text-[#0747A6] mt-0.5">₹199/mo</span>}
+                        {plan === "Max" && <span className="block text-xs font-normal text-[#0747A6] mt-0.5">₹199/mo</span>}
+                        {plan === "Pro" && <span className="block text-xs font-normal text-purple-600 mt-0.5">₹249/mo</span>}
+                        {plan === "Family" && <span className="block text-xs font-normal text-emerald-600 mt-0.5">₹499/mo</span>}
+                        {plan === "Free" && <span className="block text-xs font-normal text-gray-400 mt-0.5">₹0/mo</span>}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {comparisonRows.map((row, i) => (
-                    <tr key={row.feature} className={`border-b border-gray-50 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
-                      <td className="px-6 py-3.5 text-sm text-gray-700 font-medium">{row.feature}</td>
-                      {(["free", "pro", "max", "family"] as const).map((plan) => (
-                        <td key={plan} className={`px-4 py-3.5 text-center ${plan === "pro" ? "bg-[#EEF4FF]/50" : ""}`}>
-                          <Cell val={row[plan]} />
+                  {comparisonRows.map((row, i) =>
+                    row.section ? (
+                      <tr key={row.feature + i} className="bg-gray-50 border-t-2 border-gray-200">
+                        <td colSpan={5} className="px-6 py-2.5 text-xs font-bold uppercase text-gray-500 tracking-widest">
+                          {row.feature}
                         </td>
-                      ))}
-                    </tr>
-                  ))}
+                      </tr>
+                    ) : (
+                      <tr key={row.feature} className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
+                        <td className="px-6 py-3.5 text-sm text-gray-700 font-medium">{row.feature}</td>
+                        {(["free", "max", "pro", "family"] as const).map((plan) => (
+                          <td key={plan} className={`px-4 py-3.5 text-center ${plan === "max" ? "bg-[#EEF4FF]/50" : ""}`}>
+                            <Cell val={row[plan]!} />
+                          </td>
+                        ))}
+                      </tr>
+                    )
+                  )}
                 </tbody>
               </table>
             </div>

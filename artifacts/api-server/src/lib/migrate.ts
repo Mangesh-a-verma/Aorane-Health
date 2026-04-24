@@ -842,6 +842,35 @@ export async function runStartupMigrations(): Promise<void> {
     // These are NOT AI-generated; they are manually verified additions.
     // Kept in seed-new-foods.ts so original migration data stays clean.
     ...buildNewFoodSeedSQL(),
+
+    // ── feature_flags: medical_report — gated to Max / Pro / Family only ────────
+    // Free plan does NOT get medical report analysis (AI cost is high)
+    `INSERT INTO feature_flags (key, label, description, is_enabled, enabled_for_plans)
+     VALUES ('medical_report', 'Medical Report Scan', 'Gemini AI analysis of medical/lab reports — Max & Pro only', true, ARRAY['max','pro','family']::text[])
+     ON CONFLICT (key) DO UPDATE SET enabled_for_plans = ARRAY['max','pro','family']::text[], is_enabled = true`,
+
+    // ── feature_flags: smart_scan — restrict to paid plans (Max / Pro / Family) ─
+    // Free plan: cannot use Gemini image scanner (high cost). Only 5 text scans/day.
+    `UPDATE feature_flags SET enabled_for_plans = ARRAY['max','pro','family']::text[] WHERE key = 'smart_scan'`,
+
+    // ── feature_flags: meal_planner — restrict to paid plans ────────────────────
+    `INSERT INTO feature_flags (key, label, description, is_enabled, enabled_for_plans)
+     VALUES ('meal_planner', 'AI Meal Planner', 'Personalised AI diet plans — Max & Pro only', true, ARRAY['max','pro','family']::text[])
+     ON CONFLICT (key) DO UPDATE SET enabled_for_plans = ARRAY['max','pro','family']::text[], is_enabled = true`,
+
+    // ── feature_flags: health_suggestions — restrict to paid plans ───────────────
+    `INSERT INTO feature_flags (key, label, description, is_enabled, enabled_for_plans)
+     VALUES ('health_suggestions', 'AI Health Tips', 'Personalised AI health coaching — Max & Pro only', true, ARRAY['max','pro','family']::text[])
+     ON CONFLICT (key) DO UPDATE SET enabled_for_plans = ARRAY['max','pro','family']::text[], is_enabled = true`,
+
+    // ── plan_pricing: update features to accurate, detailed per-plan lists (jsonb) ─
+    `UPDATE plan_pricing SET features = '["Food logging (manual) — unlimited","AI Food Scan (text) — 5 scans/day","Water tracker & reminders","Exercise logging (basic)","7-day health history","Basic daily health score","Community forum access"]'::jsonb WHERE plan_key = 'free'`,
+
+    `UPDATE plan_pricing SET features = '["Everything in Free","AI Food Scanner (photo) — 10/day","Medical Report Scan — 5/day","AI Diet Plan — 5 plans/day","AI Health Coach & Tips — 10/day","AI Meal Swap — 20/day","Full unlimited health history","Blood sugar & BP tracking","Sleep stage analysis","Google Fit / Samsung Health sync","Priority email support"]'::jsonb WHERE plan_key = 'max'`,
+
+    `UPDATE plan_pricing SET features = '["Everything in Max","Advanced AI health predictions","Period cycle tracker","Stress & burnout AI monitoring","Personalized health goals AI","Export data (PDF & CSV)","24/7 priority support"]'::jsonb WHERE plan_key = 'pro'`,
+
+    `UPDATE plan_pricing SET features = '["4 individual member accounts","All Max features per member","Family health dashboard","Elderly health monitoring","Cross-family health comparisons","Family wellness challenges","Single billing for all members"]'::jsonb WHERE plan_key = 'family'`,
   ];
 
   let ok = 0; let fail = 0;
