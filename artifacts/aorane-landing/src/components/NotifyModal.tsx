@@ -26,26 +26,31 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
   const [error, setError] = useState("");
   const [otpError, setOtpError] = useState("");
 
-  const isFormValid = Boolean(
-    name.trim() &&
-    age.trim() &&
-    gender &&
-    email.trim() &&
-    /^\S+@\S+\.\S+$/.test(email) &&
-    phone.trim().replace(/\D/g, "").length >= 10
-  );
+  const emailValid = /^\S+@\S+\.\S+$/.test(email.trim());
+
+  const isFormValid =
+    name.trim().length > 0 &&
+    age.trim().length > 0 &&
+    gender.length > 0 &&
+    email.trim().length > 0 &&
+    emailValid;
 
   async function sendOtp() {
+    if (!isFormValid) return;
     setOtpSending(true);
     setOtpError("");
     try {
       const r = await fetch(`${API_BASE}/api/leads/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim() }),
       });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) { setOtpError(d.error || "Failed to send OTP — please try again"); setOtpSending(false); return; }
+      if (!r.ok) {
+        setOtpError(d.error || "Failed to send OTP — please try again");
+        setOtpSending(false);
+        return;
+      }
       setOtpSent(true);
       setStep("otp");
     } catch {
@@ -55,7 +60,10 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
   }
 
   async function handleSubmit() {
-    if (!otp.trim() || otp.length !== 6) { setOtpError("Please enter the 6-digit OTP"); return; }
+    if (!otp.trim() || otp.length !== 6) {
+      setOtpError("Please enter the 6-digit OTP");
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
@@ -66,14 +74,18 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
           type: "notify_me",
           name: name.trim(),
           email: email.trim(),
-          mobile: phone.trim(),
+          mobile: phone.trim() || undefined,
           source: "notify_popup",
           message: JSON.stringify({ age, gender, feature: featureName || "general" }),
           otp,
         }),
       });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) { setError(d.error || "Submission failed — please try again"); setSubmitting(false); return; }
+      if (!r.ok) {
+        setError(d.error || "Submission failed — please try again");
+        setSubmitting(false);
+        return;
+      }
       setStep("done");
     } catch {
       setError("Network error — please check your internet connection");
@@ -140,7 +152,6 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                   <input
                     type="text"
                     inputMode="numeric"
-                    pattern="[0-9]*"
                     placeholder="25"
                     maxLength={3}
                     value={age}
@@ -186,7 +197,9 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-600 mb-1 block">Mobile Number *</label>
+                <label className="text-xs font-semibold text-gray-600 mb-1 block">
+                  Mobile Number <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
@@ -203,6 +216,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
               {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
               <button
+                type="button"
                 onClick={sendOtp}
                 disabled={!isFormValid || otpSending}
                 className="w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -227,12 +241,15 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                 </div>
                 <h3 className="font-bold text-gray-900">OTP sent to your email</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  A 6-digit OTP has been sent to <span className="font-medium text-gray-700">{email}</span>.
+                  A 6-digit OTP has been sent to{" "}
+                  <span className="font-medium text-gray-700">{email}</span>.
                 </p>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-600 mb-2 block text-center">Enter 6-Digit OTP</label>
+                <label className="text-xs font-semibold text-gray-600 mb-2 block text-center">
+                  Enter 6-Digit OTP
+                </label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -244,9 +261,14 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                 />
               </div>
 
-              {(otpError || error) && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg text-center">{otpError || error}</p>}
+              {(otpError || error) && (
+                <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg text-center">
+                  {otpError || error}
+                </p>
+              )}
 
               <button
+                type="button"
                 onClick={handleSubmit}
                 disabled={otp.length !== 6 || submitting}
                 className="w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
@@ -258,6 +280,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
 
               <div className="text-center">
                 <button
+                  type="button"
                   onClick={() => { setStep("form"); setOtp(""); setOtpError(""); }}
                   className="text-xs text-gray-400 hover:text-gray-600 underline"
                 >
@@ -266,7 +289,12 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                 {otpSent && (
                   <span className="ml-3 text-xs text-gray-400">
                     ·{" "}
-                    <button onClick={sendOtp} disabled={otpSending} className="text-blue-500 hover:underline disabled:opacity-50">
+                    <button
+                      type="button"
+                      onClick={sendOtp}
+                      disabled={otpSending}
+                      className="text-blue-500 hover:underline disabled:opacity-50"
+                    >
                       {otpSending ? "Sending..." : "Resend OTP"}
                     </button>
                   </span>
@@ -285,14 +313,18 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                 <h3 className="text-xl font-extrabold text-gray-900">You're registered! 🎉</h3>
                 <p className="text-sm text-gray-500 mt-2">
                   Hi <span className="font-medium text-gray-700">{name}</span>! When{" "}
-                  <span className="font-medium text-blue-600">{featureName || "this feature"}</span> launches,
-                  you'll be the first to know at <span className="font-medium text-gray-700">{email}</span>.
+                  <span className="font-medium text-blue-600">
+                    {featureName || "this feature"}
+                  </span>{" "}
+                  launches, you'll be the first to know at{" "}
+                  <span className="font-medium text-gray-700">{email}</span>.
                 </p>
               </div>
               <div className="bg-blue-50 rounded-2xl px-4 py-3 text-xs text-blue-700">
                 💡 In the meantime, download the Aorane app — all live features are free!
               </div>
               <button
+                type="button"
                 onClick={onClose}
                 className="w-full py-3 rounded-2xl font-bold text-sm"
                 style={{ background: "#0747A6", color: "white" }}

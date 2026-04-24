@@ -98,7 +98,7 @@ router.post("/leads/send-otp", async (req, res) => {
     // Rate limit: max 3 OTPs per email per 10 minutes
     const existing = otpStore.get(email.toLowerCase());
     if (existing && existing.expires - Date.now() > 9 * 60 * 1000) {
-      res.status(429).json({ error: "OTP pehle se bheja gaya hai — 1 minute baad try karo" });
+      res.status(429).json({ error: "OTP already sent — please wait 1 minute before trying again" });
       return;
     }
 
@@ -117,16 +117,16 @@ router.post("/leads/send-otp", async (req, res) => {
     await resend.emails.send({
       from: "Aorane <support@aorane.com>",
       to: [email],
-      subject: "Aorane — Aapka OTP Code",
+      subject: "Aorane — Your OTP Code",
       html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:20px">
         <div style="background:linear-gradient(135deg,#0747A6,#1565C0);padding:24px;border-radius:12px 12px 0 0;color:#fff;text-align:center">
-          <h2 style="margin:0;font-size:22px">Aapka OTP Code</h2>
+          <h2 style="margin:0;font-size:22px">Your OTP Code</h2>
           <p style="margin:6px 0 0;opacity:.8;font-size:13px">Aorane Early Access Registration</p>
         </div>
         <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;padding:32px;border-radius:0 0 12px 12px;text-align:center">
           <div style="font-size:42px;font-weight:900;letter-spacing:0.2em;color:#0747A6;margin:16px 0">${otp}</div>
-          <p style="color:#6b7280;font-size:14px">Yeh OTP <strong>10 minutes</strong> mein expire ho jaayega.</p>
-          <p style="color:#9ca3af;font-size:12px;margin-top:16px">Agar aapne yeh request nahi kiya, toh ignore kar dein.</p>
+          <p style="color:#6b7280;font-size:14px">This OTP will expire in <strong>10 minutes</strong>.</p>
+          <p style="color:#9ca3af;font-size:12px;margin-top:16px">If you did not request this, please ignore this email.</p>
         </div>
       </div>`,
     });
@@ -134,7 +134,7 @@ router.post("/leads/send-otp", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error("[enquiries] send-otp failed:", err);
-    res.status(500).json({ error: "OTP send karne mein error — dobara try karo" });
+    res.status(500).json({ error: "Failed to send OTP — please try again" });
   }
 });
 
@@ -151,13 +151,13 @@ router.post("/enquiries", async (req, res) => {
     if (type === "notify_me") {
       if (!otp) { res.status(400).json({ error: "OTP required for notify_me registration" }); return; }
       const stored = otpStore.get(email.toLowerCase());
-      if (!stored) { res.status(400).json({ error: "OTP expired ya invalid hai — dobara OTP mangao" }); return; }
+      if (!stored) { res.status(400).json({ error: "OTP expired or invalid — please request a new OTP" }); return; }
       if (Date.now() > stored.expires) {
         otpStore.delete(email.toLowerCase());
-        res.status(400).json({ error: "OTP expire ho gaya — dobara OTP mangao" });
+        res.status(400).json({ error: "OTP has expired — please request a new OTP" });
         return;
       }
-      if (stored.otp !== String(otp)) { res.status(400).json({ error: "Galat OTP — dobara check karo" }); return; }
+      if (stored.otp !== String(otp)) { res.status(400).json({ error: "Incorrect OTP — please check and try again" }); return; }
       otpStore.delete(email.toLowerCase());
     }
 
