@@ -315,7 +315,8 @@ router.post("/wearable/sync/:provider", requireAuth, async (req: AuthRequest, re
     if (provider === "google_fit") {
       const token = await getGoogleToken(conn);
       if (!token) {
-        res.status(401).json({ error: "Token expired or refresh failed. Please reconnect Google Fit.", code: "TOKEN_EXPIRED" });
+        // Use 403 (not 401) so mobile doesn't treat this as user session expiry
+        res.status(403).json({ error: "Google Fit session expired. Please reconnect Google Fit.", code: "REAUTH_REQUIRED" });
         return;
       }
       const endMs = Date.now();
@@ -326,15 +327,18 @@ router.post("/wearable/sync/:provider", requireAuth, async (req: AuthRequest, re
       } catch (fitErr) {
         const msg = fitErr instanceof Error ? fitErr.message : String(fitErr);
         console.error("[Sync] Google Fit fetch failed:", msg);
-        // If it's an auth error, suggest reconnect
+        // If it's an auth error, try to refresh and retry once
         if (msg.includes("401") || msg.includes("403")) {
-          // Try to refresh and retry once
           const newToken = await refreshGoogleToken(conn);
           if (newToken) {
             try { fitData = await fetchGoogleFitData(newToken, startMs, endMs); }
-            catch { res.status(401).json({ error: "Google Fit auth failed. Please reconnect.", code: "REAUTH_REQUIRED" }); return; }
+            catch {
+              // Use 403 (not 401) to avoid triggering user session logout on mobile
+              res.status(403).json({ error: "Google Fit auth failed. Please reconnect Google Fit.", code: "REAUTH_REQUIRED" });
+              return;
+            }
           } else {
-            res.status(401).json({ error: "Google Fit token expired. Please reconnect.", code: "REAUTH_REQUIRED" });
+            res.status(403).json({ error: "Google Fit access expired. Please reconnect Google Fit.", code: "REAUTH_REQUIRED" });
             return;
           }
         } else {

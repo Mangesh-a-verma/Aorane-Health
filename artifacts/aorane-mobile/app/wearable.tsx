@@ -296,12 +296,16 @@ export default function WearableScreen() {
         );
       }
     } catch (err: unknown) {
-      const errObj = err as { status?: number; body?: { code?: string; error?: string } };
-      const code = errObj?.body?.code;
-      if (code === "REAUTH_REQUIRED" || errObj?.status === 401) {
+      const msg = (err as Error)?.message || "";
+      // Detect Google Fit OAuth expiry (API returns 403 + REAUTH_REQUIRED message)
+      const isReauth = msg.toLowerCase().includes("reconnect") ||
+        msg.toLowerCase().includes("reauth") ||
+        msg.toLowerCase().includes("access expired") ||
+        msg.toLowerCase().includes("auth failed");
+      if (isReauth) {
         Alert.alert(
           "Reconnect Google Fit",
-          "Your Google Fit session has expired. Please reconnect with Google to continue syncing.",
+          "Your Google Fit authorization has expired. Tap Reconnect to relink your account.",
           [
             { text: "Cancel", style: "cancel" },
             { text: "Reconnect", onPress: () => connectGoogleFit() },
@@ -310,7 +314,7 @@ export default function WearableScreen() {
       } else {
         Alert.alert(
           "Sync Failed",
-          errObj?.body?.error || "Data sync failed. Please try again.",
+          msg || "Data sync failed. Please try again.",
           [{ text: "OK" }]
         );
       }

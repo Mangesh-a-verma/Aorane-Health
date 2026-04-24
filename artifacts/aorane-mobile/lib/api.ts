@@ -10,6 +10,7 @@ const API_BASE =
     : (process.env.EXPO_PUBLIC_API_URL || "http://localhost:8080/api");
 
 let _onUnauthorized: (() => void) | null = null;
+let _isRefreshing = false;
 
 export function setUnauthorizedCallback(cb: () => void) {
   _onUnauthorized = cb;
@@ -17,6 +18,40 @@ export function setUnauthorizedCallback(cb: () => void) {
 
 async function getToken(): Promise<string | null> {
   return AsyncStorage.getItem("auth_token");
+}
+
+const AUTH_KEYS = ["auth_token", "refresh_token", "user_data", "onboarding_done", "pin_set", "app_pin"];
+
+async function clearAuthAndNotify() {
+  await AsyncStorage.multiRemove(AUTH_KEYS);
+  _onUnauthorized?.();
+}
+
+/**
+ * Tries to silently refresh the access token using the stored refresh_token.
+ * Returns true if refresh succeeded and new token is saved.
+ */
+async function attemptTokenRefresh(): Promise<boolean> {
+  if (_isRefreshing) return false;
+  _isRefreshing = true;
+  try {
+    const refreshToken = await AsyncStorage.getItem("refresh_token");
+    if (!refreshToken) return false;
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json() as { accessToken?: string; refreshToken?: string };
+    if (data.accessToken) {
+      await AsyncStorage.setItem("auth_token", data.accessToken);
+      if (data.refreshToken) await AsyncStorage.setItem("refresh_token", data.refreshToken);
+      return true;
+    }
+    return false;
+  } catch { return false; }
+  finally { _isRefreshing = false; }
 }
 
 /** Exported so syncOfflineQueue can use it directly */
@@ -65,8 +100,36 @@ export async function rawRequest<T>(
   }
 
   if (res.status === 401 && auth) {
-    await AsyncStorage.multiRemove(["auth_token", "refresh_token", "user_data", "onboarding_done", "pin_set", "app_pin"]);
-    _onUnauthorized?.();
+    // Try silent token refresh before logging out
+    const refreshed = await attemptTokenRefresh();
+    if (refreshed) {
+      // Retry the original request with the new token
+      const newToken = await AsyncStorage.getItem("auth_token");
+      const retryHeaders: Record<string, string> = { "Content-Type": "application/json" };
+      if (newToken) retryHeaders["Authorization"] = `Bearer ${newToken}`;
+      try {
+        const retryRes = await fetch(`${API_BASE}${path}`, {
+          method,
+          headers: retryHeaders,
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        if (retryRes.status !== 401) {
+          const retryText = await retryRes.text().catch(() => "");
+          if (!retryText || retryText.trim() === "") {
+            if (!retryRes.ok) throw new Error(`Server error (${retryRes.status}) — please try again`);
+            return {} as T;
+          }
+          let retryData: unknown;
+          try { retryData = JSON.parse(retryText); } catch { throw new Error(`Unexpected server response (${retryRes.status})`); }
+          if (!retryRes.ok) throw new Error((retryData as { error?: string }).error || `Request failed (${retryRes.status})`);
+          return retryData as T;
+        }
+      } catch (retryErr) {
+        if ((retryErr as Error)?.message !== "Session expired — please log in again") throw retryErr;
+      }
+    }
+    // Refresh failed or retry still 401 — log out
+    await clearAuthAndNotify();
     throw new Error("Session expired — please log in again");
   }
 
