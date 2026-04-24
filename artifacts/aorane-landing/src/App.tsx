@@ -1,4 +1,5 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/toaster";
@@ -16,21 +17,32 @@ import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
+function ScrollToTop() {
+  const [location] = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [location]);
+  return null;
+}
+
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={LandingPage} />
-      <Route path="/features" component={FeaturesPage} />
-      <Route path="/pricing" component={PricingPage} />
-      <Route path="/business" component={BusinessPage} />
-      <Route path="/privacy" component={PrivacyPage} />
-      <Route path="/terms" component={TermsPage} />
-      <Route path="/about" component={AboutPage} />
-      <Route path="/contact" component={ContactPage} />
-      <Route path="/blog">{() => <ComingSoonPage title="Blog" desc="Health tips, research, aur product updates — jald aa raha hai!" />}</Route>
-      <Route path="/careers">{() => <ComingSoonPage title="Careers at Aorane" desc="Hum ek passionate team build kar rahe hain — exciting roles aa rahe hain jald!" />}</Route>
-      <Route component={NotFound} />
-    </Switch>
+    <>
+      <ScrollToTop />
+      <Switch>
+        <Route path="/" component={LandingPage} />
+        <Route path="/features" component={FeaturesPage} />
+        <Route path="/pricing" component={PricingPage} />
+        <Route path="/business" component={BusinessPage} />
+        <Route path="/privacy" component={PrivacyPage} />
+        <Route path="/terms" component={TermsPage} />
+        <Route path="/about" component={AboutPage} />
+        <Route path="/contact" component={ContactPage} />
+        <Route path="/blog">{() => <ComingSoonPage title="Blog" desc="Health tips, research, and product updates — coming soon!" />}</Route>
+        <Route path="/careers">{() => <ComingSoonPage title="Careers at Aorane" desc="We're building a passionate team — exciting roles coming soon!" />}</Route>
+        <Route component={NotFound} />
+      </Switch>
+    </>
   );
 }
 

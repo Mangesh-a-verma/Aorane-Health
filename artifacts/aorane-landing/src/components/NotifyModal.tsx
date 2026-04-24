@@ -3,7 +3,7 @@ import { X, Bell, Mail, Phone, User, Send, CheckCircle, Loader2, ShieldCheck } f
 
 const API_BASE = import.meta.env.VITE_API_URL
   ? (import.meta.env.VITE_API_URL as string).replace(/\/$/, "")
-  : "";
+  : (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
 interface NotifyModalProps {
   featureName?: string;
@@ -45,17 +45,17 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
         body: JSON.stringify({ email }),
       });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) { setOtpError(d.error || "OTP bhejne mein error hua, dobara try karo"); setOtpSending(false); return; }
+      if (!r.ok) { setOtpError(d.error || "Failed to send OTP — please try again"); setOtpSending(false); return; }
       setOtpSent(true);
       setStep("otp");
     } catch {
-      setOtpError("Network error — internet connection check karo");
+      setOtpError("Network error — please check your internet connection");
     }
     setOtpSending(false);
   }
 
   async function handleSubmit() {
-    if (!otp.trim() || otp.length !== 6) { setOtpError("6-digit OTP enter karo"); return; }
+    if (!otp.trim() || otp.length !== 6) { setOtpError("Please enter the 6-digit OTP"); return; }
     setSubmitting(true);
     setError("");
     try {
@@ -73,10 +73,10 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
         }),
       });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) { setError(d.error || "Submit failed — dobara try karo"); setSubmitting(false); return; }
+      if (!r.ok) { setError(d.error || "Submission failed — please try again"); setSubmitting(false); return; }
       setStep("done");
     } catch {
-      setError("Network error — internet connection check karo");
+      setError("Network error — please check your internet connection");
     }
     setSubmitting(false);
   }
@@ -113,7 +113,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
             </div>
           </div>
           <p className="text-white/60 text-xs">
-            Jab yeh feature launch hoga, hum aapko sabse pehle email karenge. Free Early Access guaranteed.
+            When this feature launches, you'll be the first to know. Free early access guaranteed.
           </p>
         </div>
 
@@ -123,7 +123,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 mb-1 block">Aapka Naam *</label>
+                  <label className="text-xs font-semibold text-gray-600 mb-1 block">Your Name *</label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
@@ -136,7 +136,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 mb-1 block">Umar (Age) *</label>
+                  <label className="text-xs font-semibold text-gray-600 mb-1 block">Age *</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -177,7 +177,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="email"
-                    placeholder="aapka@email.com"
+                    placeholder="your@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
@@ -209,11 +209,11 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                 style={{ background: isFormValid ? "#0747A6" : "#9CA3AF", color: "white" }}
               >
                 {otpSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                {otpSending ? "OTP bhej rahe hain..." : "Email OTP Verify Karo"}
+                {otpSending ? "Sending OTP..." : "Verify via Email OTP"}
               </button>
 
               <p className="text-center text-[11px] text-gray-400">
-                * Aapka data sirf notification ke liye use hoga. Kabhi bhi unsubscribe kar sakte ho.
+                * Your data is used only for launch notifications. Unsubscribe anytime.
               </p>
             </div>
           )}
@@ -225,14 +225,14 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                 <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
                   <Mail className="w-7 h-7 text-blue-600" />
                 </div>
-                <h3 className="font-bold text-gray-900">OTP aapke email pe bheja gaya</h3>
+                <h3 className="font-bold text-gray-900">OTP sent to your email</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  <span className="font-medium text-gray-700">{email}</span> pe 6-digit OTP bheja gaya hai.
+                  A 6-digit OTP has been sent to <span className="font-medium text-gray-700">{email}</span>.
                 </p>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-600 mb-2 block text-center">6-Digit OTP Enter Karo</label>
+                <label className="text-xs font-semibold text-gray-600 mb-2 block text-center">Enter 6-Digit OTP</label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -253,7 +253,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                 style={{ background: otp.length === 6 ? "#0747A6" : "#9CA3AF", color: "white" }}
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-                {submitting ? "Submit ho raha hai..." : "Verify & Register"}
+                {submitting ? "Submitting..." : "Verify & Register"}
               </button>
 
               <div className="text-center">
@@ -261,13 +261,13 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                   onClick={() => { setStep("form"); setOtp(""); setOtpError(""); }}
                   className="text-xs text-gray-400 hover:text-gray-600 underline"
                 >
-                  Wapas jaao / Email change karo
+                  Go back / Change email
                 </button>
                 {otpSent && (
                   <span className="ml-3 text-xs text-gray-400">
                     ·{" "}
                     <button onClick={sendOtp} disabled={otpSending} className="text-blue-500 hover:underline disabled:opacity-50">
-                      {otpSending ? "Bhej rahe hain..." : "OTP dobara bhejo"}
+                      {otpSending ? "Sending..." : "Resend OTP"}
                     </button>
                   </span>
                 )}
@@ -282,15 +282,15 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                 <CheckCircle className="w-9 h-9 text-green-500" />
               </div>
               <div>
-                <h3 className="text-xl font-extrabold text-gray-900">Registered! 🎉</h3>
+                <h3 className="text-xl font-extrabold text-gray-900">You're registered! 🎉</h3>
                 <p className="text-sm text-gray-500 mt-2">
-                  <span className="font-medium text-gray-700">{name}</span>, jab{" "}
-                  <span className="font-medium text-blue-600">{featureName || "yeh feature"}</span> launch hoga,
-                  hum aapko <span className="font-medium text-gray-700">{email}</span> pe sabse pehle notify karenge!
+                  Hi <span className="font-medium text-gray-700">{name}</span>! When{" "}
+                  <span className="font-medium text-blue-600">{featureName || "this feature"}</span> launches,
+                  you'll be the first to know at <span className="font-medium text-gray-700">{email}</span>.
                 </p>
               </div>
               <div className="bg-blue-50 rounded-2xl px-4 py-3 text-xs text-blue-700">
-                💡 Abhi ke liye Aorane app download karo — sabhi live features free hain!
+                💡 In the meantime, download the Aorane app — all live features are free!
               </div>
               <button
                 onClick={onClose}

@@ -16,12 +16,12 @@ const values = [
 ];
 
 const milestones = [
-  { year: "Jan 2025", event: "Aorane ka idea aaya — Indian health-tech mein gap tha" },
-  { year: "Mar 2025", event: "First prototype: AI Food Scanner with Gemini Vision" },
-  { year: "Jun 2025", event: "Business Portal launch — corporate wellness ka pehla version" },
+  { year: "Jan 2025", event: "Aorane concept born — identified the gap in Indian health-tech" },
+  { year: "Mar 2025", event: "First prototype: AI Food Scanner powered by Gemini Vision" },
+  { year: "Jun 2025", event: "Business Portal launched — first version of corporate wellness" },
   { year: "Sep 2025", event: "NVIDIA health intelligence integration — Llama 3.3 70B" },
   { year: "Dec 2025", event: "Admin Panel + full platform ready" },
-  { year: "Apr 2026", event: "Public beta launch — Download on Play Store" },
+  { year: "Apr 2026", event: "Public beta launch — Available on Play Store" },
 ];
 
 export default function AboutPage() {
@@ -31,7 +31,7 @@ export default function AboutPage() {
     <>
       <Helmet>
         <title>About Aorane — India's AI Health Platform | Built for Bharat</title>
-        <meta name="description" content="Aorane ki kahani — how we're building India's most comprehensive AI-powered health management platform. Our mission, values, and team." />
+        <meta name="description" content="The story of Aorane — how we're building India's most comprehensive AI-powered health management platform. Our mission, values, and journey." />
       </Helmet>
       <div className="min-h-screen bg-white">
         <Navbar audience={audience} onAudienceChange={() => {}} onSignIn={() => {}} onSignUp={() => {}} />
@@ -44,10 +44,10 @@ export default function AboutPage() {
                 Our Story
               </span>
               <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">
-                India ke liye banaya,<br />India ke log ke saath
+                Built for India,<br />with India
               </h1>
               <p className="text-white/75 text-lg max-w-2xl mx-auto">
-                Aorane ek simple observation se shuru hua — Indians ke paas world-class health tracking tools nahi hain jo unki language, food, aur lifestyle samjhe. Hum woh gap bridge kar rahe hain.
+                Aorane started from a simple observation — Indians don't have world-class health tracking tools that truly understand their language, food, and lifestyle. We're bridging that gap.
               </p>
             </motion.div>
           </div>
@@ -63,10 +63,10 @@ export default function AboutPage() {
                   Every Indian deserves a personal health intelligence system
                 </h2>
                 <p className="mt-4 text-gray-600 leading-relaxed">
-                  Abhi tak health apps ya toh bahut basic hain, ya bahut expensive. Aorane ek aisi platform hai jo AI ki power use karke genuinely affordable, genuinely Indian, aur genuinely useful hai.
+                  Most health apps are either too basic or too expensive. Aorane is a platform that uses the power of AI to be genuinely affordable, genuinely Indian, and genuinely useful.
                 </p>
                 <p className="mt-3 text-gray-600 leading-relaxed">
-                  Chahe aap Lucknow mein dal-roti khate ho ya Mumbai mein office lunch — Aorane samjhega. Chahe aap diabetes manage kar rahe ho ya sirf fit rehna chahte ho — Aorane help karega.
+                  Whether you eat dal-roti in Lucknow or office lunch in Mumbai — Aorane understands. Whether you're managing diabetes or just want to stay fit — Aorane helps.
                 </p>
               </motion.div>
               <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
@@ -113,7 +113,7 @@ export default function AboutPage() {
           <div className="max-w-3xl mx-auto">
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
               <span className="text-xs font-bold text-[#F59E0B] bg-[#F59E0B]/10 px-3 py-1 rounded-full uppercase tracking-widest">Our Journey</span>
-              <h2 className="mt-3 text-3xl font-extrabold text-gray-900">Kaise yahan tak pahunche</h2>
+              <h2 className="mt-3 text-3xl font-extrabold text-gray-900">How We Got Here</h2>
             </motion.div>
             <div className="space-y-6">
               {milestones.map((m, i) => (
@@ -137,8 +137,8 @@ export default function AboutPage() {
         <section className="py-12 px-4 sm:px-6 lg:px-8 bg-[#FAFAFA]">
           <div className="max-w-4xl mx-auto">
             <div className="rounded-3xl p-8 text-center" style={{ background: "linear-gradient(135deg, #0747A6 0%, #1565C0 100%)" }}>
-              <h3 className="text-2xl font-extrabold text-white mb-2">Koi sawaal hai?</h3>
-              <p className="text-white/70 text-sm mb-6">Hum personally reply karte hain — usually 24 hours mein.</p>
+              <h3 className="text-2xl font-extrabold text-white mb-2">Have a question?</h3>
+              <p className="text-white/70 text-sm mb-6">We personally reply to every message — usually within 24 hours.</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <a href="mailto:support@aorane.com" className="flex items-center gap-2 px-5 py-3 bg-white text-[#0747A6] rounded-2xl font-bold text-sm hover:bg-gray-50 transition-colors">
                   <Mail className="w-4 h-4" /> support@aorane.com

@@ -5,7 +5,7 @@ const compliance = [
   {
     icon: Shield,
     title: "DPDPA 2023 Aligned",
-    desc: "India's Digital Personal Data Protection Act ke principles follow kiye jaate hain — consent-based data collection, user rights, and data minimization.",
+    desc: "We follow India's Digital Personal Data Protection Act (DPDPA 2023) principles — consent-based data collection, user rights, and data minimization.",
     color: "#0747A6",
     bg: "#EEF4FF",
   },
@@ -33,7 +33,7 @@ const compliance = [
   {
     icon: Server,
     title: "India Data Residency",
-    desc: "Aapka health data India mein hi rehta hai — Supabase South Asia (Mumbai) region pe hosted, enterprise-grade backups aur 99.9% uptime ke saath.",
+    desc: "Your health data stays in India — hosted on Supabase South Asia (Mumbai) region, with enterprise-grade backups and 99.9% uptime.",
     color: "#EF4444",
     bg: "#FFF1F2",
   },

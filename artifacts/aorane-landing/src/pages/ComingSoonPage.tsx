@@ -41,7 +41,7 @@ export default function ComingSoonPage({ title, desc }: ComingSoonPageProps) {
             <p className="text-gray-500 text-sm leading-relaxed mb-8">{desc}</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/" className="flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm border border-gray-200 hover:bg-gray-50 transition-colors text-gray-700">
-                <ArrowLeft className="w-4 h-4" /> Wapas Home
+                <ArrowLeft className="w-4 h-4" /> Go Back Home
               </Link>
               <Link href="/contact" className="flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm text-white transition-all hover:opacity-90"
                 style={{ background: "#0747A6" }}>

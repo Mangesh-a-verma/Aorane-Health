@@ -6,12 +6,6 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { postEnquiry } from "@/lib/useSiteSettings";
 
-const contactReasons = [
-  { value: "general", label: "General Query", icon: HelpCircle, color: "#6B7280" },
-  { value: "expert", label: "Talk to Expert", icon: MessageSquare, color: "#0747A6" },
-  { value: "general", label: "Business Inquiry", icon: Building2, color: "#10B981" },
-];
-
 export default function ContactPage() {
   const [audience] = useState<"b2c" | "b2b">("b2c");
   const [name, setName] = useState("");
@@ -41,7 +35,7 @@ export default function ContactPage() {
     if (res.success) {
       setDone(true);
     } else {
-      setError(res.error || "Submit failed — dobara try karo");
+      setError(res.error || "Submission failed — please try again");
     }
     setSubmitting(false);
   }
@@ -50,7 +44,7 @@ export default function ContactPage() {
     <>
       <Helmet>
         <title>Contact Aorane — Support & Business Enquiries</title>
-        <meta name="description" content="Aorane se contact karo — support, business inquiries, or general questions. We reply within 24 hours." />
+        <meta name="description" content="Get in touch with Aorane — support, business inquiries, or general questions. We reply within 24 hours." />
       </Helmet>
       <div className="min-h-screen bg-white">
         <Navbar audience={audience} onAudienceChange={() => {}} onSignIn={() => {}} onSignUp={() => {}} />
@@ -63,10 +57,10 @@ export default function ContactPage() {
                 Get in Touch
               </span>
               <h1 className="text-4xl font-extrabold text-gray-900 mb-3">
-                Hum yahan hain — <span style={{ color: "#0747A6" }}>baat karo!</span>
+                We're Here — <span style={{ color: "#0747A6" }}>Let's Talk!</span>
               </h1>
               <p className="text-gray-500 text-base max-w-xl mx-auto">
-                Support chahiye, business partnership discuss karni ho, ya sirf hello bolna ho — hum personally reply karte hain.
+                Need support, want to discuss a partnership, or just want to say hello — we personally reply to every message.
               </p>
             </motion.div>
           </div>
@@ -80,7 +74,7 @@ export default function ContactPage() {
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="space-y-6">
               <div>
                 <h2 className="text-xl font-extrabold text-gray-900 mb-1">Contact Information</h2>
-                <p className="text-sm text-gray-500">Sabhi queries ka jawab 24 ghante ke andar milega.</p>
+                <p className="text-sm text-gray-500">All queries answered within 24 hours.</p>
               </div>
 
               <div className="space-y-4">
@@ -133,7 +127,7 @@ export default function ContactPage() {
               <div className="rounded-2xl p-4 text-sm" style={{ background: "#EEF4FF", border: "1px solid #BFDBFE" }}>
                 <p className="font-bold text-[#0747A6] mb-1">⚡ Response Time</p>
                 <p className="text-gray-600 text-xs leading-relaxed">
-                  Email queries: <strong>24 hours</strong> ke andar<br />
+                  Email queries: <strong>within 24 hours</strong><br />
                   Business inquiries: <strong>4–8 hours</strong><br />
                   Technical support: <strong>Same day</strong> (weekdays)
                 </p>
@@ -148,52 +142,52 @@ export default function ContactPage() {
                     <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
                       <CheckCircle className="w-9 h-9 text-green-500" />
                     </div>
-                    <h3 className="text-xl font-extrabold text-gray-900 mb-2">Message mil gaya! 🎉</h3>
+                    <h3 className="text-xl font-extrabold text-gray-900 mb-2">Message Received! 🎉</h3>
                     <p className="text-gray-500 text-sm max-w-xs mx-auto">
-                      <strong>{name}</strong>, hum jald hi aapko <strong>{email}</strong> pe reply karenge — usually 24 ghante mein.
+                      Hi <strong>{name}</strong>, we'll reply to <strong>{email}</strong> within 24 hours.
                     </p>
                     <button
                       onClick={() => { setDone(false); setName(""); setEmail(""); setPhone(""); setMessage(""); }}
                       className="mt-6 px-5 py-2.5 rounded-xl text-sm font-bold border border-gray-200 hover:bg-gray-50 transition-colors"
                     >
-                      Ek aur message bhejo
+                      Send another message
                     </button>
                   </div>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <h2 className="text-xl font-extrabold text-gray-900 mb-1">Message Bhejo</h2>
-                    <p className="text-sm text-gray-500">Sab fields fill karo — hum personally reply karte hain.</p>
+                    <h2 className="text-xl font-extrabold text-gray-900 mb-1">Send a Message</h2>
+                    <p className="text-sm text-gray-500">Fill in all fields — we personally reply to every inquiry.</p>
                   </div>
 
                   {/* Type selector */}
                   <div>
-                    <label className="text-xs font-semibold text-gray-600 mb-2 block">Kya chahiye?</label>
+                    <label className="text-xs font-semibold text-gray-600 mb-2 block">What can we help with?</label>
                     <div className="grid grid-cols-2 gap-2">
                       <button type="button" onClick={() => setType("general")}
                         className="py-2.5 text-sm font-medium rounded-xl border transition-all"
                         style={type === "general" ? { background: "#0747A6", color: "white", borderColor: "#0747A6" } : { borderColor: "#E5E7EB", color: "#374151" }}>
-                        General Query
+                        <HelpCircle className="w-4 h-4 inline mr-1" />General Query
                       </button>
                       <button type="button" onClick={() => setType("expert")}
                         className="py-2.5 text-sm font-medium rounded-xl border transition-all"
                         style={type === "expert" ? { background: "#0747A6", color: "white", borderColor: "#0747A6" } : { borderColor: "#E5E7EB", color: "#374151" }}>
-                        Talk to Expert
+                        <MessageSquare className="w-4 h-4 inline mr-1" />Talk to Expert
                       </button>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Aapka Naam *</label>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Your Name *</label>
                       <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
                         placeholder="Full name"
                         className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" />
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-gray-600 mb-1 block">Phone</label>
-                      <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
+                      <input type="text" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
                         placeholder="+91 98765..."
                         className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" />
                     </div>
@@ -202,14 +196,14 @@ export default function ContactPage() {
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1 block">Email Address *</label>
                     <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-                      placeholder="aapka@email.com"
+                      placeholder="your@email.com"
                       className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Aapka Message *</label>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Your Message *</label>
                     <textarea value={message} onChange={(e) => setMessage(e.target.value)} required
-                      placeholder="Apni baat yahan likhiye... koi bhi sawaal ho, hum sun rahe hain."
+                      placeholder="Write your message here — any question, feedback, or inquiry..."
                       rows={5}
                       className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 resize-none" />
                   </div>
@@ -223,7 +217,7 @@ export default function ContactPage() {
                     style={{ background: isValid ? "#0747A6" : "#9CA3AF", color: "white" }}
                   >
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    {submitting ? "Bhej rahe hain..." : "Message Bhejo"}
+                    {submitting ? "Sending..." : "Send Message"}
                   </button>
                 </form>
               )}
