@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Scan, Brain, Dumbbell, Users, Building2, Lock, Camera, Sparkles, Shield, Activity, Heart, Bell, MessageSquare, Zap, Barcode, FileText } from "lucide-react";
+import { Scan, Brain, Dumbbell, Users, Building2, Lock, Camera, Sparkles, Shield, Activity, Heart, Bell, MessageSquare, Zap, Barcode, FileText, Utensils } from "lucide-react";
 
 const b2cFeatures = [
   {
@@ -33,7 +33,7 @@ const b2cFeatures = [
   {
     icon: Users,
     title: "Family Health Hub",
-    desc: "Create a family group and monitor health of parents, children, and elders — all in one account.",
+    desc: "Create a family group (up to 4 members) and monitor health of parents, children, and elders — all in one account.",
     color: "#0747A6",
     bg: "#EEF4FF",
   },
@@ -43,6 +43,20 @@ const b2cFeatures = [
     desc: "8 granular privacy toggles. Stress, Sleep & Medicine logs default to private. Your data, your control.",
     color: "#6B7280",
     bg: "#F9FAFB",
+  },
+  {
+    icon: FileText,
+    title: "Weekly Health Report",
+    desc: "Every Sunday, get a full AI-written health summary delivered on WhatsApp & email — calories, macros, stress, exercise trends.",
+    color: "#3B82F6",
+    bg: "#EFF6FF",
+  },
+  {
+    icon: Utensils,
+    title: "AI Diet Chart Generator",
+    desc: "Tell Aorane your goal — weight loss, diabetes, muscle gain — and get a personalized 7-day Indian meal plan. Roti, dal, sabzi included.",
+    color: "#8B5CF6",
+    bg: "#F5F3FF",
   },
   {
     icon: MessageSquare,
@@ -59,15 +73,6 @@ const b2cFeatures = [
     desc: "Scan any barcode on chips, biscuits, drinks or packaged food — instant nutrition from FSSAI database. No AI cost, instant result.",
     color: "#F97316",
     bg: "#FFF7ED",
-    comingSoon: true,
-    comingLabel: "Coming Soon",
-  },
-  {
-    icon: FileText,
-    title: "Weekly Health Reports",
-    desc: "Every Sunday, get a full AI-written health summary delivered on WhatsApp & email — calories, macros, stress, exercise trends.",
-    color: "#3B82F6",
-    bg: "#EFF6FF",
     comingSoon: true,
     comingLabel: "Coming Soon",
   },
@@ -98,7 +103,7 @@ const b2bFeatures = [
   {
     icon: Shield,
     title: "Enterprise Security",
-    desc: "DPDPA compliant, ISO 27001 certified, 256-bit encryption at rest and in transit. Audit trails included.",
+    desc: "DPDPA compliant, end-to-end encryption, 256-bit encryption at rest and in transit. Audit trails included.",
     color: "#6B7280",
     bg: "#F9FAFB",
   },
@@ -138,13 +143,10 @@ const b2bFeatures = [
 
 interface FeaturesSectionProps {
   audience: "b2c" | "b2b";
+  onNotifyClick?: () => void;
 }
 
-const BADGE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  "Coming Soon": { bg: "#F3F4F6", text: "#374151", dot: "#9CA3AF" },
-};
-
-export default function FeaturesSection({ audience }: FeaturesSectionProps) {
+export default function FeaturesSection({ audience, onNotifyClick }: FeaturesSectionProps) {
   const features = audience === "b2c" ? b2cFeatures : b2bFeatures;
   const title = audience === "b2c"
     ? { pre: "Everything your health needs", highlight: "all in one app" }
@@ -212,7 +214,7 @@ export default function FeaturesSection({ audience }: FeaturesSectionProps) {
           })}
         </div>
 
-        {/* Upcoming highlights banner */}
+        {/* Coming Soon banner */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -226,9 +228,8 @@ export default function FeaturesSection({ audience }: FeaturesSectionProps) {
         >
           <div className="flex -space-x-2 shrink-0">
             {[
-              { icon: MessageSquare, color: "#25D366", bg: "#25D366" },
-              { icon: Barcode, color: "#F97316", bg: "#F97316" },
-              { icon: FileText, color: "#3B82F6", bg: "#3B82F6" },
+              { icon: MessageSquare, bg: "#25D366" },
+              { icon: Barcode, bg: "#F97316" },
             ].map(({ icon: Icon, bg }, idx) => (
               <div key={idx} className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm border-2 border-white" style={{ background: bg }}>
                 <Icon className="w-4 h-4 text-white" />
@@ -238,16 +239,19 @@ export default function FeaturesSection({ audience }: FeaturesSectionProps) {
           <div className="flex-1 text-center sm:text-left">
             <p className="text-xs font-bold text-green-700 mb-0.5">🚀 Coming Very Soon — Pro & Max Plan</p>
             <h3 className="text-sm font-extrabold text-gray-900">
-              WhatsApp Bot · Barcode Scanner · Weekly Reports & More
+              WhatsApp Bot · Barcode Scanner
             </h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              Track health without opening the app. Scan packaged food. Get Sunday summaries automatically.
+              Track health without opening the app. Scan packaged food barcodes instantly.
             </p>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0 text-xs font-bold text-green-700 cursor-pointer hover:text-green-800 transition-colors">
+          <button
+            onClick={onNotifyClick}
+            className="flex items-center gap-1.5 shrink-0 text-xs font-bold text-green-700 bg-white border border-green-200 rounded-xl px-4 py-2 hover:bg-green-50 transition-colors"
+          >
             <Zap className="w-3.5 h-3.5" />
-            Notify me
-          </div>
+            Notify Me
+          </button>
         </motion.div>
       </div>
     </section>

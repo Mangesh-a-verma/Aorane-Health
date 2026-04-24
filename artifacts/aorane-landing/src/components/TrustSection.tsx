@@ -2,12 +2,48 @@ import { motion } from "framer-motion";
 import { Shield, Lock, FileCheck, Globe, Server, Eye, AlertTriangle } from "lucide-react";
 
 const compliance = [
-  { icon: Shield, title: "DPDPA 2023 Compliant", desc: "India's Digital Personal Data Protection Act compliant. Your data stays in India on Indian servers.", color: "#0747A6", bg: "#EEF4FF" },
-  { icon: Lock, title: "AES-256 Encryption", desc: "Military-grade encryption at rest and in transit. Zero-knowledge architecture for sensitive health records.", color: "#7C3AED", bg: "#F5F3FF" },
-  { icon: FileCheck, title: "ISO 27001 Certified", desc: "International standard for information security management systems. Annual third-party audits.", color: "#10B981", bg: "#F0FDF9" },
-  { icon: Globe, title: "HIPAA Ready", desc: "HIPAA-grade data handling practices for organizations that require US healthcare compliance.", color: "#F59E0B", bg: "#FFFBEB" },
-  { icon: Server, title: "India Data Residency", desc: "All health data stored on servers located within India. Compliant with Indian data localization laws.", color: "#EF4444", bg: "#FFF1F2" },
-  { icon: Eye, title: "Transparent Privacy", desc: "No data selling. No third-party ad targeting. Full audit log of who accessed your health data.", color: "#6B7280", bg: "#F9FAFB" },
+  {
+    icon: Shield,
+    title: "DPDPA 2023 Aligned",
+    desc: "India's Digital Personal Data Protection Act ke principles follow kiye jaate hain — consent-based data collection, user rights, and data minimization.",
+    color: "#0747A6",
+    bg: "#EEF4FF",
+  },
+  {
+    icon: Lock,
+    title: "AES-256 Encryption",
+    desc: "Military-grade encryption at rest (Supabase) and in transit (TLS 1.3). Zero plaintext storage for sensitive health records.",
+    color: "#7C3AED",
+    bg: "#F5F3FF",
+  },
+  {
+    icon: FileCheck,
+    title: "ISO 27001 Framework",
+    desc: "We follow ISO 27001 information security management practices — access controls, incident response, and regular security reviews.",
+    color: "#10B981",
+    bg: "#F0FDF9",
+  },
+  {
+    icon: Globe,
+    title: "HIPAA-Grade Practices",
+    desc: "We implement HIPAA-grade data handling practices — minimum necessary access, audit logs, and strict access controls for health data.",
+    color: "#F59E0B",
+    bg: "#FFFBEB",
+  },
+  {
+    icon: Server,
+    title: "Secure Cloud Infrastructure",
+    desc: "Health data stored on enterprise-grade cloud infrastructure (Supabase, Asia-Pacific region) with regular backups and 99.9% uptime.",
+    color: "#EF4444",
+    bg: "#FFF1F2",
+  },
+  {
+    icon: Eye,
+    title: "Transparent Privacy",
+    desc: "No data selling. No third-party ad targeting. Full audit log of who accessed your health data. 8 granular privacy controls.",
+    color: "#6B7280",
+    bg: "#F9FAFB",
+  },
 ];
 
 export default function TrustSection() {

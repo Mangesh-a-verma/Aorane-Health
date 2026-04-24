@@ -20,7 +20,7 @@ export default function Footer() {
         { label: "Pricing", href: "#pricing" },
         { label: "Dashboard", href: "#dashboard" },
         { label: "Android App", href: s.androidPlayStoreUrl || "#pricing" },
-        { label: "Business Portal", href: "https://business.aorane.com" },
+        { label: "For Business", href: "/business" },
       ],
     },
     {
@@ -29,8 +29,7 @@ export default function Footer() {
         { label: "About Aorane", href: "/about" },
         { label: "Blog", href: "/blog" },
         { label: "Careers", href: "/careers" },
-        { label: "Press Kit", href: "/press" },
-        { label: "Contact Us", href: `mailto:${s.supportEmail || "support@aorane.com"}` },
+        { label: "Contact Us", href: "/contact" },
       ],
     },
     {
@@ -38,7 +37,7 @@ export default function Footer() {
       links: [
         { label: "Privacy Policy", href: "/privacy" },
         { label: "Terms of Service", href: "/terms" },
-        { label: "DPDPA Compliance", href: "/privacy#6" },
+        { label: "DPDPA Compliance", href: "/privacy#dpdpa" },
         { label: "Data Deletion", href: "mailto:privacy@aorane.com?subject=Data Deletion Request" },
         { label: "Contact Legal", href: "mailto:legal@aorane.com" },
       ],

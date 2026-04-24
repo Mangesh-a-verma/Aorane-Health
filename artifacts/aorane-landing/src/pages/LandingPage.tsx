@@ -13,10 +13,12 @@ import TrustSection from "@/components/TrustSection";
 import Footer from "@/components/Footer";
 import BusinessAuthModal from "@/components/BusinessAuthModal";
 import UpcomingSection from "@/components/UpcomingSection";
+import NotifyModal from "@/components/NotifyModal";
 
 export default function LandingPage() {
   const [audience, setAudience] = useState<"b2c" | "b2b">("b2c");
   const [authModal, setAuthModal] = useState<null | "signin" | "signup">(null);
+  const [notifyOpen, setNotifyOpen] = useState(false);
 
   return (
     <>
@@ -28,32 +30,36 @@ export default function LandingPage() {
         <meta property="og:description" content="AI food scanning, stress tracking, NVIDIA health insights & corporate wellness. India's most comprehensive health companion. Free on Play Store." />
         <meta property="og:url" content="https://aorane.com/" />
       </Helmet>
-    <div className="min-h-screen overflow-x-hidden">
-      <Navbar
-        audience={audience}
-        onAudienceChange={setAudience}
-        onSignIn={() => setAuthModal("signin")}
-        onSignUp={() => setAuthModal("signup")}
-      />
-      <HeroSection audience={audience} onSignUp={() => setAuthModal("signup")} />
-      <StatsBar />
-      <BentoSection />
-      <FeaturesSection audience={audience} />
-      <UpcomingSection />
-      <HowItWorks />
-      <TestimonialsSlider />
-      <PricingSection onBusinessSignUp={() => setAuthModal("signup")} />
-      <AppDownloadSection />
-      <TrustSection />
-      <Footer />
-
-      {authModal && (
-        <BusinessAuthModal
-          defaultTab={authModal}
-          onClose={() => setAuthModal(null)}
+      <div className="min-h-screen overflow-x-hidden">
+        <Navbar
+          audience={audience}
+          onAudienceChange={setAudience}
+          onSignIn={() => setAuthModal("signin")}
+          onSignUp={() => setAuthModal("signup")}
         />
-      )}
-    </div>
+        <HeroSection audience={audience} onSignUp={() => setAuthModal("signup")} />
+        <StatsBar />
+        <BentoSection />
+        <FeaturesSection audience={audience} onNotifyClick={() => setNotifyOpen(true)} />
+        <UpcomingSection onNotifyClick={() => setNotifyOpen(true)} />
+        <HowItWorks />
+        <TestimonialsSlider />
+        <PricingSection onBusinessSignUp={() => setAuthModal("signup")} />
+        <AppDownloadSection />
+        <TrustSection />
+        <Footer />
+
+        {authModal && (
+          <BusinessAuthModal
+            defaultTab={authModal}
+            onClose={() => setAuthModal(null)}
+          />
+        )}
+
+        {notifyOpen && (
+          <NotifyModal onClose={() => setNotifyOpen(false)} />
+        )}
+      </div>
     </>
   );
 }

@@ -2,14 +2,20 @@ import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { api, type Enquiry } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Phone, MapPin, Building2, MessageSquare, Loader2, RefreshCw, Trash2, Inbox, Briefcase, FileText, User } from "lucide-react";
+import { Mail, Phone, MapPin, Building2, MessageSquare, Loader2, RefreshCw, Trash2, Inbox, Briefcase, FileText, User, Bell, CalendarDays, Users } from "lucide-react";
 
 const TYPE_LABEL: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   expert:         { label: "Talk to Expert",  color: "#0077B6", icon: MessageSquare },
   investor_deck:  { label: "Investor Deck",   color: "#8B5CF6", icon: FileText },
   general:        { label: "General",         color: "#6b7280", icon: Inbox },
+  notify_me:      { label: "Notify Me Lead",  color: "#E85D26", icon: Bell },
 };
 const STATUS_COLOR: Record<string, string> = { new: "#F59E0B", contacted: "#0077B6", closed: "#10B981" };
+
+function parseNotifyMeta(message?: string | null): { age?: string; gender?: string; feature?: string } {
+  if (!message) return {};
+  try { return JSON.parse(message); } catch { return {}; }
+}
 
 export default function EnquiriesPage() {
   const [list, setList] = useState<Enquiry[]>([]);
@@ -57,13 +63,15 @@ export default function EnquiriesPage() {
     }
   };
 
+  const notifyLeadsCount = list.filter((e) => e.type === "notify_me").length;
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Enquiries & Leads</h1>
-            <p className="text-muted-foreground text-sm mt-1">Talk-to-Expert, Investor Deck downloads & general queries</p>
+            <p className="text-muted-foreground text-sm mt-1">Talk-to-Expert, Notify Me leads, Investor Deck downloads & general queries</p>
           </div>
           <button onClick={load} className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2 text-sm hover:bg-muted/40">
             <RefreshCw size={14} /> Refresh
@@ -71,14 +79,15 @@ export default function EnquiriesPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
           {[
-            { label: "Total",     value: stats.total,          color: "#6b7280" },
-            { label: "New",       value: stats.newCount,       color: "#F59E0B" },
-            { label: "Contacted", value: stats.contactedCount, color: "#0077B6" },
-            { label: "Closed",    value: stats.closedCount,    color: "#10B981" },
+            { label: "Total",       value: stats.total,          color: "#6b7280" },
+            { label: "New",         value: stats.newCount,       color: "#F59E0B" },
+            { label: "Contacted",   value: stats.contactedCount, color: "#0077B6" },
+            { label: "Closed",      value: stats.closedCount,    color: "#10B981" },
+            { label: "Notify Leads", value: notifyLeadsCount,    color: "#E85D26" },
           ].map((s) => (
-            <div key={s.label} className="bg-card border border-border rounded-2xl p-5">
+            <div key={s.label} className="bg-card border border-border rounded-2xl p-4">
               <div className="text-xs text-muted-foreground font-medium">{s.label}</div>
               <div className="text-3xl font-bold mt-1" style={{ color: s.color }}>{s.value}</div>
             </div>
@@ -95,6 +104,7 @@ export default function EnquiriesPage() {
           </select>
           <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="bg-card border border-border rounded-lg px-3 py-2 text-sm">
             <option value="">All Types</option>
+            <option value="notify_me">Notify Me Leads</option>
             <option value="expert">Talk to Expert</option>
             <option value="investor_deck">Investor Deck</option>
             <option value="general">General</option>
@@ -117,6 +127,7 @@ export default function EnquiriesPage() {
                 const meta = TYPE_LABEL[e.type] || TYPE_LABEL.general;
                 const Icon = meta.icon;
                 const isSelected = selected?.id === e.id;
+                const notifyMeta = e.type === "notify_me" ? parseNotifyMeta(e.message) : null;
                 return (
                   <div
                     key={e.id}
@@ -137,7 +148,14 @@ export default function EnquiriesPage() {
                           {" · "}{e.email}
                           {e.mobile ? ` · ${e.mobile}` : ""}
                         </div>
-                        {e.message && <div className="text-xs text-muted-foreground mt-2 line-clamp-2">{e.message}</div>}
+                        {notifyMeta && (
+                          <div className="flex flex-wrap gap-2 mt-1.5">
+                            {notifyMeta.age && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600">Age: {notifyMeta.age}</span>}
+                            {notifyMeta.gender && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">{notifyMeta.gender}</span>}
+                            {notifyMeta.feature && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600">{notifyMeta.feature}</span>}
+                          </div>
+                        )}
+                        {!notifyMeta && e.message && <div className="text-xs text-muted-foreground mt-2 line-clamp-2">{e.message}</div>}
                         <div className="text-[10px] text-muted-foreground/70 mt-1.5">{new Date(e.createdAt).toLocaleString("en-IN")}</div>
                       </div>
                     </div>
@@ -157,7 +175,9 @@ export default function EnquiriesPage() {
                     </button>
                   </div>
                   <div className="font-bold text-lg">{selected.name}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{TYPE_LABEL[selected.type]?.label || selected.type}</div>
+                  <div className="text-xs mt-0.5" style={{ color: (TYPE_LABEL[selected.type] || TYPE_LABEL.general).color }}>
+                    {TYPE_LABEL[selected.type]?.label || selected.type}
+                  </div>
 
                   <div className="space-y-2 mt-4 text-sm">
                     <a href={`mailto:${selected.email}`} className="flex items-center gap-2 text-primary hover:underline"><Mail size={13} />{selected.email}</a>
@@ -168,7 +188,22 @@ export default function EnquiriesPage() {
                     {selected.source && <div className="flex items-center gap-2 text-muted-foreground"><Briefcase size={13} />Source: {selected.source}</div>}
                   </div>
 
-                  {selected.message && (
+                  {/* Notify Me Extra Info */}
+                  {selected.type === "notify_me" && (() => {
+                    const nm = parseNotifyMeta(selected.message);
+                    return (Object.keys(nm).length > 0) ? (
+                      <div className="mt-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-2">Lead Details</div>
+                        <div className="bg-orange-50 rounded-xl p-3 space-y-1.5">
+                          {nm.age && <div className="flex items-center gap-2 text-sm"><CalendarDays size={13} className="text-orange-500" /><span className="font-medium">Age:</span> {nm.age}</div>}
+                          {nm.gender && <div className="flex items-center gap-2 text-sm"><Users size={13} className="text-orange-500" /><span className="font-medium">Gender:</span> {nm.gender}</div>}
+                          {nm.feature && <div className="flex items-center gap-2 text-sm"><Bell size={13} className="text-orange-500" /><span className="font-medium">Feature:</span> {nm.feature}</div>}
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+
+                  {selected.type !== "notify_me" && selected.message && (
                     <div className="mt-4">
                       <div className="text-xs font-medium text-muted-foreground mb-1.5">Message</div>
                       <div className="bg-muted/40 rounded-lg p-3 text-sm whitespace-pre-wrap">{selected.message}</div>
