@@ -201,6 +201,37 @@ export default function WearableScreen() {
 
   const onRefresh = useCallback(() => { setRefreshing(true); loadAll(); }, []);
 
+  const handleOAuthUrl = useCallback(async (url: string) => {
+    try {
+      const parsed = new URL(url);
+      const connected = parsed.searchParams.get("connected");
+      const err = parsed.searchParams.get("error");
+      if (connected) {
+        Alert.alert("✅ Connected!", `${PROVIDER_META[connected]?.name || connected} connected! Syncing your data...`);
+        await loadAll();
+      } else if (err) {
+        const msgs: Record<string, string> = {
+          google_fit_denied: "Google Fit access was denied. Please try again and tap 'Allow'.",
+          token_failed: "Failed to get access token. Please try again.",
+          callback_failed: "Connection failed. Please try again.",
+          invalid_state: "Session expired. Please try again.",
+        };
+        Alert.alert("Connection Failed", msgs[err] || "Unknown error occurred.");
+      }
+    } catch { /* ignore malformed URLs */ }
+    setConnectingGoogle(false);
+  }, []);
+
+  // Listen for deep links while screen is mounted (handles Android OAuth return)
+  useEffect(() => {
+    const sub = Linking.addEventListener("url", ({ url }) => {
+      if (url.includes("wearable") && (url.includes("connected=") || url.includes("error="))) {
+        handleOAuthUrl(url);
+      }
+    });
+    return () => sub.remove();
+  }, [handleOAuthUrl]);
+
   const connectGoogleFit = async () => {
     setConnectingGoogle(true);
     try {
@@ -211,48 +242,43 @@ export default function WearableScreen() {
         window.location.href = authUrl;
         return;
       }
-      // Native: use expo-web-browser with deep link return
+      // Native: deep link return URL (aorane://wearable)
       const returnUrl = Linking.createURL("wearable");
       const d = await api.getGoogleFitAuthUrl(returnUrl);
       const { authUrl } = d as { authUrl: string };
-      await WebBrowser.warmUpAsync();
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl);
-      await WebBrowser.coolDownAsync();
-      if (result.type === "success") {
-        try {
-          const parsed = new URL(result.url);
-          const connected = parsed.searchParams.get("connected");
-          const err = parsed.searchParams.get("error");
-          if (connected) {
-            Alert.alert("✅ Connected!", `${PROVIDER_META[connected]?.name || connected} connected! Syncing initial data...`);
-            await loadAll();
-          } else if (err) {
-            const msgs: Record<string, string> = {
-              google_fit_denied: "Google Fit access was denied. Please try again and tap 'Allow'.",
-              token_failed: "Failed to get access token. Please try again.",
-              callback_failed: "Connection failed. Please try again.",
-              invalid_state: "Session expired. Please try again.",
-            };
-            Alert.alert("Connection Failed", msgs[err] || "Unknown error occurred.");
-          }
-        } catch { }
-      } else if (result.type === "cancel") {
-        // User closed browser — could be redirect_uri_mismatch or user dismissed
-        Alert.alert(
-          "Not Connected",
-          "Google Fit connection was not completed.\n\nIf you're seeing a 'redirect_uri_mismatch' error, please add this URL to your Google Cloud Console authorized redirect URIs:\nhttps://aorane.onrender.com/api/wearable/oauth/google-fit/callback",
-          [{ text: "OK" }]
-        );
+
+      if (Platform.OS === "ios") {
+        // iOS: openAuthSessionAsync intercepts the deep link correctly
+        await WebBrowser.warmUpAsync();
+        const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl);
+        await WebBrowser.coolDownAsync();
+        if (result.type === "success") {
+          await handleOAuthUrl(result.url);
+        } else {
+          // User cancelled — don't show error, just reset state
+          setConnectingGoogle(false);
+        }
+      } else {
+        // Android: Chrome Custom Tabs can't intercept custom scheme deep links.
+        // Instead, open browser and rely on Linking.addEventListener to catch the return.
+        // The listener above will fire when the app is brought back via aorane:// deep link.
+        await WebBrowser.openBrowserAsync(authUrl, {
+          showTitle: false,
+          enableBarCollapsing: true,
+        });
+        // connectingGoogle stays true until Linking listener fires or user cancels manually
+        // Add a timeout fallback — if no response in 120s, reset
+        setTimeout(() => setConnectingGoogle(false), 120_000);
       }
     } catch (e: unknown) {
       const msg = (e as Error)?.message || "";
       if (msg.includes("not configured")) {
-        Alert.alert("Setup Required", "Google Fit credentials not configured yet.\n\nAdmin needs to add GOOGLE_FIT_CLIENT_ID and GOOGLE_FIT_CLIENT_SECRET in server environment.");
+        Alert.alert("Setup Required", "Google Fit credentials not configured yet. Contact admin.");
       } else {
-        Alert.alert("Error", "Failed to initiate Google Fit connection.");
+        Alert.alert("Error", "Failed to initiate Google Fit connection. Please try again.");
       }
+      setConnectingGoogle(false);
     }
-    setConnectingGoogle(false);
   };
 
   const syncProvider = async (provider: string) => {

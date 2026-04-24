@@ -13,6 +13,8 @@ const GOOGLE_CLIENT_ID     = process.env.GOOGLE_FIT_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_FIT_CLIENT_SECRET || "";
 const API_BASE             = process.env.API_BASE_URL || "https://aorane.onrender.com/api";
 const GOOGLE_REDIRECT_URI  = `${API_BASE}/wearable/oauth/google-fit/callback`;
+// APP_URL is the frontend base — used for post-OAuth redirects back to the mobile deep link / web page
+const APP_URL_BASE         = process.env.APP_URL || "https://aorane.onrender.com/api";
 
 const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/fitness.activity.read",
@@ -214,9 +216,12 @@ router.get("/wearable/oauth/google-fit/url", requireAuth, async (req: AuthReques
 // Google Fit OAuth callback
 router.get("/wearable/oauth/google-fit/callback", async (req, res) => {
   const { code, state, error } = req.query as Record<string, string>;
-  const webBase = process.env.APP_URL || "https://api.aorane.com";
   if (error) {
-    res.redirect(`${webBase}/wearable?error=google_fit_denied`);
+    // If returnUrl is in state, redirect back to mobile deep link; else fallback
+    let returnUrl: string | null = null;
+    try { returnUrl = JSON.parse(Buffer.from(state, "base64url").toString()).returnUrl || null; } catch { /* ignore */ }
+    const dest = returnUrl ? `${returnUrl}?error=google_fit_denied` : `${APP_URL_BASE}/wearable?error=google_fit_denied`;
+    res.redirect(dest);
     return;
   }
   let userId: string;
@@ -226,7 +231,7 @@ router.get("/wearable/oauth/google-fit/callback", async (req, res) => {
     userId = decoded.userId;
     returnUrl = decoded.returnUrl || null;
   } catch {
-    res.redirect(`${process.env.APP_URL || "https://api.aorane.com"}/wearable?error=invalid_state`);
+    res.redirect(`${APP_URL_BASE}/wearable?error=invalid_state`);
     return;
   }
   // Exchange code for tokens
@@ -289,11 +294,11 @@ router.get("/wearable/oauth/google-fit/callback", async (req, res) => {
       await db.update(wearableConnectionsTable)
         .set({ lastSyncedAt: new Date() }).where(eq(wearableConnectionsTable.id, conn.id));
     }
-    const successDest = returnUrl ? `${returnUrl}?connected=google_fit` : `${webBase}/wearable?connected=google_fit`;
+    const successDest = returnUrl ? `${returnUrl}?connected=google_fit` : `${APP_URL_BASE}/wearable?connected=google_fit`;
     res.redirect(successDest);
   } catch (e) {
     console.error("Google Fit callback error:", e);
-    const errDest = returnUrl ? `${returnUrl}?error=callback_failed` : `${webBase}/wearable?error=callback_failed`;
+    const errDest = returnUrl ? `${returnUrl}?error=callback_failed` : `${APP_URL_BASE}/wearable?error=callback_failed`;
     res.redirect(errDest);
   }
 });
