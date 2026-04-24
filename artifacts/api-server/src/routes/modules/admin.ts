@@ -41,12 +41,70 @@ router.post("/admin/login", async (req, res) => {
   }
 });
 
-router.get("/admin/overview", requireAdmin, async (req: AdminRequest, res) => {
+router.get("/admin/overview", requireAdmin, async (_req: AdminRequest, res) => {
   try {
-    const [userCount] = await db.select({ count: count() }).from(usersTable);
-    const [orgCount] = await db.select({ count: count() }).from(organizationsTable);
-    res.json({ stats: { totalUsers: userCount.count, totalOrganizations: orgCount.count } });
-  } catch {
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const last30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      [userCount],
+      [orgCount],
+      [subCount],
+      [bloodCount],
+    ] = await Promise.all([
+      db.select({ count: count() }).from(usersTable),
+      db.select({ count: count() }).from(organizationsTable),
+      db.select({ count: count() }).from(subscriptionsTable).where(eq(subscriptionsTable.status, "active")),
+      db.select({ count: count() }).from(bloodEmergencyRequestsTable),
+    ]);
+
+    // Revenue: sum all successful payments
+    const [revenueRow] = await db.select({
+      total: sql<string>`COALESCE(SUM(CAST(amount AS NUMERIC)), 0)`,
+    }).from(paymentsTable).where(eq(paymentsTable.status, "success"));
+    const totalRevenue = Math.round(parseFloat(revenueRow?.total || "0"));
+
+    // Plan breakdown from users table
+    const planRows = await db.select({
+      plan: usersTable.plan,
+      cnt: count(),
+    }).from(usersTable).groupBy(usersTable.plan);
+
+    const planBreakdown = planRows.map(r => ({
+      plan: r.plan || "free",
+      count: r.cnt,
+    }));
+
+    // New users today and this month
+    const [newToday] = await db.select({ count: count() }).from(usersTable)
+      .where(sql`created_at >= ${startOfToday.toISOString()}`);
+    const [newMonth] = await db.select({ count: count() }).from(usersTable)
+      .where(sql`created_at >= ${startOfMonth.toISOString()}`);
+
+    // Monthly revenue (last 30 days)
+    const [monthRevRow] = await db.select({
+      total: sql<string>`COALESCE(SUM(CAST(amount AS NUMERIC)), 0)`,
+    }).from(paymentsTable)
+      .where(and(eq(paymentsTable.status, "success"), sql`created_at >= ${last30.toISOString()}`));
+    const monthRevenue = Math.round(parseFloat(monthRevRow?.total || "0"));
+
+    res.json({
+      stats: {
+        totalUsers: Number(userCount.count),
+        totalOrganizations: Number(orgCount.count),
+        activeSubscriptions: Number(subCount.count),
+        totalBloodRequests: Number(bloodCount.count),
+        totalRevenue,
+        monthRevenue,
+        newUsersToday: Number(newToday.count),
+        newUsersThisMonth: Number(newMonth.count),
+        planBreakdown,
+      },
+    });
+  } catch (e) {
+    console.error("Admin overview error:", e);
     res.status(500).json({ error: "Failed to fetch overview" });
   }
 });

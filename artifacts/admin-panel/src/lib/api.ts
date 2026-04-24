@@ -107,7 +107,7 @@ export type AuditLog = {
 };
 export type Enquiry = {
   id: string;
-  type: "expert" | "investor_deck" | "general";
+  type: "expert" | "investor_deck" | "general" | "notify_me";
   name: string;
   email: string;
   mobile: string | null;
@@ -150,7 +150,7 @@ export const api = {
   login: (email: string, password: string) =>
     req<{ token: string; admin: { id: string; fullName: string; role: string } }>("/admin/login", { method: "POST", body: JSON.stringify({ email, password }) }, true),
 
-  overview: () => req<{ stats: { totalUsers: number; totalOrganizations: number } }>("/admin/overview"),
+  overview: () => req<{ stats: { totalUsers: number; totalOrganizations: number; activeSubscriptions: number; totalBloodRequests: number; totalRevenue: number; monthRevenue: number; newUsersToday: number; newUsersThisMonth: number; planBreakdown: Array<{ plan: string; count: number }> } }>("/admin/overview"),
   users: (params?: { limit?: number; offset?: number }) =>
     req<{ users: User[] }>(`/admin/users?limit=${params?.limit || 50}&offset=${params?.offset || 0}`),
   updateUser: (id: string, data: Partial<{ plan: string; isActive: boolean; isBanned: boolean }>) =>
