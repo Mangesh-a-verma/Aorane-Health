@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
@@ -15,24 +15,25 @@ const FEATURES = [
 ];
 
 export default function Login() {
-  const [, navigate] = useLocation();
+  useLocation();
   const { login } = useAuth();
-  const [email, setEmail]       = useState("");
-  const [password, setPassword] = useState("");
+  const emailRef    = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const email    = emailRef.current?.value?.trim() || "";
+    const password = passwordRef.current?.value || "";
+    if (!email || !password) { setError("Please enter your email and password"); return; }
     setLoading(true); setError("");
-    // Clear any stale session data before logging in
     localStorage.removeItem("ap_token");
     localStorage.removeItem("ap_admin");
     try {
       const res = await api.login(email, password);
       login(res.token, res.admin);
-      // Navigation handled by PublicOnly wrapper watching token state
     } catch (err) {
       const msg = (err as Error).message || "Authentication failed";
       if (msg.includes("JSON") || msg.includes("Unexpected") || msg.includes("empty") || msg.includes("non-JSON")) {
@@ -203,8 +204,10 @@ export default function Login() {
                   Admin Email
                 </label>
                 <input
-                  type="email" value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  ref={emailRef}
+                  type="email"
+                  name="email"
+                  autoComplete="username email"
                   placeholder="admin@aorane.com"
                   className="w-full rounded-xl px-4 py-2.5 text-sm outline-none transition-all"
                   style={{
@@ -224,8 +227,10 @@ export default function Login() {
                 </label>
                 <div className="relative">
                   <input
-                    type={showPass ? "text" : "password"} value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    ref={passwordRef}
+                    type={showPass ? "text" : "password"}
+                    name="password"
+                    autoComplete="current-password"
                     placeholder="••••••••"
                     className="w-full rounded-xl px-4 py-2.5 pr-10 text-sm outline-none transition-all"
                     style={{
@@ -246,7 +251,7 @@ export default function Login() {
 
               <button
                 type="submit"
-                disabled={loading || !email || !password}
+                disabled={loading}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold text-white mt-2 transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2"
                 style={{ background: "linear-gradient(135deg, #0077B6, #1B998B)" }}
               >
