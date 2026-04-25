@@ -13,6 +13,7 @@ import TermsPage from "@/pages/TermsPage";
 import AboutPage from "@/pages/AboutPage";
 import ContactPage from "@/pages/ContactPage";
 import ComingSoonPage from "@/pages/ComingSoonPage";
+import CareersPage from "@/pages/CareersPage";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -41,7 +42,7 @@ function Router() {
         <Route path="/about" component={AboutPage} />
         <Route path="/contact" component={ContactPage} />
         <Route path="/blog">{() => <ComingSoonPage title="Blog" desc="Health tips, research, and product updates — coming soon!" />}</Route>
-        <Route path="/careers">{() => <ComingSoonPage title="Careers at Aorane" desc="We're building a passionate team — exciting roles coming soon!" />}</Route>
+        <Route path="/careers" component={CareersPage} />
         <Route component={NotFound} />
       </Switch>
     </>
