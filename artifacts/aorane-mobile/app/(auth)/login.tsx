@@ -17,9 +17,9 @@ import { useLanguage } from "@/context/LanguageContext";
 
 const { width: W, height: H } = Dimensions.get("window");
 
-const PRIMARY = "#1A73C8";
+const PRIMARY = "#0B84D6";
 
-const SKY = "#2D8DE8";
+const SKY = "#38B6FF";
 const ACCENT = "#27AE60";
 
 function GlassCard({ children, style }: { children: React.ReactNode; style?: object }) {
@@ -176,7 +176,7 @@ export default function LoginScreen() {
     <View style={s.root}>
       {/* Cool blue-white background */}
       <LinearGradient
-        colors={["#EBF3FC", "#F0F5FB", "#F4F6FA", "#F8FAFD", "#FFFFFF"]}
+        colors={["#F0F8FF", "#F4FAFF", "#F5F9FF", "#F9FCFF", "#FFFFFF"]}
         locations={[0, 0.2, 0.5, 0.75, 1]}
         style={StyleSheet.absoluteFill}
       />
@@ -427,7 +427,7 @@ export default function LoginScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#EBF3FC" },
+  root: { flex: 1, backgroundColor: "#F5F9FF" },
   scroll: { paddingHorizontal: 18 },
 
   orb1: { position: "absolute", width: 380, height: 380, borderRadius: 190, backgroundColor: "#90BFF0", opacity: 0.22, top: -140, right: -120 },
@@ -466,8 +466,8 @@ const s = StyleSheet.create({
   toggle: {
     flexDirection: "row", borderRadius: 16, padding: 4,
     marginBottom: 18, gap: 4, overflow: "hidden",
-    backgroundColor: "rgba(26,115,200,0.07)",
-    borderWidth: 1, borderColor: "rgba(26,115,200,0.12)",
+    backgroundColor: "rgba(11,132,214,0.07)",
+    borderWidth: 1, borderColor: "rgba(11,132,214,0.10)",
   },
   toggleBtn: {
     flex: 1, paddingVertical: 10, borderRadius: 13,
@@ -481,7 +481,7 @@ const s = StyleSheet.create({
     flexDirection: "row", alignItems: "center", borderRadius: 16,
     height: 58, marginBottom: 12,
     backgroundColor: "rgba(240,247,255,0.9)",
-    borderWidth: 1.5, borderColor: "rgba(26,115,200,0.15)",
+    borderWidth: 1.5, borderColor: "rgba(11,132,214,0.12)",
     overflow: "hidden",
   },
   inputFocused: { borderColor: PRIMARY, borderWidth: 2, backgroundColor: "rgba(235,243,252,0.95)" },
@@ -489,7 +489,7 @@ const s = StyleSheet.create({
   ccBox: {
     flexDirection: "row", alignItems: "center", gap: 6,
     paddingHorizontal: 13, height: "100%",
-    borderRightWidth: 1, borderRightColor: "rgba(26,115,200,0.15)",
+    borderRightWidth: 1, borderRightColor: "rgba(11,132,214,0.12)",
   },
   ccText: { fontSize: 15, fontFamily: "Inter_700Bold", color: PRIMARY },
   input: { flex: 1, paddingHorizontal: 14, fontSize: 16, height: "100%", color: "#0D1F33", fontFamily: "Inter_500Medium" },

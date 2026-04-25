@@ -97,7 +97,7 @@ export default function ProfileScreen() {
       >
         {/* ── Hero section ── */}
         <LinearGradient
-          colors={["#C0392B", "#E8622A", "#F5A623"]}
+          colors={["#0668AD", "#0B84D6", "#38B6FF"]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
           style={[s.heroGrad, { paddingTop: topPad + 20 }]}
         >
@@ -142,7 +142,7 @@ export default function ProfileScreen() {
               <View style={s.statsRow}>
                 {[
                   { label: "Height", value: `${heightVal}`, unit: "cm",  color: DS.color.sky    },
-                  { label: "Weight", value: `${weightVal}`, unit: "kg",  color: DS.color.orange },
+                  { label: "Weight", value: `${weightVal}`, unit: "kg",  color: DS.color.primary },
                   { label: "BMI",    value: bmi,            unit: "",    color: G               },
                   { label: "Blood",  value: (profile.blood_group || profile.bloodGroup) as string || "--", unit: "", color: DS.color.red },
                 ].map((item) => (
@@ -161,7 +161,7 @@ export default function ProfileScreen() {
               activeOpacity={0.87}
             >
               <LinearGradient
-                colors={["#FFF8F3", "#FFF0EE"]}
+                colors={["#F5F9FF", "#EAF3FC"]}
                 style={s.completeCard}
               >
                 <View style={{ flex: 1 }}>
@@ -194,8 +194,8 @@ export default function ProfileScreen() {
           {/* ── Work & Lifestyle ── */}
           <View style={s.section}>
             <View style={s.sectionHead}>
-              <View style={[s.sectionIcon, { backgroundColor: DS.color.orangeSoft }]}>
-                <Briefcase size={16} color={DS.color.orange} strokeWidth={2} />
+              <View style={[s.sectionIcon, { backgroundColor: DS.color.primarySoft }]}>
+                <Briefcase size={16} color={DS.color.primary} strokeWidth={2} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.sectionTitle}>Work & Lifestyle</Text>
@@ -210,9 +210,9 @@ export default function ProfileScreen() {
             </View>
             <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
               {(profile.work_profile || profile.workProfile) ? (
-                <View style={[s.chip, { backgroundColor: DS.color.orangeSoft, borderColor: DS.color.orange + "30" }]}>
-                  <Ionicons name="briefcase-outline" size={13} color={DS.color.orange} />
-                  <Text style={[s.chipText, { color: DS.color.orange }]}>{(profile.work_profile || profile.workProfile) as string}</Text>
+                <View style={[s.chip, { backgroundColor: DS.color.primarySoft, borderColor: DS.color.primary + "30" }]}>
+                  <Ionicons name="briefcase-outline" size={13} color={DS.color.primary} />
+                  <Text style={[s.chipText, { color: DS.color.primary }]}>{(profile.work_profile || profile.workProfile) as string}</Text>
                 </View>
               ) : (
                 <TouchableOpacity style={[s.chip, { backgroundColor: DS.color.primarySoft, borderColor: P + "25" }]}
@@ -372,10 +372,10 @@ const s = StyleSheet.create({
   planText:    { color: "#FFF", fontSize: 12, fontFamily: "Inter_600SemiBold" },
 
   // Complete profile card
-  completeCard:      { borderRadius: DS.radius.xl, padding: 18, borderWidth: 1.5, borderColor: "#C0392B30", ...DS.shadow.sm },
-  completeTitle:     { fontSize: 16, fontFamily: "Inter_700Bold", color: "#C0392B", marginBottom: 6 },
+  completeCard:      { borderRadius: DS.radius.xl, padding: 18, borderWidth: 1.5, borderColor: DS.color.primary + "30", ...DS.shadow.sm },
+  completeTitle:     { fontSize: 16, fontFamily: "Inter_700Bold", color: DS.color.primary, marginBottom: 6 },
   completeDesc:      { fontSize: 13, fontFamily: "Inter_400Regular", color: DS.color.muted, lineHeight: 19 },
-  completeCta:       { backgroundColor: "#C0392B", borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8, alignSelf: "flex-start" },
+  completeCta:       { backgroundColor: DS.color.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8, alignSelf: "flex-start" },
   completeCtaText:   { color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13 },
 
   body: { paddingHorizontal: 16, gap: 12 },

@@ -4,24 +4,27 @@ import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { computeActivePercent } from "../../lib/scoring";
 
-// ── AORANE ID Generation (12 digits, immutable) ───────────────────────────────
-// Format: [G][AA][CCC][RRRRRR]
-//   G   = Gender code (1=Male, 2=Female, 3=Other/Prefer-not)
-//   AA  = Age at registration (00-99)
-//   CCC = City hash (100-999, derived from city name)
-//   RRRRRR = 6 random digits (100000-999999)
+// ── AORANE ID Generation (12 chars, alphanumeric uppercase, immutable) ────────
+// Format: [G][YY][CCC][XXXXXXX]
+//   G       = Gender letter  (M=Male, F=Female, O=Other)
+//   YY      = Last 2 digits of birth year (e.g. "98" for 1998)
+//   CCC     = First 3 uppercase letters of city name (e.g. "MUM" for Mumbai)
+//   XXXXXXX = 7 random chars from CAPS_ALPHANUM (no 0/O/I/1 to avoid confusion)
+//   Total   = 1+2+3+7 = 13 → trimmed to 12 to stay exact
+// Example: "M98MUM7K3XPQA" → "M98MUM7K3XPQ" (12 chars)
+const CAPS_ALPHANUM = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 32 safe chars
 function generateAoraneId(gender: string | null, dateOfBirth: string | null, city: string | null): string {
-  const gCode = gender === "male" ? "1" : gender === "female" ? "2" : "3";
-  const age = dateOfBirth
-    ? Math.min(99, Math.floor((Date.now() - new Date(dateOfBirth).getTime()) / (86400000 * 365.25)))
-    : 0;
-  const ageCode = String(age).padStart(2, "0");
-  const cityName = (city || "other").toLowerCase().replace(/[^a-z]/g, "");
-  const s = (cityName + "xxx").slice(0, 4);
-  const cityHash = ((s.charCodeAt(0) * 97 + s.charCodeAt(1) * 53 + s.charCodeAt(2) * 31 + s.charCodeAt(3) * 7) % 900) + 100;
-  const cityCode = String(cityHash).padStart(3, "0");
-  const random = String(Math.floor(Math.random() * 900000) + 100000);
-  return `${gCode}${ageCode}${cityCode}${random}`; // Total: 1+2+3+6 = 12 digits
+  const gCode = gender === "male" ? "M" : gender === "female" ? "F" : "O";
+  const dob = dateOfBirth ? new Date(dateOfBirth) : null;
+  const yearCode = dob && !isNaN(dob.getTime())
+    ? String(dob.getFullYear()).slice(-2)
+    : String(new Date().getFullYear()).slice(-2);
+  const cityName = (city || "OTH").toUpperCase().replace(/[^A-Z]/g, "");
+  const cityCode = (cityName + "OTH").slice(0, 3);
+  const randomPart = Array.from({ length: 7 }, () =>
+    CAPS_ALPHANUM[Math.floor(Math.random() * CAPS_ALPHANUM.length)]
+  ).join("");
+  return `${gCode}${yearCode}${cityCode}${randomPart}`.slice(0, 12); // exactly 12 chars
 }
 
 // ── Daily Active Percentage Calculation ───────────────────────────────────────

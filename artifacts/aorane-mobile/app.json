@@ -106,7 +106,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#E8622A",
+          "color": "#0B84D6",
           "defaultChannel": "default",
           "sounds": []
         }

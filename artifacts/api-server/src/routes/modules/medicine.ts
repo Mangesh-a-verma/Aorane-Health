@@ -25,7 +25,7 @@ router.post("/medicine/schedule", requireAuth, async (req: AuthRequest, res) => 
       medicineName: medicineName as string,
       dosage: dosage as string | undefined,
       doseCount: Number(doseCount) || 1,
-      mealTiming: (mealTiming as "before_meal" | "after_meal" | "with_meal" | "anytime") || "anytime",
+      mealTiming: (mealTiming as "before_meal" | "after_meal" | "with_meal" | "anytime" | "empty_stomach" | "bedtime") || "anytime",
       frequency: (frequency as "daily" | "alternate" | "weekly" | "custom") || "daily",
       customDays: customDays as string[] | undefined,
       reminderTimes: (reminderTimes as string[]) || [],

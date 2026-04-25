@@ -62,6 +62,10 @@ export async function scheduleMedicineReminders(
         ? " (khaane ke baad)"
         : medicine.mealTiming === "with_meal"
         ? " (khaane ke saath)"
+        : medicine.mealTiming === "empty_stomach"
+        ? " (khaali pet)"
+        : medicine.mealTiming === "bedtime"
+        ? " (sone se pehle)"
         : "";
 
     const id = await Notifications.scheduleNotificationAsync({
@@ -69,6 +73,7 @@ export async function scheduleMedicineReminders(
         title: "💊 Medicine Reminder",
         body: `Time to take ${medicine.medicineName}${medicine.dosage ? " " + medicine.dosage : ""}!${mealHint}`,
         sound: true,
+        ...(Platform.OS === "android" ? { channelId: "medicine" } : {}),
         data: {
           medicineId: medicine.medicineId,
           type: "medicine_reminder",
@@ -142,6 +147,7 @@ export async function scheduleFoodReminders(
           title: meal.label,
           body: meal.body,
           sound: true,
+          ...(Platform.OS === "android" ? { channelId: "food" } : {}),
           data: { type: "food_reminder" },
         },
         trigger: {
@@ -263,6 +269,7 @@ export async function scheduleWaterReminders(
           title: "💧 Water Reminder",
           body: `Time to drink water! Stay hydrated — ${i + 1} of ${count} glasses today.`,
           sound: true,
+          ...(Platform.OS === "android" ? { channelId: "water" } : {}),
           data: { type: "water_reminder", glass: i + 1 },
         },
         trigger: {

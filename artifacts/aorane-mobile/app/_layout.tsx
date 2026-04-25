@@ -62,6 +62,41 @@ function RootLayoutNav() {
   );
 }
 
+// ── Android notification channel setup ───────────────────────────────────────
+async function setupAndroidChannels() {
+  if (Platform.OS !== "android") return;
+  await Promise.allSettled([
+    Notifications.setNotificationChannelAsync("medicine", {
+      name: "Medicine Reminders",
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#0B84D6",
+      sound: "default",
+    }),
+    Notifications.setNotificationChannelAsync("water", {
+      name: "Water Reminders",
+      importance: Notifications.AndroidImportance.DEFAULT,
+      sound: "default",
+    }),
+    Notifications.setNotificationChannelAsync("food", {
+      name: "Meal Reminders",
+      importance: Notifications.AndroidImportance.DEFAULT,
+      sound: "default",
+    }),
+    Notifications.setNotificationChannelAsync("health", {
+      name: "Health Alerts",
+      importance: Notifications.AndroidImportance.HIGH,
+      lightColor: "#0B84D6",
+      sound: "default",
+    }),
+    Notifications.setNotificationChannelAsync("default", {
+      name: "General",
+      importance: Notifications.AndroidImportance.DEFAULT,
+      sound: "default",
+    }),
+  ]);
+}
+
 async function registerPushToken() {
   if (Platform.OS === "web") return;
   try {
@@ -126,6 +161,7 @@ export default function RootLayout() {
   // Warm up server on app launch so Render wakes up before user tries to login
   useEffect(() => {
     warmupServer();
+    setupAndroidChannels();
   }, []);
 
   if (!fontsLoaded && !fontError) return null;

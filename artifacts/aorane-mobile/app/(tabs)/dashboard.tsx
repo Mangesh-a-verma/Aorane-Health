@@ -224,7 +224,7 @@ function SummaryBanner({ greeting, healthScore, calories, water, exerciseMin, ac
 }) {
   return (
     <LinearGradient
-      colors={["#0B5AA0", "#1A73C8", "#2D8DE8"]}
+      colors={["#0668AD", "#0B84D6", "#38B6FF"]}
       start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
       style={bn.card}
     >
@@ -699,7 +699,7 @@ export default function DashboardScreen() {
   if (isLoading) {
     return (
       <View style={[s.root, { alignItems: "center", justifyContent: "center" }]}>
-        <StatusBar barStyle="dark-content" backgroundColor="#F4F6FA" />
+        <StatusBar barStyle="dark-content" backgroundColor="#F5F9FF" />
         <ActivityIndicator size="large" color={DS.color.primary} />
       </View>
     );
@@ -707,9 +707,9 @@ export default function DashboardScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F6FA" translucent={false} />
+      <StatusBar barStyle="dark-content" backgroundColor="#F5F9FF" translucent={false} />
       <LinearGradient
-        colors={["#F4F6FA", "#EEF2F7", "#F4F6FA"]}
+        colors={["#F5F9FF", "#EAF3FC", "#F5F9FF"]}
         style={StyleSheet.absoluteFill}
       />
 
@@ -851,10 +851,10 @@ export default function DashboardScreen() {
             <TouchableOpacity style={{ flex: 1 }} onPress={() => router.push("/suggestions" as never)} activeOpacity={0.85}>
               <View style={s.aiCleanCard}>
                 <View style={[s.aiCleanIcon, { backgroundColor: "#E8F1FB" }]}>
-                  <Sparkles size={16} color="#1A73C8" strokeWidth={2} />
+                  <Sparkles size={16} color="#0B84D6" strokeWidth={2} />
                 </View>
                 <View style={[s.aiCleanBadge, { backgroundColor: "#E8F1FB" }]}>
-                  <Text style={[s.aiCleanBadgeTxt, { color: "#1A73C8" }]}>AI</Text>
+                  <Text style={[s.aiCleanBadgeTxt, { color: "#0B84D6" }]}>AI</Text>
                 </View>
                 <Text style={s.aiCleanTitle}>Daily Coach</Text>
                 <Text style={s.aiCleanSub}>AI nutrition</Text>

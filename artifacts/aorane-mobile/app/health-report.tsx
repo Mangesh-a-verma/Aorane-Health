@@ -616,7 +616,7 @@ export default function HealthReportScreen() {
                 <View style={s.profGrid}>
                   {[
                     { l: "Full Name",   v: card?.name || "—" },
-                    { l: "AORANE ID",   v: card?.aoraneId?.slice(-8) || "—" },
+                    { l: "AORANE ID",   v: card?.aoraneId || "—" },
                     { l: "Age",         v: card?.age ? `${card.age} yrs` : "—" },
                     { l: "Gender",      v: card?.gender ? card.gender.charAt(0).toUpperCase() + card.gender.slice(1) : "—" },
                     { l: "Height",      v: heightCm ? `${heightCm} cm` : "—" },

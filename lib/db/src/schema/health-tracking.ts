@@ -17,7 +17,7 @@ import { inputMethodEnum } from "./health-food";
 
 export const exerciseIntensityEnum = pgEnum("exercise_intensity", ["light", "moderate", "intense"]);
 export const medicineFrequencyEnum = pgEnum("medicine_frequency", ["daily", "alternate", "weekly", "custom"]);
-export const medicineMealTimingEnum = pgEnum("medicine_meal_timing", ["before_meal", "after_meal", "with_meal", "anytime"]);
+export const medicineMealTimingEnum = pgEnum("medicine_meal_timing", ["before_meal", "after_meal", "with_meal", "anytime", "empty_stomach", "bedtime"]);
 export const stressTypeEnum = pgEnum("stress_type", ["ppg", "mood", "five_pillar"]);
 export const moodEnum = pgEnum("mood", ["happy", "neutral", "stressed", "sad"]);
 

@@ -145,11 +145,20 @@ router.post("/stress/log", requireAuth, async (req: AuthRequest, res) => {
       stressScore = moodScores[mood as string] ?? 40;
     }
 
+    // Normalise free-text mood strings → DB enum values to prevent constraint violations
+    const MOOD_MAP: Record<string, "happy" | "neutral" | "stressed" | "sad"> = {
+      happy: "happy", excellent: "happy", great: "happy", good: "happy",
+      neutral: "neutral", okay: "neutral", fair: "neutral", moderate: "neutral",
+      stressed: "stressed", elevated: "stressed", "very high": "stressed", high: "stressed",
+      sad: "sad", low: "sad", "very low": "sad", bad: "sad",
+    };
+    const normMood = mood ? (MOOD_MAP[(mood as string).toLowerCase()] ?? undefined) : undefined;
+
     const [log] = await db.insert(stressLogsTable).values({
       userId:       req.userId!,
       stressType:   dbStressType,
       stressScore,
-      mood:         (mood as "happy" | "neutral" | "stressed" | "sad") || undefined,
+      mood:         normMood,
       heartRateAvg: heartRateAvg ? Number(heartRateAvg) : undefined,
       pillars:      pillarData || undefined,
       aiInsight:    aiInsight as string || undefined,
