@@ -30,7 +30,7 @@ async function sendViaTwilio(phone: string, otp: string): Promise<boolean> {
     const body = new URLSearchParams({
       To:   `+91${phone}`,
       From: from,
-      Body: `Your Aorane OTP is: ${otp}\n\nValid for 5 minutes. Do not share with anyone.\n- Team Aorane`,
+      Body: `Your Aorane OTP is: ${otp}\n\nValid for 15 minutes. Do not share with anyone.\n- Team Aorane`,
     });
     const res = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
@@ -103,7 +103,7 @@ export async function sendEmailOtp(email: string, otp: string): Promise<boolean>
           <div style="background:white;border-radius:14px;padding:28px;border:1.5px solid #e5e7eb;text-align:center;">
             <p style="font-size:14px;color:#374151;margin:0 0 16px;">Your login OTP is:</p>
             <div style="font-size:48px;font-weight:900;letter-spacing:14px;color:#005d90;margin:0 0 16px;font-family:monospace;">${otp}</div>
-            <p style="font-size:12px;color:#6b7280;margin:0 0 8px;">This OTP expires in <strong>5 minutes</strong>.</p>
+            <p style="font-size:12px;color:#6b7280;margin:0 0 8px;">This OTP expires in <strong>15 minutes</strong>.</p>
             <p style="font-size:12px;color:#ef4444;margin:0;">Do not share this with anyone.</p>
           </div>
           <p style="font-size:11px;color:#9ca3af;text-align:center;margin:20px 0 0;">
@@ -131,7 +131,7 @@ export async function sendWhatsappOtp(phone: string, otp: string): Promise<{ suc
     return { success: smsSent, fallback: true };
   }
   try {
-    const message = encodeURIComponent(`Your Aorane OTP is: *${otp}*\n\nThis code expires in 5 minutes.\nDo not share it with anyone.\n\n- Team Aorane`);
+    const message = encodeURIComponent(`Your Aorane OTP is: *${otp}*\n\nThis code expires in 15 minutes.\nDo not share it with anyone.\n\n- Team Aorane`);
     const url     = `https://www.fast2sms.com/dev/wa?authorization=${apiKey}&message=${message}&language=english&route=q&numbers=${phone}`;
     const res     = await fetch(url);
     const data    = await res.json() as { return: boolean; message?: string[] };

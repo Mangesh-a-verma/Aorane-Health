@@ -1,6 +1,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const zlib = require("zlib");
 const { spawnSync } = require("child_process");
 
 const PORT = parseInt(process.env.PORT || "18624", 10);
@@ -27,6 +28,19 @@ const MIME = {
   ".ttf": "font/ttf",
   ".map": "application/json",
 };
+
+// Files with a content hash in their name are safe to cache forever (immutable)
+// Expo exports files like: entry-4d6bbd0abebf.js  or  Inter_400Regular.ddbb1cd55ad5.ttf
+const HASH_PATTERN = /[._-][0-9a-f]{8,}\.(js|css|ttf|woff|woff2|png|jpg|jpeg|gif|svg)$/i;
+
+function getCacheHeader(filePath, ext) {
+  if (ext === ".html") return "no-store, no-cache, must-revalidate, max-age=0";
+  if (HASH_PATTERN.test(filePath)) return "public, max-age=31536000, immutable";
+  return "public, max-age=3600";
+}
+
+// Extensions worth gzip-compressing
+const COMPRESSIBLE = new Set([".js", ".css", ".json", ".svg", ".map", ".html"]);
 
 // ---------------------------------------------------------------------------
 // Auto-rebuild: rebuild if bundle missing OR source files are newer than bundle
@@ -166,6 +180,30 @@ const server = http.createServer((req, res) => {
   const ext = path.extname(filePath).toLowerCase();
   const isAsset = ext !== "" && ext !== ".html";
 
+  const serveBuffer = (fp, mime, cacheHeader) => {
+    const data = fs.readFileSync(fp);
+    const acceptsGzip = (req.headers["accept-encoding"] || "").includes("gzip");
+    if (acceptsGzip && COMPRESSIBLE.has(ext)) {
+      zlib.gzip(data, (err, compressed) => {
+        if (err) {
+          res.writeHead(200, { "Content-Type": mime, "Cache-Control": cacheHeader });
+          res.end(data);
+        } else {
+          res.writeHead(200, {
+            "Content-Type": mime,
+            "Content-Encoding": "gzip",
+            "Cache-Control": cacheHeader,
+            "Vary": "Accept-Encoding",
+          });
+          res.end(compressed);
+        }
+      });
+    } else {
+      res.writeHead(200, { "Content-Type": mime, "Cache-Control": cacheHeader });
+      res.end(data);
+    }
+  };
+
   const tryServe = (fp) => {
     try {
       const stat = fs.statSync(fp);
@@ -175,36 +213,20 @@ const server = http.createServer((req, res) => {
       }
       const fext = path.extname(fp).toLowerCase();
       const mime = MIME[fext] || "application/octet-stream";
-      // Strong no-cache to prevent stale bundle serving
-      const cacheHeader =
-        fext === ".html"
-          ? "no-store, no-cache, must-revalidate, max-age=0"
-          : "no-store, max-age=0";
-      res.writeHead(200, {
-        "Content-Type": mime,
-        "Cache-Control": cacheHeader,
-        Pragma: "no-cache",
-        Expires: "0",
-      });
-      fs.createReadStream(fp).pipe(res);
+      const cacheHeader = getCacheHeader(fp, fext);
+      serveBuffer(fp, mime, cacheHeader);
     } catch {
       if (isAsset) {
-        // For JS/font/image requests that don't exist — return 404, not HTML
-        // This prevents old-cached-HTML → missing-JS → HTML-as-JS infinite loop
         res.writeHead(404, { "Content-Type": "text/plain" });
         res.end("Not found: " + urlPath);
         return;
       }
-      // For HTML/unknown routes → SPA fallback
+      // SPA fallback for HTML routes
       const indexPath = path.join(DIST_DIR, "index.html");
       if (fs.existsSync(indexPath)) {
-        res.writeHead(200, {
-          "Content-Type": "text/html; charset=utf-8",
-          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-          Pragma: "no-cache",
-          Expires: "0",
-        });
-        fs.createReadStream(indexPath).pipe(res);
+        const mime = "text/html; charset=utf-8";
+        const cacheHeader = "no-store, no-cache, must-revalidate, max-age=0";
+        serveBuffer(indexPath, mime, cacheHeader);
       } else {
         res.writeHead(503, { "Content-Type": "text/html; charset=utf-8" });
         res.end(

@@ -36,7 +36,7 @@ router.post("/auth/send-otp", async (req, res) => {
       await db.insert(otpStoreTable).values({
         phone,
         hashedOtp: hashed,
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
       });
       usedDb = true;
     } catch {

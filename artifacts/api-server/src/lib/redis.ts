@@ -1,4 +1,4 @@
-const OTP_EXPIRY_SECONDS = 300;
+const OTP_EXPIRY_SECONDS = 900;
 const STORE = new Map<string, { value: string; expiresAt: number }>();
 
 function setKey(key: string, value: string, ttlSeconds: number): void {
