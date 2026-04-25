@@ -17,9 +17,9 @@ import { useLanguage } from "@/context/LanguageContext";
 
 const { width: W, height: H } = Dimensions.get("window");
 
-const PRIMARY = "#E8622A";
+const PRIMARY = "#1A73C8";
 
-const SKY = "#F5A623";
+const SKY = "#2D8DE8";
 const ACCENT = "#27AE60";
 
 function GlassCard({ children, style }: { children: React.ReactNode; style?: object }) {
@@ -174,9 +174,9 @@ export default function LoginScreen() {
 
   return (
     <View style={s.root}>
-      {/* Warm gradient background */}
+      {/* Cool blue-white background */}
       <LinearGradient
-        colors={["#FFF0E6", "#FFE5D0", "#FFF8F3", "#FFFAF7", "#FFFFFF"]}
+        colors={["#EBF3FC", "#F0F5FB", "#F4F6FA", "#F8FAFD", "#FFFFFF"]}
         locations={[0, 0.2, 0.5, 0.75, 1]}
         style={StyleSheet.absoluteFill}
       />
@@ -427,12 +427,12 @@ export default function LoginScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#FFF0E6" },
+  root: { flex: 1, backgroundColor: "#EBF3FC" },
   scroll: { paddingHorizontal: 18 },
 
-  orb1: { position: "absolute", width: 380, height: 380, borderRadius: 190, backgroundColor: "#FBBF7C", opacity: 0.28, top: -140, right: -120 },
-  orb2: { position: "absolute", width: 300, height: 300, borderRadius: 150, backgroundColor: "#F5CBA7", opacity: 0.25, bottom: 60, left: -100 },
-  orb3: { position: "absolute", width: 200, height: 200, borderRadius: 100, backgroundColor: "#FAD7A0", opacity: 0.18, top: H * 0.35, left: W * 0.25 },
+  orb1: { position: "absolute", width: 380, height: 380, borderRadius: 190, backgroundColor: "#90BFF0", opacity: 0.22, top: -140, right: -120 },
+  orb2: { position: "absolute", width: 300, height: 300, borderRadius: 150, backgroundColor: "#B8D4F0", opacity: 0.20, bottom: 60, left: -100 },
+  orb3: { position: "absolute", width: 200, height: 200, borderRadius: 100, backgroundColor: "#D0E6FA", opacity: 0.18, top: H * 0.35, left: W * 0.25 },
 
   hero: { alignItems: "center", paddingTop: 16, marginBottom: 22 },
   glowRing: { position: "absolute", top: -20 },
@@ -466,8 +466,8 @@ const s = StyleSheet.create({
   toggle: {
     flexDirection: "row", borderRadius: 16, padding: 4,
     marginBottom: 18, gap: 4, overflow: "hidden",
-    backgroundColor: "rgba(232,98,42,0.07)",
-    borderWidth: 1, borderColor: "rgba(232,98,42,0.12)",
+    backgroundColor: "rgba(26,115,200,0.07)",
+    borderWidth: 1, borderColor: "rgba(26,115,200,0.12)",
   },
   toggleBtn: {
     flex: 1, paddingVertical: 10, borderRadius: 13,
@@ -480,16 +480,16 @@ const s = StyleSheet.create({
   inputRow: {
     flexDirection: "row", alignItems: "center", borderRadius: 16,
     height: 58, marginBottom: 12,
-    backgroundColor: "rgba(255,248,243,0.9)",
-    borderWidth: 1.5, borderColor: "rgba(232,98,42,0.15)",
+    backgroundColor: "rgba(240,247,255,0.9)",
+    borderWidth: 1.5, borderColor: "rgba(26,115,200,0.15)",
     overflow: "hidden",
   },
-  inputFocused: { borderColor: PRIMARY, borderWidth: 2, backgroundColor: "rgba(253,238,230,0.95)" },
+  inputFocused: { borderColor: PRIMARY, borderWidth: 2, backgroundColor: "rgba(235,243,252,0.95)" },
   inputFocusPurple: { borderColor: "#8E44AD", borderWidth: 2 },
   ccBox: {
     flexDirection: "row", alignItems: "center", gap: 6,
     paddingHorizontal: 13, height: "100%",
-    borderRightWidth: 1, borderRightColor: "rgba(232,98,42,0.15)",
+    borderRightWidth: 1, borderRightColor: "rgba(26,115,200,0.15)",
   },
   ccText: { fontSize: 15, fontFamily: "Inter_700Bold", color: PRIMARY },
   input: { flex: 1, paddingHorizontal: 14, fontSize: 16, height: "100%", color: "#0D1F33", fontFamily: "Inter_500Medium" },

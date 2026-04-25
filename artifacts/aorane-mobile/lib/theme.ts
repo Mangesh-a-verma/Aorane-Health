@@ -2,39 +2,54 @@ import { Platform, StyleSheet } from "react-native";
 
 export const DS = {
   color: {
-    // Warm gradient palette
-    bg:          "#FFF8F3",
-    bgSoft:      "#FFF2E8",
-    bgCard:      "#FFFFFF",
-    primary:     "#E8622A",      // warm saffron-orange
-    primarySoft: "#FDEEE6",
-    secondary:   "#F5A623",      // golden yellow
-    secondarySoft: "#FEF6E4",
-    green:       "#27AE60",
-    greenSoft:   "#E8F8EF",
-    orange:      "#F5A623",
-    orangeSoft:  "#FEF6E4",
-    red:         "#E74C3C",
-    redSoft:     "#FDEDEC",
-    purple:      "#8E44AD",
-    purpleSoft:  "#F4ECF7",
-    sky:         "#2980B9",
-    skySoft:     "#EAF4FB",
-    yellow:      "#F39C12",
-    // Text
-    text:        "#1A1A2E",
-    textSub:     "#4A4A6A",
-    muted:       "#9B9BB0",
-    // Borders / glass
-    border:      "rgba(232,98,42,0.12)",
-    borderLight: "rgba(232,98,42,0.06)",
-    glass:       "rgba(255,255,255,0.82)",
-    glassBorder: "rgba(255,255,255,0.95)",
-    // Gradient stops
-    gradStart:   "#FFF8F3",
-    gradEnd:     "#FFE5D0",
-    headerStart: "#E8622A",
-    headerEnd:   "#F5A623",
+    // ── Backgrounds ──────────────────────────────────────────
+    bg:           "#F4F6FA",
+    bgSoft:       "#EEF2F7",
+    bgCard:       "#FFFFFF",
+
+    // ── Primary — Medical Blue ────────────────────────────────
+    primary:      "#1A73C8",
+    primarySoft:  "#E8F1FB",
+    primaryDark:  "#1358A5",
+
+    // ── Secondary — Teal ─────────────────────────────────────
+    secondary:    "#00A693",
+    secondarySoft:"#E5F6F4",
+
+    // ── Semantic ──────────────────────────────────────────────
+    green:        "#2EAD6E",
+    greenSoft:    "#E8F8F1",
+    orange:       "#F0882A",
+    orangeSoft:   "#FEF3E8",
+    red:          "#D94040",
+    redSoft:      "#FDEAEA",
+    purple:       "#6B4FA0",
+    purpleSoft:   "#F0EBFA",
+    sky:          "#3B82C4",
+    skySoft:      "#EBF3FB",
+    yellow:       "#D4A017",
+
+    // ── Text ──────────────────────────────────────────────────
+    text:         "#0D1B2A",
+    textSub:      "#4B607A",
+    muted:        "#8FA3BC",
+
+    // ── Borders / Dividers ────────────────────────────────────
+    border:       "rgba(26,115,200,0.10)",
+    borderLight:  "rgba(26,115,200,0.05)",
+    divider:      "#E4ECF4",
+
+    // ── Glass / Surface ───────────────────────────────────────
+    glass:        "rgba(255,255,255,0.90)",
+    glassBorder:  "rgba(255,255,255,0.98)",
+
+    // ── Gradient stops ────────────────────────────────────────
+    gradStart:    "#F4F6FA",
+    gradEnd:      "#EEF2F7",
+
+    // ── Header ───────────────────────────────────────────────
+    headerStart:  "#1A73C8",
+    headerEnd:    "#2D8DE8",
   },
   radius: {
     xs:  8,
@@ -64,19 +79,19 @@ export const DS = {
   },
   shadow: {
     sm: Platform.select({
-      ios:     { shadowColor: "#E8622A", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.10, shadowRadius: 8 },
-      android: { elevation: 3 },
-      default: { shadowColor: "#E8622A", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.10, shadowRadius: 8 },
+      ios:     { shadowColor: "#1A3A5C", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8 },
+      android: { elevation: 2 },
+      default: { shadowColor: "#1A3A5C", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8 },
     }),
     md: Platform.select({
-      ios:     { shadowColor: "#E8622A", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 14 },
-      android: { elevation: 6 },
-      default: { shadowColor: "#E8622A", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 14 },
+      ios:     { shadowColor: "#1A3A5C", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.10, shadowRadius: 14 },
+      android: { elevation: 4 },
+      default: { shadowColor: "#1A3A5C", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.10, shadowRadius: 14 },
     }),
     lg: Platform.select({
-      ios:     { shadowColor: "#C0392B", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 20 },
-      android: { elevation: 10 },
-      default: { shadowColor: "#C0392B", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 20 },
+      ios:     { shadowColor: "#0D1B2A", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.10, shadowRadius: 20 },
+      android: { elevation: 8 },
+      default: { shadowColor: "#0D1B2A", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.10, shadowRadius: 20 },
     }),
   },
 } as const;
@@ -84,9 +99,9 @@ export const DS = {
 export const BASE_CARD = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(232,98,42,0.08)",
+    borderColor: "#E4ECF4",
     overflow: "hidden",
   },
 }).card;

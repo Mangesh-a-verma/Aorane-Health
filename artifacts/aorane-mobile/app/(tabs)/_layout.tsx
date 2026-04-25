@@ -70,7 +70,7 @@ function ScanButton({ onPress }: { onPress: () => void }) {
       <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
         <Animated.View style={[sb.pulse, { transform: [{ scale: pulse }] }]} />
         <LinearGradient
-          colors={["#E8622A", "#F5A623"]}
+          colors={["#1A73C8", "#2D8DE8"]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={sb.circle}
         >

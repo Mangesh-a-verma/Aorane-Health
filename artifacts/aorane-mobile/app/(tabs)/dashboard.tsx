@@ -224,7 +224,7 @@ function SummaryBanner({ greeting, healthScore, calories, water, exerciseMin, ac
 }) {
   return (
     <LinearGradient
-      colors={["#C0392B", "#E8622A", "#F5A623"]}
+      colors={["#0B5AA0", "#1A73C8", "#2D8DE8"]}
       start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
       style={bn.card}
     >
@@ -293,7 +293,7 @@ function NutritionCard({ calories, protein, carbs, fat }: {
   const pctF = 100 - pctP - pctC;
 
   const items = [
-    { label: "Calories", value: `${calories}`, unit: "kcal", color: "#E8622A", icon: <Flame size={16} color="#E8622A" strokeWidth={2} />, width: "100%" as const },
+    { label: "Calories", value: `${calories}`, unit: "kcal", color: "#E8478C", icon: <Flame size={16} color="#E8478C" strokeWidth={2} />, width: "100%" as const },
     { label: "Protein",  value: `${protein}`,  unit: "g",    color: "#6366F1", icon: <Beef  size={16} color="#6366F1" strokeWidth={2} />, width: `${pctP}%` as `${number}%` },
     { label: "Carbs",    value: `${carbs}`,    unit: "g",    color: "#10B981", icon: <Wheat size={16} color="#10B981" strokeWidth={2} />, width: `${pctC}%` as `${number}%` },
     { label: "Fat",      value: `${fat}`,      unit: "g",    color: "#F59E0B", icon: <Droplets size={16} color="#F59E0B" strokeWidth={2} />, width: `${pctF}%` as `${number}%` },
@@ -699,7 +699,7 @@ export default function DashboardScreen() {
   if (isLoading) {
     return (
       <View style={[s.root, { alignItems: "center", justifyContent: "center" }]}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFF8F3" />
+        <StatusBar barStyle="dark-content" backgroundColor="#F4F6FA" />
         <ActivityIndicator size="large" color={DS.color.primary} />
       </View>
     );
@@ -707,9 +707,9 @@ export default function DashboardScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFF8F3" translucent={false} />
+      <StatusBar barStyle="dark-content" backgroundColor="#F4F6FA" translucent={false} />
       <LinearGradient
-        colors={["#FFF8F3", "#F9F2ED", "#FFF8F3"]}
+        colors={["#F4F6FA", "#EEF2F7", "#F4F6FA"]}
         style={StyleSheet.absoluteFill}
       />
 
@@ -741,12 +741,12 @@ export default function DashboardScreen() {
             <Text style={s.secTitle}>Quick Services</Text>
             <View style={s.grid}>
               {[
-                { icon: <Utensils size={22} color="#FFF" strokeWidth={2.2} />, label: "Meal Log",  color: "#F5A623", route: "/(tabs)/food" },
-                { icon: <Dumbbell size={22} color="#FFF" strokeWidth={2.2} />, label: "Exercise",  color: DS.color.green,  route: "/(tabs)/exercise" },
-                { icon: <Pill     size={22} color="#FFF" strokeWidth={2.2} />, label: "Medicine",  color: DS.color.purple, route: "/(tabs)/medicine",
+                { icon: <Utensils size={22} color="#FFF" strokeWidth={2.2} />, label: "Meal Log",  color: "#2EAD6E", route: "/(tabs)/food" },
+                { icon: <Dumbbell size={22} color="#FFF" strokeWidth={2.2} />, label: "Exercise",  color: "#00A693",       route: "/(tabs)/exercise" },
+                { icon: <Pill     size={22} color="#FFF" strokeWidth={2.2} />, label: "Medicine",  color: DS.color.primary, route: "/(tabs)/medicine",
                   badge: medicines.length > 0 ? String(medicines.length) : undefined },
                 { icon: <ScanLine size={22} color="#FFF" strokeWidth={2.2} />, label: "AI Scan",   color: DS.color.primary, route: "/(tabs)/scan" },
-                { icon: <Brain    size={22} color="#FFF" strokeWidth={2.2} />, label: "AI Coach",  color: "#8E44AD", route: "/suggestions" },
+                { icon: <Brain    size={22} color="#FFF" strokeWidth={2.2} />, label: "AI Coach",  color: "#6B4FA0", route: "/suggestions" },
                 { icon: <FileText size={22} color="#FFF" strokeWidth={2.2} />, label: "Reports",   color: DS.color.sky,     route: "/health-report" },
               ].map((t, i) => (
                 <ServiceTile
@@ -811,114 +811,93 @@ export default function DashboardScreen() {
           {/* 7. ADS SLIDER */}
           <AdsSlider />
 
-          {/* 8. HEALTH TOOLS — 4+4 card grid */}
+          {/* 8. HEALTH TOOLS — clean light grid */}
           <View style={s.surfaceCard}>
             <Text style={s.secTitle}>Health Tools</Text>
             {[
               [
-                { emoji: "🪪", label: "Health ID",  sub: "Your card",      route: "/scorecard",          colors: ["#7C3AED","#A855F7"] as [string,string] },
-                { emoji: "⌚", label: "Wearables",   sub: "Device sync",    route: "/wearable",            colors: ["#059669","#10B981"] as [string,string] },
-                { emoji: "💧", label: "Water",       sub: "Hydration",      route: "/water",               colors: ["#0EA5E9","#38BDF8"] as [string,string] },
-                { emoji: "🧘", label: "Stress",      sub: "Mood check",     route: "/stress",              colors: ["#8B5CF6","#A78BFA"] as [string,string] },
+                { emoji: "🪪", label: "Health ID",  sub: "Your card",      route: "/scorecard",        iconBg: "#EDE9FE" },
+                { emoji: "⌚", label: "Wearables",   sub: "Device sync",    route: "/wearable",          iconBg: "#DCFCE7" },
+                { emoji: "💧", label: "Water",       sub: "Hydration",      route: "/water",             iconBg: "#E0F2FE" },
+                { emoji: "🧘", label: "Stress",      sub: "Mood check",     route: "/stress",            iconBg: "#F3E8FF" },
               ],
               [
-                { emoji: "🏃", label: "Exercise",    sub: "Workouts",       route: "/(tabs)/exercise",     colors: ["#F97316","#FB923C"] as [string,string] },
-                { emoji: "💊", label: "Medicine",    sub: "Reminders",      route: "/(tabs)/medicine",     colors: ["#0284C7","#0EA5E9"] as [string,string] },
-                { emoji: "📊", label: "Reports",     sub: "Health report",  route: "/health-report",       colors: ["#475569","#64748B"] as [string,string] },
+                { emoji: "🏃", label: "Exercise",    sub: "Workouts",       route: "/(tabs)/exercise",   iconBg: "#FEF3C7" },
+                { emoji: "💊", label: "Medicine",    sub: "Reminders",      route: "/(tabs)/medicine",   iconBg: "#DBEAFE" },
+                { emoji: "📊", label: "Reports",     sub: "Health report",  route: "/health-report",     iconBg: "#F1F5F9" },
                 userGender === "female"
-                  ? { emoji: "🌸", label: "Period",  sub: "Cycle tracker",  route: "/period",              colors: ["#EC4899","#F472B6"] as [string,string] }
-                  : { emoji: "🔥", label: "Calories", sub: "Nutrition",     route: "/(tabs)/food",         colors: ["#DC2626","#EF4444"] as [string,string] },
+                  ? { emoji: "🌸", label: "Period",  sub: "Cycle tracker",  route: "/period",            iconBg: "#FCE7F3" }
+                  : { emoji: "🔥", label: "Calories", sub: "Nutrition",     route: "/(tabs)/food",       iconBg: "#FEE2E2" },
               ],
             ].map((row, ri) => (
-              <View key={ri} style={[s.aiGrid, ri === 1 && { marginTop: 6 }]}>
+              <View key={ri} style={[s.toolGrid, ri === 1 && { marginTop: 8 }]}>
                 {row.map((t) => (
-                  <TouchableOpacity key={t.label} style={{ flex: 1 }} onPress={() => router.push(t.route as never)} activeOpacity={0.88}>
-                    <LinearGradient colors={t.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.aiCard}>
-                      <View style={s.aiShine} />
-                      <Text style={{ fontSize: 18, marginBottom: 2 }}>{t.emoji}</Text>
-                      <Text style={s.aiTitle}>{t.label}</Text>
-                      <Text style={s.aiSub}>{t.sub}</Text>
-                    </LinearGradient>
+                  <TouchableOpacity key={t.label} style={{ flex: 1 }} onPress={() => router.push(t.route as never)} activeOpacity={0.85}>
+                    <View style={s.toolCard}>
+                      <View style={[s.toolIconBg, { backgroundColor: t.iconBg }]}>
+                        <Text style={{ fontSize: 19 }}>{t.emoji}</Text>
+                      </View>
+                      <Text style={s.toolLabel} numberOfLines={1}>{t.label}</Text>
+                      <Text style={s.toolSub} numberOfLines={1}>{t.sub}</Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
             ))}
           </View>
 
-          {/* 9. AI FEATURES — 4-column equal layout */}
-          <View style={s.aiGrid}>
-            <TouchableOpacity
-              style={{ flex: 1 }}
-              onPress={() => router.push("/suggestions" as never)}
-              activeOpacity={0.88}
-            >
-              <LinearGradient
-                colors={["#E8622A", "#F5A623"]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={s.aiCard}
-              >
-                <View style={s.aiShine} />
-                <View style={s.aiBadge}><Sparkles size={8} color="#FFF" strokeWidth={2} /><Text style={s.aiBadgeTxt}> AI</Text></View>
-                <View style={s.aiIconBox}><Sparkles size={15} color="#FFF" strokeWidth={1.8} /></View>
-                <Text style={s.aiTitle}>Daily Coach</Text>
-                <Text style={s.aiSub}>AI nutrition</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={{ flex: 1 }}
-              onPress={() => router.push("/intelligence" as never)}
-              activeOpacity={0.88}
-            >
-              <LinearGradient
-                colors={["#8E44AD", "#9B59B6"]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={s.aiCard}
-              >
-                <View style={s.aiShine} />
-                <View style={s.aiBadge}><Text style={s.aiBadgeTxt}>🔬 AI</Text></View>
-                <View style={s.aiIconBox}><Brain size={15} color="#FFF" strokeWidth={1.8} /></View>
-                <Text style={s.aiTitle}>Intelligence</Text>
-                <Text style={s.aiSub}>Deep analysis</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={{ flex: 1 }}
-              onPress={() => setShowStressModal(true)}
-              activeOpacity={0.88}
-            >
-              <LinearGradient
-                colors={["#0891B2", "#0EA5E9"]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={s.aiCard}
-              >
-                <View style={s.aiShine} />
-                <View style={s.aiBadge}><Text style={s.aiBadgeTxt}>🧘 Zen</Text></View>
-                <View style={s.aiIconBox}><Brain size={15} color="#FFF" strokeWidth={1.8} /></View>
-                <Text style={s.aiTitle}>Stress</Text>
-                <Text style={s.aiSub}>Mood & breathe</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={{ flex: 1 }}
-              onPress={() => router.push("/blood" as never)}
-              activeOpacity={0.88}
-            >
-              <LinearGradient
-                colors={["#E53E3E", "#FC8181"]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={s.aiCard}
-              >
-                <View style={s.aiShine} />
-                <View style={[s.aiBadge, { backgroundColor: "rgba(255,255,255,0.25)" }]}><Text style={s.aiBadgeTxt}>🩸 SOS</Text></View>
-                <View style={[s.aiIconBox, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
-                  <Text style={{ fontSize: 15 }}>🆘</Text>
+          {/* 9. AI FEATURES — clean white cards with accent icons */}
+          <View style={s.aiRow}>
+            <TouchableOpacity style={{ flex: 1 }} onPress={() => router.push("/suggestions" as never)} activeOpacity={0.85}>
+              <View style={s.aiCleanCard}>
+                <View style={[s.aiCleanIcon, { backgroundColor: "#E8F1FB" }]}>
+                  <Sparkles size={16} color="#1A73C8" strokeWidth={2} />
                 </View>
-                <Text style={s.aiTitle}>Blood SOS</Text>
-                <Text style={s.aiSub}>Find donors</Text>
-              </LinearGradient>
+                <View style={[s.aiCleanBadge, { backgroundColor: "#E8F1FB" }]}>
+                  <Text style={[s.aiCleanBadgeTxt, { color: "#1A73C8" }]}>AI</Text>
+                </View>
+                <Text style={s.aiCleanTitle}>Daily Coach</Text>
+                <Text style={s.aiCleanSub}>AI nutrition</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={{ flex: 1 }} onPress={() => router.push("/intelligence" as never)} activeOpacity={0.85}>
+              <View style={s.aiCleanCard}>
+                <View style={[s.aiCleanIcon, { backgroundColor: "#F0EBFA" }]}>
+                  <Brain size={16} color="#6B4FA0" strokeWidth={2} />
+                </View>
+                <View style={[s.aiCleanBadge, { backgroundColor: "#F0EBFA" }]}>
+                  <Text style={[s.aiCleanBadgeTxt, { color: "#6B4FA0" }]}>AI</Text>
+                </View>
+                <Text style={s.aiCleanTitle}>Intelligence</Text>
+                <Text style={s.aiCleanSub}>Deep analysis</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowStressModal(true)} activeOpacity={0.85}>
+              <View style={s.aiCleanCard}>
+                <View style={[s.aiCleanIcon, { backgroundColor: "#E5F6F4" }]}>
+                  <Brain size={16} color="#00A693" strokeWidth={2} />
+                </View>
+                <View style={[s.aiCleanBadge, { backgroundColor: "#E5F6F4" }]}>
+                  <Text style={[s.aiCleanBadgeTxt, { color: "#00A693" }]}>Zen</Text>
+                </View>
+                <Text style={s.aiCleanTitle}>Stress</Text>
+                <Text style={s.aiCleanSub}>Mood & breathe</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={{ flex: 1 }} onPress={() => router.push("/blood" as never)} activeOpacity={0.85}>
+              <View style={s.aiCleanCard}>
+                <View style={[s.aiCleanIcon, { backgroundColor: "#FDEAEA" }]}>
+                  <Text style={{ fontSize: 16 }}>🩸</Text>
+                </View>
+                <View style={[s.aiCleanBadge, { backgroundColor: "#FDEAEA" }]}>
+                  <Text style={[s.aiCleanBadgeTxt, { color: "#D94040" }]}>SOS</Text>
+                </View>
+                <Text style={s.aiCleanTitle}>Blood SOS</Text>
+                <Text style={s.aiCleanSub}>Find donors</Text>
+              </View>
             </TouchableOpacity>
           </View>
 
@@ -967,7 +946,7 @@ const s = StyleSheet.create({
 
   emptyRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: DS.color.purple + "0D", borderRadius: 12, padding: 12 },
   emptyTxt: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: DS.color.muted },
-  medRow:   { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#F3EDE8" },
+  medRow:   { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#E4ECF4" },
   medIcon:  { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   medName:  { fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.text },
   medSub:   { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: 1 },
@@ -980,4 +959,20 @@ const s = StyleSheet.create({
   aiIconBox: { width: 28, height: 28, borderRadius: 9, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
   aiTitle:   { fontSize: 12, fontFamily: "Inter_700Bold", color: "#FFF", lineHeight: 15 },
   aiSub:     { fontSize: 9, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.82)", lineHeight: 12 },
+
+  // ── Clean Health Tools (Airtel-style) ──────────────────────
+  toolGrid:       { flexDirection: "row", gap: 7 },
+  toolCard:       { flex: 1, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 6, backgroundColor: "#FFFFFF", alignItems: "center", gap: 6, borderWidth: 1, borderColor: "#E4ECF4" },
+  toolIconBg:     { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  toolLabel:      { fontSize: 11, fontFamily: "Inter_700Bold", color: "#0D1B2A", textAlign: "center" },
+  toolSub:        { fontSize: 9, fontFamily: "Inter_400Regular", color: "#8FA3BC", textAlign: "center" },
+
+  // ── Clean AI Row ───────────────────────────────────────────
+  aiRow:          { flexDirection: "row", gap: 7 },
+  aiCleanCard:    { flex: 1, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 6, backgroundColor: "#FFFFFF", alignItems: "center", gap: 5, borderWidth: 1, borderColor: "#E4ECF4" },
+  aiCleanIcon:    { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  aiCleanBadge:   { borderRadius: 20, paddingHorizontal: 6, paddingVertical: 2, alignSelf: "center" },
+  aiCleanBadgeTxt:{ fontSize: 7.5, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
+  aiCleanTitle:   { fontSize: 11, fontFamily: "Inter_700Bold", color: "#0D1B2A", textAlign: "center" },
+  aiCleanSub:     { fontSize: 8.5, fontFamily: "Inter_400Regular", color: "#8FA3BC", textAlign: "center" },
 });
