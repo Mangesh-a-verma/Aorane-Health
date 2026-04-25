@@ -20,6 +20,8 @@ router.get("/medicine/schedules", requireAuth, async (req: AuthRequest, res) => 
 router.post("/medicine/schedule", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { medicineName, dosage, doseCount, mealTiming, frequency, customDays, reminderTimes, startDate, endDate, refillAlertDays, notes } = req.body as Record<string, unknown>;
+    if (!medicineName) return void res.status(400).json({ error: "medicineName is required" });
+    if (!startDate) return void res.status(400).json({ error: "startDate is required" });
     const [schedule] = await db.insert(medicineSchedulesTable).values({
       userId: req.userId!,
       medicineName: medicineName as string,
@@ -35,7 +37,8 @@ router.post("/medicine/schedule", requireAuth, async (req: AuthRequest, res) => 
       notes: notes as string | undefined,
     }).returning();
     res.status(201).json({ schedule });
-  } catch {
+  } catch (err) {
+    console.error("[medicine] create error:", err);
     res.status(500).json({ error: "Failed to create medicine schedule" });
   }
 });

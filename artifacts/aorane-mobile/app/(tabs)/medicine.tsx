@@ -85,22 +85,50 @@ export default function MedicineScreen() {
     setIsSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const savedName = medicineName.trim();
+
+    // ── Step 1: Save to server (this is the critical step) ──
     try {
-      await api.createMedicineSchedule({ medicineName: savedName, dosage, mealTiming, reminderTimes: [reminderTime], startDate: new Date().toISOString().slice(0, 10), frequency: "daily" });
-      setShowModal(false); setMedicineName(""); setDosage("");
-      await loadSchedules();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      if (Platform.OS !== "web") {
+      await api.createMedicineSchedule({
+        medicineName: savedName, dosage, mealTiming,
+        reminderTimes: [reminderTime],
+        startDate: new Date().toISOString().slice(0, 10),
+        frequency: "daily",
+      });
+    } catch (err) {
+      console.error("[Medicine] API save error:", err);
+      Alert.alert("Error", "Could not save medicine. Please check your connection and try again.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // ── Step 2: Close modal & refresh list ──
+    setShowModal(false);
+    setMedicineName("");
+    setDosage("");
+    await loadSchedules();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    // ── Step 3: Schedule local notification (best-effort — don't block on failure) ──
+    if (Platform.OS !== "web") {
+      try {
         const granted = await requestNotificationPermissions();
         if (granted) {
-          await scheduleMedicineReminders({ medicineId: `medicine_${savedName.toLowerCase().replace(/\s+/g, "_")}`, medicineName: savedName, dosage, times: [reminderTime], mealTiming });
+          await scheduleMedicineReminders({
+            medicineId: `medicine_${savedName.toLowerCase().replace(/\s+/g, "_")}`,
+            medicineName: savedName, dosage, times: [reminderTime], mealTiming,
+          });
           setNotifPermission(true);
-          Alert.alert("✅ Reminder Set!", `Daily reminder for ${savedName} at ${reminderTime}`, [{ text: "OK", onPress: () => loadSchedules() }]);
-          setIsSubmitting(false); return;
+          Alert.alert("✅ Medicine Added!", `Daily reminder for ${savedName} at ${reminderTime}`, [{ text: "OK" }]);
+          setIsSubmitting(false);
+          return;
         }
+      } catch (notifErr) {
+        console.warn("[Medicine] Notification scheduling failed (non-critical):", notifErr);
+        // Medicine was saved — just show success without reminder confirmation
       }
-      setShowModal(false); loadSchedules();
-    } catch { Alert.alert("Error", "Could not save schedule. Please try again."); }
+    }
+
+    Alert.alert("✅ Medicine Added!", `${savedName} has been added to your schedule.`, [{ text: "OK" }]);
     setIsSubmitting(false);
   };
 
