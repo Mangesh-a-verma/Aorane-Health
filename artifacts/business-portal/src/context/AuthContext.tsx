@@ -38,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("bp_last_active", Date.now().toString());
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     inactivityTimer.current = setTimeout(() => {
+      localStorage.setItem("bp_session_expired", "inactivity");
       clearSession();
     }, INACTIVITY_MS);
   }, [clearSession]);

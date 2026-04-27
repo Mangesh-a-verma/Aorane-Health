@@ -39,7 +39,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 
   useEffect(() => {
     if (!isLoading && !token) {
-      navigate("/");
+      navigate("/login");
     }
   }, [token, isLoading, navigate]);
 

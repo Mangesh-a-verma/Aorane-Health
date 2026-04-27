@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
@@ -56,7 +56,16 @@ export default function Login() {
   const [, navigate] = useLocation();
   const { login } = useAuth();
 
+  const [sessionExpiredMsg, setSessionExpiredMsg] = useState("");
   const [loginTab, setLoginTab] = useState<"password" | "otp" | "forgot">("password");
+
+  useEffect(() => {
+    const reason = localStorage.getItem("bp_session_expired");
+    if (reason === "inactivity") {
+      setSessionExpiredMsg("Session expired due to inactivity. Please log in again.");
+      localStorage.removeItem("bp_session_expired");
+    }
+  }, []);
 
   // Password login
   const [email, setEmail] = useState("");
@@ -242,6 +251,13 @@ export default function Login() {
             <span style={{ fontSize: 28, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20" }}>AORANE</span>
             <span style={{ fontSize: 13, color: PRIMARY }}>Business Suite</span>
           </div>
+
+          {sessionExpiredMsg && (
+            <div style={{ marginBottom: 20, padding: "12px 16px", background: "#FFF3CD", border: "1px solid #FBBF24", borderRadius: 12, display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#D97706", flexShrink: 0, marginTop: 1 }}>schedule</span>
+              <p style={{ margin: 0, fontSize: 13, color: "#92400E", lineHeight: 1.5 }}>{sessionExpiredMsg}</p>
+            </div>
+          )}
 
           {/* ─── FORGOT PASSWORD FLOW ─────────────────────────────────── */}
           {loginTab === "forgot" ? (

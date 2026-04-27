@@ -85,11 +85,11 @@ function PricingCard({
             {displayPrice === 0 ? "Free" : `₹${displayPrice}`}
           </span>
           {displayPrice > 0 && (
-            <span style={{ color: highlighted ? "rgba(255,255,255,0.65)" : "#6b7280", fontSize: 14, marginBottom: 8 }}>/user/mo</span>
+            <span style={{ color: highlighted ? "rgba(255,255,255,0.65)" : "#6b7280", fontSize: 14, marginBottom: 8 }}>/month</span>
           )}
         </div>
         {billing === "annual" && displayPrice > 0 && (
-          <div style={{ fontSize: 12, color: highlighted ? "rgba(255,255,255,0.65)" : TEAL, marginTop: 4, fontWeight: 600 }}>Save 10% — billed annually</div>
+          <div style={{ fontSize: 12, color: highlighted ? "rgba(255,255,255,0.65)" : TEAL, marginTop: 4, fontWeight: 600 }}>Save 17% — billed annually</div>
         )}
       </div>
       <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column" as const, gap: 12 }}>
@@ -180,19 +180,19 @@ export default function Landing() {
   const plans = [
     {
       plan: "Starter",
-      price: 0, annualPrice: 0,
-      features: ["Up to 10 members", "Basic health dashboard", "Food & water logging", "Exercise tracking", "Email support"],
+      price: 999, annualPrice: 833,
+      features: ["Up to 50 member seats", "Aggregate health dashboard", "Enrollment code management", "Employee search & filter", "GST-ready invoicing", "Department analytics", "Email support"],
     },
     {
-      plan: "Max",
-      price: 199, annualPrice: 179,
-      features: ["Up to 500 members", "Full health analytics dashboard", "AI health scorecard", "Department-level reports", "Blood bank connections", "Priority support"],
+      plan: "Growth",
+      price: 2999, annualPrice: 2499,
+      features: ["Up to 200 member seats", "Everything in Starter", "Advanced health analytics", "Health risk alerts", "Custom wellness programs", "Weekly & monthly reports", "Priority support"],
       highlighted: true,
     },
     {
-      plan: "Pro",
-      price: 249, annualPrice: 224,
-      features: ["Unlimited members", "Everything in Max", "Custom branding", "API access & integrations", "Dedicated account manager", "SLA guarantee"],
+      plan: "Enterprise",
+      price: 6999, annualPrice: 5832,
+      features: ["Up to 500 member seats", "Everything in Growth", "Custom integrations", "SLA guarantee", "On-premise option", "Compliance reports", "Dedicated account manager"],
     },
   ];
 
@@ -253,12 +253,12 @@ export default function Landing() {
       }}>
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px", height: 72, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {/* Logo */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <a href="/" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
             <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" style={{ height: 56, width: "auto", objectFit: "contain" }} />
             <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#6b7280", letterSpacing: "0.05em" }}>
               Business
             </span>
-          </div>
+          </a>
           {/* Desktop Nav */}
           <div className="hide-mobile" style={{ display: "flex", alignItems: "center", gap: 36 }}>
             {["Solutions", "Features", "Pricing", "About"].map(l => (
@@ -558,7 +558,7 @@ export default function Landing() {
                     fontWeight: 700, fontSize: 14, cursor: "pointer", transition: "all 0.25s",
                   }}
                 >
-                  {b === "monthly" ? "Monthly" : "Annual (Save 10%)"}
+                  {b === "monthly" ? "Monthly" : "Annual (Save 17%)"}
                 </button>
               ))}
             </div>
@@ -719,7 +719,9 @@ export default function Landing() {
           <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 56 }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" style={{ height: 56, width: "auto", objectFit: "contain" }} />
+                <a href="/" style={{ textDecoration: "none", display: "inline-flex" }}>
+                  <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" style={{ height: 56, width: "auto", objectFit: "contain" }} />
+                </a>
               </div>
               <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.85, maxWidth: 280, margin: "0 0 24px" }}>
                 The unified intelligence platform for managing health and wellness at scale across any organization.
@@ -733,19 +735,47 @@ export default function Landing() {
               </div>
             </div>
             {[
-              { title: "Product", links: ["Enterprise Dashboard", "Employee Portal", "AI Health Insights", "API & Integrations"] },
-              { title: "Company", links: ["About Us", "Careers", "Security & Privacy", "Press"] },
-              { title: "Support", links: ["Help Center", "Contact Sales", "Status Page", "Feedback"] },
+              {
+                title: "Product",
+                links: [
+                  { label: "Enterprise Dashboard", href: "#solutions" },
+                  { label: "Employee Portal", href: "/login" },
+                  { label: "AI Health Insights", href: "#features" },
+                  { label: "API & Integrations", href: "mailto:business@aorane.in?subject=API Integration Enquiry" },
+                ],
+              },
+              {
+                title: "Company",
+                links: [
+                  { label: "About Aorane", href: "https://aorane.com/about" },
+                  { label: "Careers", href: "https://aorane.com/careers" },
+                  { label: "Security & Privacy", href: "https://aorane.com/privacy" },
+                  { label: "Contact Us", href: "https://aorane.com/contact" },
+                ],
+              },
+              {
+                title: "Support",
+                links: [
+                  { label: "Help Center", href: "mailto:support@aorane.com?subject=Help Center" },
+                  { label: "Contact Sales", href: "mailto:business@aorane.in?subject=Sales Enquiry" },
+                  { label: "Terms of Service", href: "https://aorane.com/terms" },
+                  { label: "Feedback", href: "mailto:feedback@aorane.com?subject=Feedback" },
+                ],
+              },
             ].map((col, i) => (
               <div key={i}>
                 <h4 style={{ fontSize: 13, fontWeight: 800, color: "#181c20", marginBottom: 20, letterSpacing: 0.5, textTransform: "uppercase" as const }}>{col.title}</h4>
                 <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column" as const, gap: 12 }}>
                   {col.links.map((link, j) => (
                     <li key={j}>
-                      <a href="#" style={{ fontSize: 14, color: "#6b7280", textDecoration: "none", transition: "color 0.2s" }}
+                      <a
+                        href={link.href}
+                        target={link.href.startsWith("http") ? "_blank" : undefined}
+                        rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                        style={{ fontSize: 14, color: "#6b7280", textDecoration: "none", transition: "color 0.2s" }}
                         onMouseOver={e => (e.currentTarget.style.color = PRIMARY)}
                         onMouseOut={e => (e.currentTarget.style.color = "#6b7280")}
-                      >{link}</a>
+                      >{link.label}</a>
                     </li>
                   ))}
                 </ul>

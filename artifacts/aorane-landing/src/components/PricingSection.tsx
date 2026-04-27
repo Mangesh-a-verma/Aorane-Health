@@ -25,7 +25,6 @@ const defaultIndividual: Plan[] = [
       "AI Food Scan (text) — 5 scans/day",
       "Water tracker & reminders",
       "Exercise logging (basic)",
-      "Step counter",
       "7-day health history",
       "Basic daily health score",
       "Community forum access",
@@ -67,12 +66,12 @@ const defaultIndividual: Plan[] = [
 ];
 
 const defaultOrg: Plan[] = [
-  { planKey: "starter", displayName: "Max", type: "organization", monthlyPrice: "179", yearlyPrice: "1781",
-    features: ["Min 10 users", "Aggregate health dashboard", "Enrollment code management", "Employee search & filter", "GST-ready invoicing", "Department analytics", "Monthly reports", "Email support"], badge: "", color: "#6B7280" },
-  { planKey: "growth", displayName: "Pro", type: "organization", monthlyPrice: "224", yearlyPrice: "2231",
-    features: ["Min 50 users", "Everything in Max", "Advanced health analytics", "Health risk alerts", "Custom wellness programs", "Weekly & monthly team reports", "Custom announcements", "Priority support"], badge: "Most Popular", color: "#0747A6" },
-  { planKey: "enterprise", displayName: "Enterprise", type: "organization", monthlyPrice: "0", yearlyPrice: "0",
-    features: ["Unlimited users", "All Pro features", "Custom integrations", "SLA guarantee", "On-premise option", "Compliance reports", "24/7 Priority support", "White-labeling"], badge: "Enterprise", color: "#7C3AED" },
+  { planKey: "starter", displayName: "Starter", type: "organization", monthlyPrice: "999", yearlyPrice: "9990",
+    features: ["Up to 50 member seats", "Aggregate health dashboard", "Enrollment code management", "Employee search & filter", "GST-ready invoicing", "Department analytics", "Monthly reports", "Email support"], badge: "", color: "#6B7280" },
+  { planKey: "growth", displayName: "Growth", type: "organization", monthlyPrice: "2999", yearlyPrice: "29990",
+    features: ["Up to 200 member seats", "Everything in Starter", "Advanced health analytics", "Health risk alerts", "Custom wellness programs", "Weekly & monthly team reports", "Custom announcements", "Priority support"], badge: "Most Popular", color: "#0747A6" },
+  { planKey: "enterprise", displayName: "Enterprise", type: "organization", monthlyPrice: "6999", yearlyPrice: "69990",
+    features: ["Up to 500 member seats", "Everything in Growth", "Custom integrations", "SLA guarantee", "On-premise option", "Compliance reports", "24/7 Priority support", "Dedicated account manager"], badge: "Enterprise", color: "#7C3AED" },
 ];
 
 const planIcons: Record<string, React.ComponentType<{ className?: string; color?: string }>> = {
@@ -133,13 +132,11 @@ function PlanCard({ plan, isYearly, highlight, onBusinessSignUp, onMobileInstall
               <span className="text-3xl font-extrabold text-gray-900">
                 {monthlyFromYearly || price}
               </span>
-              <span className="text-sm text-gray-400">
-                {plan.type === "organization" ? "/user/mo" : "/mo"}
-              </span>
+              <span className="text-sm text-gray-400">/mo</span>
             </div>
             {isYearly && (
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-gray-400">₹{price}/{plan.type === "organization" ? "user/yr" : "year"}</span>
+                <span className="text-xs text-gray-400">₹{price}/year</span>
                 <span className="text-xs font-bold text-[#10B981] bg-[#10B981]/10 px-1.5 py-0.5 rounded-full">Save 17%</span>
               </div>
             )}
@@ -188,8 +185,8 @@ function PlanCard({ plan, isYearly, highlight, onBusinessSignUp, onMobileInstall
   );
 }
 
-export default function PricingSection({ onBusinessSignUp }: { onBusinessSignUp?: () => void } = {}) {
-  const [tab, setTab] = useState<"individual" | "organization">("individual");
+export default function PricingSection({ onBusinessSignUp, orgOnly }: { onBusinessSignUp?: () => void; orgOnly?: boolean } = {}) {
+  const [tab, setTab] = useState<"individual" | "organization">(orgOnly ? "organization" : "individual");
   const [isYearly, setIsYearly] = useState(false);
   const [indPlans, setIndPlans] = useState<Plan[]>(defaultIndividual);
   const [orgPlans, setOrgPlans] = useState<Plan[]>(defaultOrg);
@@ -228,7 +225,8 @@ export default function PricingSection({ onBusinessSignUp }: { onBusinessSignUp?
     fetchPlans();
   }, []);
 
-  const plans = tab === "individual" ? indPlans : orgPlans;
+  const rawPlans = tab === "individual" ? indPlans : orgPlans;
+  const plans = orgOnly ? rawPlans.filter(p => p.planKey === "starter" || p.planKey === "growth") : rawPlans;
   const highlightKey = tab === "individual" ? "pro" : "growth";
 
   return (
@@ -251,20 +249,22 @@ export default function PricingSection({ onBusinessSignUp }: { onBusinessSignUp?
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
-            <div className="flex bg-white rounded-2xl p-1 border border-gray-200 shadow-sm">
-              <button
-                onClick={() => setTab("individual")}
-                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${tab === "individual" ? "bg-[#0747A6] text-white shadow" : "text-gray-500 hover:text-gray-700"}`}
-              >
-                Individual & Family
-              </button>
-              <button
-                onClick={() => setTab("organization")}
-                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${tab === "organization" ? "bg-[#0747A6] text-white shadow" : "text-gray-500 hover:text-gray-700"}`}
-              >
-                For Organizations
-              </button>
-            </div>
+            {!orgOnly && (
+              <div className="flex bg-white rounded-2xl p-1 border border-gray-200 shadow-sm">
+                <button
+                  onClick={() => setTab("individual")}
+                  className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${tab === "individual" ? "bg-[#0747A6] text-white shadow" : "text-gray-500 hover:text-gray-700"}`}
+                >
+                  Individual & Family
+                </button>
+                <button
+                  onClick={() => setTab("organization")}
+                  className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${tab === "organization" ? "bg-[#0747A6] text-white shadow" : "text-gray-500 hover:text-gray-700"}`}
+                >
+                  For Organizations
+                </button>
+              </div>
+            )}
 
             <div className="flex items-center gap-3 bg-white rounded-2xl px-4 py-2 border border-gray-200 shadow-sm">
               <span className={`text-sm font-semibold ${!isYearly ? "text-[#0747A6]" : "text-gray-400"}`}>Monthly</span>
@@ -289,7 +289,9 @@ export default function PricingSection({ onBusinessSignUp }: { onBusinessSignUp?
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.3 }}
             className={`grid gap-6 ${
-              plans.length === 4 ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"
+              plans.length === 4 ? "sm:grid-cols-2 lg:grid-cols-4" :
+              plans.length === 2 ? "sm:grid-cols-2 max-w-2xl mx-auto" :
+              "sm:grid-cols-3"
             }`}
           >
             {plans.map((plan) => (

@@ -234,7 +234,7 @@ export default function BusinessPage() {
         </div>
       </section>
 
-      <PricingSection />
+      <PricingSection orgOnly onBusinessSignUp={() => window.location.href = "/business-portal/#pricing"} />
       <Footer />
     </div>
   );
