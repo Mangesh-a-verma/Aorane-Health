@@ -3,6 +3,7 @@
     "name": "AORANE",
     "slug": "aorane-mobile",
     "version": "1.0.0",
+    "owner": "mangeshaverma",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "aorane",
