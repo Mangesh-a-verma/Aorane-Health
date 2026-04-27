@@ -207,7 +207,7 @@ router.get("/wearable/oauth/google-fit/url", requireAuth, async (req: AuthReques
     response_type: "code",
     scope: GOOGLE_SCOPES,
     access_type: "offline",
-    ...(needsConsent ? { prompt: "consent" } : { prompt: "select_account" }),
+    prompt: needsConsent ? "select_account consent" : "select_account",
     state,
   });
   res.json({ authUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` });

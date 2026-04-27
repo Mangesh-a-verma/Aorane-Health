@@ -255,7 +255,7 @@ export default function WearableScreen() {
       }
       const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl, {
         showInRecents: false,
-        preferEphemeralSession: false,
+        preferEphemeralSession: true,
       });
       if (Platform.OS !== "web") {
         await WebBrowser.coolDownAsync().catch(() => {});
