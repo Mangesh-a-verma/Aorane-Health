@@ -144,53 +144,127 @@ export default function ScorecardScreen() {
     } catch { }
   };
 
-  // Generate a beautiful HTML card for PDF sharing on native
-  const generateCardHtml = (c: Scorecard, date: Date) => `
-<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-  * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
-  body { background: #F0F9FF; padding: 24px; }
-  .card { background: linear-gradient(135deg, #023E8A 0%, #0077B6 50%, #1B998B 100%);
-    border-radius: 20px; padding: 28px; max-width: 400px; margin: 0 auto; color: #FFF; }
-  .logo { font-size: 22px; font-weight: 900; letter-spacing: 3px; margin-bottom: 4px; }
-  .tagline { font-size: 11px; opacity: 0.75; margin-bottom: 20px; }
-  .divider { height: 1px; background: rgba(255,255,255,0.2); margin: 16px 0; }
-  .name { font-size: 22px; font-weight: 700; }
-  .id { font-size: 18px; font-weight: 800; letter-spacing: 2px; margin: 8px 0; opacity: 0.95; }
-  .plan-badge { display: inline-block; background: rgba(255,255,255,0.18); border-radius: 8px;
-    padding: 2px 10px; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
-  .box { background: rgba(255,255,255,0.12); border-radius: 12px; padding: 12px; }
-  .box-label { font-size: 10px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
-  .box-value { font-size: 18px; font-weight: 700; margin-top: 2px; }
-  .score-section { text-align: center; margin: 16px 0; }
-  .score-num { font-size: 52px; font-weight: 900; line-height: 1; }
-  .score-label { font-size: 13px; opacity: 0.75; margin-top: 4px; }
-  .grade { font-size: 28px; font-weight: 900; }
-  .footer { font-size: 10px; opacity: 0.5; text-align: center; margin-top: 16px; }
+  // Generate card HTML that looks EXACTLY like the on-screen card
+  const generateCardHtml = (c: Scorecard, date: Date): string => {
+    const gradFrom = company.scorecardBgGradientFrom || "#023E8A";
+    const gradMid  = company.primaryColor || "#0077B6";
+    const gradTo   = company.scorecardBgGradientTo || "#1B998B";
+    const planColor = PLAN_COLORS[c.plan] || "#6B7280";
+    const planLabel = PLAN_LABELS[c.plan] || "FREE";
+    const formattedId = formatId(c.aoraneId);
+    const healthPct = Math.round(c.activePercent?.overall ?? 0);
+    const activePct = Math.round(c.activePercent?.exercisePct ?? 0);
+    const ageGender = [
+      c.age ? `Age ${c.age}` : "",
+      c.gender === "male" ? "Male" : c.gender === "female" ? "Female" : "",
+    ].filter(Boolean).join(" \u2022 ");
+    const dateStr = date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    const companyName = (company.companyName || "AORANE HEALTH").toUpperCase();
+    const avatarEmoji = selectedAvatar.emoji;
+    const avatarBg1 = selectedAvatar.bg[0];
+    const avatarBg2 = selectedAvatar.bg[1];
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https%3A%2F%2Faorane.com&bgcolor=FFFFFF&color=023E8A&margin=0`;
+
+    return `<!DOCTYPE html><html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:380px;height:239px;overflow:hidden;background:transparent;}
+  .card{
+    width:380px;height:239px;
+    border-radius:16px;
+    background:linear-gradient(135deg,${gradFrom} 0%,${gradMid} 50%,${gradTo} 100%);
+    padding:16px 18px 10px 18px;
+    position:relative;overflow:hidden;
+    display:flex;flex-direction:column;
+    font-family:'Inter',Arial,sans-serif;
+    color:#fff;
+  }
+  .blob1{position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:60px;background:rgba(255,255,255,0.06);}
+  .blob2{position:absolute;bottom:-40px;left:-20px;width:100px;height:100px;border-radius:50px;background:rgba(255,255,255,0.04);}
+  .top-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;position:relative;}
+  .logo-row{display:flex;align-items:center;gap:6px;}
+  .logo-icon{width:20px;height:20px;border-radius:4px;background:rgba(255,255,255,0.2);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:8px;font-weight:700;color:#fff;flex-shrink:0;}
+  .company-name{font-size:11px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.9);}
+  .plan-badge{
+    background:${planColor};border-radius:6px;
+    padding:2px 8px;font-size:10px;font-weight:700;
+    letter-spacing:1px;color:#fff;white-space:nowrap;
+  }
+  .main-row{display:flex;flex:1;align-items:center;gap:0;}
+  .left-col{flex:1;min-width:0;}
+  .avatar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .avatar{
+    width:36px;height:36px;border-radius:10px;flex-shrink:0;
+    background:linear-gradient(135deg,${avatarBg1},${avatarBg2});
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:18px;line-height:1;
+  }
+  .name{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .age{font-size:9px;color:rgba(255,255,255,0.55);margin-top:1px;}
+  .id-label{font-size:7px;font-weight:500;letter-spacing:1.5px;color:rgba(255,255,255,0.45);text-transform:uppercase;margin-bottom:1px;}
+  .id-value{font-size:11px;font-weight:700;letter-spacing:2px;color:#fff;margin-bottom:8px;}
+  .chips{display:flex;gap:6px;}
+  .chip{background:rgba(255,255,255,0.14);border-radius:7px;padding:3px 7px;text-align:center;}
+  .chip-label{font-size:6px;font-weight:500;letter-spacing:0.8px;color:rgba(255,255,255,0.5);text-transform:uppercase;display:block;}
+  .chip-value{font-size:13px;font-weight:700;color:#fff;display:block;}
+  .chip-value.blood{color:#FFA0A0;}
+  .right-col{display:flex;flex-direction:column;align-items:center;margin-left:12px;flex-shrink:0;}
+  .qr-wrap{background:#fff;border-radius:8px;padding:4px;display:block;}
+  .qr-img{width:58px;height:58px;display:block;}
+  .qr-label{font-size:7px;color:rgba(255,255,255,0.45);margin-top:3px;text-align:center;}
+  .footer{font-size:6px;color:rgba(255,255,255,0.3);letter-spacing:0.5px;margin-top:6px;position:relative;}
 </style></head><body>
 <div class="card">
-  <div class="logo">Aorane</div>
-  <div class="tagline">Your Health, Your Wealth</div>
-  <div class="name">${c.name || "User"}</div>
-  <div class="id">${(c.aoraneId || "").replace(/(\d{4})(\d{4})(\d{4})/, "$1  $2  $3")}</div>
-  <span class="plan-badge">${(c.plan || "FREE").toUpperCase()} MEMBER</span>
-  <div class="divider"></div>
-  <div class="score-section">
-    <div class="score-num">${Math.round(c.activePercent?.overall ?? 0)}</div>
-    <div class="score-label">Health Score • ${c.activePercent?.overall >= 80 ? 'Excellent 🌟' : c.activePercent?.overall >= 60 ? 'Good 👍' : c.activePercent?.overall >= 40 ? 'Average 📊' : 'Needs Improvement ⚡'}</div>
+  <div class="blob1"></div><div class="blob2"></div>
+  <div class="top-row">
+    <div class="logo-row">
+      <span class="logo-icon">A</span>
+      <span class="company-name">${companyName}</span>
+    </div>
+    <span class="plan-badge">${planLabel}</span>
   </div>
-  <div class="grid">
-    ${c.bloodGroup ? `<div class="box"><div class="box-label">Blood Group</div><div class="box-value">${c.bloodGroup}</div></div>` : ''}
-    ${c.bmi ? `<div class="box"><div class="box-label">BMI</div><div class="box-value">${c.bmi} <span style="font-size:13px;opacity:0.8">${c.bmiCategory || ''}</span></div></div>` : ''}
-    ${c.age ? `<div class="box"><div class="box-label">Age</div><div class="box-value">${c.age} yrs</div></div>` : ''}
-    ${c.city ? `<div class="box"><div class="box-label">Location</div><div class="box-value" style="font-size:14px">${c.city}${c.state ? ', ' + c.state : ''}</div></div>` : ''}
+  <div class="main-row">
+    <div class="left-col">
+      <div class="avatar-row">
+        <span class="avatar">${avatarEmoji}</span>
+        <div>
+          <div class="name">${c.name || "Aorane User"}</div>
+          ${ageGender ? `<div class="age">${ageGender}</div>` : ""}
+        </div>
+      </div>
+      <div class="id-label">AORANE ID</div>
+      <div class="id-value">${formattedId}</div>
+      <div class="chips">
+        <div class="chip">
+          <span class="chip-label">HEALTH</span>
+          <span class="chip-value">${healthPct}%</span>
+        </div>
+        <div class="chip">
+          <span class="chip-label">ACTIVE</span>
+          <span class="chip-value">${activePct}%</span>
+        </div>
+        ${c.bloodGroup ? `<div class="chip">
+          <span class="chip-label">BLOOD</span>
+          <span class="chip-value blood">${c.bloodGroup}</span>
+        </div>` : ""}
+      </div>
+    </div>
+    <div class="right-col">
+      <div class="qr-wrap">
+        <img class="qr-img" src="${qrUrl}" alt="QR" crossorigin="anonymous" />
+      </div>
+      <div class="qr-label">aorane.com</div>
+    </div>
   </div>
-  <div class="divider"></div>
-  <div class="footer">
-    Generated on ${date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} • aorane.com
-  </div>
+  <div class="footer">${dateStr} \u2022 \u0938\u094d\u0935\u093e\u0938\u094d\u0925\u094d\u092f \u0939\u0940 \u0927\u0928</div>
 </div>
 </body></html>`;
+  };
 
   const handleDownload = async () => {
     if (!card) return;
@@ -213,12 +287,17 @@ export default function ScorecardScreen() {
     } else {
       try {
         const html = generateCardHtml(card, now);
-        const { uri } = await Print.printToFileAsync({ html, base64: false });
+        const { uri } = await Print.printToFileAsync({
+          html,
+          base64: false,
+          width: 380,
+          height: 239,
+        });
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
           await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Save Aorane Health Card" });
         } else {
-          Alert.alert("Saved", `Health card PDF saved to: ${uri}`);
+          Alert.alert("Saved", "Health card saved to your downloads.");
         }
       } catch {
         Alert.alert("Error", "Could not save health card. Please try again.");
@@ -263,15 +342,19 @@ export default function ScorecardScreen() {
     } else {
       try {
         const html = generateCardHtml(card, now);
-        const { uri } = await Print.printToFileAsync({ html, base64: false });
+        const { uri } = await Print.printToFileAsync({
+          html,
+          base64: false,
+          width: 380,
+          height: 239,
+        });
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
           await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Share Aorane Health Card" });
         } else {
-          // Fallback: share text via native Share sheet
           await Share.share({
             title: "My Aorane Health Card",
-            message: `🏥 My Aorane Health Card\n\nName: ${card.name}\nAorane ID: ${(card.aoraneId || "").replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")}\nHealth Score: ${Math.round(card.activePercent?.overall ?? 0)}\nBlood Group: ${card.bloodGroup || "N/A"}\nBMI: ${card.bmi || "N/A"}\n\nDownload Aorane: https://play.google.com/store/apps/details?id=in.aorane.app`,
+            message: `My Aorane ID: ${(card.aoraneId || "").replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")}\nHealth: ${Math.round(card.activePercent?.overall ?? 0)}%\n\nhttps://aorane.com`,
           });
         }
       } catch {
