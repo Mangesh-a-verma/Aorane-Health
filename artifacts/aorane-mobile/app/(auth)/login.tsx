@@ -279,11 +279,15 @@ export default function LoginScreen() {
                       key={mode}
                       onPress={() => {
                         if (isDisabled) {
-                          Alert.alert(
-                            "WhatsApp OTP — Coming Soon",
-                            "DLT registration is in progress. Please use Email OTP or PIN to login.",
-                            [{ text: "OK", style: "default" }]
-                          );
+                          if (Platform.OS === "web") {
+                            window.alert("WhatsApp OTP — Coming Soon\n\nDLT registration is in progress. Please use Email OTP or PIN to login.");
+                          } else {
+                            Alert.alert(
+                              "WhatsApp OTP — Coming Soon",
+                              "DLT registration is in progress. Please use Email OTP or PIN to login.",
+                              [{ text: "OK", style: "default" }]
+                            );
+                          }
                           return;
                         }
                         setLoginMode(mode); setPin(""); Haptics.selectionAsync();
