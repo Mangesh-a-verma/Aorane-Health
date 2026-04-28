@@ -871,6 +871,56 @@ export async function runStartupMigrations(): Promise<void> {
     `UPDATE plan_pricing SET features = '["Everything in Max","Advanced AI health predictions","Period cycle tracker","Stress & burnout AI monitoring","Personalized health goals AI","Export data (PDF & CSV)","24/7 priority support"]'::jsonb WHERE plan_key = 'pro'`,
 
     `UPDATE plan_pricing SET features = '["4 individual member accounts","All Max features per member","Family health dashboard","Elderly health monitoring","Cross-family health comparisons","Family wellness challenges","Single billing for all members"]'::jsonb WHERE plan_key = 'family'`,
+
+    // ── blood_emergency_requests: core blood emergency table (was missing from migrations) ──
+    `CREATE TABLE IF NOT EXISTS blood_emergency_requests (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      requester_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      patient_name TEXT NOT NULL,
+      blood_group_needed TEXT NOT NULL,
+      units_needed INTEGER NOT NULL DEFAULT 1,
+      hospital_name TEXT NOT NULL,
+      hospital_address TEXT,
+      hospital_city TEXT NOT NULL,
+      hospital_state TEXT NOT NULL,
+      hospital_pincode TEXT,
+      hospital_phone TEXT,
+      doctor_name TEXT,
+      doctor_phone TEXT,
+      contact_phone TEXT NOT NULL,
+      contact_name TEXT,
+      urgency TEXT NOT NULL DEFAULT 'urgent',
+      status TEXT NOT NULL DEFAULT 'active',
+      donors_notified INTEGER NOT NULL DEFAULT 0,
+      donors_responded INTEGER NOT NULL DEFAULT 0,
+      otp_verified BOOLEAN NOT NULL DEFAULT FALSE,
+      flag_count INTEGER NOT NULL DEFAULT 0,
+      is_flagged BOOLEAN NOT NULL DEFAULT FALSE,
+      notes TEXT,
+      expires_at TIMESTAMPTZ NOT NULL,
+      fulfilled_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_blood_emergency_requests_requester ON blood_emergency_requests(requester_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_blood_emergency_requests_status ON blood_emergency_requests(status)`,
+    `CREATE INDEX IF NOT EXISTS idx_blood_emergency_requests_city ON blood_emergency_requests(hospital_city)`,
+
+    // ── blood_emergency_responses: donor responses to blood requests ──
+    `CREATE TABLE IF NOT EXISTS blood_emergency_responses (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      request_id UUID NOT NULL REFERENCES blood_emergency_requests(id) ON DELETE CASCADE,
+      donor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      response TEXT NOT NULL,
+      contacted BOOLEAN NOT NULL DEFAULT FALSE,
+      responded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_blood_emergency_responses_request ON blood_emergency_responses(request_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_blood_emergency_responses_donor ON blood_emergency_responses(donor_id)`,
+
+    // ── blood_donors: add otp_verified and verified_at columns (were missing) ──
+    `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS otp_verified BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
   ];
 
   let ok = 0; let fail = 0;

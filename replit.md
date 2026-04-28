@@ -29,7 +29,7 @@ AORANE's architecture is composed of a mobile app (Expo/React Native), a Busines
 - **Dynamic Plan Pricing Engine:** Admin panel allows real-time updates to plan prices and features, which automatically reflect across Mobile App and Business Portal without code changes. Plan fields: `monthlyPrice`, `yearlyPrice`, `planKey`, `displayName`, `badgeText`, `badgeColor`, `gradientColors`.
 - **Notifications:** Firebase FCM (push) and Fast2SMS (SMS). Expo push token registered per device.
 - **Storage:** Supabase manages file storage.
-- **Database Schema:** Comprehensive PostgreSQL schema supporting users, health data, community features, business entities, revenue management, and platform infrastructure. Tables designed for `country_code`, `language_code`, and RTL support. 173 migration steps applied.
+- **Database Schema:** Comprehensive PostgreSQL schema supporting users, health data, community features, business entities, revenue management, and platform infrastructure. Tables designed for `country_code`, `language_code`, and RTL support. 182 migration steps applied. Key fix: `blood_emergency_requests`, `blood_emergency_responses` tables were missing from migrations (now added) — this was the root cause of the "Failed to create blood emergency" 500 error on production.
 - **Plan-based Feature Gating:** Server-side via `requireFeature()` middleware with 5-minute in-memory cache. `enabledForPlans: null` or `[]` = all plans allowed. Client-side `PlanGate` overlays in mobile app.
 - **Privacy-first Design:** 8 privacy toggles, sensitive data (stress, sleep, medicines) default to OFF. DPDPA 2023 compliant.
 - **Offline-first Capability:** Offline queue table for data synchronization.
