@@ -921,6 +921,15 @@ export async function runStartupMigrations(): Promise<void> {
     // ── blood_donors: add otp_verified and verified_at columns (were missing) ──
     `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS otp_verified BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
+
+    // ── food_logs: extended micronutrient tracking ────────────────────────────
+    `ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS sugar_g NUMERIC(6,2)`,
+    `ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS sodium_mg NUMERIC(7,2)`,
+    `ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS calcium_mg NUMERIC(7,2)`,
+    `ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS iron_mg NUMERIC(6,2)`,
+    `ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS vitamin_c_mg NUMERIC(6,2)`,
+    `ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS vitamin_b12_mcg NUMERIC(6,2)`,
+    `ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS vitamin_d_mcg NUMERIC(6,2)`,
   ];
 
   let ok = 0; let fail = 0;

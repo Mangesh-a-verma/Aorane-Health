@@ -58,7 +58,7 @@ All core APIs tested and working: profile, food CRUD, water logging, exercise + 
 
 ## Key Files
 - `artifacts/api-server/src/routes/index.ts` — all 27 route modules registered
-- `artifacts/api-server/src/routes/modules/admin.ts` — admin endpoints including 9-stat overview
+- `artifacts/api-server/src/routes/modules/admin.ts` — admin endpoints including 9-stat overview; /admin/users now LEFT JOINs user_profiles (returns fullName, email, aoraneId); /admin/users/search supports UUID, partial UUID, phone, Aorane ID, name, email
 - `artifacts/api-server/src/middlewares/feature-check.ts` — feature flag middleware (5-min cache)
 - `artifacts/api-server/src/lib/ai.ts` — AI provider abstraction (NVIDIA + Gemini)
 - `artifacts/api-server/src/lib/nvidia.ts` — NVIDIA API with 55-second AbortController timeout
@@ -67,7 +67,7 @@ All core APIs tested and working: profile, food CRUD, water logging, exercise + 
 - `artifacts/aorane-mobile/lib/api.ts` — 96 API calls, all endpoints verified
 - `artifacts/aorane-mobile/app.json` — package: com.aorane.app, versionCode: 1
 - `artifacts/aorane-landing/src/pages/PrivacyPage.tsx` — DPDPA 2023 compliant privacy policy
-- `lib/db/src/schema/` — all Drizzle ORM table definitions
+- `lib/db/src/schema/` — all Drizzle ORM table definitions; food_logs now includes sugarG, sodiumMg, calciumMg, ironMg, vitaminCMg, vitaminB12Mcg, vitaminDMcg (micronutrient tracking)
 - `lib/db/src/index.ts` — `export * from "./schema"` (all tables exported)
 
 ## External Dependencies

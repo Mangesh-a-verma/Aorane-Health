@@ -86,6 +86,8 @@ function NavLink({ path, icon: Icon, label, color }: NavItem) {
   );
 }
 
+const INACTIVITY_MS = 15 * 60 * 1000; // 15 minutes
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { admin, logout } = useAuth();
   const [open, setOpen] = useState(false);
@@ -94,7 +96,50 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifEnquiries, setNotifEnquiries] = useState<Enquiry[]>([]);
   const [newCount, setNewCount] = useState(0);
+  const [inactiveWarning, setInactiveWarning] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Auto-logout on inactivity ──────────────────────────────────────────────
+  useEffect(() => {
+    const resetTimer = () => {
+      setInactiveWarning(false);
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      if (warningTimer.current) clearTimeout(warningTimer.current);
+      // Show warning 1 min before logout
+      warningTimer.current = setTimeout(() => setInactiveWarning(true), INACTIVITY_MS - 60_000);
+      inactivityTimer.current = setTimeout(() => { logout(); }, INACTIVITY_MS);
+    };
+
+    const events = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "click"];
+    events.forEach((e) => window.addEventListener(e, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, resetTimer));
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      if (warningTimer.current) clearTimeout(warningTimer.current);
+    };
+  }, [logout]);
+
+  // ── Tab close / visibility detection ──────────────────────────────────────
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        sessionStorage.setItem("aorane_hidden_at", Date.now().toString());
+      } else {
+        const hiddenAt = sessionStorage.getItem("aorane_hidden_at");
+        if (hiddenAt) {
+          const elapsed = Date.now() - Number(hiddenAt);
+          sessionStorage.removeItem("aorane_hidden_at");
+          if (elapsed > INACTIVITY_MS) logout();
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [logout]);
 
   useEffect(() => {
     const stored = localStorage.getItem("aorane_theme");
@@ -139,7 +184,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const initials = admin?.fullName?.charAt(0)?.toUpperCase() ?? "A";
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#090e1c" }}>
+    <div className="flex h-screen overflow-hidden bg-background">
 
       {/* Mobile overlay */}
       {open && (
@@ -367,8 +412,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
+        {/* Inactivity warning banner */}
+        {inactiveWarning && (
+          <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-medium">
+            <div className="flex items-center gap-2">
+              <ShieldAlert size={14} className="shrink-0" />
+              <span>You've been inactive for a while. You'll be signed out in 1 minute to protect your session.</span>
+            </div>
+            <button
+              onClick={() => { setInactiveWarning(false); }}
+              className="shrink-0 px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 transition-colors font-semibold"
+            >
+              Stay signed in
+            </button>
+          </div>
+        )}
+
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto page-enter">
+        <main className="flex-1 overflow-y-auto page-enter bg-background">
           {children}
         </main>
       </div>

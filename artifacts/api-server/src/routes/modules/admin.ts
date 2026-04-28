@@ -112,50 +112,109 @@ router.get("/admin/overview", requireAdmin, async (_req: AdminRequest, res) => {
 router.get("/admin/users", requireAdmin, async (req: AdminRequest, res) => {
   try {
     const { search, limit = "50", offset = "0" } = req.query as Record<string, string>;
-    const baseQuery = db.select().from(usersTable);
-    const filtered = search
-      ? baseQuery.where(ilike(usersTable.phone, `%${search}%`))
-      : baseQuery;
     const limitNum = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
     const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
-    const users = await filtered.orderBy(desc(usersTable.createdAt)).limit(limitNum).offset(offsetNum);
-    res.json({ users });
+
+    const whereClause = search ? or(
+      ilike(usersTable.phone, `%${search}%`),
+      ilike(usersTable.email, `%${search}%`),
+      sql`${usersTable.id}::text ILIKE ${`%${search}%`}`,
+    ) : undefined;
+
+    const rows = await db
+      .select({
+        id: usersTable.id,
+        phone: usersTable.phone,
+        email: usersTable.email,
+        plan: usersTable.plan,
+        isActive: usersTable.isActive,
+        isBanned: usersTable.isBanned,
+        createdAt: usersTable.createdAt,
+        lastLoginAt: usersTable.lastLoginAt,
+        aoraneId: userProfilesTable.aoraneId,
+        fullName: userProfilesTable.fullName,
+      })
+      .from(usersTable)
+      .leftJoin(userProfilesTable, eq(usersTable.id, userProfilesTable.userId))
+      .where(whereClause)
+      .orderBy(desc(usersTable.createdAt))
+      .limit(limitNum)
+      .offset(offsetNum);
+
+    res.json({ users: rows });
   } catch {
     res.status(500).json({ error: "Failed to fetch users" });
   }
 });
 
-// ─── AORANE ID Search ─────────────────────────────────────────────────────────
+// ─── Search (Aorane ID / UUID / Name / Phone / Email) ────────────────────────
 router.get("/admin/users/search", requireAdmin, async (req: AdminRequest, res) => {
   try {
     const q = ((req.query.q as string) || "").trim();
-    if (!q || q.length < 4) { res.status(400).json({ error: "Minimum 4 characters required" }); return; }
+    if (!q || q.length < 3) { res.status(400).json({ error: "Minimum 3 characters required" }); return; }
+
     const isAoraneId = /^\d{8,12}$/.test(q);
-    let profiles: typeof userProfilesTable.$inferSelect[] = [];
-    if (isAoraneId) {
-      profiles = await db.select().from(userProfilesTable).where(eq(userProfilesTable.aoraneId, q)).limit(10);
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(q);
+    const isPhone = /^\+?\d{7,15}$/.test(q.replace(/\s/g, ""));
+    const isPartialUUID = /^[0-9a-f]{8,}/i.test(q) && !isAoraneId;
+
+    let userIds: string[] = [];
+
+    if (isUUID) {
+      userIds = [q];
+    } else if (isPartialUUID) {
+      const rows = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(sql`${usersTable.id}::text ILIKE ${`${q}%`}`).limit(10);
+      userIds = rows.map(r => r.id);
+    } else if (isPhone) {
+      const rows = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(ilike(usersTable.phone, `%${q}%`)).limit(10);
+      userIds = rows.map(r => r.id);
+    } else if (isAoraneId) {
+      const profiles = await db.select({ userId: userProfilesTable.userId })
+        .from(userProfilesTable).where(eq(userProfilesTable.aoraneId, q)).limit(10);
+      userIds = profiles.map(p => p.userId);
     } else {
-      profiles = await db.select().from(userProfilesTable).where(ilike(userProfilesTable.fullName, `%${q}%`)).limit(10);
+      const rows = await db.select({ userId: userProfilesTable.userId })
+        .from(userProfilesTable)
+        .leftJoin(usersTable, eq(userProfilesTable.userId, usersTable.id))
+        .where(or(
+          ilike(userProfilesTable.fullName, `%${q}%`),
+          ilike(usersTable.email, `%${q}%`),
+        ))
+        .limit(10);
+      userIds = rows.map(r => r.userId);
     }
-    const results = await Promise.all(profiles.map(async (p) => {
-      const [user] = await db.select().from(usersTable).where(eq(usersTable.id, p.userId)).limit(1);
-      return {
-        userId: p.userId,
-        aoraneId: p.aoraneId,
-        name: p.fullName,
-        bloodGroup: p.bloodGroup,
-        gender: p.gender,
-        age: p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (86400000 * 365.25)) : null,
-        city: (p as Record<string, unknown>).city,
-        state: (p as Record<string, unknown>).state,
-        bmi: p.bmi,
-        plan: user?.plan,
-        phone: user?.phone,
-        isActive: user?.isActive,
-        isBanned: user?.isBanned,
-        createdAt: user?.createdAt,
-      };
+
+    if (userIds.length === 0) { res.json({ results: [], count: 0 }); return; }
+
+    const rows = await db
+      .select({
+        userId: usersTable.id,
+        phone: usersTable.phone,
+        email: usersTable.email,
+        plan: usersTable.plan,
+        isActive: usersTable.isActive,
+        isBanned: usersTable.isBanned,
+        createdAt: usersTable.createdAt,
+        aoraneId: userProfilesTable.aoraneId,
+        name: userProfilesTable.fullName,
+        bloodGroup: userProfilesTable.bloodGroup,
+        gender: userProfilesTable.gender,
+        dateOfBirth: userProfilesTable.dateOfBirth,
+        city: userProfilesTable.city,
+        state: userProfilesTable.state,
+        bmi: userProfilesTable.bmi,
+      })
+      .from(usersTable)
+      .leftJoin(userProfilesTable, eq(usersTable.id, userProfilesTable.userId))
+      .where(sql`${usersTable.id} = ANY(${sql.raw(`ARRAY[${userIds.map(id => `'${id}'`).join(",")}]::uuid[]`)})`);
+
+    const results = rows.map(r => ({
+      ...r,
+      age: r.dateOfBirth ? Math.floor((Date.now() - new Date(r.dateOfBirth).getTime()) / (86400000 * 365.25)) : null,
     }));
+
     res.json({ results, count: results.length });
   } catch (err) {
     console.error("Admin search error:", err);

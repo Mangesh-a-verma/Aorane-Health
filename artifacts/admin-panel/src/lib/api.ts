@@ -63,8 +63,9 @@ async function req<T>(path: string, opts?: RequestInit, skipAutoLogout = false):
 }
 
 export type User = {
-  id: string; phone: string; plan: string; isActive: boolean; isBanned: boolean;
-  createdAt: string; lastActiveAt: string | null;
+  id: string; phone: string; email: string | null; plan: string; isActive: boolean; isBanned: boolean;
+  createdAt: string; lastActiveAt: string | null; lastLoginAt: string | null;
+  fullName: string | null; aoraneId: string | null;
 };
 export type Org = {
   id: string; name: string; orgType: string; orgCode: string; contactEmail: string;
@@ -93,9 +94,10 @@ export type BloodRequest = {
   hospitalName: string; city: string; state: string; status: string; isFlagged: boolean; createdAt: string;
 };
 export type SearchResult = {
-  userId: string; aoraneId: string | null; name: string | null; bloodGroup: string | null;
-  gender: string | null; age: number | null; city: string | null; state: string | null;
-  bmi: string | null; plan: string; phone: string; isActive: boolean; isBanned: boolean; createdAt: string;
+  userId: string; aoraneId: string | null; name: string | null; email: string | null;
+  bloodGroup: string | null; gender: string | null; age: number | null;
+  city: string | null; state: string | null; bmi: string | null;
+  plan: string; phone: string; isActive: boolean; isBanned: boolean; createdAt: string;
 };
 export type Language = {
   id: string; code: string; nameEn: string; nameLocal: string;

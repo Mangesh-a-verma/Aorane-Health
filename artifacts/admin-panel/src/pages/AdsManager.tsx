@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Layout from "@/components/Layout";
 import { api, type AdCampaign } from "@/lib/api";
 import {
@@ -346,20 +346,41 @@ function AdModal({
   );
 }
 
+function ErrorBanner({ message, onRetry, onDismiss }: { message: string; onRetry?: () => void; onDismiss: () => void }) {
+  return (
+    <div className="mb-4 flex items-center gap-3 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-xl text-sm text-red-700 dark:text-red-400">
+      <div className="flex-1">{message}</div>
+      {onRetry && (
+        <button onClick={onRetry}
+          className="shrink-0 flex items-center gap-1 px-3 py-1 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 rounded-lg font-medium transition-colors text-xs">
+          <RefreshCw size={11} /> Retry
+        </button>
+      )}
+      <button onClick={onDismiss} className="shrink-0 text-red-400 hover:text-red-600 transition-colors ml-1">✕</button>
+    </div>
+  );
+}
+
 export default function AdsManager() {
   const [ads, setAds] = useState<AdCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalAd, setModalAd] = useState<Partial<AdCampaign> | null | undefined>(undefined);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ msg: string; retryFn?: () => void } | null>(null);
 
-  const load = async () => {
+  const showError = (msg: string, retryFn?: () => void) => setError({ msg, retryFn });
+
+  const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try { setAds((await api.ads()).ads); }
-    catch { setError("Failed to load ads"); }
+    catch (e: unknown) {
+      const msg = (e as Error).message || "Failed to load ads";
+      showError(msg.includes("fetch") ? "Could not connect to server. Please check your connection." : `Failed to load ads: ${msg}`, load);
+    }
     setLoading(false);
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   const handleSave = async (data: ReturnType<typeof Object.assign>) => {
     try {
@@ -370,18 +391,20 @@ export default function AdsManager() {
       }
       setModalAd(undefined);
       load();
-    } catch { setError("Save failed, please try again"); }
+    } catch (e: unknown) {
+      showError("Save failed: " + ((e as Error).message || "Unknown error"));
+    }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("This ad will be deleted. Are you sure?")) return;
+    if (!confirm("This ad will be deleted permanently. Are you sure?")) return;
     try { await api.deleteAd(id); load(); }
-    catch { setError("Delete failed"); }
+    catch (e: unknown) { showError("Delete failed: " + ((e as Error).message || "Unknown error"), () => handleDelete(id)); }
   };
 
   const handleToggle = async (id: string) => {
     try { await api.toggleAd(id); load(); }
-    catch { setError("Toggle failed"); }
+    catch (e: unknown) { showError("Toggle failed: " + ((e as Error).message || "Unknown error"), () => handleToggle(id)); }
   };
 
   const totalImpressions = ads.reduce((s, a) => s + a.impressionCount, 0);
@@ -414,10 +437,11 @@ export default function AdsManager() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            {error}
-            <button onClick={() => setError(null)} className="ml-2 underline">Dismiss</button>
-          </div>
+          <ErrorBanner
+            message={error.msg}
+            onRetry={error.retryFn}
+            onDismiss={() => setError(null)}
+          />
         )}
 
         {/* Summary stats */}
