@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import { storage } from "@/lib/storage";
 import { api, setUnauthorizedCallback } from "@/lib/api";
 
@@ -43,9 +44,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: null,
     token: null,
   });
+  const isAuthenticatedRef = useRef(false);
 
   useEffect(() => {
     initAuth();
+  }, []);
+
+  // Refresh user plan from server whenever app comes back to foreground
+  useEffect(() => {
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState === "active" && isAuthenticatedRef.current) {
+        api.getMe().then((res) => {
+          if (res?.user) {
+            storage.setUser(res.user as unknown as Record<string, unknown>);
+            setState((s) => s.isAuthenticated ? { ...s, user: res.user as unknown as typeof s.user } : s);
+          }
+        }).catch(() => {});
+      }
+    };
+    const sub = AppState.addEventListener("change", handleAppStateChange);
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {
@@ -72,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         storage.isPinSet(),
       ]);
       if (token && user) {
+        isAuthenticatedRef.current = true;
         setState({
           isLoading: false,
           isAuthenticated: true,
@@ -90,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const loginWithToken = useCallback(async (token: string, refreshToken: string, user: User, isNewUser: boolean, onboardingStep = 0) => {
+    isAuthenticatedRef.current = true;
     await storage.setToken(token);
     await storage.setRefreshToken(refreshToken);
     await storage.setUser(user as Record<string, unknown>);
@@ -115,6 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    isAuthenticatedRef.current = false;
     await storage.clearTokens();
     setState({
       isLoading: false,

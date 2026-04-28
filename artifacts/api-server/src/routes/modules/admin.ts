@@ -3,6 +3,7 @@ import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable,
 import { eq, desc, ilike, count, or, sql, and } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import { signAdminToken } from "../../lib/jwt";
+import { invalidatePlanCache } from "../../middlewares/plan-check";
 import type { AdminRequest } from "../../middlewares/admin-auth";
 import { invalidateAICache } from "../../lib/ai";
 import { invalidateFeatureCache } from "../../middlewares/feature-check";
@@ -232,6 +233,7 @@ router.patch("/admin/users/:id", requireAdmin, async (req: AdminRequest, res) =>
     const userId = String(req.params.id);
     const [updated] = await db.update(usersTable).set(updates as Partial<typeof usersTable.$inferInsert>).where(eq(usersTable.id, userId)).returning();
     await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "update_user", targetType: "user", targetId: userId, details: updates });
+    if (plan !== undefined) invalidatePlanCache(userId);
     res.json({ user: updated });
   } catch {
     res.status(500).json({ error: "Failed to update user" });
@@ -415,6 +417,7 @@ router.post("/admin/subscriptions/grant", requireAdmin, async (req: AdminRequest
     const [sub] = await db.insert(subscriptionsTable).values({ userId, plan, status: "active", source: "admin_grant", expiresAt }).returning();
     await db.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, userId));
     await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "grant_subscription", targetType: "user", targetId: userId, details: { plan, durationDays } });
+    invalidatePlanCache(userId);
     res.status(201).json({ success: true, subscription: sub });
   } catch {
     res.status(500).json({ error: "Failed to grant subscription" });
@@ -427,6 +430,7 @@ router.patch("/admin/subscriptions/:id/cancel", requireAdmin, async (req: AdminR
     const [sub] = await db.update(subscriptionsTable).set({ status: "cancelled", cancelledAt: new Date() }).where(eq(subscriptionsTable.id, subId)).returning();
     if (sub?.userId) {
       await db.update(usersTable).set({ plan: "free" }).where(eq(usersTable.id, sub.userId));
+      invalidatePlanCache(sub.userId);
     }
     await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "cancel_subscription", targetType: "subscription", targetId: subId, details: {} });
     res.json({ success: true, subscription: sub });
