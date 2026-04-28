@@ -455,4 +455,150 @@ router.get("/payment/rzp-callback", (_req, res) => {
     </div></body></html>`);
 });
 
+// ─── GET: Server-rendered Razorpay Subscription checkout page (for mobile) ───
+// Mobile app opens this URL in browser — loads checkout.js + opens subscription modal
+router.get("/payment/subscription-checkout/:razorpaySubscriptionId", async (req, res) => {
+  const { razorpaySubscriptionId } = req.params as { razorpaySubscriptionId: string };
+  const { subscriptionId, plan } = req.query as { subscriptionId?: string; plan?: string };
+
+  try {
+    const keyId = process.env["RAZORPAY_KEY_ID"] || "";
+    const serverBase = process.env["RENDER_EXTERNAL_URL"] || `https://aorane.onrender.com`;
+    const callbackUrl = `${serverBase}/api/payment/subscription-rzp-callback`;
+    const planLabel = (plan || "Premium").replace(/^\w/, c => c.toUpperCase());
+
+    res.setHeader("Content-Type", "text/html");
+    res.send(`<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+  <title>Aorane Autopay Setup</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0A1628;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif}
+    .card{background:#0D2040;border:1px solid rgba(232,98,42,0.3);border-radius:24px;padding:40px 32px;text-align:center;max-width:340px;width:90%}
+    h2{color:#fff;font-size:20px;margin-bottom:8px}
+    p{color:rgba(255,255,255,0.55);font-size:14px;line-height:1.5}
+    .badge{display:inline-block;background:rgba(232,98,42,0.15);border:1px solid rgba(232,98,42,0.4);border-radius:20px;padding:4px 14px;font-size:12px;color:#E8622A;margin-bottom:16px}
+    .loader{width:40px;height:40px;border:3px solid rgba(255,255,255,0.1);border-top-color:#E8622A;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 20px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .retry-btn{margin-top:20px;padding:12px 24px;background:#E8622A;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;width:100%}
+    .note{margin-top:12px;font-size:11px;color:rgba(255,255,255,0.3);line-height:1.5}
+  </style>
+</head>
+<body>
+  <div class="card" id="loading-card">
+    <div class="loader"></div>
+    <div class="badge">🔄 Auto-debit Monthly</div>
+    <h2>Aorane Autopay</h2>
+    <p>${planLabel} Plan — Monthly Auto-renewal</p>
+    <button class="retry-btn" id="open-btn" style="display:none" onclick="openRazorpay()">Autopay Setup Karo</button>
+    <p class="note">Razorpay secure mandate — cancel anytime from app</p>
+  </div>
+
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    var rzpInstance = null;
+    function openRazorpay() {
+      if (rzpInstance) { rzpInstance.open(); return; }
+      var options = {
+        key: "${keyId}",
+        subscription_id: "${razorpaySubscriptionId}",
+        name: "Aorane Health",
+        description: "${planLabel} Plan — Monthly Autopay",
+        image: "https://aorane.in/logo.png",
+        redirect: true,
+        callback_url: "${callbackUrl}?subscriptionId=${subscriptionId || ""}&plan=${plan || ""}",
+        theme: { color: "#E8622A" },
+        modal: {
+          backdropclose: false,
+          escape: false,
+          ondismiss: function() {
+            document.getElementById('loading-card').innerHTML =
+              '<div style="font-size:48px;margin-bottom:16px">❌</div>' +
+              '<h2 style="color:#f87171;margin:0 0 8px">Setup Cancelled</h2>' +
+              '<p style="color:rgba(255,255,255,0.5);font-size:14px;margin-bottom:16px">Autopay setup cancel ki gayi. App mein wapas jaake dobara try karein.</p>' +
+              '<button class="retry-btn" onclick="openRazorpay()">Dobara Try Karo</button>';
+          }
+        }
+      };
+      rzpInstance = new Razorpay(options);
+      rzpInstance.open();
+    }
+    window.addEventListener('load', function() { setTimeout(openRazorpay, 500); });
+    setTimeout(function() { document.getElementById('open-btn').style.display = 'block'; }, 4000);
+  </script>
+</body>
+</html>`);
+  } catch {
+    res.status(500).setHeader("Content-Type", "text/html").send(
+      `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+       <body style="margin:0;background:#0A1628;display:flex;align-items:center;justify-content:center;min-height:100vh;color:#fff;font-family:sans-serif">
+       <div style="text-align:center;padding:40px"><h2>Server Error</h2><p>Please go back to the app and try again.</p></div></body></html>`
+    );
+  }
+});
+
+// ─── POST: Razorpay Subscription first-payment callback ───────────────────────
+// After user completes first payment in subscription checkout, Razorpay redirects here
+router.post("/payment/subscription-rzp-callback", async (req, res) => {
+  const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature } = req.body as Record<string, string>;
+  const { subscriptionId, plan } = req.query as { subscriptionId?: string; plan?: string };
+
+  const isValid = razorpay_subscription_id && razorpay_payment_id && razorpay_signature
+    ? verifySubscriptionSignature(razorpay_payment_id, razorpay_subscription_id, razorpay_signature)
+    : false;
+
+  if (isValid && subscriptionId) {
+    try {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      await db.update(subscriptionsTable).set({
+        status: "active",
+        expiresAt,
+        razorpayPaymentId: razorpay_payment_id,
+        nextRenewalAt: expiresAt,
+      }).where(eq(subscriptionsTable.id, subscriptionId));
+      const [sub] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.id, subscriptionId));
+      if (sub?.userId && sub?.plan) {
+        await db.update(usersTable).set({ plan: sub.plan }).where(eq(usersTable.id, sub.userId));
+      }
+    } catch { /* best effort */ }
+  }
+
+  const html = isValid
+    ? `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Autopay Active</title></head>
+       <body style="margin:0;background:#0A1628;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif">
+       <div style="background:#0D2040;border-radius:24px;padding:40px 32px;text-align:center;max-width:340px;border:1px solid rgba(232,98,42,0.4)">
+         <div style="font-size:64px;margin-bottom:16px">🔄</div>
+         <h2 style="color:#E8622A;margin:0 0 8px">Autopay Active!</h2>
+         <p style="color:rgba(255,255,255,0.6);margin:0 0 16px;font-size:14px">${(plan || "Premium").charAt(0).toUpperCase() + (plan || "Premium").slice(1)} plan auto-renews every month. Close this window and return to the app.</p>
+         <div style="background:rgba(232,98,42,0.1);border-radius:12px;padding:12px;font-size:12px;color:rgba(255,255,255,0.4)">
+           Payment ID: ${razorpay_payment_id || "N/A"}
+         </div>
+       </div></body></html>`
+    : `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Setup Failed</title></head>
+       <body style="margin:0;background:#0A1628;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif">
+       <div style="background:#0D2040;border-radius:24px;padding:40px 32px;text-align:center;max-width:340px;border:1px solid rgba(239,68,68,0.3)">
+         <div style="font-size:64px;margin-bottom:16px">❌</div>
+         <h2 style="color:#f87171;margin:0 0 8px">Setup Failed</h2>
+         <p style="color:rgba(255,255,255,0.6);margin:0 0 24px;font-size:14px">Autopay setup verify nahi ho payi. App mein wapas jaake dobara try karein.</p>
+       </div></body></html>`;
+
+  res.setHeader("Content-Type", "text/html");
+  res.send(html);
+});
+
+// Also handle GET for subscription callback (browser navigation)
+router.get("/payment/subscription-rzp-callback", (_req, res) => {
+  res.setHeader("Content-Type", "text/html");
+  res.send(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Aorane Autopay</title></head>
+    <body style="margin:0;background:#0A1628;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif">
+    <div style="background:#0D2040;border-radius:24px;padding:40px 32px;text-align:center;max-width:340px">
+      <div style="font-size:48px;margin-bottom:16px">🔄</div>
+      <h2 style="color:#E8622A;margin:0 0 8px">Return to Aorane App</h2>
+      <p style="color:rgba(255,255,255,0.5);font-size:14px">Close this window and check your subscription status in the app.</p>
+    </div></body></html>`);
+});
+
 export default router;

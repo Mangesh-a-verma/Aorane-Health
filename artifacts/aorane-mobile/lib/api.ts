@@ -508,6 +508,16 @@ export const api = {
   getOrderStatus: (orderId: string) =>
     request<{ status: string; plan: string; paymentId: string; razorpayPaymentId: string | null }>("GET", `/payment/order-status?orderId=${encodeURIComponent(orderId)}`),
 
+  // ── Autopay Subscription ───────────────────────────────────
+  createSubscription: (plan: string, promoCode?: string) =>
+    request<{ subscriptionId: string; razorpaySubscriptionId?: string; razorpayKeyId?: string; plan: string; amount: number; discount: number; isTestMode: boolean; expiresAt?: string; message?: string }>("POST", "/payment/subscription/create", { plan, promoCode }),
+  verifySubscription: (data: { subscriptionId: string; razorpaySubscriptionId: string; razorpayPaymentId: string; razorpaySignature: string; plan: string }) =>
+    request<{ success: boolean; message: string; expiresAt?: string; inviteCode?: string | null }>("POST", "/payment/subscription/verify", data),
+  cancelSubscription: () =>
+    request<{ success: boolean; message: string; expiresAt?: string }>("DELETE", "/payment/subscription/cancel"),
+  getSubscriptionStatus: () =>
+    request<{ subscription: { id: string; plan: string; status: string; expiresAt: string; autoRenew: boolean; nextRenewalAt: string | null; razorpaySubscriptionId: string | null } | null; plan: string }>("GET", "/payment/subscription"),
+
   // ── Scorecard ──────────────────────────────────────────────
   getScorecard: () =>
     request<{

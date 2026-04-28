@@ -131,6 +131,11 @@ function SuccessOverlay({ plan, inviteCode, onDone }: { plan: string; inviteCode
   );
 }
 
+type ActiveSubscription = {
+  id: string; plan: string; status: string; expiresAt: string;
+  autoRenew: boolean; nextRenewalAt: string | null; razorpaySubscriptionId: string | null;
+} | null;
+
 export default function UpgradeScreen() {
   const isDark = useColorScheme() === "dark";
   const insets = useSafeAreaInsets();
@@ -148,6 +153,14 @@ export default function UpgradeScreen() {
   const [waitingForPayment, setWaitingForPayment] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollingOrderRef = useRef<{ orderId: string; paymentId: string; plan: string } | null>(null);
+
+  // ── Autopay / Subscription state ─────────────────────────────
+  const [isAutopay, setIsAutopay] = useState(true);
+  const [activeSubscription, setActiveSubscription] = useState<ActiveSubscription>(null);
+  const [loadingSubscription, setLoadingSubscription] = useState(false);
+  const [waitingForSubscription, setWaitingForSubscription] = useState(false);
+  const subPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingSubIdRef = useRef<string | null>(null);
   const topPad = insets.top;
   const bg = isDark ? "#010814" : "#F0F9FF";
 
@@ -157,7 +170,15 @@ export default function UpgradeScreen() {
   useEffect(() => {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
+      if (subPollingRef.current) clearInterval(subPollingRef.current);
     };
+  }, []);
+
+  // Load active subscription on mount
+  useEffect(() => {
+    api.getSubscriptionStatus().then(res => {
+      setActiveSubscription(res.subscription);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -196,6 +217,104 @@ export default function UpgradeScreen() {
       setPromoMsg((e as Error).message || "Invalid code");
     } finally { setValidatingPromo(false); }
   };
+
+  const stopSubPolling = useCallback(() => {
+    if (subPollingRef.current) { clearInterval(subPollingRef.current); subPollingRef.current = null; }
+    pendingSubIdRef.current = null;
+    setWaitingForSubscription(false);
+  }, []);
+
+  const startSubPolling = useCallback((subscriptionId: string) => {
+    pendingSubIdRef.current = subscriptionId;
+    setWaitingForSubscription(true);
+    let attempts = 0;
+    const maxAttempts = 100;
+    subPollingRef.current = setInterval(async () => {
+      attempts++;
+      if (attempts > maxAttempts) { stopSubPolling(); return; }
+      try {
+        const res = await api.getSubscriptionStatus();
+        if (res.subscription?.status === "active") {
+          stopSubPolling();
+          setActiveSubscription(res.subscription);
+          if (refreshUser) await refreshUser();
+          setSuccess(true);
+        }
+      } catch { }
+    }, 3000);
+  }, [refreshUser, stopSubPolling]);
+
+  const handleCancelSubscription = async () => {
+    Alert.alert(
+      "Cancel Autopay",
+      "Autopay cancel karne ke baad plan expiry tak active rahega. Cancel karna chahte hain?",
+      [
+        { text: "Nahi", style: "cancel" },
+        {
+          text: "Haan, Cancel Karo",
+          style: "destructive",
+          onPress: async () => {
+            setLoadingSubscription(true);
+            try {
+              const res = await api.cancelSubscription();
+              const statusRes = await api.getSubscriptionStatus();
+              setActiveSubscription(statusRes.subscription);
+              Alert.alert("Autopay Cancelled", res.message || "Autopay cancel ho gayi. Plan expiry tak active hai.");
+            } catch (e: unknown) {
+              Alert.alert("Error", (e as Error).message || "Cancel nahi ho paya. Dobara try karein.");
+            } finally { setLoadingSubscription(false); }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSubscriptionUpgrade = async () => {
+    setLoading(true);
+    try {
+      const subRes = await api.createSubscription(selectedPlan, promoCode.trim().toUpperCase() || undefined);
+
+      if (subRes.expiresAt && !subRes.razorpaySubscriptionId) {
+        // Test mode — subscription directly activated
+        const statusRes = await api.getSubscriptionStatus();
+        setActiveSubscription(statusRes.subscription);
+        if (refreshUser) await refreshUser();
+        setSuccess(true);
+        setLoading(false);
+        return;
+      }
+
+      if (subRes.razorpaySubscriptionId) {
+        const serverBase = Platform.OS === "web" && typeof window !== "undefined"
+          ? window.location.origin
+          : (process.env.EXPO_PUBLIC_API_URL?.replace("/api", "") || "https://aorane.onrender.com");
+        const checkoutUrl = `${serverBase}/api/payment/subscription-checkout/${subRes.razorpaySubscriptionId}?subscriptionId=${subRes.subscriptionId}&plan=${selectedPlan}`;
+        Linking.openURL(checkoutUrl);
+        startSubPolling(subRes.subscriptionId);
+      }
+    } catch (e: unknown) {
+      Alert.alert("Error", (e as Error).message || "Autopay setup failed. Dobara try karein.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkSubscriptionNow = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.getSubscriptionStatus();
+      if (res.subscription?.status === "active") {
+        stopSubPolling();
+        setActiveSubscription(res.subscription);
+        if (refreshUser) await refreshUser();
+        setSuccess(true);
+      } else {
+        Alert.alert("Subscription Pending", "Autopay abhi active nahi hai. Browser mein payment complete karein.");
+      }
+    } catch {
+      Alert.alert("Error", "Status check nahi ho paya. Dobara try karein.");
+    } finally { setLoading(false); }
+  }, [refreshUser, stopSubPolling]);
 
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
@@ -319,6 +438,7 @@ export default function UpgradeScreen() {
   };
 
   const handleUpgrade = async () => {
+    if (isAutopay) { return handleSubscriptionUpgrade(); }
     setLoading(true);
     try {
       const orderRes = await api.createPaymentOrder(selectedPlan, promoCode.trim().toUpperCase() || undefined);
@@ -379,17 +499,47 @@ export default function UpgradeScreen() {
 
         {(user?.plan as string) !== "free" && (
           <GlassCard style={{ marginBottom: 16 }}>
-            <View style={{ padding: 16, flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#10B98122", alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+            <View style={{ padding: 16 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: activeSubscription?.autoRenew ? 12 : 0 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#10B98122", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 15 }}>Active Plan: {(user?.plan as string || "free").toUpperCase()}</Text>
+                  <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>
+                    {activeSubscription?.autoRenew ? "🔄 Autopay active — auto-renews monthly" : "Your premium plan is active"}
+                  </Text>
+                </View>
+                {activeSubscription?.autoRenew && (
+                  <View style={{ backgroundColor: "#E8622A22", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "#E8622A55" }}>
+                    <Text style={{ color: "#E8622A", fontFamily: "Inter_700Bold", fontSize: 10 }}>AUTOPAY</Text>
+                  </View>
+                )}
               </View>
-              <View>
-                <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 15 }}>Active Plan: {(user?.plan as string || "free").toUpperCase()}</Text>
-                <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Your premium plan is active</Text>
-              </View>
+              {activeSubscription?.autoRenew && (
+                <TouchableOpacity onPress={handleCancelSubscription} disabled={loadingSubscription} style={{ backgroundColor: isDark ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.08)", borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: "rgba(239,68,68,0.25)" }}>
+                  <Text style={{ color: "#ef4444", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                    {loadingSubscription ? "Cancelling..." : "Cancel Autopay"}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </GlassCard>
         )}
+
+        {/* Autopay Toggle */}
+        <GlassCard style={{ marginBottom: 16 }}>
+          <View style={{ padding: 4, flexDirection: "row", borderRadius: 18 }}>
+            <TouchableOpacity onPress={() => setIsAutopay(true)} style={{ flex: 1, paddingVertical: 11, borderRadius: 16, alignItems: "center", backgroundColor: isAutopay ? "#E8622A" : "transparent" }}>
+              <Text style={{ color: isAutopay ? "#FFF" : (isDark ? "rgba(255,255,255,0.55)" : "rgba(10,22,40,0.5)"), fontFamily: "Inter_700Bold", fontSize: 13 }}>🔄 Auto-debit Monthly</Text>
+              {isAutopay && <Text style={{ color: "rgba(255,255,255,0.75)", fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 2 }}>Recommended • Cancel anytime</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setIsAutopay(false)} style={{ flex: 1, paddingVertical: 11, borderRadius: 16, alignItems: "center", backgroundColor: !isAutopay ? (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.12)") : "transparent" }}>
+              <Text style={{ color: !isAutopay ? (isDark ? "#F0F8FF" : "#1a1a2e") : (isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.4)"), fontFamily: "Inter_700Bold", fontSize: 13 }}>💳 Pay Once</Text>
+              {!isAutopay && <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.4)", fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 2 }}>1 month only</Text>}
+            </TouchableOpacity>
+          </View>
+        </GlassCard>
 
         <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 12 }}>Plan Chunein</Text>
         <View style={{ gap: 12, marginBottom: 16 }}>
@@ -470,17 +620,19 @@ export default function UpgradeScreen() {
         </LinearGradient>
 
         <TouchableOpacity onPress={handleUpgrade} disabled={loading} style={{ borderRadius: 16, overflow: "hidden", opacity: loading ? 0.7 : 1 }}>
-          <LinearGradient colors={plan.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ padding: 18, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10 }}>
-            <Ionicons name={loading ? "hourglass" : "card"} size={22} color="#FFF" />
+          <LinearGradient colors={isAutopay ? ["#E8622A","#F5A623"] : plan.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ padding: 18, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10 }}>
+            <Ionicons name={loading ? "hourglass" : (isAutopay ? "refresh-circle" : "card")} size={22} color="#FFF" />
             <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 17 }}>
-              {loading ? "Processing..." : `Upgrade for ₹${finalPrice}`}
+              {loading ? "Processing..." : isAutopay ? `Setup Autopay ₹${finalPrice}/mo` : `Pay Once ₹${finalPrice}`}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
 
         <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 14 }}>
           <Ionicons name="lock-closed" size={12} color={isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)"} />
-          <Text style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" }}>256-bit SSL • Razorpay Secure • Cancel anytime</Text>
+          <Text style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" }}>
+            {isAutopay ? "256-bit SSL • Razorpay Mandate • Cancel anytime from app" : "256-bit SSL • Razorpay Secure • Cancel anytime"}
+          </Text>
         </View>
 
         <View style={{ flexDirection: "row", justifyContent: "center", gap: 16, marginTop: 16, paddingBottom: 10 }}>
@@ -516,6 +668,30 @@ export default function UpgradeScreen() {
               Alert.alert("Payment Cancelled", "No problem! Tap 'Upgrade' whenever you're ready.");
             }} style={{ paddingVertical: 10, paddingHorizontal: 20 }}>
               <Text style={{ color: "rgba(255,255,255,0.4)", fontFamily: "Inter_400Regular", fontSize: 13 }}>❌ Cancel Payment</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      )}
+
+      {waitingForSubscription && !success && (
+        <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.88)", zIndex: 998, padding: 24 }]}>
+          <LinearGradient colors={["#1A0A04", "#2D1100"]} style={{ borderRadius: 24, padding: 32, alignItems: "center", width: "100%", maxWidth: 320, borderWidth: 1, borderColor: "rgba(232,98,42,0.4)" }}>
+            <Text style={{ fontSize: 52, marginBottom: 16 }}>🔄</Text>
+            <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 20, textAlign: "center", marginBottom: 8 }}>Autopay Setup...</Text>
+            <Text style={{ color: "rgba(255,255,255,0.6)", fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center", marginBottom: 24, lineHeight: 20 }}>
+              Browser mein Razorpay mandate complete karein.{"\n"}App automatically update ho jaega.
+            </Text>
+            <TouchableOpacity onPress={checkSubscriptionNow} disabled={loading} style={{ backgroundColor: "#E8622A", borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14, width: "100%", alignItems: "center", marginBottom: 12, opacity: loading ? 0.6 : 1 }}>
+              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>
+                {loading ? "Checking..." : "✓ Autopay Setup Ho Gaya"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => {
+              stopSubPolling();
+              setLoading(false);
+              Alert.alert("Setup Cancelled", "Koi baat nahi! Jab chahein tab 'Setup Autopay' tap karein.");
+            }} style={{ paddingVertical: 10, paddingHorizontal: 20 }}>
+              <Text style={{ color: "rgba(255,255,255,0.4)", fontFamily: "Inter_400Regular", fontSize: 13 }}>❌ Cancel</Text>
             </TouchableOpacity>
           </LinearGradient>
         </View>
