@@ -87,7 +87,7 @@ Return ONLY valid JSON (no markdown, no extra text):
   "generalTips": ["tip1", "tip2", "tip3"]
 }`;
 
-    const jsonStr = await callAI("meal_planner", [{ role: "user", content: prompt }], { maxTokens: 4000 });
+    const jsonStr = await callAI("meal_planner", [{ role: "user", content: prompt }], { maxTokens: 2000 });
     const plan = JSON.parse(jsonStr);
     res.json({ plan, generatedAt: new Date().toISOString(), userId });
   } catch (err) {

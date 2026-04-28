@@ -62,8 +62,8 @@ async function getConfig(feature: string): Promise<CachedConfig> {
 function getGlobalKey(provider: string): string | null {
   const keys: Record<string, string | undefined> = {
     nvidia: process.env.NVIDIA_API_KEY,
-    // Use Replit AI Integrations proxy for Gemini (no user key needed), fallback to user key
-    google: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY,
+    // Prefer real Google Gemini API key for raw v1beta REST calls (proxy uses SDK format)
+    google: process.env.GOOGLE_GEMINI_API_KEY || process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
     anthropic: process.env.ANTHROPIC_API_KEY,
     openai: process.env.OPENAI_API_KEY,
   };
@@ -71,7 +71,8 @@ function getGlobalKey(provider: string): string | null {
 }
 
 function getGeminiBaseUrl(): string {
-  return process.env.AI_INTEGRATIONS_GEMINI_BASE_URL || "https://generativelanguage.googleapis.com";
+  // Always use real Google API for raw REST calls (Replit proxy requires SDK format)
+  return "https://generativelanguage.googleapis.com";
 }
 
 async function callNvidiaProvider(
