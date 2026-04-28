@@ -22,6 +22,11 @@ const PRIMARY = "#0B84D6";
 const SKY = "#38B6FF";
 const ACCENT = "#27AE60";
 
+// ─── FEATURE FLAGS ───────────────────────────────────────────────────────────
+// Set to `true` once DLT registration & WhatsApp Business API are approved
+const WHATSAPP_OTP_ENABLED = false;
+// ─────────────────────────────────────────────────────────────────────────────
+
 function GlassCard({ children, style }: { children: React.ReactNode; style?: object }) {
   return (
     <View style={[gl.card, style]}>
@@ -63,7 +68,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [loginMode, setLoginMode] = useState<"otp" | "email" | "pin">("otp");
+  const [loginMode, setLoginMode] = useState<"otp" | "email" | "pin">(WHATSAPP_OTP_ENABLED ? "otp" : "email");
   const [pin, setPin] = useState("");
   const [pinFocused, setPinFocused] = useState(false);
   const [devOtp, setDevOtp] = useState<string | null>(null);
@@ -266,20 +271,39 @@ export default function LoginScreen() {
 
               {/* OTP / Email / PIN Toggle */}
               <View style={s.toggle}>
-                {(["otp", "email", "pin"] as const).map(mode => (
-                  <TouchableOpacity
-                    key={mode}
-                    onPress={() => { setLoginMode(mode); setPin(""); Haptics.selectionAsync(); }}
-                    style={[s.toggleBtn, loginMode === mode && s.toggleBtnActive]}
-                  >
-                    {loginMode === mode && (
-                      <LinearGradient colors={[PRIMARY, SKY]} style={StyleSheet.absoluteFill} />
-                    )}
-                    <Text style={[s.toggleText, loginMode === mode && s.toggleTextActive]}>
-                      {mode === "otp" ? `💬 WhatsApp` : mode === "email" ? `📧 Email` : `🔒 PIN`}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {(["otp", "email", "pin"] as const).map(mode => {
+                  const isWhatsApp = mode === "otp";
+                  const isDisabled = isWhatsApp && !WHATSAPP_OTP_ENABLED;
+                  return (
+                    <TouchableOpacity
+                      key={mode}
+                      onPress={() => {
+                        if (isDisabled) {
+                          Alert.alert(
+                            "WhatsApp OTP — Coming Soon",
+                            "DLT registration is in progress. Please use Email OTP or PIN to login.",
+                            [{ text: "OK", style: "default" }]
+                          );
+                          return;
+                        }
+                        setLoginMode(mode); setPin(""); Haptics.selectionAsync();
+                      }}
+                      style={[s.toggleBtn, loginMode === mode && !isDisabled && s.toggleBtnActive, isDisabled && s.toggleBtnDisabled]}
+                    >
+                      {loginMode === mode && !isDisabled && (
+                        <LinearGradient colors={[PRIMARY, SKY]} style={StyleSheet.absoluteFill} />
+                      )}
+                      <Text style={[s.toggleText, loginMode === mode && !isDisabled && s.toggleTextActive, isDisabled && s.toggleTextMuted]}>
+                        {mode === "otp" ? `💬 WhatsApp` : mode === "email" ? `📧 Email` : `🔒 PIN`}
+                      </Text>
+                      {isDisabled && (
+                        <View style={s.comingSoonBadge}>
+                          <Text style={s.comingSoonText}>Soon</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               {/* Phone Input — shown for OTP & PIN modes */}
@@ -474,8 +498,16 @@ const s = StyleSheet.create({
     alignItems: "center", overflow: "hidden",
   },
   toggleBtnActive: {},
+  toggleBtnDisabled: { backgroundColor: "rgba(200,215,225,0.35)", opacity: 0.7 },
   toggleText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#7A90A4", zIndex: 1 },
   toggleTextActive: { color: "#FFFFFF" },
+  toggleTextMuted: { color: "#B0C4D0", fontSize: 12 },
+  comingSoonBadge: {
+    position: "absolute", top: 3, right: 4,
+    backgroundColor: "#F59E0B", borderRadius: 6,
+    paddingHorizontal: 5, paddingVertical: 1.5,
+  },
+  comingSoonText: { fontSize: 8, fontFamily: "Inter_700Bold", color: "#FFF" },
 
   inputRow: {
     flexDirection: "row", alignItems: "center", borderRadius: 16,
