@@ -73,12 +73,15 @@ router.delete("/medicine/schedule/:id", requireAuth, async (req: AuthRequest, re
 router.post("/medicine/log", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { scheduleId, status, scheduledAt, takenAt } = req.body as Record<string, unknown>;
+    if (!scheduleId || !status) {
+      res.status(400).json({ error: "scheduleId and status are required" }); return;
+    }
     const [log] = await db.insert(medicineLogsTable).values({
       userId: req.userId!,
       scheduleId: scheduleId as string,
       status: status as string,
-      scheduledAt: new Date(scheduledAt as string),
-      takenAt: takenAt ? new Date(takenAt as string) : undefined,
+      scheduledAt: scheduledAt ? new Date(scheduledAt as string) : new Date(),
+      takenAt: takenAt ? new Date(takenAt as string) : (status === "taken" ? new Date() : undefined),
     }).returning();
     res.status(201).json({ log });
   } catch {
