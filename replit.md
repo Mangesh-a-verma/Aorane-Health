@@ -42,11 +42,27 @@ AORANE's architecture is composed of a mobile app (Expo/React Native), a Busines
 - **App Sessions / DAU Tracking:** Tracks user sessions; DAU/MAU stats in Admin Panel.
 - **Google Fit Integration:** `openAuthSessionAsync` on Android for OAuth flow. Callback via `APP_URL_BASE`.
 
+## Demo Users (6 seeded for testing)
+| Name | Email | Plan | Focus |
+|------|-------|------|-------|
+| Arjun Kapoor | arjun.kapoor@demo.aorane.com | MAX | Weight Loss + Pre-Diabetes |
+| Sanya Gupta | sanya.gupta@demo.aorane.com | PRO | PCOS + Anemia |
+| Dr. Vikram Mehta | dr.mehta@demo.aorane.com | MAX | Hypertension + Cholesterol |
+| Rekha Singh | rekha.singh@demo.aorane.com | FREE | Thyroid + Weight Loss |
+| Aakash Verma | aakash.verma@demo.aorane.com | PRO | Athlete + Muscle Gain |
+| Priya Nair | priya.nair@demo.aorane.com | MAX | Diabetes + BP |
+All demo users have 7 days of food/water/exercise/stress logs, medicine schedules, and blood donor registrations.
+
+## API Test Results (22/22 PASS — April 2026)
+All core APIs tested and working: profile, food CRUD, water logging, exercise + MET calc, stress logs, medicine schedules, health score, AI suggestions (cached), AI predictions, payment subscription, plans listing, blood donors, scorecard.
+
 ## Key Files
 - `artifacts/api-server/src/routes/index.ts` — all 27 route modules registered
 - `artifacts/api-server/src/routes/modules/admin.ts` — admin endpoints including 9-stat overview
 - `artifacts/api-server/src/middlewares/feature-check.ts` — feature flag middleware (5-min cache)
 - `artifacts/api-server/src/lib/ai.ts` — AI provider abstraction (NVIDIA + Gemini)
+- `artifacts/api-server/src/lib/nvidia.ts` — NVIDIA API with 55-second AbortController timeout
+- `artifacts/api-server/src/routes/modules/medicine.ts` — includes GET /medicine/today with adherence summary
 - `artifacts/api-server/src/app.ts` — CORS config (aorane.com, aorane.in, vercel.app, onrender.com, replit.app)
 - `artifacts/aorane-mobile/lib/api.ts` — 96 API calls, all endpoints verified
 - `artifacts/aorane-mobile/app.json` — package: com.aorane.app, versionCode: 1

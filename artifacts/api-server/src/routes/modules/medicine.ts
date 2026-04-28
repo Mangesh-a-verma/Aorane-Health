@@ -101,4 +101,30 @@ router.get("/medicine/logs", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+router.get("/medicine/today", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+    const schedules = await db.select().from(medicineSchedulesTable)
+      .where(and(eq(medicineSchedulesTable.userId, req.userId!), eq(medicineSchedulesTable.isActive, true)))
+      .orderBy(medicineSchedulesTable.medicineName);
+    const logs = await db.select().from(medicineLogsTable)
+      .where(and(
+        eq(medicineLogsTable.userId, req.userId!),
+        gte(medicineLogsTable.scheduledAt, new Date(today + "T00:00:00Z")),
+        lte(medicineLogsTable.scheduledAt, new Date(today + "T23:59:59Z"))
+      ));
+    const takenIds = new Set(logs.filter(l => l.status === "taken").map(l => l.scheduleId));
+    const result = schedules.map(s => ({
+      ...s,
+      todayStatus: takenIds.has(s.id) ? "taken" : "pending",
+    }));
+    const taken = result.filter(s => s.todayStatus === "taken").length;
+    const pending = result.filter(s => s.todayStatus === "pending").length;
+    res.json({ schedules: result, summary: { total: result.length, taken, pending, adherencePercent: result.length ? Math.round((taken / result.length) * 100) : 100 } });
+  } catch (err) {
+    console.error("[medicine/today] error:", err);
+    res.status(500).json({ error: "Failed to fetch today's medicines" });
+  }
+});
+
 export default router;
