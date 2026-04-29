@@ -59,3 +59,9 @@ id = "VU4ZbPBokkkBKJRurm6Mo"
 uri = "file://.local/exports/AORANE_Project_Analysis.pdf"
 type = "pdf"
 title = "AORANE — Complete Project Analysis Document"
+
+[[outputs]]
+id = "AO8MxrWp8SiiNAx9w0EtU"
+uri = "file://exports/aorane-project-structure.pdf"
+type = "pdf"
+title = "Aorane Platform — Complete Project Architecture (20 pages)"
