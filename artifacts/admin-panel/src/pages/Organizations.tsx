@@ -4,8 +4,11 @@ import { api, type Org } from "@/lib/api";
 import {
   Building2, MapPin, Mail, Users, RefreshCw, Calendar,
   Search, ChevronRight, Activity, Hash, Shield, Briefcase,
-  ToggleLeft, ToggleRight, Loader2,
+  ToggleLeft, ToggleRight, Loader2, Pencil, Trash2, X, Check,
+  AlertTriangle,
 } from "lucide-react";
+
+const ORG_TYPES = ["corporate", "hospital", "gym", "insurance", "ngo", "yoga", "school", "other"] as const;
 
 const TYPE_META: Record<string, { icon: string; label: string; color: string }> = {
   corporate:  { icon: "🏢", label: "Corporate",  color: "#0077B6" },
@@ -20,7 +23,172 @@ const TYPE_META: Record<string, { icon: string; label: string; color: string }> 
 
 const ALL_TYPES = ["all", ...Object.keys(TYPE_META)];
 
-function OrgCard({ org, onToggleActive }: { org: Org; onToggleActive: (id: string) => Promise<void> }) {
+type EditForm = { name: string; contactEmail: string; city: string; state: string; totalSeats: number; orgType: string };
+
+function EditOrgModal({ org, onClose, onSave }: { org: Org; onClose: () => void; onSave: (updated: Org) => void }) {
+  const [form, setForm] = useState<EditForm>({
+    name: org.name,
+    contactEmail: org.contactEmail,
+    city: org.city || "",
+    state: org.state || "",
+    totalSeats: org.totalSeats,
+    orgType: org.orgType,
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const update = (k: keyof EditForm, v: string | number) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { setError("Name is required"); return; }
+    if (!form.contactEmail.trim()) { setError("Contact email is required"); return; }
+    setSaving(true);
+    setError("");
+    try {
+      const res = await api.updateOrg(org.id, form);
+      onSave(res.organization);
+    } catch {
+      setError("Failed to save. Please retry.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Pencil size={16} className="text-primary" />
+            <h2 className="font-bold text-foreground">Edit Organization</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl px-3 py-2 text-sm">
+              <AlertTriangle size={14} className="shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Organization Name *</label>
+            <input value={form.name} onChange={e => update("name", e.target.value)}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary transition-all"
+              placeholder="e.g. Tata Consultancy Services" />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact Email *</label>
+            <input type="email" value={form.contactEmail} onChange={e => update("contactEmail", e.target.value)}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary transition-all"
+              placeholder="hr@company.com" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">City</label>
+              <input value={form.city} onChange={e => update("city", e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary transition-all"
+                placeholder="Mumbai" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">State</label>
+              <input value={form.state} onChange={e => update("state", e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary transition-all"
+                placeholder="Maharashtra" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</label>
+              <select value={form.orgType} onChange={e => update("orgType", e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary transition-all">
+                {ORG_TYPES.map(t => (
+                  <option key={t} value={t}>{TYPE_META[t]?.icon} {TYPE_META[t]?.label || t}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Seats</label>
+              <input type="number" min={1} value={form.totalSeats} onChange={e => update("totalSeats", parseInt(e.target.value) || 1)}
+                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary transition-all" />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 p-5 pt-0">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:bg-muted transition-all">
+            Cancel
+          </button>
+          <button onClick={handleSave} disabled={saving}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm bg-primary text-white hover:bg-primary/90 transition-all disabled:opacity-60">
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeleteConfirmModal({ org, onClose, onConfirm }: { org: Org; onClose: () => void; onConfirm: () => Promise<void> }) {
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setError("");
+    try {
+      await onConfirm();
+    } catch {
+      setError("Failed to delete. Please retry.");
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-card border border-red-200 dark:border-red-900 rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="p-5 text-center">
+          <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/40 flex items-center justify-center mx-auto mb-3">
+            <Trash2 size={20} className="text-red-500" />
+          </div>
+          <h2 className="font-bold text-foreground text-lg mb-1">Delete Organization?</h2>
+          <p className="text-sm text-muted-foreground">
+            This will permanently delete <span className="font-semibold text-foreground">"{org.name}"</span> and all associated data.
+            This action cannot be undone.
+          </p>
+          {error && (
+            <div className="mt-3 text-sm text-red-500 bg-red-50 dark:bg-red-950/20 rounded-xl px-3 py-2">{error}</div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 p-5 pt-0">
+          <button onClick={onClose} className="flex-1 px-4 py-2 rounded-xl text-sm border border-border text-muted-foreground hover:bg-muted transition-all">
+            Cancel
+          </button>
+          <button onClick={handleDelete} disabled={deleting}
+            className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm bg-red-500 text-white hover:bg-red-600 transition-all disabled:opacity-60">
+            {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OrgCard({ org, onToggleActive, onEdit, onDelete }: {
+  org: Org;
+  onToggleActive: (id: string) => Promise<void>;
+  onEdit: (org: Org) => void;
+  onDelete: (org: Org) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [toggling, setToggling] = useState(false);
   const meta = TYPE_META[org.orgType] || TYPE_META.other;
@@ -35,7 +203,6 @@ function OrgCard({ org, onToggleActive }: { org: Org; onToggleActive: (id: strin
 
   return (
     <div className={`bg-card border rounded-2xl overflow-hidden transition-all hover:shadow-md ${org.isActive ? "border-border" : "border-red-200 dark:border-red-900/40"}`}>
-      {/* Header */}
       <div className="p-4">
         <div className="flex items-start gap-3">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 shadow-sm"
@@ -59,17 +226,21 @@ function OrgCard({ org, onToggleActive }: { org: Org; onToggleActive: (id: strin
                   </span>
                 </div>
               </div>
-              <button
-                onClick={() => setExpanded(e => !e)}
-                className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              >
-                <ChevronRight size={16} className={`transition-transform ${expanded ? "rotate-90" : ""}`} />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => onEdit(org)}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+                  title="Edit organization">
+                  <Pencil size={13} />
+                </button>
+                <button onClick={() => setExpanded(e => !e)}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
+                  <ChevronRight size={14} className={`transition-transform ${expanded ? "rotate-90" : ""}`} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Org Code */}
         <div className="mt-3 flex items-center gap-2">
           <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg px-2 py-1">
             <Hash size={10} className="text-muted-foreground" />
@@ -83,7 +254,6 @@ function OrgCard({ org, onToggleActive }: { org: Org; onToggleActive: (id: strin
           )}
         </div>
 
-        {/* Seat usage bar */}
         <div className="mt-3">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -101,7 +271,6 @@ function OrgCard({ org, onToggleActive }: { org: Org; onToggleActive: (id: strin
         </div>
       </div>
 
-      {/* Quick info row */}
       <div className="px-4 pb-3 space-y-1.5">
         {org.contactEmail && (
           <a href={`mailto:${org.contactEmail}`}
@@ -118,9 +287,8 @@ function OrgCard({ org, onToggleActive }: { org: Org; onToggleActive: (id: strin
         )}
       </div>
 
-      {/* Expanded details */}
       {expanded && (
-        <div className="border-t border-border mx-0 p-4 bg-muted/20">
+        <div className="border-t border-border p-4 bg-muted/20">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Organization</div>
@@ -151,7 +319,7 @@ function OrgCard({ org, onToggleActive }: { org: Org; onToggleActive: (id: strin
               </div>
             </div>
           </div>
-          <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between gap-3">
+          <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between gap-2 flex-wrap">
             {org.contactEmail ? (
               <a href={`mailto:${org.contactEmail}`}
                  className="inline-flex items-center gap-2 text-xs text-primary hover:underline font-medium">
@@ -159,24 +327,25 @@ function OrgCard({ org, onToggleActive }: { org: Org; onToggleActive: (id: strin
                 Send Email
               </a>
             ) : <span />}
-            <button
-              onClick={handleToggle}
-              disabled={toggling}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all border ${
-                org.isActive
-                  ? "border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
-                  : "border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
-              }`}
-            >
-              {toggling ? (
-                <Loader2 size={11} className="animate-spin" />
-              ) : org.isActive ? (
-                <ToggleRight size={13} />
-              ) : (
-                <ToggleLeft size={13} />
-              )}
-              {org.isActive ? "Deactivate" : "Activate"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleToggle}
+                disabled={toggling}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                  org.isActive
+                    ? "border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                    : "border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                }`}
+              >
+                {toggling ? <Loader2 size={11} className="animate-spin" /> : org.isActive ? <ToggleRight size={13} /> : <ToggleLeft size={13} />}
+                {org.isActive ? "Deactivate" : "Activate"}
+              </button>
+              <button onClick={() => onDelete(org)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20">
+                <Trash2 size={11} />
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -191,6 +360,8 @@ export default function Organizations() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [editOrg, setEditOrg] = useState<Org | null>(null);
+  const [deleteOrg, setDeleteOrg] = useState<Org | null>(null);
 
   const fetchOrgs = () => {
     setLoading(true);
@@ -207,8 +378,20 @@ export default function Organizations() {
       const res = await api.toggleOrgActive(id);
       setOrgs(prev => prev.map(o => o.id === id ? { ...o, isActive: res.organization.isActive } : o));
     } catch {
-      // ignore, org state stays
+      // ignore
     }
+  };
+
+  const handleOrgUpdated = (updated: Org) => {
+    setOrgs(prev => prev.map(o => o.id === updated.id ? updated : o));
+    setEditOrg(null);
+  };
+
+  const handleOrgDeleted = async () => {
+    if (!deleteOrg) return;
+    await api.deleteOrg(deleteOrg.id);
+    setOrgs(prev => prev.filter(o => o.id !== deleteOrg.id));
+    setDeleteOrg(null);
   };
 
   const filtered = useMemo(() => {
@@ -239,7 +422,6 @@ export default function Organizations() {
   return (
     <Layout>
       <div className="p-6 max-w-6xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Organizations</h1>
@@ -260,7 +442,6 @@ export default function Organizations() {
           </div>
         )}
 
-        {/* Stats Row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "Total Orgs",    value: stats.total,      icon: Building2, color: "#0077B6" },
@@ -281,9 +462,7 @@ export default function Organizations() {
           ))}
         </div>
 
-        {/* Filters */}
         <div className="space-y-3">
-          {/* Search */}
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -295,20 +474,16 @@ export default function Organizations() {
             />
           </div>
 
-          {/* Type tabs */}
           <div className="flex flex-wrap gap-2">
             {ALL_TYPES.map(type => {
               const meta = TYPE_META[type];
               const count = type === "all" ? orgs.length : (typeCount[type] || 0);
               const active = typeFilter === type;
               return (
-                <button
-                  key={type}
-                  onClick={() => setTypeFilter(type)}
+                <button key={type} onClick={() => setTypeFilter(type)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
-                    active
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground hover:border-border hover:bg-muted/50 hover:text-foreground"
+                    active ? "border-primary bg-primary/10 text-primary"
+                           : "border-border text-muted-foreground hover:border-border hover:bg-muted/50 hover:text-foreground"
                   }`}
                 >
                   {meta ? meta.icon : "🌐"} {meta ? meta.label : "All"}
@@ -332,14 +507,12 @@ export default function Organizations() {
           </div>
         </div>
 
-        {/* Results count */}
         {!loading && (
           <div className="text-xs text-muted-foreground">
             Showing {filtered.length} of {orgs.length} organizations
           </div>
         )}
 
-        {/* Grid */}
         {loading ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -369,10 +542,32 @@ export default function Organizations() {
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((org) => <OrgCard key={org.id} org={org} onToggleActive={handleToggleActive} />)}
+            {filtered.map((org) => (
+              <OrgCard key={org.id} org={org}
+                onToggleActive={handleToggleActive}
+                onEdit={setEditOrg}
+                onDelete={setDeleteOrg}
+              />
+            ))}
           </div>
         )}
       </div>
+
+      {editOrg && (
+        <EditOrgModal
+          org={editOrg}
+          onClose={() => setEditOrg(null)}
+          onSave={handleOrgUpdated}
+        />
+      )}
+
+      {deleteOrg && (
+        <DeleteConfirmModal
+          org={deleteOrg}
+          onClose={() => setDeleteOrg(null)}
+          onConfirm={handleOrgDeleted}
+        />
+      )}
     </Layout>
   );
 }

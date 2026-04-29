@@ -215,7 +215,7 @@ const DEMO_USERS = [
 
 // ── Food logs for last 7 days ─────────────────────────────────────────────────
 function getFoodLogs(userId: string, plan: string) {
-  const logs = [];
+  const logs: Array<{ userId: string; mealType: "breakfast" | "lunch" | "dinner" | "snack"; foodNameEn: string; calories: string; proteinG: string; carbsG: string; fatG: string; fiberG: string; inputMethod: "text"; loggedAt: Date }> = [];
   const today = new Date();
   const foods: Record<string, Array<{ name: string; calories: number; proteinG: number; carbsG: number; fatG: number; fiberG: number; mealType: string }>> = {
     breakfast: [
@@ -248,11 +248,12 @@ function getFoodLogs(userId: string, plan: string) {
     const sn = foods.snack[d % 2];
     [bf, lu, di, sn].forEach(f => {
       if (f) {
+        const loggedAt = new Date(date);
         logs.push({
-          userId, date: dateStr, mealType: f.mealType as "breakfast" | "lunch" | "dinner" | "snack",
-          foodName: f.name, calories: f.calories, proteinG: String(f.proteinG),
+          userId, mealType: f.mealType as "breakfast" | "lunch" | "dinner" | "snack",
+          foodNameEn: f.name, calories: String(f.calories), proteinG: String(f.proteinG),
           carbsG: String(f.carbsG), fatG: String(f.fatG), fiberG: String(f.fiberG),
-          source: "manual" as const,
+          inputMethod: "text" as const, loggedAt,
         });
       }
     });
@@ -261,22 +262,20 @@ function getFoodLogs(userId: string, plan: string) {
 }
 
 function getWaterLogs(userId: string) {
-  const logs = [];
+  const logs: Array<{ userId: string; glassesCount: number; mlAmount: number; loggedAt: Date }> = [];
   const today = new Date();
   for (let d = 6; d >= 0; d--) {
     const date = new Date(today);
     date.setDate(date.getDate() - d);
     const dateStr = date.toISOString().split("T")[0];
     const glasses = 5 + (d % 4);
-    for (let g = 0; g < glasses; g++) {
-      logs.push({ userId, date: dateStr, amountMl: 250 });
-    }
+    logs.push({ userId, glassesCount: glasses, mlAmount: 250, loggedAt: new Date(date) });
   }
   return logs;
 }
 
 function getExerciseLogs(userId: string, activityLevel: string) {
-  const logs = [];
+  const logs: Array<{ userId: string; date: string; exerciseName: string; exerciseType: string; metValue: string; durationMinutes: number; caloriesBurned: string }> = [];
   const today = new Date();
   const exercises = activityLevel === "very"
     ? [
@@ -301,7 +300,7 @@ function getExerciseLogs(userId: string, activityLevel: string) {
       const dateStr = date.toISOString().split("T")[0];
       const ex = exercises[d % exercises.length];
       if (ex) {
-        logs.push({ userId, date: dateStr, exerciseName: ex.name, metValue: ex.metValue, durationMinutes: ex.durationMinutes, caloriesBurned: ex.caloriesBurned });
+        logs.push({ userId, date: dateStr, exerciseName: ex.name, exerciseType: "cardio", metValue: ex.metValue, durationMinutes: ex.durationMinutes, caloriesBurned: String(ex.caloriesBurned) });
       }
     }
   }
@@ -309,7 +308,7 @@ function getExerciseLogs(userId: string, activityLevel: string) {
 }
 
 function getStressLogs(userId: string) {
-  const logs = [];
+  const logs: Array<{ userId: string; stressType: "mood"; stressScore: number; mood: "happy" | "neutral" | "stressed" | "sad"; loggedAt: Date }> = [];
   const today = new Date();
   for (let d = 6; d >= 0; d--) {
     const date = new Date(today);
@@ -319,7 +318,7 @@ function getStressLogs(userId: string) {
       userId,
       stressType: "mood" as const,
       stressScore,
-      mood: stressScore > 60 ? "stressed" : stressScore > 40 ? "neutral" : "happy",
+      mood: (stressScore > 60 ? "stressed" : stressScore > 40 ? "neutral" : "happy") as "happy" | "neutral" | "stressed" | "sad",
       loggedAt: date,
     });
   }

@@ -269,6 +269,41 @@ router.patch("/admin/organizations/:id/toggle-active", requireAdmin, async (req:
   }
 });
 
+router.put("/admin/organizations/:id", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { id } = req.params as { id: string };
+    const body = req.body as Record<string, unknown>;
+    const allowed: Record<string, unknown> = {};
+    if (body.name)         allowed.name         = String(body.name).trim();
+    if (body.contactEmail) allowed.contactEmail  = String(body.contactEmail).trim();
+    if (body.city != null) allowed.city          = String(body.city).trim();
+    if (body.state != null) allowed.state        = String(body.state).trim();
+    if (body.totalSeats)   allowed.totalSeats    = Math.max(1, Number(body.totalSeats));
+    if (body.orgType)      allowed.orgType       = String(body.orgType) as typeof organizationsTable.$inferSelect.orgType;
+    if (Object.keys(allowed).length === 0) { res.status(400).json({ error: "No valid fields to update" }); return; }
+    const [updated] = await db.update(organizationsTable)
+      .set({ ...allowed, updatedAt: new Date() })
+      .where(eq(organizationsTable.id, id))
+      .returning();
+    if (!updated) { res.status(404).json({ error: "Organization not found" }); return; }
+    res.json({ organization: updated, success: true });
+  } catch (e) {
+    req.log?.error(e);
+    res.status(500).json({ error: "Failed to update organization" });
+  }
+});
+
+router.delete("/admin/organizations/:id", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { id } = req.params as { id: string };
+    const [deleted] = await db.delete(organizationsTable).where(eq(organizationsTable.id, id)).returning();
+    if (!deleted) { res.status(404).json({ error: "Organization not found" }); return; }
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Failed to delete organization" });
+  }
+});
+
 router.get("/admin/feature-flags", requireAdmin, async (req: AdminRequest, res) => {
   try {
     const flags = await db.select().from(featureFlagsTable);

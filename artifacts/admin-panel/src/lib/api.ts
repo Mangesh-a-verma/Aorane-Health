@@ -162,6 +162,8 @@ export const api = {
 
   organizations: () => req<{ organizations: Org[] }>("/admin/organizations"),
   toggleOrgActive: (id: string) => req<{ organization: Org; success: boolean }>(`/admin/organizations/${id}/toggle-active`, { method: "PATCH" }),
+  updateOrg: (id: string, data: Partial<Org>) => req<{ organization: Org; success: boolean }>(`/admin/organizations/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteOrg: (id: string) => req<{ success: boolean }>(`/admin/organizations/${id}`, { method: "DELETE" }),
   flags: () => req<{ flags: Flag[] }>("/admin/feature-flags"),
   createFlag: (data: Partial<Flag>) => req<{ flag: Flag }>("/admin/feature-flags", { method: "POST", body: JSON.stringify(data) }),
   updateFlag: (key: string, data: Partial<Flag>) => req<{ flag: Flag }>(`/admin/feature-flags/${key}`, { method: "PATCH", body: JSON.stringify(data) }),

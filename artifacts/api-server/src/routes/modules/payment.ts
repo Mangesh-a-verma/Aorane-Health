@@ -556,12 +556,11 @@ router.post("/payment/subscription-rzp-callback", async (req, res) => {
       await db.update(subscriptionsTable).set({
         status: "active",
         expiresAt,
-        razorpayPaymentId: razorpay_payment_id,
         nextRenewalAt: expiresAt,
       }).where(eq(subscriptionsTable.id, subscriptionId));
       const [sub] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.id, subscriptionId));
       if (sub?.userId && sub?.plan) {
-        await db.update(usersTable).set({ plan: sub.plan }).where(eq(usersTable.id, sub.userId));
+        await db.update(usersTable).set({ plan: sub.plan as "free" | "max" | "pro" | "family" }).where(eq(usersTable.id, sub.userId));
       }
     } catch { /* best effort */ }
   }

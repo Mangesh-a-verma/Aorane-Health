@@ -68,6 +68,14 @@ type AISuggestions = {
   targetProgress?: { weightGoal?: string; progressPct?: number; note?: string } | null;
 };
 
+type WeeklyNutrition = {
+  weeklyTotals: {
+    totalCalories: number; totalProteinG: number; totalCarbsG: number; totalFatG: number;
+    totalCalciumMg: number; totalVitaminB12Mcg: number; totalVitaminCMg: number; totalIronMg: number;
+  };
+  weeklyAverages: Record<string, number>;
+};
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_CO: CompanySettings = {
@@ -138,6 +146,7 @@ function buildReportHtml(
   stress: StressReport | null,
   dietChart: DietChart | null,
   ai: AISuggestions | null,
+  weeklyNutrition: WeeklyNutrition | null,
 ): string {
   const P  = company.primaryColor || "#0077B6";
   const A  = company.accentColor  || "#00B896";
@@ -153,6 +162,18 @@ function buildReportHtml(
   const proteinG = Math.round((weeklyCalories * 0.15) / 4);
   const carbsG   = Math.round((weeklyCalories * 0.55) / 4);
   const fatG     = Math.round((weeklyCalories * 0.30) / 9);
+
+  const wn = weeklyNutrition?.weeklyTotals;
+  const calciumMgW    = wn ? Math.round(wn.totalCalciumMg)      : null;
+  const vitB12McgW    = wn ? Math.round(wn.totalVitaminB12Mcg * 100) / 100 : null;
+  const vitCMgW       = wn ? Math.round(wn.totalVitaminCMg)     : null;
+  const ironMgW       = wn ? Math.round(wn.totalIronMg * 10) / 10  : null;
+  const calciumPct    = calciumMgW ? Math.min(100, Math.round((calciumMgW / 7000) * 100))  : null;
+  const vitB12Pct     = vitB12McgW ? Math.min(100, Math.round((vitB12McgW / 16.8) * 100))  : null;
+  const vitCPct       = vitCMgW   ? Math.min(100, Math.round((vitCMgW / 455) * 100))   : null;
+  const ironPct       = ironMgW   ? Math.min(100, Math.round((ironMgW / 126) * 100))   : null;
+  const micStatus = (pct: number | null) => pct === null ? "—" : pct >= 80 ? "Sufficient" : pct >= 50 ? "Moderate" : "Low";
+  const micColor  = (pct: number | null) => pct === null ? "#9CA3AF" : pct >= 80 ? "#10B981" : pct >= 50 ? "#F59E0B" : "#EF4444";
 
   const rawInsight = [ai?.healthTip, ai?.motivation].filter(Boolean).join("\n");
   const aiInsight  = stripHindi(rawInsight) ||
@@ -349,6 +370,44 @@ tr:nth-child(even) td{background:#FAFBFC}
   </div>
   <div class="rule"></div>
 
+  <!-- 4b. MICRONUTRIENTS -->
+  <div class="sec">
+    <div class="st">Micronutrient Tracking (7-Day)</div>
+    ${wn ? `
+    <div class="ng" style="grid-template-columns:repeat(4,1fr)">
+      ${[
+        { label: "Calcium", val: calciumMgW, unit: "mg", pct: calciumPct, rdv: "1000mg/day" },
+        { label: "Vitamin C", val: vitCMgW, unit: "mg", pct: vitCPct, rdv: "65mg/day" },
+        { label: "Vitamin B12", val: vitB12McgW, unit: "mcg", pct: vitB12Pct, rdv: "2.4mcg/day" },
+        { label: "Iron", val: ironMgW, unit: "mg", pct: ironPct, rdv: "18mg/day" },
+      ].map(m => `
+        <div class="nc">
+          <div class="nv" style="color:${micColor(m.pct)}">${m.val ?? "—"}</div>
+          <div class="nu">${m.unit} / week</div>
+          <div class="nn">${m.label}</div>
+          <div style="font-size:8px;color:${micColor(m.pct)};font-weight:600;margin-top:2px">${micStatus(m.pct)}</div>
+          <div style="font-size:7px;color:#9CA3AF">RDV: ${m.rdv}</div>
+        </div>`).join("")}
+    </div>
+    <div style="height:6px"></div>
+    ${[
+      { label: "Calcium", pct: calciumPct },
+      { label: "Vitamin C", pct: vitCPct },
+      { label: "Vitamin B12", pct: vitB12Pct },
+      { label: "Iron", pct: ironPct },
+    ].map(m => `
+      <div class="mbr">
+        <div class="mh">
+          <span>${m.label} — 7-day % of Recommended</span>
+          <span style="color:${micColor(m.pct)}">${m.pct ?? 0}% of RDV</span>
+        </div>
+        <div class="bb"><div class="bf" style="width:${Math.max(m.pct ?? 0, 2)}%;background:${micColor(m.pct)}"></div></div>
+      </div>`).join("")}
+    <p style="font-size:8px;color:#9CA3AF;margin-top:6px">RDV = Recommended Daily Value. Micronutrient data sourced from AI-identified food logs only. Actual intake may be higher.</p>
+    ` : `<p style="font-size:9px;color:#9CA3AF;text-align:center;padding:12px 0">No food log data available for micronutrient tracking. Start logging meals in the Food tab to see Calcium, Vitamin C, B12 and Iron data here.</p>`}
+  </div>
+  <div class="rule"></div>
+
   <!-- 5. HEALTH METRICS SUMMARY -->
   <div class="sec">
     <div class="st">Health Metrics Summary</div>
@@ -474,6 +533,7 @@ export default function HealthReportScreen() {
   const [profile, setProfile]       = useState<ProfileData | null>(null);
   const [dietChart, setDiet]        = useState<DietChart | null>(null);
   const [aiSugg, setAi]             = useState<AISuggestions | null>(null);
+  const [weeklyNutrition, setWeeklyNutrition] = useState<WeeklyNutrition | null>(null);
   const [loading, setLoading]       = useState(true);
   const [downloading, setDl]        = useState(false);
 
@@ -482,13 +542,14 @@ export default function HealthReportScreen() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [scRes, coRes, stRes, prRes, dtRes, aiRes] = await Promise.allSettled([
+      const [scRes, coRes, stRes, prRes, dtRes, aiRes, wnRes] = await Promise.allSettled([
         api.getScorecard(),
         api.getCompanySettings(),
         api.getStressWeekly(),
         api.getProfile(),
         api.getWeeklyDietChart(),
         api.getDailySuggestions(),
+        api.getWeeklyFoodNutrition(),
       ]);
       if (scRes.status === "fulfilled") setCard(scRes.value as Scorecard);
       if (coRes.status === "fulfilled") {
@@ -508,6 +569,9 @@ export default function HealthReportScreen() {
         const s = (aiRes.value as { suggestions: AISuggestions }).suggestions;
         if (s) setAi(s);
       }
+      if (wnRes.status === "fulfilled") {
+        setWeeklyNutrition(wnRes.value as WeeklyNutrition);
+      }
     } catch { }
     setLoading(false);
   };
@@ -526,7 +590,7 @@ export default function HealthReportScreen() {
 
   const handleDownload = async () => {
     setDl(true);
-    const html = buildReportHtml(card, company, reportType, dateRange, generatedAt, profile, stressData, dietChart, aiSugg);
+    const html = buildReportHtml(card, company, reportType, dateRange, generatedAt, profile, stressData, dietChart, aiSugg, weeklyNutrition);
     await downloadPdfNative(html);
     setDl(false);
   };
@@ -705,6 +769,54 @@ export default function HealthReportScreen() {
                 <Text style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "Inter_400Regular" }}>
                   * Protein, Carbs, and Fat are estimates (Indian diet ratios: 15%:55%:30%). Generate AI Diet Chart for precision.
                 </Text>
+              </View>
+              <View style={s.rule} />
+
+              {/* 4b. Micronutrients */}
+              <View style={s.sec}>
+                <Text style={[s.secTitle, { color: P, borderColor: P }]}>MICRONUTRIENT TRACKING (7-DAY)</Text>
+                {weeklyNutrition ? (
+                  <>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                      {[
+                        { l: "Calcium",     v: Math.round(weeklyNutrition.weeklyTotals.totalCalciumMg),            u: "mg/week",  rdv: 7000,  color: "#0ea5e9" },
+                        { l: "Vitamin C",   v: Math.round(weeklyNutrition.weeklyTotals.totalVitaminCMg),           u: "mg/week",  rdv: 455,   color: "#f59e0b" },
+                        { l: "Vitamin B12", v: Math.round(weeklyNutrition.weeklyTotals.totalVitaminB12Mcg * 100) / 100, u: "mcg/week", rdv: 16.8, color: "#8b5cf6" },
+                        { l: "Iron",        v: Math.round(weeklyNutrition.weeklyTotals.totalIronMg * 10) / 10,     u: "mg/week",  rdv: 126,   color: "#ef4444" },
+                      ].map(n => {
+                        const pct = n.rdv > 0 ? Math.min(100, Math.round((n.v / n.rdv) * 100)) : 0;
+                        const status = pct >= 80 ? "Sufficient" : pct >= 50 ? "Moderate" : "Low";
+                        const statusColor = pct >= 80 ? "#10B981" : pct >= 50 ? "#F59E0B" : "#EF4444";
+                        return (
+                          <View key={n.l} style={[s.nutCard, { borderColor: n.color + "30", backgroundColor: n.color + "08", minWidth: "46%" }]}>
+                            <Text style={[s.nutVal, { color: n.color }]}>{n.v > 0 ? n.v : "—"}</Text>
+                            <Text style={s.nutUnit}>{n.u}</Text>
+                            <Text style={s.nutLbl}>{n.l}</Text>
+                            {n.v > 0 && (
+                              <>
+                                <View style={{ height: 3, backgroundColor: "#E5E7EB", borderRadius: 2, marginTop: 4 }}>
+                                  <View style={{ height: 3, width: `${pct}%` as `${number}%`, backgroundColor: statusColor, borderRadius: 2 }} />
+                                </View>
+                                <Text style={{ fontSize: 8, color: statusColor, fontFamily: "Inter_600SemiBold", marginTop: 2 }}>
+                                  {status} · {pct}% RDV
+                                </Text>
+                              </>
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                    <Text style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "Inter_400Regular" }}>
+                      RDV = Recommended Daily Value × 7 days. Sourced from AI-identified food logs only.
+                    </Text>
+                  </>
+                ) : (
+                  <View style={{ paddingVertical: 16, alignItems: "center" }}>
+                    <Text style={{ fontSize: 12, color: "#9CA3AF", fontFamily: "Inter_400Regular", textAlign: "center" }}>
+                      Log meals in the Food tab to track{"\n"}Calcium, Vitamin C, B12 & Iron
+                    </Text>
+                  </View>
+                )}
               </View>
               <View style={s.rule} />
 

@@ -628,6 +628,13 @@ export const api = {
   refreshWeeklyDietChart: () =>
     request<{ dietChart: Record<string, unknown>; weekStart: string }>("POST", "/health/intelligence/diet-chart/refresh", {}),
 
+  getWeeklyFoodNutrition: () =>
+    request<{
+      days: Array<{ date: string; totalCalories: number; totalProteinG: number; totalCarbsG: number; totalFatG: number; totalCalciumMg: number; totalVitaminB12Mcg: number; totalVitaminCMg: number; totalIronMg: number; mealCount: number }>;
+      weeklyTotals: { totalCalories: number; totalProteinG: number; totalCarbsG: number; totalFatG: number; totalCalciumMg: number; totalVitaminB12Mcg: number; totalVitaminCMg: number; totalIronMg: number };
+      weeklyAverages: Record<string, number>;
+    }>("GET", "/food/weekly-nutrition"),
+
   calculateExerciseCalories: (exerciseType: string, durationMinutes: number) =>
     request<{ exerciseType: string; durationMinutes: number; weightKg: number; met: number; caloriesBurned: number }>(
       "POST", "/health/intelligence/exercise/calories", { exerciseType, durationMinutes }
