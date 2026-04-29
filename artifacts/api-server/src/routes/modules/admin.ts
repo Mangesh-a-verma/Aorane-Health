@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, foodScanCacheTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable, planPricingTable, orgPaymentsTable } from "@workspace/db";
-import { eq, desc, ilike, count, or, sql, and } from "drizzle-orm";
+import { eq, desc, ilike, count, or, sql, and, inArray } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import { signAdminToken } from "../../lib/jwt";
 import { invalidatePlanCache } from "../../middlewares/plan-check";
@@ -214,7 +214,7 @@ router.get("/admin/users/search", requireAdmin, async (req: AdminRequest, res) =
       })
       .from(usersTable)
       .leftJoin(userProfilesTable, eq(usersTable.id, userProfilesTable.userId))
-      .where(sql`${usersTable.id} = ANY(${sql.raw(`ARRAY[${userIds.map(id => `'${id}'`).join(",")}]::uuid[]`)})`);
+      .where(inArray(usersTable.id, userIds));
 
     const results = rows.map(r => ({
       ...r,

@@ -13,6 +13,16 @@ function generateFamilyCode() {
   return "FAM" + Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+const VALID_PLANS = ["basic", "premium", "family"] as const;
+function safePlanLabel(plan: string | undefined | null): string {
+  const normalized = (plan || "premium").toLowerCase().trim();
+  if (!(VALID_PLANS as readonly string[]).includes(normalized)) return "Premium";
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+function escapeJs(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026").replace(/'/g, "\\'");
+}
+
 async function autoCreateFamilyGroup(userId: string): Promise<string | null> {
   try {
     const existing = await db.select().from(familyMembersTable).where(eq(familyMembersTable.userId, userId));
@@ -309,7 +319,7 @@ router.get("/payment/checkout/:orderId", async (req, res) => {
     const amountPaise = Math.round(Number(payment.amount) * 100);
     const serverBase = process.env["RENDER_EXTERNAL_URL"] || `https://aorane.onrender.com`;
     const callbackUrl = `${serverBase}/api/payment/rzp-callback`;
-    const planLabel = (payment.plan || "Premium").replace(/^\w/, c => c.toUpperCase());
+    const planLabel = safePlanLabel(payment.plan);
 
     res.setHeader("Content-Type", "text/html");
     res.send(`<!DOCTYPE html>
@@ -342,15 +352,15 @@ router.get("/payment/checkout/:orderId", async (req, res) => {
     function openRazorpay() {
       if (rzpInstance) { rzpInstance.open(); return; }
       var options = {
-        key: "${keyId}",
-        order_id: "${orderId}",
+        key: "${escapeJs(keyId)}",
+        order_id: "${escapeJs(orderId)}",
         amount: ${amountPaise},
         currency: "INR",
         name: "Aorane Health",
         description: "${planLabel} Plan - 1 Month",
         image: "https://aorane.in/logo.png",
         redirect: true,
-        callback_url: "${callbackUrl}",
+        callback_url: "${escapeJs(callbackUrl)}",
         theme: { color: "#E8622A" },
         modal: {
           backdropclose: false,
@@ -465,7 +475,9 @@ router.get("/payment/subscription-checkout/:razorpaySubscriptionId", async (req,
     const keyId = process.env["RAZORPAY_KEY_ID"] || "";
     const serverBase = process.env["RENDER_EXTERNAL_URL"] || `https://aorane.onrender.com`;
     const callbackUrl = `${serverBase}/api/payment/subscription-rzp-callback`;
-    const planLabel = (plan || "Premium").replace(/^\w/, c => c.toUpperCase());
+    const planLabel = safePlanLabel(plan);
+    const safeSubscriptionId = /^[a-zA-Z0-9_-]{1,64}$/.test(razorpaySubscriptionId) ? razorpaySubscriptionId : "";
+    const safeInternalSubId = subscriptionId && /^[0-9a-f-]{1,64}$/i.test(subscriptionId) ? subscriptionId : "";
 
     res.setHeader("Content-Type", "text/html");
     res.send(`<!DOCTYPE html>
@@ -502,13 +514,13 @@ router.get("/payment/subscription-checkout/:razorpaySubscriptionId", async (req,
     function openRazorpay() {
       if (rzpInstance) { rzpInstance.open(); return; }
       var options = {
-        key: "${keyId}",
-        subscription_id: "${razorpaySubscriptionId}",
+        key: "${escapeJs(keyId)}",
+        subscription_id: "${safeSubscriptionId}",
         name: "Aorane Health",
         description: "${planLabel} Plan — Monthly Autopay",
         image: "https://aorane.in/logo.png",
         redirect: true,
-        callback_url: "${callbackUrl}?subscriptionId=${subscriptionId || ""}&plan=${plan || ""}",
+        callback_url: "${escapeJs(callbackUrl)}?subscriptionId=${safeInternalSubId}&plan=${planLabel.toLowerCase()}",
         theme: { color: "#E8622A" },
         modal: {
           backdropclose: false,
