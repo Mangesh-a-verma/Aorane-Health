@@ -300,12 +300,23 @@ export default function WearableScreen() {
       }
     } catch (err: unknown) {
       const msg = (err as Error)?.message || "";
-      // Detect Google Fit OAuth expiry (API returns 403 + REAUTH_REQUIRED message)
+      // Detect if the Google Fitness REST API has been deprecated/shut down
+      const isDeprecated = msg.toLowerCase().includes("api_deprecated") ||
+        msg.toLowerCase().includes("shut down") ||
+        msg.toLowerCase().includes("no longer available") ||
+        msg.toLowerCase().includes("deprecated");
+      // Detect Google Fit OAuth expiry
       const isReauth = msg.toLowerCase().includes("reconnect") ||
         msg.toLowerCase().includes("reauth") ||
         msg.toLowerCase().includes("access expired") ||
         msg.toLowerCase().includes("auth failed");
-      if (isReauth) {
+      if (isDeprecated) {
+        Alert.alert(
+          "⚠️ Google Fit API Unavailable",
+          "Google shut down the Fitness REST API in May 2025. Data sync via Google Fit is no longer supported.\n\nKripya Manual Entry use karein apna health data log karne ke liye. Tap 'Log Data' above.",
+          [{ text: "OK" }]
+        );
+      } else if (isReauth) {
         Alert.alert(
           "Reconnect Google Fit",
           "Your Google Fit authorization has expired. Tap Reconnect to relink your account.",

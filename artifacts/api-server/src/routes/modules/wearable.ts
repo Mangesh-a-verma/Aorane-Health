@@ -274,29 +274,36 @@ router.get("/wearable/oauth/google-fit/callback", async (req, res) => {
         isActive: true,
       });
     }
-    // Trigger initial sync
-    const conn = await db.select().from(wearableConnectionsTable)
-      .where(and(eq(wearableConnectionsTable.userId, userId), eq(wearableConnectionsTable.provider, "google_fit")))
-      .then((r) => r[0]);
-    if (conn) {
-      const endMs = Date.now();
-      const startMs = endMs - 7 * 24 * 60 * 60 * 1000; // 7 days
-      const fitData = await fetchGoogleFitData(tokens.access_token, startMs, endMs);
-      await db.insert(wearableDataTable).values({
-        userId, provider: "google_fit",
-        recordedAt: new Date(),
-        steps: fitData.steps ?? undefined,
-        heartRateAvg: fitData.heartRateAvg ?? undefined,
-        caloriesBurned: fitData.caloriesBurned?.toString() ?? undefined,
-        activeMinutes: fitData.activeMinutes ?? undefined,
-        distanceKm: fitData.distanceKm?.toString() ?? undefined,
-        bloodOxygen: fitData.bloodOxygen?.toString() ?? undefined,
-      });
-      await db.update(wearableConnectionsTable)
-        .set({ lastSyncedAt: new Date() }).where(eq(wearableConnectionsTable.id, conn.id));
-    }
+    // ── Trigger initial background sync (non-blocking — connection success must not depend on this) ──
     const successDest = returnUrl ? `${returnUrl}?connected=google_fit` : `${APP_URL_BASE}/wearable?connected=google_fit`;
     res.redirect(successDest);
+
+    // Fire initial sync AFTER redirect so it cannot block/fail the OAuth success flow
+    try {
+      const conn = await db.select().from(wearableConnectionsTable)
+        .where(and(eq(wearableConnectionsTable.userId, userId), eq(wearableConnectionsTable.provider, "google_fit")))
+        .then((r) => r[0]);
+      if (conn) {
+        const endMs = Date.now();
+        const startMs = endMs - 7 * 24 * 60 * 60 * 1000; // 7 days
+        const fitData = await fetchGoogleFitData(tokens.access_token, startMs, endMs);
+        await db.insert(wearableDataTable).values({
+          userId, provider: "google_fit",
+          recordedAt: new Date(),
+          steps: fitData.steps ?? undefined,
+          heartRateAvg: fitData.heartRateAvg ?? undefined,
+          caloriesBurned: fitData.caloriesBurned?.toString() ?? undefined,
+          activeMinutes: fitData.activeMinutes ?? undefined,
+          distanceKm: fitData.distanceKm?.toString() ?? undefined,
+          bloodOxygen: fitData.bloodOxygen?.toString() ?? undefined,
+        });
+        await db.update(wearableConnectionsTable)
+          .set({ lastSyncedAt: new Date() }).where(eq(wearableConnectionsTable.id, conn.id));
+      }
+    } catch (syncErr) {
+      // Initial sync failure is non-critical — connection is already saved, user can sync manually
+      console.error("[GFit] Initial sync failed (non-critical):", syncErr instanceof Error ? syncErr.message : syncErr);
+    }
   } catch (e) {
     console.error("Google Fit callback error:", e);
     const errDest = returnUrl ? `${returnUrl}?error=callback_failed` : `${APP_URL_BASE}/wearable?error=callback_failed`;
@@ -328,6 +335,14 @@ router.post("/wearable/sync/:provider", requireAuth, async (req: AuthRequest, re
       } catch (fitErr) {
         const msg = fitErr instanceof Error ? fitErr.message : String(fitErr);
         console.error("[Sync] Google Fit fetch failed:", msg);
+        // Detect if the Google Fitness REST API has been shut down (404) or is unavailable (410 Gone)
+        if (msg.includes("404") || msg.includes("410") || msg.includes("Gone")) {
+          res.status(502).json({
+            error: "Google Fit REST API is no longer available. Google shut down this API in May 2025. Please use Manual Entry to log health data instead.",
+            code: "API_DEPRECATED",
+          });
+          return;
+        }
         // If it's an auth error, try to refresh and retry once
         if (msg.includes("401") || msg.includes("403")) {
           const newToken = await refreshGoogleToken(conn);

@@ -87,13 +87,15 @@ export default function MedicineScreen() {
     const savedName = medicineName.trim();
 
     // ── Step 1: Save to server (this is the critical step) ──
+    let savedId: string | undefined;
     try {
-      await api.createMedicineSchedule({
+      const res = await api.createMedicineSchedule({
         medicineName: savedName, dosage, mealTiming,
         reminderTimes: [reminderTime],
         startDate: new Date().toISOString().slice(0, 10),
         frequency: "daily",
       });
+      savedId = (res.schedule as { id?: string })?.id;
     } catch (err) {
       console.error("[Medicine] API save error:", err);
       Alert.alert("Error", "Could not save medicine. Please check your connection and try again.");
@@ -101,12 +103,26 @@ export default function MedicineScreen() {
       return;
     }
 
-    // ── Step 2: Close modal & refresh list ──
+    // ── Step 2: Close modal + optimistic list update (no wait) ──
     setShowModal(false);
     setMedicineName("");
     setDosage("");
-    await loadSchedules();
+    // Optimistically add to list so user sees it immediately
+    setSchedules((prev) => [
+      ...prev,
+      {
+        id: savedId || `temp-${Date.now()}`,
+        medicineName: savedName,
+        dosage,
+        mealTiming: mealTiming as Schedule["mealTiming"],
+        reminderTimes: [reminderTime],
+        isActive: true,
+      },
+    ]);
+    setIsSubmitting(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    // Refresh from server in background to get accurate data (non-blocking)
+    loadSchedules();
 
     // ── Step 3: Schedule local notification (best-effort — don't block on failure) ──
     if (Platform.OS !== "web") {
