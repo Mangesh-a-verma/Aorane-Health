@@ -86,60 +86,15 @@ function NavLink({ path, icon: Icon, label, color }: NavItem) {
   );
 }
 
-const INACTIVITY_MS = 15 * 60 * 1000; // 15 minutes
-
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { admin, logout } = useAuth();
+  const { admin, logout, inactiveWarning, resetInactivityTimer } = useAuth();
   const [open, setOpen] = useState(false);
   const [dark, setDark] = useState(true);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifEnquiries, setNotifEnquiries] = useState<Enquiry[]>([]);
   const [newCount, setNewCount] = useState(0);
-  const [inactiveWarning, setInactiveWarning] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
-  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // ── Auto-logout on inactivity ──────────────────────────────────────────────
-  useEffect(() => {
-    const resetTimer = () => {
-      setInactiveWarning(false);
-      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
-      if (warningTimer.current) clearTimeout(warningTimer.current);
-      // Show warning 1 min before logout
-      warningTimer.current = setTimeout(() => setInactiveWarning(true), INACTIVITY_MS - 60_000);
-      inactivityTimer.current = setTimeout(() => { logout(); }, INACTIVITY_MS);
-    };
-
-    const events = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "click"];
-    events.forEach((e) => window.addEventListener(e, resetTimer, { passive: true }));
-    resetTimer();
-
-    return () => {
-      events.forEach((e) => window.removeEventListener(e, resetTimer));
-      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
-      if (warningTimer.current) clearTimeout(warningTimer.current);
-    };
-  }, [logout]);
-
-  // ── Tab close / visibility detection ──────────────────────────────────────
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === "hidden") {
-        sessionStorage.setItem("aorane_hidden_at", Date.now().toString());
-      } else {
-        const hiddenAt = sessionStorage.getItem("aorane_hidden_at");
-        if (hiddenAt) {
-          const elapsed = Date.now() - Number(hiddenAt);
-          sessionStorage.removeItem("aorane_hidden_at");
-          if (elapsed > INACTIVITY_MS) logout();
-        }
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [logout]);
 
   useEffect(() => {
     const stored = localStorage.getItem("aorane_theme");
@@ -274,50 +229,37 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Topbar */}
         <header
-          className="flex items-center justify-between px-5 h-[60px] shrink-0 z-30"
+          className="flex items-center justify-between px-5 h-[60px] shrink-0 z-30 border-b border-border"
           style={{
-            background: "rgba(9,14,28,0.85)",
+            background: dark ? "rgba(9,14,28,0.92)" : "rgba(255,255,255,0.95)",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
-            borderBottom: "1px solid rgba(255,255,255,0.05)",
           }}
         >
           <div className="flex items-center gap-3">
-            <button className="lg:hidden" style={{ color: "rgba(255,255,255,0.5)" }}
+            <button className="lg:hidden text-muted-foreground"
                     onClick={() => setOpen(true)}>
               <Menu size={18} />
             </button>
             <div className="relative hidden sm:block">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2"
-                      style={{ color: "rgba(255,255,255,0.28)" }} />
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 placeholder="Search anything..."
-                className="pl-9 pr-4 py-1.5 text-xs rounded-xl outline-none transition-all w-52"
-                style={{
-                  background: "rgba(255,255,255,0.06)",
-                  color: "rgba(255,255,255,0.75)",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                }}
+                className="pl-9 pr-4 py-1.5 text-xs rounded-xl outline-none transition-all w-52 bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:border-primary"
               />
             </div>
           </div>
 
           <div className="flex items-center gap-2.5">
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono"
-                 style={{
-                   background: "rgba(16,185,129,0.09)",
-                   color: "#34d399",
-                   border: "1px solid rgba(16,185,129,0.14)",
-                 }}>
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               All Systems OK
             </div>
 
-            <div className="w-px h-4" style={{ background: "rgba(255,255,255,0.08)" }} />
+            <div className="w-px h-4 bg-border" />
 
             <button onClick={toggleTheme}
-              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-              style={{ color: "rgba(255,255,255,0.45)" }}
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all text-muted-foreground hover:text-foreground hover:bg-muted/50"
             >
               {dark ? <Sun size={14} /> : <Moon size={14} />}
             </button>
@@ -325,8 +267,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div ref={notifRef} className="relative">
               <button
                 onClick={() => setNotifOpen(p => !p)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center relative transition-all"
-                style={{ color: notifOpen ? "white" : "rgba(255,255,255,0.45)", background: notifOpen ? "rgba(0,119,182,0.25)" : "transparent" }}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center relative transition-all ${notifOpen ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
               >
                 <Bell size={14} />
                 {newCount > 0 && (
@@ -338,14 +279,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </button>
 
               {notifOpen && (
-                <div className="absolute right-0 top-9 w-80 rounded-2xl shadow-2xl z-50 overflow-hidden"
-                     style={{ background: "#0e1628", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <div className="px-4 py-3 flex items-center justify-between"
-                       style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-                    <span className="text-xs font-bold text-white">Notifications</span>
+                <div className="absolute right-0 top-9 w-80 rounded-2xl shadow-2xl z-50 overflow-hidden bg-card border border-border">
+                  <div className="px-4 py-3 flex items-center justify-between border-b border-border">
+                    <span className="text-xs font-bold text-foreground">Notifications</span>
                     {newCount > 0 && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
-                            style={{ background: "#0077B620", color: "#60b4e8" }}>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-primary/10 text-primary">
                         {newCount} new
                       </span>
                     )}
@@ -353,37 +291,31 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
                   <div className="max-h-72 overflow-y-auto">
                     {notifLoading ? (
-                      <div className="py-8 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>Loading…</div>
+                      <div className="py-8 text-center text-xs text-muted-foreground">Loading…</div>
                     ) : notifEnquiries.length === 0 ? (
-                      <div className="py-8 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                      <div className="py-8 text-center text-xs text-muted-foreground">
                         <Inbox size={20} className="mx-auto mb-2 opacity-30" />
                         No new enquiries
                       </div>
                     ) : (
                       notifEnquiries.map(e => (
                         <Link key={e.id} href="/enquiries" onClick={() => setNotifOpen(false)}>
-                          <a className="flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors"
-                             style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-                             onMouseEnter={ev => (ev.currentTarget.style.background = "rgba(255,255,255,0.03)")}
-                             onMouseLeave={ev => (ev.currentTarget.style.background = "transparent")}>
+                          <a className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted/40 transition-colors border-b border-border/50">
                             <div className="w-7 h-7 rounded-xl shrink-0 flex items-center justify-center mt-0.5"
                                  style={{ background: e.status === "new" ? "#F59E0B22" : "#0077B622" }}>
-                              <MessageSquare size={12} style={{ color: e.status === "new" ? "#F59E0B" : "#60b4e8" }} />
+                              <MessageSquare size={12} style={{ color: e.status === "new" ? "#F59E0B" : "#0077B6" }} />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-medium truncate" style={{ color: "rgba(255,255,255,0.85)" }}>
-                                  {e.name}
-                                </span>
-                                <span className="text-[9px] shrink-0 px-1.5 py-0.5 rounded-full font-bold uppercase"
-                                      style={{ background: e.status === "new" ? "#F59E0B22" : "#6b728022", color: e.status === "new" ? "#F59E0B" : "#9ca3af" }}>
+                                <span className="text-xs font-medium truncate text-foreground">{e.name}</span>
+                                <span className={`text-[9px] shrink-0 px-1.5 py-0.5 rounded-full font-bold uppercase ${
+                                  e.status === "new" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" : "bg-muted text-muted-foreground"
+                                }`}>
                                   {e.status}
                                 </span>
                               </div>
-                              <div className="text-[10px] mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.35)" }}>
-                                {e.email}
-                              </div>
-                              <div className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }}>
+                              <div className="text-[10px] mt-0.5 truncate text-muted-foreground">{e.email}</div>
+                              <div className="text-[10px] mt-0.5 text-muted-foreground/60">
                                 {new Date(e.createdAt).toLocaleDateString("en-IN")}
                               </div>
                             </div>
@@ -394,10 +326,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </div>
 
                   <Link href="/enquiries" onClick={() => setNotifOpen(false)}>
-                    <a className="block px-4 py-2.5 text-center text-xs font-medium cursor-pointer transition-colors"
-                       style={{ color: "#60b4e8", borderTop: "1px solid rgba(255,255,255,0.06)" }}
-                       onMouseEnter={ev => (ev.currentTarget.style.background = "rgba(0,119,182,0.08)")}
-                       onMouseLeave={ev => (ev.currentTarget.style.background = "transparent")}>
+                    <a className="block px-4 py-2.5 text-center text-xs font-medium text-primary border-t border-border hover:bg-muted/30 transition-colors cursor-pointer">
                       View all enquiries →
                     </a>
                   </Link>
@@ -420,7 +349,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <span>You've been inactive for a while. You'll be signed out in 1 minute to protect your session.</span>
             </div>
             <button
-              onClick={() => { setInactiveWarning(false); }}
+              onClick={resetInactivityTimer}
               className="shrink-0 px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 transition-colors font-semibold"
             >
               Stay signed in

@@ -161,6 +161,7 @@ export const api = {
     req<{ results: SearchResult[]; count: number }>(`/admin/users/search?q=${encodeURIComponent(q)}`),
 
   organizations: () => req<{ organizations: Org[] }>("/admin/organizations"),
+  toggleOrgActive: (id: string) => req<{ organization: Org; success: boolean }>(`/admin/organizations/${id}/toggle-active`, { method: "PATCH" }),
   flags: () => req<{ flags: Flag[] }>("/admin/feature-flags"),
   createFlag: (data: Partial<Flag>) => req<{ flag: Flag }>("/admin/feature-flags", { method: "POST", body: JSON.stringify(data) }),
   updateFlag: (key: string, data: Partial<Flag>) => req<{ flag: Flag }>(`/admin/feature-flags/${key}`, { method: "PATCH", body: JSON.stringify(data) }),

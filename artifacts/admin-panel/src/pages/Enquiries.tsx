@@ -21,6 +21,7 @@ export default function EnquiriesPage() {
   const [list, setList] = useState<Enquiry[]>([]);
   const [stats, setStats] = useState({ total: 0, newCount: 0, contactedCount: 0, closedCount: 0 });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [selected, setSelected] = useState<Enquiry | null>(null);
@@ -28,11 +29,13 @@ export default function EnquiriesPage() {
 
   const load = async () => {
     setLoading(true);
+    setError("");
     try {
       const data = await api.enquiries({ status: statusFilter || undefined, type: typeFilter || undefined });
       setList(data.enquiries ?? []);
       setStats(data.stats ?? { total: 0, newCount: 0, contactedCount: 0, closedCount: 0 });
     } catch {
+      setError("Failed to load enquiries. Please check your connection and retry.");
       toast({ title: "Error", description: "Failed to load enquiries", variant: "destructive" });
     }
     setLoading(false);
@@ -77,6 +80,15 @@ export default function EnquiriesPage() {
             <RefreshCw size={14} /> Refresh
           </button>
         </div>
+
+        {error && (
+          <div className="flex items-center justify-between gap-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl px-4 py-3 mb-4 text-sm">
+            <span>{error}</span>
+            <button onClick={load} className="flex items-center gap-1.5 text-xs font-semibold hover:underline shrink-0">
+              <RefreshCw size={12} /> Retry
+            </button>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">

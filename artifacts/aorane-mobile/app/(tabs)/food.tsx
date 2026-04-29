@@ -39,7 +39,8 @@ type ScanResult = {
   foodNameEn: string; calories: number; proteinG: number; carbsG: number; fatG: number;
   fiberG: number; servingSizeG: number; servingDescription: string; category: string;
   dietaryTags: string[]; sodiumMg?: number; sugarG?: number;
-  vitamins?: Record<string, number>; glycemicIndex?: number; healthTip?: string;
+  vitamins?: { vitaminC_mg?: number; vitaminD_mcg?: number; vitaminB12_mcg?: number; calcium_mg?: number; iron_mg?: number; potassium_mg?: number; zinc_mg?: number; vitaminA_mcg?: number };
+  glycemicIndex?: number; healthTip?: string;
 };
 type ScanMeta = { fromHistory: boolean; fromDb: boolean; fromCache: boolean; historyCount?: number };
 
@@ -225,8 +226,9 @@ export default function FoodScreen() {
 
   useFocusEffect(useCallback(() => { loadLogs(); }, []));
 
-  const logItem = async (item: { foodNameEn: string; calories: number; proteinG?: number; carbsG?: number; fatG?: number; fiberG?: number }, method = "text") => {
+  const logItem = async (item: { foodNameEn: string; calories: number; proteinG?: number; carbsG?: number; fatG?: number; fiberG?: number; sodiumMg?: number; vitamins?: { vitaminC_mg?: number; vitaminD_mcg?: number; vitaminB12_mcg?: number; calcium_mg?: number; iron_mg?: number } }, method = "text") => {
     setSubmitting(true);
+    const v = item.vitamins || {};
     const logBody = {
       foodNameEn: item.foodNameEn, mealType: activeMeal,
       calories: String(Math.round(item.calories)),
@@ -234,6 +236,12 @@ export default function FoodScreen() {
       carbsG:   String(Math.round((item.carbsG || 0) * 10) / 10),
       fatG:     String(Math.round((item.fatG || 0) * 10) / 10),
       fiberG:   String(Math.round((item.fiberG || 0) * 10) / 10),
+      ...(item.sodiumMg != null   ? { sodiumMg:     String(Math.round(item.sodiumMg * 10) / 10) }    : {}),
+      ...(v.calcium_mg != null    ? { calciumMg:    String(Math.round((v.calcium_mg || 0) * 10) / 10) }   : {}),
+      ...(v.vitaminB12_mcg != null ? { vitaminB12Mcg: String(Math.round((v.vitaminB12_mcg || 0) * 100) / 100) } : {}),
+      ...(v.vitaminC_mg != null   ? { vitaminCMg:   String(Math.round((v.vitaminC_mg || 0) * 10) / 10) }   : {}),
+      ...(v.iron_mg != null       ? { ironMg:       String(Math.round((v.iron_mg || 0) * 10) / 10) }       : {}),
+      ...(v.vitaminD_mcg != null  ? { vitaminDMcg:  String(Math.round((v.vitaminD_mcg || 0) * 10) / 10) }  : {}),
       inputMethod: method,
     };
     try {
@@ -644,6 +652,10 @@ export default function FoodScreen() {
                       { label: "Fat",      val: scanResult.fatG,     unit: "g",    color: DS.color.purple },
                       { label: "Fiber",    val: scanResult.fiberG,   unit: "g",    color: G               },
                       ...(scanResult.sugarG != null ? [{ label: "Sugar", val: scanResult.sugarG, unit: "g", color: DS.color.orange }] : []),
+                      ...(scanResult.vitamins?.calcium_mg != null ? [{ label: "Calcium", val: scanResult.vitamins.calcium_mg, unit: "mg", color: "#0ea5e9" }] : []),
+                      ...(scanResult.vitamins?.vitaminC_mg != null ? [{ label: "Vit C", val: scanResult.vitamins.vitaminC_mg, unit: "mg", color: "#f59e0b" }] : []),
+                      ...(scanResult.vitamins?.vitaminB12_mcg != null ? [{ label: "B12", val: scanResult.vitamins.vitaminB12_mcg, unit: "mcg", color: "#8b5cf6" }] : []),
+                      ...(scanResult.vitamins?.iron_mg != null ? [{ label: "Iron", val: scanResult.vitamins.iron_mg, unit: "mg", color: "#ef4444" }] : []),
                     ].map((m) => (
                       <View key={m.label} style={[s.macroChip, { backgroundColor: m.color + "12" }]}>
                         <Text style={[s.macroChipVal, { color: m.color }]}>{Number(m.val).toFixed(1)}</Text>

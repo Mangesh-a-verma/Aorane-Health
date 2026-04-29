@@ -139,7 +139,7 @@ router.get("/food/logs", requireAuth, async (req: AuthRequest, res) => {
 
 router.post("/food/log", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { foodNameEn, mealType, quantityG, quantityDescription, calories, proteinG, carbsG, fatG, fiberG, inputMethod, foodItemId } = req.body as Record<string, unknown>;
+    const { foodNameEn, mealType, quantityG, quantityDescription, calories, proteinG, carbsG, fatG, fiberG, sodiumMg, calciumMg, ironMg, vitaminCMg, vitaminB12Mcg, vitaminDMcg, inputMethod, foodItemId } = req.body as Record<string, unknown>;
     if (!foodNameEn || !calories) {
       res.status(400).json({ error: "foodNameEn and calories are required" });
       return;
@@ -155,6 +155,12 @@ router.post("/food/log", requireAuth, async (req: AuthRequest, res) => {
       carbsG: carbsG ? String(carbsG) : undefined,
       fatG: fatG ? String(fatG) : undefined,
       fiberG: fiberG ? String(fiberG) : undefined,
+      sodiumMg: sodiumMg ? String(sodiumMg) : undefined,
+      calciumMg: calciumMg ? String(calciumMg) : undefined,
+      ironMg: ironMg ? String(ironMg) : undefined,
+      vitaminCMg: vitaminCMg ? String(vitaminCMg) : undefined,
+      vitaminB12Mcg: vitaminB12Mcg ? String(vitaminB12Mcg) : undefined,
+      vitaminDMcg: vitaminDMcg ? String(vitaminDMcg) : undefined,
       inputMethod: (inputMethod as "photo" | "text" | "voice" | "manual") || "text",
       foodItemId: foodItemId as string | undefined,
       loggedAt: new Date(),
@@ -203,6 +209,10 @@ router.get("/food/history-search", requireAuth, async (req: AuthRequest, res) =>
       carbsG: sql<number>`AVG(${foodLogsTable.carbsG}::numeric)`.as("carbsG"),
       fatG: sql<number>`AVG(${foodLogsTable.fatG}::numeric)`.as("fatG"),
       fiberG: sql<number>`AVG(${foodLogsTable.fiberG}::numeric)`.as("fiberG"),
+      calciumMg: sql<number>`AVG(${foodLogsTable.calciumMg}::numeric)`.as("calciumMg"),
+      vitaminB12Mcg: sql<number>`AVG(${foodLogsTable.vitaminB12Mcg}::numeric)`.as("vitaminB12Mcg"),
+      vitaminCMg: sql<number>`AVG(${foodLogsTable.vitaminCMg}::numeric)`.as("vitaminCMg"),
+      ironMg: sql<number>`AVG(${foodLogsTable.ironMg}::numeric)`.as("ironMg"),
       count: sql<number>`COUNT(*)`.as("count"),
       lastEaten: sql<Date>`MAX(${foodLogsTable.loggedAt})`.as("lastEaten"),
     })
@@ -231,6 +241,10 @@ router.get("/food/favorites", requireAuth, async (req: AuthRequest, res) => {
       carbsG: sql<number>`AVG(${foodLogsTable.carbsG}::numeric)`.as("carbsG"),
       fatG: sql<number>`AVG(${foodLogsTable.fatG}::numeric)`.as("fatG"),
       fiberG: sql<number>`AVG(${foodLogsTable.fiberG}::numeric)`.as("fiberG"),
+      calciumMg: sql<number>`AVG(${foodLogsTable.calciumMg}::numeric)`.as("calciumMg"),
+      vitaminB12Mcg: sql<number>`AVG(${foodLogsTable.vitaminB12Mcg}::numeric)`.as("vitaminB12Mcg"),
+      vitaminCMg: sql<number>`AVG(${foodLogsTable.vitaminCMg}::numeric)`.as("vitaminCMg"),
+      ironMg: sql<number>`AVG(${foodLogsTable.ironMg}::numeric)`.as("ironMg"),
       count: sql<number>`COUNT(*)`.as("count"),
       lastEaten: sql<Date>`MAX(${foodLogsTable.loggedAt})`.as("lastEaten"),
     })
@@ -267,6 +281,10 @@ router.post("/food/scan", requireAuth, planAiRateLimit("food_scan", { free: 5, p
         carbsG: sql<number>`AVG(${foodLogsTable.carbsG}::numeric)`.as("carbsG"),
         fatG: sql<number>`AVG(${foodLogsTable.fatG}::numeric)`.as("fatG"),
         fiberG: sql<number>`AVG(${foodLogsTable.fiberG}::numeric)`.as("fiberG"),
+        calciumMg: sql<number>`AVG(${foodLogsTable.calciumMg}::numeric)`.as("calciumMg"),
+        vitaminB12Mcg: sql<number>`AVG(${foodLogsTable.vitaminB12Mcg}::numeric)`.as("vitaminB12Mcg"),
+        vitaminCMg: sql<number>`AVG(${foodLogsTable.vitaminCMg}::numeric)`.as("vitaminCMg"),
+        ironMg: sql<number>`AVG(${foodLogsTable.ironMg}::numeric)`.as("ironMg"),
         count: sql<number>`COUNT(*)`.as("count"),
       })
         .from(foodLogsTable)
@@ -290,7 +308,12 @@ router.post("/food/scan", requireAuth, planAiRateLimit("food_scan", { free: 5, p
             servingDescription: "100g / 1 serving",
             category: "food",
             dietaryTags: [],
-            vitamins: {},
+            vitamins: {
+              ...(historyMatch.calciumMg    ? { calcium_mg:     Math.round(Number(historyMatch.calciumMg) * 10) / 10 }    : {}),
+              ...(historyMatch.vitaminB12Mcg ? { vitaminB12_mcg: Math.round(Number(historyMatch.vitaminB12Mcg) * 100) / 100 } : {}),
+              ...(historyMatch.vitaminCMg   ? { vitaminC_mg:    Math.round(Number(historyMatch.vitaminCMg) * 10) / 10 }   : {}),
+              ...(historyMatch.ironMg       ? { iron_mg:        Math.round(Number(historyMatch.ironMg) * 10) / 10 }       : {}),
+            },
             healthTip: `You have eaten this ${historyMatch.count} times before — data loaded from your history.`,
           },
           fromHistory: true,
@@ -469,11 +492,61 @@ router.get("/food/summary/:date", requireAuth, async (req: AuthRequest, res) => 
       totalProteinG: logs.reduce((sum, l) => sum + Number(l.proteinG || 0), 0),
       totalCarbsG: logs.reduce((sum, l) => sum + Number(l.carbsG || 0), 0),
       totalFatG: logs.reduce((sum, l) => sum + Number(l.fatG || 0), 0),
+      totalFiberG: logs.reduce((sum, l) => sum + Number(l.fiberG || 0), 0),
+      totalCalciumMg: logs.reduce((sum, l) => sum + Number(l.calciumMg || 0), 0),
+      totalVitaminB12Mcg: logs.reduce((sum, l) => sum + Number(l.vitaminB12Mcg || 0), 0),
+      totalVitaminCMg: logs.reduce((sum, l) => sum + Number(l.vitaminCMg || 0), 0),
+      totalIronMg: logs.reduce((sum, l) => sum + Number(l.ironMg || 0), 0),
       mealCount: logs.length,
     };
     res.json({ summary });
   } catch {
     res.status(500).json({ error: "Failed to fetch food summary" });
+  }
+});
+
+// ── Weekly Nutrition Summary (last 7 days) ────────────────────────────────────
+router.get("/food/weekly-nutrition", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const today = new Date();
+    const days: { date: string; totalCalories: number; totalProteinG: number; totalCarbsG: number; totalFatG: number; totalCalciumMg: number; totalVitaminB12Mcg: number; totalVitaminCMg: number; totalIronMg: number; mealCount: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const logs = await db.select().from(foodLogsTable).where(
+        and(
+          eq(foodLogsTable.userId, req.userId!),
+          gte(foodLogsTable.loggedAt, new Date(dateStr + "T00:00:00Z")),
+          lte(foodLogsTable.loggedAt, new Date(dateStr + "T23:59:59Z"))
+        )
+      );
+      days.push({
+        date: dateStr,
+        totalCalories: logs.reduce((s, l) => s + Number(l.calories), 0),
+        totalProteinG: logs.reduce((s, l) => s + Number(l.proteinG || 0), 0),
+        totalCarbsG: logs.reduce((s, l) => s + Number(l.carbsG || 0), 0),
+        totalFatG: logs.reduce((s, l) => s + Number(l.fatG || 0), 0),
+        totalCalciumMg: logs.reduce((s, l) => s + Number(l.calciumMg || 0), 0),
+        totalVitaminB12Mcg: logs.reduce((s, l) => s + Number(l.vitaminB12Mcg || 0), 0),
+        totalVitaminCMg: logs.reduce((s, l) => s + Number(l.vitaminCMg || 0), 0),
+        totalIronMg: logs.reduce((s, l) => s + Number(l.ironMg || 0), 0),
+        mealCount: logs.length,
+      });
+    }
+    const totals = days.reduce((acc, d) => ({
+      totalCalories: acc.totalCalories + d.totalCalories,
+      totalProteinG: acc.totalProteinG + d.totalProteinG,
+      totalCarbsG: acc.totalCarbsG + d.totalCarbsG,
+      totalFatG: acc.totalFatG + d.totalFatG,
+      totalCalciumMg: acc.totalCalciumMg + d.totalCalciumMg,
+      totalVitaminB12Mcg: acc.totalVitaminB12Mcg + d.totalVitaminB12Mcg,
+      totalVitaminCMg: acc.totalVitaminCMg + d.totalVitaminCMg,
+      totalIronMg: acc.totalIronMg + d.totalIronMg,
+    }), { totalCalories: 0, totalProteinG: 0, totalCarbsG: 0, totalFatG: 0, totalCalciumMg: 0, totalVitaminB12Mcg: 0, totalVitaminCMg: 0, totalIronMg: 0 });
+    res.json({ days, weeklyTotals: totals, weeklyAverages: Object.fromEntries(Object.entries(totals).map(([k, v]) => [k, Math.round((v / 7) * 10) / 10])) });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch weekly nutrition" });
   }
 });
 

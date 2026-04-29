@@ -116,10 +116,13 @@ router.get("/admin/users", requireAdmin, async (req: AdminRequest, res) => {
     const limitNum = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
     const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
 
+    const searchNorm = (search || "").replace(/\s/g, "");
     const whereClause = search ? or(
       ilike(usersTable.phone, `%${search}%`),
       ilike(usersTable.email, `%${search}%`),
       sql`${usersTable.id}::text ILIKE ${`%${search}%`}`,
+      ilike(userProfilesTable.fullName, `%${search}%`),
+      ilike(userProfilesTable.aoraneId, `%${searchNorm}%`),
     ) : undefined;
 
     const rows = await db
@@ -154,9 +157,10 @@ router.get("/admin/users/search", requireAdmin, async (req: AdminRequest, res) =
     const q = ((req.query.q as string) || "").trim();
     if (!q || q.length < 3) { res.status(400).json({ error: "Minimum 3 characters required" }); return; }
 
-    const isAoraneId = /^\d{8,12}$/.test(q);
+    const qClean = q.replace(/\s/g, "");
+    const isAoraneId = /^\d{8,12}$/.test(qClean);
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(q);
-    const isPhone = /^\+?\d{7,15}$/.test(q.replace(/\s/g, ""));
+    const isPhone = /^\+?\d{7,15}$/.test(qClean);
     const isPartialUUID = /^[0-9a-f]{8,}/i.test(q) && !isAoraneId;
 
     let userIds: string[] = [];
@@ -173,7 +177,7 @@ router.get("/admin/users/search", requireAdmin, async (req: AdminRequest, res) =
       userIds = rows.map(r => r.id);
     } else if (isAoraneId) {
       const profiles = await db.select({ userId: userProfilesTable.userId })
-        .from(userProfilesTable).where(eq(userProfilesTable.aoraneId, q)).limit(10);
+        .from(userProfilesTable).where(ilike(userProfilesTable.aoraneId, `%${qClean}%`)).limit(10);
       userIds = profiles.map(p => p.userId);
     } else {
       const rows = await db.select({ userId: userProfilesTable.userId })
@@ -182,6 +186,7 @@ router.get("/admin/users/search", requireAdmin, async (req: AdminRequest, res) =
         .where(or(
           ilike(userProfilesTable.fullName, `%${q}%`),
           ilike(usersTable.email, `%${q}%`),
+          ilike(userProfilesTable.aoraneId, `%${qClean}%`),
         ))
         .limit(10);
       userIds = rows.map(r => r.userId);
@@ -246,6 +251,21 @@ router.get("/admin/organizations", requireAdmin, async (req: AdminRequest, res) 
     res.json({ organizations: orgs });
   } catch {
     res.status(500).json({ error: "Failed to fetch organizations" });
+  }
+});
+
+router.patch("/admin/organizations/:id/toggle-active", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { id } = req.params as { id: string };
+    const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, id));
+    if (!org) { res.status(404).json({ error: "Organization not found" }); return; }
+    const [updated] = await db.update(organizationsTable)
+      .set({ isActive: !org.isActive })
+      .where(eq(organizationsTable.id, id))
+      .returning();
+    res.json({ organization: updated, success: true });
+  } catch {
+    res.status(500).json({ error: "Failed to toggle organization status" });
   }
 });
 

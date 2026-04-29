@@ -2,8 +2,9 @@ import React, { useEffect, useState, useMemo } from "react";
 import Layout from "@/components/Layout";
 import { api, type Org } from "@/lib/api";
 import {
-  Building2, MapPin, Mail, Users, RefreshCw, Phone, Calendar,
+  Building2, MapPin, Mail, Users, RefreshCw, Calendar,
   Search, ChevronRight, Activity, Hash, Shield, Briefcase,
+  ToggleLeft, ToggleRight, Loader2,
 } from "lucide-react";
 
 const TYPE_META: Record<string, { icon: string; label: string; color: string }> = {
@@ -19,11 +20,18 @@ const TYPE_META: Record<string, { icon: string; label: string; color: string }> 
 
 const ALL_TYPES = ["all", ...Object.keys(TYPE_META)];
 
-function OrgCard({ org }: { org: Org }) {
+function OrgCard({ org, onToggleActive }: { org: Org; onToggleActive: (id: string) => Promise<void> }) {
   const [expanded, setExpanded] = useState(false);
+  const [toggling, setToggling] = useState(false);
   const meta = TYPE_META[org.orgType] || TYPE_META.other;
   const seatPct = org.totalSeats > 0 ? Math.round((org.usedSeats / org.totalSeats) * 100) : 0;
   const seatColor = seatPct >= 90 ? "#EF4444" : seatPct >= 70 ? "#F59E0B" : "#10B981";
+
+  const handleToggle = async () => {
+    setToggling(true);
+    await onToggleActive(org.id);
+    setToggling(false);
+  };
 
   return (
     <div className={`bg-card border rounded-2xl overflow-hidden transition-all hover:shadow-md ${org.isActive ? "border-border" : "border-red-200 dark:border-red-900/40"}`}>
@@ -143,15 +151,33 @@ function OrgCard({ org }: { org: Org }) {
               </div>
             </div>
           </div>
-          {org.contactEmail && (
-            <div className="mt-3 pt-3 border-t border-border/50">
+          <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between gap-3">
+            {org.contactEmail ? (
               <a href={`mailto:${org.contactEmail}`}
                  className="inline-flex items-center gap-2 text-xs text-primary hover:underline font-medium">
                 <Mail size={11} />
-                Send Email to Admin
+                Send Email
               </a>
-            </div>
-          )}
+            ) : <span />}
+            <button
+              onClick={handleToggle}
+              disabled={toggling}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all border ${
+                org.isActive
+                  ? "border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                  : "border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+              }`}
+            >
+              {toggling ? (
+                <Loader2 size={11} className="animate-spin" />
+              ) : org.isActive ? (
+                <ToggleRight size={13} />
+              ) : (
+                <ToggleLeft size={13} />
+              )}
+              {org.isActive ? "Deactivate" : "Activate"}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -161,15 +187,29 @@ function OrgCard({ org }: { org: Org }) {
 export default function Organizations() {
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
 
   const fetchOrgs = () => {
     setLoading(true);
-    api.organizations().then((r) => setOrgs(r.organizations)).catch(console.error).finally(() => setLoading(false));
+    setError("");
+    api.organizations()
+      .then((r) => setOrgs(r.organizations))
+      .catch(() => setError("Failed to load organizations. Please retry."))
+      .finally(() => setLoading(false));
   };
   useEffect(() => { fetchOrgs(); }, []);
+
+  const handleToggleActive = async (id: string) => {
+    try {
+      const res = await api.toggleOrgActive(id);
+      setOrgs(prev => prev.map(o => o.id === id ? { ...o, isActive: res.organization.isActive } : o));
+    } catch {
+      // ignore, org state stays
+    }
+  };
 
   const filtered = useMemo(() => {
     return orgs.filter(org => {
@@ -210,6 +250,15 @@ export default function Organizations() {
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
           </button>
         </div>
+
+        {error && (
+          <div className="flex items-center justify-between gap-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl px-4 py-3 text-sm">
+            <span>{error}</span>
+            <button onClick={fetchOrgs} className="flex items-center gap-1.5 text-xs font-semibold hover:underline shrink-0">
+              <RefreshCw size={12} /> Retry
+            </button>
+          </div>
+        )}
 
         {/* Stats Row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -320,7 +369,7 @@ export default function Organizations() {
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((org) => <OrgCard key={org.id} org={org} />)}
+            {filtered.map((org) => <OrgCard key={org.id} org={org} onToggleActive={handleToggleActive} />)}
           </div>
         )}
       </div>
