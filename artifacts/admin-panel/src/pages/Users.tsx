@@ -183,40 +183,38 @@ export default function Users() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState("");
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tableDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const LIMIT = 100;
-  const fetchUsers = () => {
+
+  const fetchUsers = (searchTerm = "") => {
     setLoading(true);
     setOffset(0);
-    api.users({ limit: LIMIT, offset: 0 })
+    api.users({ limit: LIMIT, offset: 0, search: searchTerm || undefined })
       .then((r) => { setUsers(r.users); setTotal(r.total); })
       .catch(console.error)
       .finally(() => setLoading(false));
   };
+
   const loadMore = () => {
     const nextOffset = offset + LIMIT;
     setLoadingMore(true);
-    api.users({ limit: LIMIT, offset: nextOffset })
+    api.users({ limit: LIMIT, offset: nextOffset, search: search || undefined })
       .then((r) => { setUsers((prev) => [...prev, ...r.users]); setTotal(r.total); setOffset(nextOffset); })
       .catch(console.error)
       .finally(() => setLoadingMore(false));
   };
-  useEffect(() => { fetchUsers(); }, []);
+
+  useEffect(() => {
+    if (tableDebounce.current) clearTimeout(tableDebounce.current);
+    tableDebounce.current = setTimeout(() => { fetchUsers(search); }, search ? 400 : 0);
+    return () => { if (tableDebounce.current) clearTimeout(tableDebounce.current); };
+  }, [search]);
 
   const updateUser = async (id: string, data: Partial<User>) => {
     await api.updateUser(id, data);
     setUsers((u) => u.map((x) => x.id === id ? { ...x, ...data } : x));
   };
-
-  const filtered = users.filter((u) => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    return u.phone?.toLowerCase().includes(s)
-      || u.email?.toLowerCase().includes(s)
-      || u.id?.toLowerCase().includes(s)
-      || u.fullName?.toLowerCase().includes(s)
-      || u.aoraneId?.includes(s);
-  });
 
   const handleAoraneSearch = (q: string) => {
     setAoraneQuery(q);
@@ -298,10 +296,11 @@ export default function Users() {
               <h1 className="text-2xl font-bold text-foreground">All Users</h1>
               <p className="text-muted-foreground text-sm">
                 Showing <span className="font-semibold text-foreground">{users.length}</span>
-                {total > 0 && <> of <span className="font-semibold text-foreground">{total}</span></>} registered users
+                {total > 0 && <> of <span className="font-semibold text-foreground">{total}</span></>}
+                {search ? <> matching <span className="font-semibold text-primary">"{search}"</span></> : <> registered users</>}
               </p>
             </div>
-            <button onClick={fetchUsers} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted px-3 py-1.5 rounded-lg transition-all">
+            <button onClick={() => fetchUsers(search)} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted px-3 py-1.5 rounded-lg transition-all">
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
             </button>
           </div>
@@ -309,8 +308,13 @@ export default function Users() {
           <div className="relative mb-4">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input type="search" value={search} onChange={(e) => setSearch(e.target.value)}
-              placeholder="Filter by name, phone, email or ID..."
+              placeholder="Search by name, phone, email, Aorane ID or UUID (searches all users)..."
               className="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-primary transition-all" />
+            {loading && search && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            )}
           </div>
 
           <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -332,17 +336,19 @@ export default function Users() {
                         ))}
                       </tr>
                     ))
-                  ) : filtered.length === 0 ? (
-                    <tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground text-sm">No users found</td></tr>
+                  ) : users.length === 0 ? (
+                    <tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground text-sm">
+                      {search ? `No users found matching "${search}"` : "No users found"}
+                    </td></tr>
                   ) : (
-                    filtered.map((u) => <UserRow key={u.id} user={u} onUpdate={updateUser} />)
+                    users.map((u) => <UserRow key={u.id} user={u} onUpdate={updateUser} />)
                   )}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {!search && users.length < total && (
+          {users.length < total && (
             <div className="mt-3 flex items-center justify-center">
               <button
                 onClick={loadMore}

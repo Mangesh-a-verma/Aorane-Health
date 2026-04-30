@@ -119,6 +119,11 @@ export const orgPaymentsTable = pgTable("org_payments", {
   nextRenewalAt: timestamp("next_renewal_at", { withTimezone: true }),
   status: text("status").notNull().default("pending"),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
+  sgstAmount: text("sgst_amount"),
+  igstAmount: text("igst_amount"),
+  orgGstin: text("org_gstin"),
+  orgState: text("org_state"),
+  invoiceNumber: text("invoice_number"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
