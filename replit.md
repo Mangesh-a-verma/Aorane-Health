@@ -12,7 +12,7 @@ I prefer detailed explanations and clear communication. Please ask before making
 - **Business Portal:** Vercel (business.aorane.com)
 - **Database:** Supabase PostgreSQL (South Asia — Mumbai ap-south-1)
 - **Mobile App:** Expo/React Native — Android package: com.aorane.app — APK builds via Codemagic
-- **Admin Panel:** Replit hosted
+- **Admin Panel:** Vercel (admin.aorane.com)
 
 ## System Architecture
 AORANE's architecture is composed of a mobile app (Expo/React Native), a Business Portal (React Web CRM), and an Admin Panel (React Web). All components share a single PostgreSQL database (managed by Supabase, Mumbai region) and an Express.js API server deployed on Render, leveraging Drizzle ORM.
