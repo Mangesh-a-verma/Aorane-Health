@@ -532,7 +532,7 @@ router.post("/auth/pin/set", requireAuth, async (req: AuthRequest, res) => {
       res.status(400).json({ error: "PIN must be 4–6 digits" }); return;
     }
     const pinHash = hashOtp(pin);
-    cache.set(`pin:${req.userId}`, pinHash, 86400 * 365);
+    await db.update(userPreferencesTable).set({ pinHash }).where(eq(userPreferencesTable.userId, req.userId!));
     res.json({ success: true, message: "PIN set successfully." });
   } catch {
     res.status(500).json({ error: "Failed to set PIN" });
@@ -547,11 +547,12 @@ router.post("/auth/pin/login", async (req, res) => {
     if (!user || !user.isActive || user.isBanned) {
       res.status(401).json({ error: "User not found or account is banned." }); return;
     }
-    const storedPinHash = cache.get(`pin:${user.id}`);
-    if (!storedPinHash) {
+    const [prefs] = await db.select({ pinHash: userPreferencesTable.pinHash })
+      .from(userPreferencesTable).where(eq(userPreferencesTable.userId, user.id));
+    if (!prefs?.pinHash) {
       res.status(400).json({ error: "PIN not set. Please log in via OTP." }); return;
     }
-    if (!verifyOtpHash(pin, storedPinHash as string)) {
+    if (!verifyOtpHash(pin, prefs.pinHash)) {
       res.status(401).json({ error: "Incorrect PIN." }); return;
     }
     await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));

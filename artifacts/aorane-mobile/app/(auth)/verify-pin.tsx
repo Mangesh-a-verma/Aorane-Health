@@ -96,8 +96,10 @@ export default function VerifyPinScreen() {
     try {
       const phone = user?.phone || "";
       if (!phone) {
-        clearPinVerification();
-        router.replace("/(tabs)/dashboard");
+        Alert.alert("Session Error", "Could not verify your session. Please sign in again.", [
+          { text: "Sign In", onPress: () => logout() },
+        ]);
+        setLoading(false);
         return;
       }
       await api.loginWithPIN(phone, enteredPin);
