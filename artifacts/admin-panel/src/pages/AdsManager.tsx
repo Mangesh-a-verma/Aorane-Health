@@ -4,7 +4,7 @@ import { api, type AdCampaign } from "@/lib/api";
 import {
   Plus, Pencil, Trash2, ToggleLeft, ToggleRight,
   Eye, MousePointerClick, Image as ImageIcon, Globe, RefreshCw,
-  TrendingUp,
+  TrendingUp, AlertTriangle,
 } from "lucide-react";
 
 const SLOT_LABELS: Record<number, string> = {
@@ -164,14 +164,22 @@ function AdModal({
     } : { ...EMPTY_FORM }
   );
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const set = (k: keyof FormData, v: string | number) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.title.trim()) { setSaveError("Ad title is required"); return; }
     setSaving(true);
-    await onSave(form);
-    setSaving(false);
+    setSaveError("");
+    try {
+      await onSave(form);
+    } catch (err: unknown) {
+      setSaveError((err as Error).message || "Save failed. Please retry.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -185,6 +193,12 @@ function AdModal({
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {saveError && (
+            <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400">
+              <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+              <span>{saveError}</span>
+            </div>
+          )}
           {/* Title */}
           <div>
             <label className="text-xs font-semibold text-muted-foreground mb-1 block">Ad Title *</label>
@@ -383,17 +397,13 @@ export default function AdsManager() {
   useEffect(() => { load(); }, [load]);
 
   const handleSave = async (data: ReturnType<typeof Object.assign>) => {
-    try {
-      if (modalAd && "id" in modalAd && modalAd.id) {
-        await api.updateAd(modalAd.id, data);
-      } else {
-        await api.createAd(data);
-      }
-      setModalAd(undefined);
-      load();
-    } catch (e: unknown) {
-      showError("Save failed: " + ((e as Error).message || "Unknown error"));
+    if (modalAd && "id" in modalAd && modalAd.id) {
+      await api.updateAd(modalAd.id, data);
+    } else {
+      await api.createAd(data);
     }
+    setModalAd(undefined);
+    load();
   };
 
   const handleDelete = async (id: string) => {
