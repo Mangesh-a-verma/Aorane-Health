@@ -53,7 +53,7 @@ AORANE's architecture is composed of a mobile app (Expo/React Native), a Busines
 | Priya Nair | priya.nair@demo.aorane.com | MAX | Diabetes + BP |
 All demo users have 7 days of food/water/exercise/stress logs, medicine schedules, and blood donor registrations.
 
-## API Test Results (22/22 PASS — April 2026)
+## API Test Results (22/22 PASS — April 30, 2026)
 All core APIs tested and working: profile, food CRUD, water logging, exercise + MET calc, stress logs, medicine schedules, health score, AI suggestions (cached), AI predictions, payment subscription, plans listing, blood donors, scorecard.
 
 ## Key Files
