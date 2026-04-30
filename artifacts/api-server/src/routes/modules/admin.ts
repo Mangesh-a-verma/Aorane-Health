@@ -112,8 +112,8 @@ router.get("/admin/overview", requireAdmin, async (_req: AdminRequest, res) => {
 
 router.get("/admin/users", requireAdmin, async (req: AdminRequest, res) => {
   try {
-    const { search, limit = "50", offset = "0" } = req.query as Record<string, string>;
-    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+    const { search, limit = "100", offset = "0" } = req.query as Record<string, string>;
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
     const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
 
     const searchNorm = (search || "").replace(/\s/g, "");
@@ -125,27 +125,31 @@ router.get("/admin/users", requireAdmin, async (req: AdminRequest, res) => {
       ilike(userProfilesTable.aoraneId, `%${searchNorm}%`),
     ) : undefined;
 
-    const rows = await db
-      .select({
-        id: usersTable.id,
-        phone: usersTable.phone,
-        email: usersTable.email,
-        plan: usersTable.plan,
-        isActive: usersTable.isActive,
-        isBanned: usersTable.isBanned,
-        createdAt: usersTable.createdAt,
-        lastLoginAt: usersTable.lastLoginAt,
-        aoraneId: userProfilesTable.aoraneId,
-        fullName: userProfilesTable.fullName,
-      })
-      .from(usersTable)
-      .leftJoin(userProfilesTable, eq(usersTable.id, userProfilesTable.userId))
-      .where(whereClause)
-      .orderBy(desc(usersTable.createdAt))
-      .limit(limitNum)
-      .offset(offsetNum);
+    const [totalRow, rows] = await Promise.all([
+      db.select({ count: count() }).from(usersTable)
+        .leftJoin(userProfilesTable, eq(usersTable.id, userProfilesTable.userId))
+        .where(whereClause).then((r) => r[0]),
+      db.select({
+          id: usersTable.id,
+          phone: usersTable.phone,
+          email: usersTable.email,
+          plan: usersTable.plan,
+          isActive: usersTable.isActive,
+          isBanned: usersTable.isBanned,
+          createdAt: usersTable.createdAt,
+          lastLoginAt: usersTable.lastLoginAt,
+          aoraneId: userProfilesTable.aoraneId,
+          fullName: userProfilesTable.fullName,
+        })
+        .from(usersTable)
+        .leftJoin(userProfilesTable, eq(usersTable.id, userProfilesTable.userId))
+        .where(whereClause)
+        .orderBy(desc(usersTable.createdAt))
+        .limit(limitNum)
+        .offset(offsetNum),
+    ]);
 
-    res.json({ users: rows });
+    res.json({ users: rows, total: Number(totalRow?.count ?? 0), offset: offsetNum, limit: limitNum });
   } catch {
     res.status(500).json({ error: "Failed to fetch users" });
   }
@@ -251,6 +255,35 @@ router.get("/admin/organizations", requireAdmin, async (req: AdminRequest, res) 
     res.json({ organizations: orgs });
   } catch {
     res.status(500).json({ error: "Failed to fetch organizations" });
+  }
+});
+
+router.post("/admin/organizations", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { name, contactEmail, city, state, orgType, totalSeats } = req.body as Record<string, unknown>;
+    if (!name || !contactEmail || !orgType) {
+      res.status(400).json({ error: "Name, contact email, and org type are required" });
+      return;
+    }
+    const prefix = (String(name).trim().slice(0, 3).toUpperCase().replace(/[^A-Z]/g, "") || "ORG").padEnd(3, "X");
+    const rand = Math.random().toString(36).slice(2, 7).toUpperCase();
+    const orgCode = `${prefix}${rand}`;
+    const [org] = await db.insert(organizationsTable).values({
+      name: String(name).trim(),
+      orgCode,
+      contactEmail: String(contactEmail).trim(),
+      city: city ? String(city).trim() : null,
+      state: state ? String(state).trim() : null,
+      orgType: String(orgType) as typeof organizationsTable.$inferSelect.orgType,
+      totalSeats: Math.max(1, Number(totalSeats) || 10),
+      usedSeats: 0,
+      isActive: true,
+    }).returning();
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "create_organization", targetType: "organization", targetId: org.id, details: { name: org.name, orgCode } });
+    res.status(201).json({ organization: org, success: true });
+  } catch (e) {
+    req.log?.error(e);
+    res.status(500).json({ error: "Failed to create organization" });
   }
 });
 

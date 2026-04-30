@@ -173,6 +173,9 @@ function SearchResultCard({ r }: { r: SearchResult }) {
 
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [aoraneQuery, setAoraneQuery] = useState("");
@@ -181,7 +184,23 @@ export default function Users() {
   const [searchError, setSearchError] = useState("");
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchUsers = () => { setLoading(true); api.users().then((r) => setUsers(r.users)).catch(console.error).finally(() => setLoading(false)); };
+  const LIMIT = 100;
+  const fetchUsers = () => {
+    setLoading(true);
+    setOffset(0);
+    api.users({ limit: LIMIT, offset: 0 })
+      .then((r) => { setUsers(r.users); setTotal(r.total); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  };
+  const loadMore = () => {
+    const nextOffset = offset + LIMIT;
+    setLoadingMore(true);
+    api.users({ limit: LIMIT, offset: nextOffset })
+      .then((r) => { setUsers((prev) => [...prev, ...r.users]); setTotal(r.total); setOffset(nextOffset); })
+      .catch(console.error)
+      .finally(() => setLoadingMore(false));
+  };
   useEffect(() => { fetchUsers(); }, []);
 
   const updateUser = async (id: string, data: Partial<User>) => {
@@ -277,7 +296,10 @@ export default function Users() {
           <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
             <div>
               <h1 className="text-2xl font-bold text-foreground">All Users</h1>
-              <p className="text-muted-foreground text-sm">{users.length} registered users</p>
+              <p className="text-muted-foreground text-sm">
+                Showing <span className="font-semibold text-foreground">{users.length}</span>
+                {total > 0 && <> of <span className="font-semibold text-foreground">{total}</span></>} registered users
+              </p>
             </div>
             <button onClick={fetchUsers} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted px-3 py-1.5 rounded-lg transition-all">
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
@@ -319,6 +341,19 @@ export default function Users() {
               </table>
             </div>
           </div>
+
+          {!search && users.length < total && (
+            <div className="mt-3 flex items-center justify-center">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-sm font-semibold transition-all disabled:opacity-50"
+              >
+                {loadingMore ? <RefreshCw size={14} className="animate-spin" /> : null}
+                {loadingMore ? "Loading…" : `Load more (${total - users.length} remaining)`}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </Layout>

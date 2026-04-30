@@ -242,43 +242,56 @@ export default function WearableScreen() {
         window.location.href = authUrl;
         return;
       }
-      // Native: deep link return URL (aorane://wearable)
+
+      // Native deep link return URL — used by the server to redirect back to this screen
       const returnUrl = Linking.createURL("wearable");
       const d = await api.getGoogleFitAuthUrl(returnUrl);
       const { authUrl } = d as { authUrl: string };
 
-      // Both iOS and Android: openAuthSessionAsync handles custom scheme redirects
-      // iOS: SFAuthenticationSession/ASWebAuthenticationSession
-      // Android: Chrome Custom Tabs with intent filter for aorane:// scheme
       if (Platform.OS !== "web") {
         await WebBrowser.warmUpAsync().catch(() => {});
       }
+
       const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl, {
         showInRecents: false,
-        preferEphemeralSession: true,
+        // NOTE: Do NOT use preferEphemeralSession on Android — Chrome Custom Tab
+        // ephemeral mode blocks the custom-scheme deep link redirect on some devices.
+        preferEphemeralSession: Platform.OS === "ios",
       });
+
       if (Platform.OS !== "web") {
         await WebBrowser.coolDownAsync().catch(() => {});
       }
+
       if (result.type === "success") {
+        // iOS primary path: ASWebAuthenticationSession returns the full URL directly
         await handleOAuthUrl(result.url);
       } else if (result.type === "cancel" || result.type === "dismiss") {
-        // User cancelled — don't show error, just reset state
-        setConnectingGoogle(false);
+        // Android normal path: Chrome Custom Tab closes when it intercepts the
+        // aorane:// deep link redirect. The Linking event listener (below) fires
+        // with the result URL. Wait briefly for the Linking event, then check DB.
+        if (Platform.OS === "android") {
+          // Give the Linking event 1.5 s to fire and call handleOAuthUrl.
+          // If it fires, handleOAuthUrl will call loadAll() and clear connectingGoogle.
+          // If it doesn't fire (true user cancel), fall through to loadAll anyway.
+          await new Promise<void>((resolve) => setTimeout(resolve, 1500));
+          // Refresh connections regardless — if server saved the token, it'll show up
+          await loadAll();
+          setConnectingGoogle(false);
+        } else {
+          // iOS: dismiss/cancel = genuine user cancel — silent reset
+          setConnectingGoogle(false);
+        }
       } else {
-        // Locked or other failure — show a gentle message
-        Alert.alert(
-          "Browser Closed",
-          "Google Fit connection was cancelled. Please try again.",
-        );
+        // Locked browser or other edge case
         setConnectingGoogle(false);
       }
     } catch (e: unknown) {
       const msg = (e as Error)?.message || "";
       if (msg.includes("not configured")) {
-        Alert.alert("Setup Required", "Google Fit credentials not configured yet. Contact admin.");
+        Alert.alert("Setup Required", "Google Fit credentials not configured yet. Contact support.");
       } else {
-        Alert.alert("Error", "Failed to initiate Google Fit connection. Please try again.");
+        Alert.alert("Connection Error", "Could not open Google sign-in. Please try again.");
       }
       setConnectingGoogle(false);
     }

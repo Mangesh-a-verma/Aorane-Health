@@ -216,25 +216,41 @@ router.get("/wearable/oauth/google-fit/url", requireAuth, async (req: AuthReques
 // Google Fit OAuth callback
 router.get("/wearable/oauth/google-fit/callback", async (req, res) => {
   const { code, state, error } = req.query as Record<string, string>;
-  if (error) {
-    // If returnUrl is in state, redirect back to mobile deep link; else fallback
-    let returnUrl: string | null = null;
-    try { returnUrl = JSON.parse(Buffer.from(state, "base64url").toString()).returnUrl || null; } catch { /* ignore */ }
-    const dest = returnUrl ? `${returnUrl}?error=google_fit_denied` : `${APP_URL_BASE}/wearable?error=google_fit_denied`;
-    res.redirect(dest);
-    return;
-  }
-  let userId: string;
+
+  // ── Parse state (userId + returnUrl) ──────────────────────────────────────
+  let userId: string | undefined;
   let returnUrl: string | null = null;
-  try {
-    const decoded = JSON.parse(Buffer.from(state, "base64url").toString());
-    userId = decoded.userId;
-    returnUrl = decoded.returnUrl || null;
-  } catch {
-    res.redirect(`${APP_URL_BASE}/wearable?error=invalid_state`);
+  if (state) {
+    try {
+      const decoded = JSON.parse(Buffer.from(state, "base64url").toString());
+      userId = decoded.userId;
+      returnUrl = decoded.returnUrl || null;
+    } catch (stateErr) {
+      console.error("[GFit OAuth] State decode failed:", stateErr instanceof Error ? stateErr.message : stateErr);
+    }
+  }
+
+  const errRedirect = (code: string) => {
+    const dest = returnUrl ? `${returnUrl}?error=${code}` : `${APP_URL_BASE}/wearable?error=${code}`;
+    if (!res.headersSent) res.redirect(dest);
+  };
+
+  if (error) {
+    console.error("[GFit OAuth] Google returned error:", error);
+    errRedirect("google_fit_denied");
     return;
   }
-  // Exchange code for tokens
+  if (!userId) {
+    errRedirect("invalid_state");
+    return;
+  }
+  if (!code) {
+    errRedirect("callback_failed");
+    return;
+  }
+
+  // ── Token exchange ────────────────────────────────────────────────────────
+  let tokens: { access_token?: string; refresh_token?: string; expires_in?: number; error?: string; error_description?: string };
   try {
     const body = new URLSearchParams({
       code,
@@ -246,16 +262,24 @@ router.get("/wearable/oauth/google-fit/callback", async (req, res) => {
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST", body,
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      signal: AbortSignal.timeout(15_000), // 15s timeout — prevents Render cold-start hangs
     });
-    const tokens = await tokenRes.json() as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
-    if (!tokens.access_token) {
-      console.error("[GFit OAuth] Token exchange failed:", JSON.stringify(tokens));
-      const errDest = returnUrl ? `${returnUrl}?error=token_failed` : `${APP_URL_BASE}/wearable?error=token_failed`;
-      res.redirect(errDest);
-      return;
-    }
+    tokens = await tokenRes.json() as typeof tokens;
+  } catch (fetchErr) {
+    console.error("[GFit OAuth] Token exchange network error:", fetchErr instanceof Error ? fetchErr.message : fetchErr);
+    errRedirect("token_failed");
+    return;
+  }
+
+  if (!tokens.access_token) {
+    console.error("[GFit OAuth] Token exchange failed:", JSON.stringify({ error: tokens.error, description: tokens.error_description }));
+    errRedirect("token_failed");
+    return;
+  }
+
+  // ── DB upsert ─────────────────────────────────────────────────────────────
+  try {
     const expiresAt = new Date(Date.now() + ((tokens.expires_in || 3600) * 1000));
-    // Upsert connection
     const [existing] = await db.select().from(wearableConnectionsTable)
       .where(and(eq(wearableConnectionsTable.userId, userId), eq(wearableConnectionsTable.provider, "google_fit")));
     if (existing) {
@@ -274,41 +298,41 @@ router.get("/wearable/oauth/google-fit/callback", async (req, res) => {
         isActive: true,
       });
     }
-    // ── Trigger initial background sync (non-blocking — connection success must not depend on this) ──
-    const successDest = returnUrl ? `${returnUrl}?connected=google_fit` : `${APP_URL_BASE}/wearable?connected=google_fit`;
-    res.redirect(successDest);
-
-    // Fire initial sync AFTER redirect so it cannot block/fail the OAuth success flow
-    try {
-      const conn = await db.select().from(wearableConnectionsTable)
-        .where(and(eq(wearableConnectionsTable.userId, userId), eq(wearableConnectionsTable.provider, "google_fit")))
-        .then((r) => r[0]);
-      if (conn) {
-        const endMs = Date.now();
-        const startMs = endMs - 7 * 24 * 60 * 60 * 1000; // 7 days
-        const fitData = await fetchGoogleFitData(tokens.access_token, startMs, endMs);
-        await db.insert(wearableDataTable).values({
-          userId, provider: "google_fit",
-          recordedAt: new Date(),
-          steps: fitData.steps ?? undefined,
-          heartRateAvg: fitData.heartRateAvg ?? undefined,
-          caloriesBurned: fitData.caloriesBurned?.toString() ?? undefined,
-          activeMinutes: fitData.activeMinutes ?? undefined,
-          distanceKm: fitData.distanceKm?.toString() ?? undefined,
-          bloodOxygen: fitData.bloodOxygen?.toString() ?? undefined,
-        });
-        await db.update(wearableConnectionsTable)
-          .set({ lastSyncedAt: new Date() }).where(eq(wearableConnectionsTable.id, conn.id));
-      }
-    } catch (syncErr) {
-      // Initial sync failure is non-critical — connection is already saved, user can sync manually
-      console.error("[GFit] Initial sync failed (non-critical):", syncErr instanceof Error ? syncErr.message : syncErr);
-    }
-  } catch (e) {
-    console.error("Google Fit callback error:", e);
-    const errDest = returnUrl ? `${returnUrl}?error=callback_failed` : `${APP_URL_BASE}/wearable?error=callback_failed`;
-    res.redirect(errDest);
+  } catch (dbErr) {
+    console.error("[GFit OAuth] DB upsert failed:", dbErr instanceof Error ? dbErr.message : dbErr);
+    errRedirect("callback_failed");
+    return;
   }
+
+  // ── Success: redirect back to app ─────────────────────────────────────────
+  const successDest = returnUrl ? `${returnUrl}?connected=google_fit` : `${APP_URL_BASE}/wearable?connected=google_fit`;
+  res.redirect(successDest);
+
+  // ── Background initial sync (fires after redirect — non-blocking) ─────────
+  setImmediate(async () => {
+    try {
+      const [conn] = await db.select().from(wearableConnectionsTable)
+        .where(and(eq(wearableConnectionsTable.userId, userId!), eq(wearableConnectionsTable.provider, "google_fit")));
+      if (!conn) return;
+      const endMs = Date.now();
+      const startMs = endMs - 7 * 24 * 60 * 60 * 1000;
+      const fitData = await fetchGoogleFitData(tokens.access_token!, startMs, endMs);
+      await db.insert(wearableDataTable).values({
+        userId: userId!, provider: "google_fit",
+        recordedAt: new Date(),
+        steps: fitData.steps ?? undefined,
+        heartRateAvg: fitData.heartRateAvg ?? undefined,
+        caloriesBurned: fitData.caloriesBurned?.toString() ?? undefined,
+        activeMinutes: fitData.activeMinutes ?? undefined,
+        distanceKm: fitData.distanceKm?.toString() ?? undefined,
+        bloodOxygen: fitData.bloodOxygen?.toString() ?? undefined,
+      });
+      await db.update(wearableConnectionsTable)
+        .set({ lastSyncedAt: new Date() }).where(eq(wearableConnectionsTable.id, conn.id));
+    } catch (syncErr) {
+      console.error("[GFit] Initial background sync failed (non-critical):", syncErr instanceof Error ? syncErr.message : syncErr);
+    }
+  });
 });
 
 // Sync latest data from a provider

@@ -32,6 +32,7 @@ const MEAL_META: Record<MealType, { label: string; icon: keyof typeof Ionicons.g
 type FoodLog = {
   id: string; foodNameEn: string; mealType: string;
   calories: string; proteinG?: string; carbsG?: string; fatG?: string; fiberG?: string;
+  calciumMg?: string; vitaminB12Mcg?: string; vitaminCMg?: string; ironMg?: string;
   _offline?: boolean;
 };
 type FavItem = { foodNameEn: string; calories: number; proteinG: number; carbsG: number; fatG: number; fiberG: number; count: number };
@@ -302,6 +303,11 @@ export default function FoodScreen() {
   const totalP = logs.reduce((s, l) => s + Number(l.proteinG || 0), 0);
   const totalC = logs.reduce((s, l) => s + Number(l.carbsG || 0), 0);
   const totalF = logs.reduce((s, l) => s + Number(l.fatG || 0), 0);
+  const totalCalcium = logs.reduce((s, l) => s + Number(l.calciumMg || 0), 0);
+  const totalVitB12 = logs.reduce((s, l) => s + Number(l.vitaminB12Mcg || 0), 0);
+  const totalVitC = logs.reduce((s, l) => s + Number(l.vitaminCMg || 0), 0);
+  const totalIron = logs.reduce((s, l) => s + Number(l.ironMg || 0), 0);
+  const hasMicros = totalCalcium > 0 || totalVitB12 > 0 || totalVitC > 0 || totalIron > 0;
   const noResults = text.length > 1 && !searching && histResults.length === 0 && dbResults.length === 0 && !scanResult;
 
   return (
@@ -351,6 +357,41 @@ export default function FoodScreen() {
           />
         </View>
         <MacroBars cal={totalCal} protein={totalP} carbs={totalC} fat={totalF} />
+        {hasMicros && (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+            <Text style={{ color: DS.color.muted, fontSize: 9, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5, width: "100%", marginBottom: 2 }}>
+              Today's Micronutrients
+            </Text>
+            {totalCalcium > 0 && (
+              <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: "#0ea5e920" }}>
+                <Text style={{ color: "#0ea5e9", fontSize: 10, fontFamily: "Inter_600SemiBold" }}>
+                  Ca {Math.round(totalCalcium * 10) / 10}mg
+                </Text>
+              </View>
+            )}
+            {totalVitC > 0 && (
+              <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: "#f59e0b20" }}>
+                <Text style={{ color: "#f59e0b", fontSize: 10, fontFamily: "Inter_600SemiBold" }}>
+                  Vit C {Math.round(totalVitC * 10) / 10}mg
+                </Text>
+              </View>
+            )}
+            {totalVitB12 > 0 && (
+              <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: "#8b5cf620" }}>
+                <Text style={{ color: "#8b5cf6", fontSize: 10, fontFamily: "Inter_600SemiBold" }}>
+                  B12 {Math.round(totalVitB12 * 100) / 100}mcg
+                </Text>
+              </View>
+            )}
+            {totalIron > 0 && (
+              <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: "#ef444420" }}>
+                <Text style={{ color: "#ef4444", fontSize: 10, fontFamily: "Inter_600SemiBold" }}>
+                  Fe {Math.round(totalIron * 10) / 10}mg
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
       </View>
 
       {/* ── Weather Food Suggestions ── */}

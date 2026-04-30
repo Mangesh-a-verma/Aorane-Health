@@ -5,7 +5,7 @@ import {
   Building2, MapPin, Mail, Users, RefreshCw, Calendar,
   Search, ChevronRight, Activity, Hash, Shield, Briefcase,
   ToggleLeft, ToggleRight, Loader2, Pencil, Trash2, X, Check,
-  AlertTriangle,
+  AlertTriangle, Plus,
 } from "lucide-react";
 
 const ORG_TYPES = ["corporate", "hospital", "gym", "insurance", "ngo", "yoga", "school", "other"] as const;
@@ -24,6 +24,104 @@ const TYPE_META: Record<string, { icon: string; label: string; color: string }> 
 const ALL_TYPES = ["all", ...Object.keys(TYPE_META)];
 
 type EditForm = { name: string; contactEmail: string; city: string; state: string; totalSeats: number; orgType: string };
+type CreateForm = { name: string; contactEmail: string; city: string; state: string; totalSeats: number; orgType: string };
+
+function CreateOrgModal({ onClose, onCreate }: { onClose: () => void; onCreate: (org: Org) => void }) {
+  const [form, setForm] = useState<CreateForm>({
+    name: "", contactEmail: "", city: "", state: "", totalSeats: 10, orgType: "corporate",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const update = (k: keyof CreateForm, v: string | number) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleCreate = async () => {
+    if (!form.name.trim()) { setError("Organization name is required"); return; }
+    if (!form.contactEmail.trim()) { setError("Contact email is required"); return; }
+    if (!/\S+@\S+\.\S+/.test(form.contactEmail)) { setError("Enter a valid email address"); return; }
+    setSaving(true); setError("");
+    try {
+      const res = await api.createOrg(form);
+      onCreate(res.organization);
+    } catch (e: unknown) {
+      setError((e as Error).message || "Failed to create organization. Please retry.");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Plus size={16} className="text-primary" />
+            <h2 className="font-bold text-foreground">New Organization</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl px-3 py-2 text-sm">
+              <AlertTriangle size={14} className="shrink-0" />{error}
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Organization Name *</label>
+            <input value={form.name} onChange={e => update("name", e.target.value)} placeholder="e.g. Tata Consultancy Services"
+              className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary transition-all" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact Email *</label>
+            <input type="email" value={form.contactEmail} onChange={e => update("contactEmail", e.target.value)} placeholder="hr@company.com"
+              className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary transition-all" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">City</label>
+              <input value={form.city} onChange={e => update("city", e.target.value)} placeholder="Mumbai"
+                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary transition-all" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">State</label>
+              <input value={form.state} onChange={e => update("state", e.target.value)} placeholder="Maharashtra"
+                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary transition-all" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Org Type *</label>
+              <select value={form.orgType} onChange={e => update("orgType", e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary transition-all">
+                {ORG_TYPES.map(t => <option key={t} value={t}>{TYPE_META[t]?.icon} {TYPE_META[t]?.label}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Seats</label>
+              <input type="number" min={1} value={form.totalSeats} onChange={e => update("totalSeats", parseInt(e.target.value) || 1)}
+                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary transition-all" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 bg-muted/40 rounded-xl px-3 py-2 text-xs text-muted-foreground">
+            <Hash size={12} />
+            <span>Org code will be auto-generated (e.g. TCS7K3)</span>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 p-5 pt-0">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium border border-border hover:bg-muted transition-colors">
+            Cancel
+          </button>
+          <button onClick={handleCreate} disabled={saving}
+            className="px-5 py-2 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center gap-2">
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            {saving ? "Creating…" : "Create Organization"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function EditOrgModal({ org, onClose, onSave }: { org: Org; onClose: () => void; onSave: (updated: Org) => void }) {
   const [form, setForm] = useState<EditForm>({
@@ -362,6 +460,7 @@ export default function Organizations() {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [editOrg, setEditOrg] = useState<Org | null>(null);
   const [deleteOrg, setDeleteOrg] = useState<Org | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   const fetchOrgs = () => {
     setLoading(true);
@@ -380,6 +479,11 @@ export default function Organizations() {
     } catch {
       // ignore
     }
+  };
+
+  const handleOrgCreated = (org: Org) => {
+    setOrgs(prev => [org, ...prev]);
+    setShowCreate(false);
   };
 
   const handleOrgUpdated = (updated: Org) => {
@@ -427,10 +531,16 @@ export default function Organizations() {
             <h1 className="text-2xl font-bold text-foreground">Organizations</h1>
             <p className="text-muted-foreground text-sm">{orgs.length} registered businesses on Aorane</p>
           </div>
-          <button onClick={fetchOrgs}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted px-3 py-1.5 rounded-lg transition-all">
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowCreate(true)}
+              className="flex items-center gap-1.5 text-sm font-semibold text-white bg-primary hover:bg-primary/90 px-3 py-1.5 rounded-lg transition-all">
+              <Plus size={14} /> New Organization
+            </button>
+            <button onClick={fetchOrgs}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted px-3 py-1.5 rounded-lg transition-all">
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -552,6 +662,13 @@ export default function Organizations() {
           </div>
         )}
       </div>
+
+      {showCreate && (
+        <CreateOrgModal
+          onClose={() => setShowCreate(false)}
+          onCreate={handleOrgCreated}
+        />
+      )}
 
       {editOrg && (
         <EditOrgModal

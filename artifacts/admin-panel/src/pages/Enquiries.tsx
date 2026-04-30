@@ -25,6 +25,8 @@ export default function EnquiriesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [selected, setSelected] = useState<Enquiry | null>(null);
+  const [rowUpdating, setRowUpdating] = useState<Record<string, boolean>>({});
+  const [rowDeleting, setRowDeleting] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
   const load = async () => {
@@ -44,25 +46,31 @@ export default function EnquiriesPage() {
   useEffect(() => { load(); }, [statusFilter, typeFilter]);
 
   const updateStatus = async (id: string, status: "new" | "contacted" | "closed") => {
+    setRowUpdating(r => ({ ...r, [id]: true }));
     try {
       await api.updateEnquiry(id, status);
       setList((l) => l.map((e) => (e.id === id ? { ...e, status } : e)));
       if (selected?.id === id) setSelected({ ...selected, status });
       toast({ title: "Updated", description: `Marked as ${status}` });
     } catch {
-      toast({ title: "Error", description: "Update failed", variant: "destructive" });
+      toast({ title: "Error", description: "Status update failed. Please retry.", variant: "destructive" });
+    } finally {
+      setRowUpdating(r => { const n = { ...r }; delete n[id]; return n; });
     }
   };
 
   const remove = async (id: string) => {
     if (!confirm("Delete this enquiry permanently?")) return;
+    setRowDeleting(r => ({ ...r, [id]: true }));
     try {
       await api.deleteEnquiry(id);
       setList((l) => l.filter((e) => e.id !== id));
       if (selected?.id === id) setSelected(null);
-      toast({ title: "Deleted" });
+      toast({ title: "Deleted", description: "Enquiry removed successfully" });
     } catch {
-      toast({ title: "Error", description: "Delete failed", variant: "destructive" });
+      toast({ title: "Error", description: "Delete failed. Please retry.", variant: "destructive" });
+    } finally {
+      setRowDeleting(r => { const n = { ...r }; delete n[id]; return n; });
     }
   };
 
@@ -182,8 +190,12 @@ export default function EnquiriesPage() {
                 <div className="bg-card border border-border rounded-2xl p-5 sticky top-4">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-xs px-2 py-0.5 rounded-full text-white font-medium" style={{ background: STATUS_COLOR[selected.status] }}>{selected.status}</span>
-                    <button onClick={() => remove(selected.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950 p-1.5 rounded-lg">
-                      <Trash2 size={14} />
+                    <button
+                      onClick={() => remove(selected.id)}
+                      disabled={!!rowDeleting[selected.id]}
+                      className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950 p-1.5 rounded-lg disabled:opacity-50"
+                    >
+                      {rowDeleting[selected.id] ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                     </button>
                   </div>
                   <div className="font-bold text-lg">{selected.name}</div>
@@ -231,10 +243,13 @@ export default function EnquiriesPage() {
                       <button
                         key={s}
                         onClick={() => updateStatus(selected.id, s)}
-                        disabled={selected.status === s}
-                        className="text-xs font-medium py-2 rounded-lg border border-border disabled:opacity-100 disabled:text-white hover:bg-muted/40"
+                        disabled={selected.status === s || !!rowUpdating[selected.id]}
+                        className="text-xs font-medium py-2 rounded-lg border border-border disabled:opacity-100 disabled:text-white hover:bg-muted/40 flex items-center justify-center gap-1"
                         style={selected.status === s ? { background: STATUS_COLOR[s], borderColor: STATUS_COLOR[s] } : {}}
                       >
+                        {rowUpdating[selected.id] && selected.status !== s && (
+                          <Loader2 size={10} className="animate-spin" />
+                        )}
                         {s}
                       </button>
                     ))}

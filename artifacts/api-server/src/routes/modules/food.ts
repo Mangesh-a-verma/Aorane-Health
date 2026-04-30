@@ -550,6 +550,71 @@ router.get("/food/weekly-nutrition", requireAuth, async (req: AuthRequest, res) 
   }
 });
 
+// ── Monthly Nutrition Summary (last 30 days, grouped by week) ────────────────
+router.get("/food/monthly-nutrition", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const today = new Date();
+    const weeks: Array<{
+      weekLabel: string; startDate: string; endDate: string;
+      totalCalories: number; totalProteinG: number; totalCarbsG: number; totalFatG: number;
+      totalCalciumMg: number; totalVitaminB12Mcg: number; totalVitaminCMg: number; totalIronMg: number;
+      mealCount: number;
+    }> = [];
+
+    for (let w = 3; w >= 0; w--) {
+      const endD = new Date(today);
+      endD.setDate(endD.getDate() - w * 7);
+      const startD = new Date(endD);
+      startD.setDate(startD.getDate() - 6);
+      const startStr = startD.toISOString().slice(0, 10);
+      const endStr = endD.toISOString().slice(0, 10);
+
+      const logs = await db.select().from(foodLogsTable).where(
+        and(
+          eq(foodLogsTable.userId, req.userId!),
+          gte(foodLogsTable.loggedAt, new Date(startStr + "T00:00:00Z")),
+          lte(foodLogsTable.loggedAt, new Date(endStr + "T23:59:59Z"))
+        )
+      );
+
+      const weekNum = 4 - w;
+      weeks.push({
+        weekLabel: `Week ${weekNum} (${startD.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${endD.toLocaleDateString("en-IN", { day: "numeric", month: "short" })})`,
+        startDate: startStr,
+        endDate: endStr,
+        totalCalories: Math.round(logs.reduce((s, l) => s + Number(l.calories), 0)),
+        totalProteinG: Math.round(logs.reduce((s, l) => s + Number(l.proteinG || 0), 0) * 10) / 10,
+        totalCarbsG: Math.round(logs.reduce((s, l) => s + Number(l.carbsG || 0), 0) * 10) / 10,
+        totalFatG: Math.round(logs.reduce((s, l) => s + Number(l.fatG || 0), 0) * 10) / 10,
+        totalCalciumMg: Math.round(logs.reduce((s, l) => s + Number(l.calciumMg || 0), 0) * 10) / 10,
+        totalVitaminB12Mcg: Math.round(logs.reduce((s, l) => s + Number(l.vitaminB12Mcg || 0), 0) * 100) / 100,
+        totalVitaminCMg: Math.round(logs.reduce((s, l) => s + Number(l.vitaminCMg || 0), 0) * 10) / 10,
+        totalIronMg: Math.round(logs.reduce((s, l) => s + Number(l.ironMg || 0), 0) * 10) / 10,
+        mealCount: logs.length,
+      });
+    }
+
+    const monthlyTotals = weeks.reduce((acc, w) => ({
+      totalCalories: acc.totalCalories + w.totalCalories,
+      totalProteinG: Math.round((acc.totalProteinG + w.totalProteinG) * 10) / 10,
+      totalCarbsG: Math.round((acc.totalCarbsG + w.totalCarbsG) * 10) / 10,
+      totalFatG: Math.round((acc.totalFatG + w.totalFatG) * 10) / 10,
+      totalCalciumMg: Math.round((acc.totalCalciumMg + w.totalCalciumMg) * 10) / 10,
+      totalVitaminB12Mcg: Math.round((acc.totalVitaminB12Mcg + w.totalVitaminB12Mcg) * 100) / 100,
+      totalVitaminCMg: Math.round((acc.totalVitaminCMg + w.totalVitaminCMg) * 10) / 10,
+      totalIronMg: Math.round((acc.totalIronMg + w.totalIronMg) * 10) / 10,
+    }), { totalCalories: 0, totalProteinG: 0, totalCarbsG: 0, totalFatG: 0, totalCalciumMg: 0, totalVitaminB12Mcg: 0, totalVitaminCMg: 0, totalIronMg: 0 });
+
+    res.json({
+      weeks,
+      monthlyTotals,
+      monthlyAverages: Object.fromEntries(Object.entries(monthlyTotals).map(([k, v]) => [k, Math.round((v / 30) * 100) / 100])),
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch monthly nutrition" });
+  }
+});
+
 // ── Weather-based Food Suggestions ───────────────────────────────────────────
 router.post("/food/weather-suggestions", requireAuth, aiRateLimit("weather_suggestions", 4), async (req: AuthRequest, res) => {
   try {

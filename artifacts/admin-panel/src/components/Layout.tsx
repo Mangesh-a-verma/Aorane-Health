@@ -86,10 +86,40 @@ function NavLink({ path, icon: Icon, label, color }: NavItem) {
   );
 }
 
+function InactivityBanner({ onStay }: { onStay: () => void }) {
+  const [secs, setSecs] = useState(60);
+  useEffect(() => {
+    setSecs(60);
+    const t = setInterval(() => setSecs(s => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-medium">
+      <div className="flex items-center gap-2">
+        <ShieldAlert size={14} className="shrink-0" />
+        <span>
+          You've been inactive for a while. You'll be signed out in{" "}
+          <span className="font-bold tabular-nums">{secs}s</span>{" "}
+          to protect your session.
+        </span>
+      </div>
+      <button
+        onClick={onStay}
+        className="shrink-0 px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 transition-colors font-semibold"
+      >
+        Stay signed in
+      </button>
+    </div>
+  );
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { admin, logout, inactiveWarning, resetInactivityTimer } = useAuth();
   const [open, setOpen] = useState(false);
-  const [dark, setDark] = useState(true);
+  const [dark, setDark] = useState<boolean>(() => {
+    try { return localStorage.getItem("aorane_theme") !== "light"; }
+    catch { return true; }
+  });
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifEnquiries, setNotifEnquiries] = useState<Enquiry[]>([]);
@@ -97,11 +127,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem("aorane_theme");
-    const isDark = stored !== "light";
-    setDark(isDark);
-    document.documentElement.classList.toggle("dark", isDark);
-  }, []);
+    document.documentElement.classList.toggle("dark", dark);
+  }, [dark]);
 
   useEffect(() => {
     api.enquiries().then(d => {
@@ -341,21 +368,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        {/* Inactivity warning banner */}
-        {inactiveWarning && (
-          <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-medium">
-            <div className="flex items-center gap-2">
-              <ShieldAlert size={14} className="shrink-0" />
-              <span>You've been inactive for a while. You'll be signed out in 1 minute to protect your session.</span>
-            </div>
-            <button
-              onClick={resetInactivityTimer}
-              className="shrink-0 px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 transition-colors font-semibold"
-            >
-              Stay signed in
-            </button>
-          </div>
-        )}
+        {/* Inactivity warning banner with countdown */}
+        {inactiveWarning && <InactivityBanner onStay={resetInactivityTimer} />}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto page-enter bg-background">

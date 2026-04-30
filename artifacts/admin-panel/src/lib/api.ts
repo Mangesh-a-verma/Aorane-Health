@@ -154,13 +154,14 @@ export const api = {
 
   overview: () => req<{ stats: { totalUsers: number; totalOrganizations: number; activeSubscriptions: number; totalBloodRequests: number; totalRevenue: number; monthRevenue: number; newUsersToday: number; newUsersThisMonth: number; planBreakdown: Array<{ plan: string; count: number }> } }>("/admin/overview"),
   users: (params?: { limit?: number; offset?: number }) =>
-    req<{ users: User[] }>(`/admin/users?limit=${params?.limit || 50}&offset=${params?.offset || 0}`),
+    req<{ users: User[]; total: number; offset: number; limit: number }>(`/admin/users?limit=${params?.limit || 100}&offset=${params?.offset || 0}`),
   updateUser: (id: string, data: Partial<{ plan: string; isActive: boolean; isBanned: boolean }>) =>
     req<{ user: User }>(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   searchUsers: (q: string) =>
     req<{ results: SearchResult[]; count: number }>(`/admin/users/search?q=${encodeURIComponent(q)}`),
 
   organizations: () => req<{ organizations: Org[] }>("/admin/organizations"),
+  createOrg: (data: Partial<Org>) => req<{ organization: Org; success: boolean }>("/admin/organizations", { method: "POST", body: JSON.stringify(data) }),
   toggleOrgActive: (id: string) => req<{ organization: Org; success: boolean }>(`/admin/organizations/${id}/toggle-active`, { method: "PATCH" }),
   updateOrg: (id: string, data: Partial<Org>) => req<{ organization: Org; success: boolean }>(`/admin/organizations/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteOrg: (id: string) => req<{ success: boolean }>(`/admin/organizations/${id}`, { method: "DELETE" }),
