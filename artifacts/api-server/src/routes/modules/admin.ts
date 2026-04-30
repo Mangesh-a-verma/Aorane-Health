@@ -149,7 +149,8 @@ router.get("/admin/users", requireAdmin, async (req: AdminRequest, res) => {
         .offset(offsetNum),
     ]);
 
-    res.json({ users: rows, total: Number(totalRow?.count ?? 0), offset: offsetNum, limit: limitNum });
+    const usersOut = rows.map((r) => ({ ...r, aoraneId: r.aoraneId ? r.aoraneId.toUpperCase() : null }));
+    res.json({ users: usersOut, total: Number(totalRow?.count ?? 0), offset: offsetNum, limit: limitNum });
   } catch {
     res.status(500).json({ error: "Failed to fetch users" });
   }
@@ -222,6 +223,7 @@ router.get("/admin/users/search", requireAdmin, async (req: AdminRequest, res) =
 
     const results = rows.map(r => ({
       ...r,
+      aoraneId: r.aoraneId ? r.aoraneId.toUpperCase() : null,
       age: r.dateOfBirth ? Math.floor((Date.now() - new Date(r.dateOfBirth).getTime()) / (86400000 * 365.25)) : null,
     }));
 

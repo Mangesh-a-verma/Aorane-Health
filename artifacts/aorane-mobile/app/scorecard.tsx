@@ -70,7 +70,8 @@ const PLAN_LABELS: Record<string, string> = {
 // ─── Format AORANE ID with spaces ────────────────────────────────────────────
 function formatId(id: string): string {
   if (!id) return "———";
-  return id.replace(/(\d{4})(\d{4})(\d{4})/, "$1  $2  $3");
+  const upper = id.toUpperCase();
+  return upper.match(/.{1,4}/g)?.join("  ") ?? upper;
 }
 
 // ─── Format date for card ─────────────────────────────────────────────────────

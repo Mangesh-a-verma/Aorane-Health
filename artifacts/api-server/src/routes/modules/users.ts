@@ -255,7 +255,7 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
     const profile = profileRes.rows[0] ?? null;
 
     // Generate and save AORANE ID if missing
-    let aoraneId = profile?.aorane_id;
+    let aoraneId = profile?.aorane_id ? (profile.aorane_id as string).toUpperCase() : null;
     if (!aoraneId) {
       let generated = "";
       for (let i = 0; i < 5; i++) {

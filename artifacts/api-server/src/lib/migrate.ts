@@ -930,6 +930,10 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS vitamin_c_mg NUMERIC(6,2)`,
     `ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS vitamin_b12_mcg NUMERIC(6,2)`,
     `ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS vitamin_d_mcg NUMERIC(6,2)`,
+
+    // Fix Aorane IDs: uppercase all existing, then clear any that are still invalid format
+    `UPDATE user_profiles SET aorane_id = UPPER(aorane_id) WHERE aorane_id IS NOT NULL AND aorane_id <> UPPER(aorane_id)`,
+    `UPDATE user_profiles SET aorane_id = NULL WHERE aorane_id IS NOT NULL AND aorane_id !~ '^[A-Z0-9]{12}$'`,
   ];
 
   let ok = 0; let fail = 0;
