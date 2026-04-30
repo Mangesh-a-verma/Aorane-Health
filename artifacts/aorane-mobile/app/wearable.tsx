@@ -16,11 +16,13 @@ const { width: W } = Dimensions.get("window");
 
 // ─── Provider config ──────────────────────────────────────────────────────────
 const PROVIDER_META: Record<string, { emoji: string; name: string; color: string; grad: [string, string] }> = {
-  google_fit:     { emoji: "💚", name: "Google Fit",     color: "#34A853", grad: ["#34A853","#1A73E8"] },
-  garmin:         { emoji: "⌚", name: "Garmin Connect", color: "#007DC6", grad: ["#007DC6","#005A92"] },
-  fitbit:         { emoji: "🏃", name: "Fitbit",         color: "#00B0B9", grad: ["#00B0B9","#005F63"] },
-  samsung_health: { emoji: "💙", name: "Samsung Health", color: "#1428A0", grad: ["#1428A0","#00A8E0"] },
-  manual:         { emoji: "✍️", name: "Manual Entry",   color: "#6B7280", grad: ["#6B7280","#374151"] },
+  google_fit:      { emoji: "💚", name: "Google Fit",               color: "#34A853", grad: ["#34A853","#1A73E8"] },
+  health_connect:  { emoji: "🤖", name: "Health Connect (Android)", color: "#0B6E4F", grad: ["#0B6E4F","#1B998B"] },
+  apple_healthkit: { emoji: "🍎", name: "Apple HealthKit (iOS)",    color: "#FF3B30", grad: ["#FF3B30","#FF6B6B"] },
+  garmin:          { emoji: "⌚", name: "Garmin Connect",           color: "#007DC6", grad: ["#007DC6","#005A92"] },
+  fitbit:          { emoji: "🏃", name: "Fitbit",                   color: "#00B0B9", grad: ["#00B0B9","#005F63"] },
+  samsung_health:  { emoji: "💙", name: "Samsung Health",           color: "#1428A0", grad: ["#1428A0","#00A8E0"] },
+  manual:          { emoji: "✍️", name: "Manual Entry",             color: "#6B7280", grad: ["#6B7280","#374151"] },
 };
 
 type WearableData = {

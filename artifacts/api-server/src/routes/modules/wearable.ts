@@ -50,6 +50,22 @@ const PROVIDERS = [
     requiresCredentials: true,
   },
   {
+    id: "health_connect",
+    name: "Health Connect (Android)",
+    icon: null,
+    description: "Sync from Samsung, Garmin, Fitbit & all Android wearables via Health Connect",
+    supported: false,
+    requiresCredentials: false,
+  },
+  {
+    id: "apple_healthkit",
+    name: "Apple HealthKit (iOS)",
+    icon: null,
+    description: "Sync from Apple Watch & all iOS health apps via HealthKit",
+    supported: false,
+    requiresCredentials: false,
+  },
+  {
     id: "samsung_health",
     name: "Samsung Health",
     icon: null,
