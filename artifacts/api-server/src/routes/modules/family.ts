@@ -9,6 +9,7 @@ import {
 import { eq, and, desc, gte, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { logger } from "../../lib/logger";
 
 const router = Router();
 
@@ -67,7 +68,8 @@ router.get("/family/group", requireAuth, async (req: AuthRequest, res) => {
     }));
 
     res.json({ group, members: memberDetails, isOwner: group.ownerId === req.userId });
-  } catch {
+  } catch (err: unknown) {
+    logger.error({ err }, "Failed to get family group");
     res.status(500).json({ error: "Failed to get family group" });
   }
 });
@@ -80,7 +82,8 @@ router.post("/family/create", requireAuth, async (req: AuthRequest, res) => {
     const [group] = await db.insert(familyGroupsTable).values({ ownerId: req.userId!, inviteCode, maxMembers: 6 }).returning();
     await db.insert(familyMembersTable).values({ groupId: group.id, userId: req.userId!, role: "owner", relation: "self", healthSharePermission: "full" });
     res.status(201).json({ success: true, group, inviteCode });
-  } catch {
+  } catch (err: unknown) {
+    logger.error({ err }, "Failed to create family group");
     res.status(500).json({ error: "Failed to create family group" });
   }
 });
@@ -112,7 +115,8 @@ router.post("/family/join", requireAuth, async (req: AuthRequest, res) => {
     });
     await db.update(usersTable).set({ plan: "family" }).where(eq(usersTable.id, req.userId!));
     res.json({ success: true, group, message: "Successfully joined the family group! Family plan is now active." });
-  } catch {
+  } catch (err: unknown) {
+    logger.error({ err }, "Failed to join family group");
     res.status(500).json({ error: "Failed to join family group" });
   }
 });
@@ -133,7 +137,8 @@ router.delete("/family/leave", requireAuth, async (req: AuthRequest, res) => {
       await db.delete(familyMembersTable).where(and(eq(familyMembersTable.userId, req.userId!), eq(familyMembersTable.groupId, group.id)));
     }
     res.json({ success: true });
-  } catch {
+  } catch (err: unknown) {
+    logger.error({ err }, "Failed to leave group");
     res.status(500).json({ error: "Failed to leave group" });
   }
 });
@@ -150,7 +155,8 @@ router.patch("/family/member/permission", requireAuth, async (req: AuthRequest, 
       .set({ healthSharePermission: permission })
       .where(eq(familyMembersTable.userId, req.userId!));
     res.json({ success: true, permission });
-  } catch {
+  } catch (err: unknown) {
+    logger.error({ err }, "Failed to update permission");
     res.status(500).json({ error: "Failed to update permission" });
   }
 });
@@ -176,7 +182,8 @@ router.patch("/family/member/:memberId/relation", requireAuth, async (req: AuthR
       await pool.query(`UPDATE family_members SET is_minor=$1 WHERE user_id=$2 AND group_id=$3`, [Boolean(isMinor), memberId, membership.groupId]);
     }
     res.json({ success: true });
-  } catch {
+  } catch (err: unknown) {
+    logger.error({ err }, "Failed to update member relation");
     res.status(500).json({ error: "Failed to update member relation" });
   }
 });
@@ -311,7 +318,8 @@ router.get("/family/member/:memberId/health", requireAuth, async (req: AuthReque
       water: waterData,
       alerts,
     });
-  } catch {
+  } catch (err: unknown) {
+    logger.error({ err }, "Failed to fetch member health data");
     res.status(500).json({ error: "Failed to fetch member health data" });
   }
 });
@@ -365,7 +373,8 @@ router.get("/family/member/:memberId/history", requireAuth, async (req: AuthRequ
       : null;
 
     res.json({ period, days, points, summary: { avgScore, avgCalories, totalPoints: points.length } });
-  } catch {
+  } catch (err: unknown) {
+    logger.error({ err }, "Failed to fetch member history");
     res.status(500).json({ error: "Failed to fetch member history" });
   }
 });
@@ -405,11 +414,12 @@ router.post("/family/member/:memberId/reminder", requireAuth, async (req: AuthRe
             data: { type: "family_reminder", fromUserId: req.userId },
           }),
         });
-      } catch { }
+      } catch (pushErr: unknown) { logger.error({ err: pushErr }, "Push notification delivery failed"); }
     }
 
     res.json({ success: true, notified: !!pushToken, message: pushToken ? "Reminder sent!" : "Reminder queued (member will see it on next login)" });
-  } catch {
+  } catch (err: unknown) {
+    logger.error({ err }, "Failed to send reminder");
     res.status(500).json({ error: "Failed to send reminder" });
   }
 });
@@ -449,7 +459,8 @@ router.get("/family/alerts", requireAuth, async (req: AuthRequest, res) => {
     }
 
     res.json({ alerts, total: alerts.length, date: today });
-  } catch {
+  } catch (err: unknown) {
+    logger.error({ err }, "Failed to fetch family alerts");
     res.status(500).json({ error: "Failed to fetch family alerts" });
   }
 });
@@ -462,7 +473,8 @@ router.delete("/family/dissolve", requireAuth, async (req: AuthRequest, res) => 
     if (group.ownerId !== req.userId) { res.status(403).json({ error: "Only the owner can dissolve the group." }); return; }
     await db.delete(familyGroupsTable).where(eq(familyGroupsTable.id, group.id));
     res.json({ success: true, message: "Family group dissolved." });
-  } catch {
+  } catch (err: unknown) {
+    logger.error({ err }, "Failed to dissolve group");
     res.status(500).json({ error: "Failed to dissolve group" });
   }
 });
