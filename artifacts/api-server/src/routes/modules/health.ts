@@ -77,22 +77,38 @@ function calculateCalories(
 // ─────────────────────────────────────────────────────────
 router.post("/health/exercise/calculate", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { exerciseType, durationMinutes, intensity } = req.body as {
-      exerciseType: string; durationMinutes: number; intensity: string;
-    };
+    const body = req.body as Record<string, unknown>;
+    const exerciseType = (body.exerciseType as string) || "walking";
+    // Accept both durationMinutes and durationMin (mobile alias)
+    const durationMinutes = Number(body.durationMinutes ?? body.durationMin ?? 30);
+    const intensity = (body.intensity as string) || "moderate";
+
+    if (!exerciseType) {
+      res.status(400).json({ error: "exerciseType is required" });
+      return;
+    }
+    if (isNaN(durationMinutes) || durationMinutes <= 0) {
+      res.status(400).json({ error: "durationMinutes must be a positive number" });
+      return;
+    }
+
     const profRes = await pool.query(`SELECT weight_kg, gender FROM user_profiles WHERE user_id=$1`, [req.userId!]);
-    const weightKg = Number(profRes.rows[0]?.weight_kg || 70);
+    const profileWeight = profRes.rows[0]?.weight_kg ? Number(profRes.rows[0].weight_kg) : null;
+    const weightKg = profileWeight && !isNaN(profileWeight) && profileWeight > 0 ? profileWeight : 70;
+    const isDefaultWeight = !profileWeight;
     const gender = profRes.rows[0]?.gender || "male";
 
     const { calories, met } = calculateCalories(
       exerciseType, durationMinutes,
-      (intensity || "moderate") as "light" | "moderate" | "intense",
+      intensity as "light" | "moderate" | "intense",
       weightKg, gender,
     );
+    const safeCalories = isNaN(calories) || calories < 0 ? 0 : calories;
     res.json({
       exerciseType, durationMinutes, intensity, weightKg, gender,
-      metValue: met, caloriesBurned: calories,
-      formula: `MET(${met}) × ${weightKg}kg × ${(durationMinutes/60).toFixed(2)}h × gender(${gender === "female" ? "0.9" : "1.0"}) = ${calories} kcal`,
+      metValue: met, caloriesBurned: safeCalories,
+      isDefaultWeight,
+      formula: `MET(${met}) × ${weightKg}kg × ${(durationMinutes/60).toFixed(2)}h × gender(${gender === "female" ? "0.9" : "1.0"}) = ${safeCalories} kcal`,
     });
   } catch (e) {
     res.status(500).json({ error: "Calculation failed", detail: (e as Error).message });

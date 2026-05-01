@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, familyGroupsTable, familyMembersTable, usersTable, userProfilesTable, dailyHealthScoresTable, subscriptionsTable } from "@workspace/db";
+import { db, pool, familyGroupsTable, familyMembersTable, usersTable, userProfilesTable, dailyHealthScoresTable, subscriptionsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
@@ -12,6 +12,11 @@ function generateInviteCode() {
 
 router.get("/family/group", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const userRes = await pool.query(`SELECT plan FROM users WHERE id=$1`, [req.userId!]);
+    if (userRes.rows[0]?.plan !== "family") {
+      res.status(403).json({ error: "Family plan required to access this feature", code: "FAMILY_PLAN_REQUIRED" });
+      return;
+    }
     const membership = await db.select().from(familyMembersTable).where(eq(familyMembersTable.userId, req.userId!));
     if (!membership.length) {
       res.json({ group: null, members: [] });

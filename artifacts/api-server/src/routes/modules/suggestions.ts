@@ -372,27 +372,44 @@ router.get("/notifications/settings", requireAuth, async (req: AuthRequest, res)
   try {
     const [prefs] = await db.select().from(userPreferencesTable)
       .where(eq(userPreferencesTable.userId, req.userId!)).limit(1);
+    const DEFAULT_SETTINGS = {
+      notificationsEnabled: true,
+      medicineReminders: true,
+      waterReminders: true,
+      foodReminders: true,
+      periodReminders: true,
+      suggestionNotifications: true,
+      waterReminderTimes: "09:00,13:00,18:00,21:00",
+      foodReminderTime: "07:30,12:30,19:30",
+      medicineReminderTime: "08:00,14:00,21:00",
+      wakeUpTime: "07:00",
+      bedTime: "22:30",
+      weeklyReportEmail: false,
+      calorieGoal: 2000,
+      waterGoalGlasses: 8,
+    };
     if (!prefs) {
-      res.status(404).json({ error: "Preferences not found" });
+      res.json({ settings: DEFAULT_SETTINGS, isDefault: true });
       return;
     }
     res.json({
       settings: {
-        notificationsEnabled: prefs.notificationsEnabled,
-        medicineReminders: prefs.medicineReminders,
-        waterReminders: prefs.waterReminders,
-        foodReminders: (prefs as Record<string, unknown>).foodReminders ?? true,
-        periodReminders: (prefs as Record<string, unknown>).periodReminders ?? true,
-        suggestionNotifications: (prefs as Record<string, unknown>).suggestionNotifications ?? true,
-        waterReminderTimes: (prefs as Record<string, unknown>).waterReminderTimes ?? "09:00,13:00,18:00,21:00",
-        foodReminderTime: (prefs as Record<string, unknown>).foodReminderTime ?? "07:30,12:30,19:30",
-        medicineReminderTime: (prefs as Record<string, unknown>).medicineReminderTime ?? "08:00,14:00,21:00",
-        wakeUpTime: (prefs as Record<string, unknown>).wakeUpTime ?? "07:00",
-        bedTime: (prefs as Record<string, unknown>).bedTime ?? "22:30",
-        weeklyReportEmail: prefs.weeklyReportEmail,
-        calorieGoal: prefs.calorieGoal,
-        waterGoalGlasses: prefs.waterGoalGlasses,
+        notificationsEnabled: prefs.notificationsEnabled ?? DEFAULT_SETTINGS.notificationsEnabled,
+        medicineReminders: prefs.medicineReminders ?? DEFAULT_SETTINGS.medicineReminders,
+        waterReminders: prefs.waterReminders ?? DEFAULT_SETTINGS.waterReminders,
+        foodReminders: (prefs as Record<string, unknown>).foodReminders ?? DEFAULT_SETTINGS.foodReminders,
+        periodReminders: (prefs as Record<string, unknown>).periodReminders ?? DEFAULT_SETTINGS.periodReminders,
+        suggestionNotifications: (prefs as Record<string, unknown>).suggestionNotifications ?? DEFAULT_SETTINGS.suggestionNotifications,
+        waterReminderTimes: (prefs as Record<string, unknown>).waterReminderTimes ?? DEFAULT_SETTINGS.waterReminderTimes,
+        foodReminderTime: (prefs as Record<string, unknown>).foodReminderTime ?? DEFAULT_SETTINGS.foodReminderTime,
+        medicineReminderTime: (prefs as Record<string, unknown>).medicineReminderTime ?? DEFAULT_SETTINGS.medicineReminderTime,
+        wakeUpTime: (prefs as Record<string, unknown>).wakeUpTime ?? DEFAULT_SETTINGS.wakeUpTime,
+        bedTime: (prefs as Record<string, unknown>).bedTime ?? DEFAULT_SETTINGS.bedTime,
+        weeklyReportEmail: prefs.weeklyReportEmail ?? DEFAULT_SETTINGS.weeklyReportEmail,
+        calorieGoal: prefs.calorieGoal ?? DEFAULT_SETTINGS.calorieGoal,
+        waterGoalGlasses: prefs.waterGoalGlasses ?? DEFAULT_SETTINGS.waterGoalGlasses,
       },
+      isDefault: false,
     });
   } catch {
     res.status(500).json({ error: "Failed to load settings" });
