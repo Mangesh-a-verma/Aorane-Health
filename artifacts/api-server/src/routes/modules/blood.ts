@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { db, bloodDonorsTable, bloodEmergencyRequestsTable, bloodEmergencyResponsesTable, bloodDonationsTable } from "@workspace/db";
+import { db, pool, bloodDonorsTable, bloodEmergencyRequestsTable, bloodEmergencyResponsesTable, bloodDonationsTable } from "@workspace/db";
 import { eq, and, or, ilike, isNull, lt, sql, inArray, ne } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import { cache } from "../../lib/redis";
+import { logger } from "../../lib/logger";
 import { generateOtp, hashOtp, verifyOtpHash, sendSmsOtp } from "../../lib/otp";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { sendExpoPushNotifications, getTokensForUsers } from "./support";
@@ -167,12 +168,35 @@ router.post("/blood/request/verify-otp", requireAuth, async (req: AuthRequest, r
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 48);
 
-    const [request] = await db.insert(bloodEmergencyRequestsTable).values({
-      requesterId: req.userId!,
-      ...pending,
-      otpVerified: true,
-      expiresAt,
-    }).returning();
+    const insertResult = await pool.query(
+      `INSERT INTO blood_emergency_requests
+        (requester_id, patient_name, blood_group_needed, units_needed,
+         hospital_name, hospital_address, hospital_city, hospital_state,
+         hospital_pincode, hospital_phone, doctor_name, doctor_phone,
+         contact_phone, contact_name, urgency, notes, otp_verified, expires_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,TRUE,$17)
+       RETURNING *`,
+      [
+        req.userId,
+        String(pending.patientName || ""),
+        String(pending.bloodGroupNeeded || ""),
+        Number(pending.unitsNeeded) || 1,
+        String(pending.hospitalName || ""),
+        pending.hospitalAddress ? String(pending.hospitalAddress) : null,
+        String(pending.hospitalCity || ""),
+        String(pending.hospitalState || ""),
+        pending.hospitalPincode ? String(pending.hospitalPincode) : null,
+        pending.hospitalPhone ? String(pending.hospitalPhone) : null,
+        pending.doctorName ? String(pending.doctorName) : null,
+        pending.doctorPhone ? String(pending.doctorPhone) : null,
+        String(pending.contactPhone || ""),
+        pending.contactName ? String(pending.contactName) : null,
+        String(pending.urgency || "urgent"),
+        pending.notes ? String(pending.notes) : null,
+        expiresAt,
+      ]
+    );
+    const request = insertResult.rows[0];
 
     const monthKey = `blood_req:${req.userId}:${new Date().toISOString().slice(0, 7)}`;
     cache.incrementRateLimit(monthKey, 31 * 24 * 3600);
@@ -291,62 +315,91 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 72);
 
-    const [request] = await db.insert(bloodEmergencyRequestsTable).values({
-      requesterId: req.userId!,
-      patientName: String(patientName),
-      bloodGroupNeeded: bloodGroup as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-",
-      unitsNeeded: Number(unitsNeeded) || 1,
-      hospitalName: String(hospitalName),
-      hospitalAddress: String(hospitalAddress),
-      hospitalCity: String(hospitalCity),
-      hospitalState: String(hospitalState || ""),
-      hospitalPincode: hospitalPincode ? String(hospitalPincode) : undefined,
-      hospitalPhone: String(hospitalPhone),
-      doctorName: doctorName ? String(doctorName) : undefined,
-      doctorPhone: doctorPhone ? String(doctorPhone) : undefined,
-      contactPhone: String(contactPhone),
-      contactName: contactName ? String(contactName) : undefined,
-      urgency: String(urgency || "urgent"),
-      notes: notes ? String(notes) : undefined,
-      otpVerified: true,
-      expiresAt,
-    }).returning();
+    const insertResult = await pool.query(
+      `INSERT INTO blood_emergency_requests
+        (requester_id, patient_name, blood_group_needed, units_needed,
+         hospital_name, hospital_address, hospital_city, hospital_state,
+         hospital_pincode, hospital_phone, doctor_name, doctor_phone,
+         contact_phone, contact_name, urgency, notes, otp_verified, expires_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,TRUE,$17)
+       RETURNING *`,
+      [
+        req.userId,
+        String(patientName),
+        String(bloodGroup),
+        Number(unitsNeeded) || 1,
+        String(hospitalName),
+        hospitalAddress ? String(hospitalAddress) : null,
+        String(hospitalCity),
+        String(hospitalState || ""),
+        hospitalPincode ? String(hospitalPincode) : null,
+        String(hospitalPhone),
+        doctorName ? String(doctorName) : null,
+        doctorPhone ? String(doctorPhone) : null,
+        String(contactPhone),
+        contactName ? String(contactName) : null,
+        String(urgency || "urgent"),
+        notes ? String(notes) : null,
+        expiresAt,
+      ]
+    );
+    const request = insertResult.rows[0];
 
     cache.incrementRateLimit(monthKey, 31 * 24 * 3600);
 
     res.status(201).json({ success: true, request });
 
-    // ── Fire-and-forget: notify compatible donors in the same city ───────────
+    // ── Fire-and-forget: notify compatible donors (city first, then state fallback) ─
     (async () => {
       try {
         const compatible = COMPATIBLE_DONORS[String(bloodGroup)] || [];
         if (!compatible.length) return;
-        const donorRows = await db.select({ userId: bloodDonorsTable.userId })
+        const bgs = compatible as ("A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-")[];
+
+        // 1. City-level donors
+        let donorRows = await db.select({ userId: bloodDonorsTable.userId })
           .from(bloodDonorsTable)
           .where(and(
-            inArray(bloodDonorsTable.bloodGroup, compatible as ("A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-")[]),
+            inArray(bloodDonorsTable.bloodGroup, bgs),
             sql`LOWER(${bloodDonorsTable.city}) = LOWER(${String(hospitalCity || "")})`,
             eq(bloodDonorsTable.isAvailable, true),
             ne(bloodDonorsTable.userId, req.userId!)
           ))
-          .limit(50);
+          .limit(100);
+
+        // 2. State-level fallback if city donors < 5
+        if (donorRows.length < 5 && hospitalState) {
+          const stateRows = await db.select({ userId: bloodDonorsTable.userId })
+            .from(bloodDonorsTable)
+            .where(and(
+              inArray(bloodDonorsTable.bloodGroup, bgs),
+              sql`LOWER(${bloodDonorsTable.state}) = LOWER(${String(hospitalState)})`,
+              eq(bloodDonorsTable.isAvailable, true),
+              ne(bloodDonorsTable.userId, req.userId!)
+            ))
+            .limit(100);
+          const existingIds = new Set(donorRows.map(r => r.userId));
+          const extra = stateRows.filter(r => !existingIds.has(r.userId));
+          donorRows = [...donorRows, ...extra].slice(0, 100);
+        }
+
         const uids: string[] = donorRows.map(r => r.userId);
         if (!uids.length) return;
         const tokens = await getTokensForUsers(uids);
         if (!tokens.length) return;
         await sendExpoPushNotifications(
           tokens,
-          "🩸 Urgent Blood Needed Nearby!",
-          `${bloodGroup} blood needed at ${hospitalName || "a hospital"} in ${hospitalCity || "your city"}. Tap to help!`,
+          "🩸 Blood Needed Urgently Nearby!",
+          `${bloodGroup} blood needed at ${String(hospitalName || "a hospital")} in ${String(hospitalCity || "your city")}. Please help!`,
           { screen: "blood", requestId: request?.id || "" }
         );
-        console.log(`[BloodEmergency] Sent push to ${tokens.length} donors for ${bloodGroup} in ${hospitalCity}`);
+        logger.info({ tokens: tokens.length, bloodGroup, hospitalCity }, "[BloodEmergency] Push notifications sent");
       } catch (notifErr) {
-        console.error("[BloodEmergency] Push notification error (non-fatal):", notifErr);
+        logger.warn({ err: (notifErr as Error).message }, "[BloodEmergency] Push notification failed (non-fatal)");
       }
     })().catch(() => {});
   } catch (err) {
-    console.error("Blood emergency error:", err);
+    logger.error({ err: (err as Error).message }, "Blood emergency create failed");
     res.status(500).json({ error: "Failed to create blood emergency" });
   }
 });
