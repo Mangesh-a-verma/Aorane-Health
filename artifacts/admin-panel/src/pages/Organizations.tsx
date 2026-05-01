@@ -21,6 +21,37 @@ const TYPE_META: Record<string, { icon: string; label: string; color: string }> 
   other:      { icon: "✨", label: "Other",       color: "#6B7280" },
 };
 
+function TypeDistributionBar({ orgs }: { orgs: Org[] }) {
+  if (orgs.length === 0) return null;
+  const counts = Object.keys(TYPE_META).map(type => ({
+    type, meta: TYPE_META[type], count: orgs.filter(o => o.orgType === type).length,
+  })).filter(t => t.count > 0);
+  const total = orgs.length;
+  return (
+    <div className="bg-card border border-border rounded-xl px-4 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Organization Type Distribution</span>
+        <span className="text-xs text-muted-foreground">{total} total</span>
+      </div>
+      <div className="flex h-2.5 rounded-full overflow-hidden gap-px">
+        {counts.map(({ type, meta, count }) => (
+          <div key={type} className="h-full rounded-sm transition-all" title={`${meta.label}: ${count}`}
+               style={{ width: `${(count / total) * 100}%`, background: meta.color, minWidth: count > 0 ? 4 : 0 }} />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+        {counts.map(({ type, meta, count }) => (
+          <div key={type} className="flex items-center gap-1">
+            <span className="text-base leading-none">{meta.icon}</span>
+            <span className="text-[10px] text-muted-foreground font-medium">{meta.label}</span>
+            <span className="text-[10px] font-bold" style={{ color: meta.color }}>{count}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const ALL_TYPES = ["all", ...Object.keys(TYPE_META)];
 
 type SortKey = "name" | "createdAt" | "usedSeats" | "totalSeats";
