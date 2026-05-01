@@ -396,11 +396,16 @@ router.post("/family/member/:memberId/reminder", requireAuth, async (req: AuthRe
     const [senderProfile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, req.userId!));
     const senderName = senderProfile?.fullName || "Family Admin";
 
-    const deviceTokenRes = await pool.query(
-      `SELECT push_token FROM user_profiles WHERE user_id=$1 AND push_token IS NOT NULL LIMIT 1`,
-      [memberId]
-    );
-    const pushToken = deviceTokenRes.rows[0]?.push_token;
+    let pushToken: string | null = null;
+    try {
+      const deviceTokenRes = await pool.query(
+        `SELECT expo_push_token FROM user_profiles WHERE user_id=$1 AND expo_push_token IS NOT NULL LIMIT 1`,
+        [memberId]
+      );
+      pushToken = deviceTokenRes.rows[0]?.expo_push_token ?? null;
+    } catch (pushErr: unknown) {
+      logger.error({ err: pushErr }, "Could not fetch push token — column may not exist yet");
+    }
 
     if (pushToken) {
       try {
