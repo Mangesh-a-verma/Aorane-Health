@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Layout from "@/components/Layout";
 import { api, type Org } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 import {
   Building2, MapPin, Mail, Users, RefreshCw, Calendar,
   Search, ChevronRight, Activity, Hash, Shield, Briefcase,
   ToggleLeft, ToggleRight, Loader2, Pencil, Trash2, X, Check,
   AlertTriangle, Plus, LayoutGrid, List, ArrowUpDown, ArrowUp, ArrowDown,
+  Download,
 } from "lucide-react";
 
 const ORG_TYPES = ["corporate", "hospital", "gym", "insurance", "ngo", "yoga", "school", "other"] as const;
@@ -392,6 +394,7 @@ export default function Organizations() {
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const fetchOrgs = () => {
     setLoading(true); setError("");
@@ -407,17 +410,50 @@ export default function Organizations() {
     try {
       const res = await api.toggleOrgActive(id);
       setOrgs(prev => prev.map(o => o.id === id ? { ...o, isActive: res.organization.isActive } : o));
-    } catch { /* ignore */ }
+      const org = orgs.find(o => o.id === id);
+      toast({ title: res.organization.isActive ? "Organization Activated" : "Organization Deactivated", description: org?.name });
+    } catch {
+      toast({ title: "Error", description: "Failed to toggle organization status. Please retry.", variant: "destructive" });
+    }
     finally { setTogglingId(null); }
   };
 
-  const handleOrgCreated = (org: Org) => { setOrgs(prev => [org, ...prev]); setShowCreate(false); };
-  const handleOrgUpdated = (updated: Org) => { setOrgs(prev => prev.map(o => o.id === updated.id ? updated : o)); setEditOrg(null); };
+  const handleOrgCreated = (org: Org) => {
+    setOrgs(prev => [org, ...prev]);
+    setShowCreate(false);
+    toast({ title: "Organization Created", description: `${org.name} (${org.orgCode}) added successfully.` });
+  };
+  const handleOrgUpdated = (updated: Org) => {
+    setOrgs(prev => prev.map(o => o.id === updated.id ? updated : o));
+    setEditOrg(null);
+    toast({ title: "Changes Saved", description: updated.name });
+  };
   const handleOrgDeleted = async () => {
     if (!deleteOrg) return;
     await api.deleteOrg(deleteOrg.id);
+    const name = deleteOrg.name;
     setOrgs(prev => prev.filter(o => o.id !== deleteOrg.id));
     setDeleteOrg(null);
+    toast({ title: "Organization Deleted", description: `"${name}" has been removed.` });
+  };
+
+  const exportCSV = () => {
+    const rows = [
+      ["Name", "Code", "Type", "City", "State", "Email", "Total Seats", "Used Seats", "Status", "Joined"],
+      ...filtered.map(o => [
+        o.name, o.orgCode, o.orgType, o.city || "", o.state || "", o.contactEmail,
+        String(o.totalSeats), String(o.usedSeats),
+        o.isActive ? "Active" : "Inactive",
+        o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-IN") : "",
+      ]),
+    ];
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `organizations_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    toast({ title: "Exported", description: `${filtered.length} organizations exported as CSV.` });
   };
 
   const handleSort = (key: SortKey) => {
@@ -477,6 +513,11 @@ export default function Organizations() {
             <button onClick={() => setShowCreate(true)}
               className="flex items-center gap-1.5 text-sm font-semibold text-white bg-primary hover:bg-primary/90 px-3 py-1.5 rounded-lg transition-all">
               <Plus size={14} /> New Organization
+            </button>
+            <button onClick={exportCSV} disabled={loading || orgs.length === 0}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted px-3 py-1.5 rounded-lg transition-all disabled:opacity-40"
+              title="Export filtered orgs as CSV">
+              <Download size={14} /> Export CSV
             </button>
             <button onClick={fetchOrgs}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted px-3 py-1.5 rounded-lg transition-all">

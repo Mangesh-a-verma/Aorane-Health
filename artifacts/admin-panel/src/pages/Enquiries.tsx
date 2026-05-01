@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { api, type Enquiry } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Phone, MapPin, Building2, MessageSquare, Loader2, RefreshCw, Trash2, Inbox, Briefcase, FileText, User, Bell, CalendarDays, Users } from "lucide-react";
+import { Mail, Phone, MapPin, Building2, MessageSquare, Loader2, RefreshCw, Trash2, Inbox, Briefcase, FileText, User, Bell, CalendarDays, Users, Download } from "lucide-react";
 
 const TYPE_LABEL: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   expert:         { label: "Talk to Expert",  color: "#0077B6", icon: MessageSquare },
@@ -76,6 +76,27 @@ export default function EnquiriesPage() {
 
   const notifyLeadsCount = list.filter((e) => e.type === "notify_me").length;
 
+  const exportCSV = () => {
+    const rows = [
+      ["Name", "Email", "Phone", "Type", "Status", "City", "Company", "Message", "Created"],
+      ...list.map(e => [
+        e.name || "", e.email || "", e.mobile || "",
+        TYPE_LABEL[e.type]?.label || e.type,
+        e.status,
+        e.city || "", e.companyName || "",
+        (e.message || "").replace(/\n/g, " ").slice(0, 200),
+        e.createdAt ? new Date(e.createdAt).toLocaleDateString("en-IN") : "",
+      ]),
+    ];
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `enquiries_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    toast({ title: "Exported", description: `${list.length} enquiries exported as CSV.` });
+  };
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -84,9 +105,15 @@ export default function EnquiriesPage() {
             <h1 className="text-2xl font-bold text-foreground">Enquiries & Leads</h1>
             <p className="text-muted-foreground text-sm mt-1">Talk-to-Expert, Notify Me leads, Investor Deck downloads & general queries</p>
           </div>
-          <button onClick={load} className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2 text-sm hover:bg-muted/40">
-            <RefreshCw size={14} /> Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={exportCSV} disabled={list.length === 0}
+              className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2 text-sm hover:bg-muted/40 disabled:opacity-40">
+              <Download size={14} /> Export CSV
+            </button>
+            <button onClick={load} className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2 text-sm hover:bg-muted/40">
+              <RefreshCw size={14} /> Refresh
+            </button>
+          </div>
         </div>
 
         {error && (

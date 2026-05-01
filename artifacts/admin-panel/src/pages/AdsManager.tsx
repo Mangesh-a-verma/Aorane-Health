@@ -40,7 +40,7 @@ const EMPTY_FORM: FormData = {
 function AdCard({ ad, onEdit, onDelete, onToggle }: {
   ad: AdCampaign;
   onEdit: (ad: AdCampaign) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, title?: string) => void;
   onToggle: (id: string) => void;
 }) {
   const ctr = ad.impressionCount > 0
@@ -128,7 +128,7 @@ function AdCard({ ad, onEdit, onDelete, onToggle }: {
             <Pencil size={13} />
           </button>
           <button
-            onClick={() => onDelete(ad.id)}
+            onClick={() => onDelete(ad.id, ad.title)}
             className="p-1.5 rounded-md hover:bg-red-50 transition-colors text-muted-foreground hover:text-red-600"
           >
             <Trash2 size={13} />
@@ -406,10 +406,10 @@ export default function AdsManager() {
     load();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("This ad will be deleted permanently. Are you sure?")) return;
+  const handleDelete = async (id: string, title?: string) => {
+    if (!confirm(`Delete "${title || "this ad"}" permanently? This cannot be undone.`)) return;
     try { await api.deleteAd(id); load(); }
-    catch (e: unknown) { showError("Delete failed: " + ((e as Error).message || "Unknown error"), () => handleDelete(id)); }
+    catch (e: unknown) { showError("Delete failed: " + ((e as Error).message || "Unknown error"), () => handleDelete(id, title)); }
   };
 
   const handleToggle = async (id: string) => {

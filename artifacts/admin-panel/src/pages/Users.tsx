@@ -136,7 +136,7 @@ function SearchResultCard({ r }: { r: SearchResult }) {
           {r.aoraneId ? (
             <div className="flex items-center gap-1.5">
               <div className="font-mono text-sm font-bold text-primary tracking-[0.3em] uppercase">
-                {r.aoraneId.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")}
+                {r.aoraneId.toUpperCase().replace(/(.{4})(.{4})(.{4})/, "$1 $2 $3")}
               </div>
               <CopyBadge value={r.aoraneId} />
             </div>

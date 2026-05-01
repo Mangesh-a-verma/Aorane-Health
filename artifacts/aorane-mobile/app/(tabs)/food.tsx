@@ -35,7 +35,7 @@ type FoodLog = {
   calciumMg?: string; vitaminB12Mcg?: string; vitaminCMg?: string; ironMg?: string;
   _offline?: boolean;
 };
-type FavItem = { foodNameEn: string; calories: number; proteinG: number; carbsG: number; fatG: number; fiberG: number; count: number };
+type FavItem = { foodNameEn: string; calories: number; proteinG: number; carbsG: number; fatG: number; fiberG: number; sodiumMg?: number; ironMg?: number; calciumMg?: number; vitaminB12Mcg?: number; vitaminCMg?: number; count: number };
 type ScanResult = {
   foodNameEn: string; calories: number; proteinG: number; carbsG: number; fatG: number;
   fiberG: number; servingSizeG: number; servingDescription: string; category: string;
@@ -606,7 +606,15 @@ export default function FoodScreen() {
                   {histResults.map((item, i) => (
                     <TouchableOpacity
                       key={item.foodNameEn}
-                      onPress={() => logItem(item, "text")}
+                      onPress={() => logItem({
+                        ...item,
+                        vitamins: {
+                          calcium_mg:     item.calciumMg     ? Number(item.calciumMg)     : undefined,
+                          vitaminB12_mcg: item.vitaminB12Mcg ? Number(item.vitaminB12Mcg) : undefined,
+                          vitaminC_mg:    item.vitaminCMg    ? Number(item.vitaminCMg)    : undefined,
+                          iron_mg:        item.ironMg        ? Number(item.ironMg)        : undefined,
+                        },
+                      }, "text")}
                       disabled={submitting}
                       style={[s.resultRow, i > 0 && s.resultRowBorder]}
                     >
@@ -630,7 +638,21 @@ export default function FoodScreen() {
                   {dbResults.slice(0, 8).map((item, i) => (
                     <TouchableOpacity
                       key={String(item.id)}
-                      onPress={() => logItem({ foodNameEn: String(item.foodNameEn), calories: Number(item.calories), proteinG: Number(item.proteinG||0), carbsG: Number(item.carbsG||0), fatG: Number(item.fatG||0), fiberG: Number(item.fiberG||0) }, "text")}
+                      onPress={() => logItem({
+                        foodNameEn: String(item.foodNameEn),
+                        calories: Number(item.calories),
+                        proteinG: Number(item.proteinG||0),
+                        carbsG: Number(item.carbsG||0),
+                        fatG: Number(item.fatG||0),
+                        fiberG: Number(item.fiberG||0),
+                        sodiumMg: item.sodiumMg ? Number(item.sodiumMg) : undefined,
+                        vitamins: {
+                          calcium_mg:     item.calciumMg     ? Number(item.calciumMg)     : undefined,
+                          vitaminB12_mcg: item.vitaminB12Mcg ? Number(item.vitaminB12Mcg) : undefined,
+                          vitaminC_mg:    item.vitaminCMg    ? Number(item.vitaminCMg)    : undefined,
+                          iron_mg:        item.ironMg        ? Number(item.ironMg)        : undefined,
+                        },
+                      }, "text")}
                       disabled={submitting}
                       style={[s.resultRow, i > 0 && s.resultRowBorder]}
                     >
