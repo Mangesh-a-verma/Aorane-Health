@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { api, type Enquiry } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Phone, MapPin, Building2, MessageSquare, Loader2, RefreshCw, Trash2, Inbox, Briefcase, FileText, User, Bell, CalendarDays, Users } from "lucide-react";
+import { Mail, Phone, MapPin, Building2, MessageSquare, Loader2, RefreshCw, Trash2, Inbox, Briefcase, FileText, User, Bell, CalendarDays, Users, AlertTriangle } from "lucide-react";
 
 const TYPE_LABEL: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   expert:         { label: "Talk to Expert",  color: "#0077B6", icon: MessageSquare },
@@ -27,6 +27,7 @@ export default function EnquiriesPage() {
   const [selected, setSelected] = useState<Enquiry | null>(null);
   const [rowUpdating, setRowUpdating] = useState<Record<string, boolean>>({});
   const [rowDeleting, setRowDeleting] = useState<Record<string, boolean>>({});
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const { toast } = useToast();
 
   const load = async () => {
@@ -60,7 +61,13 @@ export default function EnquiriesPage() {
   };
 
   const remove = async (id: string) => {
-    if (!confirm("Delete this enquiry permanently?")) return;
+    setDeleteConfirm(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    const id = deleteConfirm;
+    setDeleteConfirm(null);
     setRowDeleting(r => ({ ...r, [id]: true }));
     try {
       await api.deleteEnquiry(id);
@@ -264,6 +271,36 @@ export default function EnquiriesPage() {
           </div>
         )}
       </div>
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle size={18} className="text-red-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">Delete Enquiry?</p>
+                <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

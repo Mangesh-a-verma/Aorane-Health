@@ -380,6 +380,8 @@ export default function AdsManager() {
   const [loading, setLoading] = useState(true);
   const [modalAd, setModalAd] = useState<Partial<AdCampaign> | null | undefined>(undefined);
   const [error, setError] = useState<{ msg: string; retryFn?: () => void } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const showError = (msg: string, retryFn?: () => void) => setError({ msg, retryFn });
 
@@ -389,7 +391,7 @@ export default function AdsManager() {
     try { setAds((await api.ads()).ads); }
     catch (e: unknown) {
       const msg = (e as Error).message || "Failed to load ads";
-      showError(msg.includes("fetch") ? "Could not connect to server. Please check your connection." : `Failed to load ads: ${msg}`, load);
+      showError(`Failed to load ads: ${msg}`, load);
     }
     setLoading(false);
   }, []);
@@ -407,9 +409,15 @@ export default function AdsManager() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("This ad will be deleted permanently. Are you sure?")) return;
-    try { await api.deleteAd(id); load(); }
-    catch (e: unknown) { showError("Delete failed: " + ((e as Error).message || "Unknown error"), () => handleDelete(id)); }
+    setDeleteConfirm(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    setDeleting(true);
+    try { await api.deleteAd(deleteConfirm); load(); setDeleteConfirm(null); }
+    catch (e: unknown) { showError("Delete failed: " + ((e as Error).message || "Unknown error")); }
+    finally { setDeleting(false); }
   };
 
   const handleToggle = async (id: string) => {
@@ -523,6 +531,38 @@ export default function AdsManager() {
           onSave={handleSave}
           onClose={() => setModalAd(undefined)}
         />
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle size={18} className="text-red-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">Delete Ad?</p>
+                <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-60"
+                disabled={deleting}
+              >
+                {deleting ? "Deleting…" : "Yes, Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </Layout>
   );
