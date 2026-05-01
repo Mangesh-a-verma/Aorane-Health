@@ -31,6 +31,9 @@ export const familyMembersTable = pgTable("family_members", {
   groupId: uuid("group_id").notNull().references(() => familyGroupsTable.id, { onDelete: "cascade" }),
   userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   role: text("role").notNull().default("member"),
+  relation: text("relation").notNull().default("other"),
+  isMinor: boolean("is_minor").notNull().default(false),
+  healthSharePermission: text("health_share_permission").notNull().default("basic"),
   joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

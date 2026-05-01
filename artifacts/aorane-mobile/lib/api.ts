@@ -477,10 +477,24 @@ export const api = {
     request<{ group: Record<string, unknown> | null; members: Array<Record<string, unknown>>; isOwner: boolean }>("GET", "/family/group"),
   createFamilyGroup: () =>
     request<{ success: boolean; group: Record<string, unknown>; inviteCode: string }>("POST", "/family/create"),
-  joinFamilyGroup: (inviteCode: string) =>
-    request<{ success: boolean; group: Record<string, unknown> }>("POST", "/family/join", { inviteCode }),
+  joinFamilyGroup: (inviteCode: string, relation?: string, isMinor?: boolean) =>
+    request<{ success: boolean; group: Record<string, unknown> }>("POST", "/family/join", { inviteCode, relation, isMinor }),
   leaveFamilyGroup: () =>
     request<{ success: boolean }>("DELETE", "/family/leave"),
+  dissolveFamilyGroup: () =>
+    request<{ success: boolean }>("DELETE", "/family/dissolve"),
+  getMemberHealth: (memberId: string) =>
+    request<Record<string, unknown>>("GET", `/family/member/${memberId}/health`),
+  getMemberHistory: (memberId: string, period?: "week" | "month") =>
+    request<Record<string, unknown>>("GET", `/family/member/${memberId}/history?period=${period || "week"}`),
+  sendMemberReminder: (memberId: string, message?: string) =>
+    request<{ success: boolean; notified: boolean }>("POST", `/family/member/${memberId}/reminder`, { message }),
+  updateMyPermission: (permission: "full" | "basic" | "none") =>
+    request<{ success: boolean }>("PATCH", "/family/member/permission", { permission }),
+  updateMemberRelation: (memberId: string, relation: string, isMinor?: boolean) =>
+    request<{ success: boolean }>("PATCH", `/family/member/${memberId}/relation`, { relation, isMinor }),
+  getFamilyAlerts: () =>
+    request<{ alerts: Array<Record<string, unknown>>; total: number }>("GET", "/family/alerts"),
 
   // ── Period Tracker ─────────────────────────────────────────
   getPeriodLogs: () =>
