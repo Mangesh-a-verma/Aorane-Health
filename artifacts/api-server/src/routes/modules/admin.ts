@@ -162,11 +162,11 @@ router.get("/admin/users/search", requireAdmin, async (req: AdminRequest, res) =
     const q = ((req.query.q as string) || "").trim();
     if (!q || q.length < 3) { res.status(400).json({ error: "Minimum 3 characters required" }); return; }
 
-    const qClean = q.replace(/[\s\-_]/g, "");
-    const isAoraneId = /^\d{12}$/.test(qClean);
+    const qClean = q.replace(/\s/g, "");
+    const isAoraneId = /^\d{8,12}$/.test(qClean);
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(q);
-    const isPhone = /^\+?\d{7,15}$/.test(qClean) && !isAoraneId;
-    const isPartialUUID = /^[0-9a-f]{8,}/i.test(q) && !isAoraneId && !isPhone;
+    const isPhone = /^\+?\d{7,15}$/.test(qClean);
+    const isPartialUUID = /^[0-9a-f]{8,}/i.test(q) && !isAoraneId;
 
     let userIds: string[] = [];
 
