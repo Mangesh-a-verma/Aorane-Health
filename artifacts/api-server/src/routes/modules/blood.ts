@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, pool, bloodDonorsTable, bloodEmergencyRequestsTable, bloodEmergencyResponsesTable, bloodDonationsTable } from "@workspace/db";
+import { db, pool, bloodDonorsTable, bloodDonationsTable } from "@workspace/db";
 import { eq, and, or, ilike, isNull, lt, sql, inArray, ne } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import { cache } from "../../lib/redis";
@@ -210,14 +210,45 @@ router.post("/blood/request/verify-otp", requireAuth, async (req: AuthRequest, r
 // ── Active Requests ───────────────────────────────────────────────────────────
 router.get("/blood/requests/active", async (req, res) => {
   try {
-    const requests = await db.select().from(bloodEmergencyRequestsTable)
-      .where(and(
-        eq(bloodEmergencyRequestsTable.status, "active"),
-        eq(bloodEmergencyRequestsTable.otpVerified, true),
-        eq(bloodEmergencyRequestsTable.isFlagged, false),
-      ));
+    const result = await pool.query(
+      `SELECT * FROM blood_emergency_requests
+       WHERE status = 'active' AND otp_verified = TRUE AND is_flagged = FALSE
+       ORDER BY created_at DESC
+       LIMIT 100`
+    );
+    // Map snake_case DB columns to camelCase for mobile app compatibility
+    const requests = result.rows.map((r) => ({
+      id: r.id,
+      requesterId: r.requester_id,
+      patientName: r.patient_name,
+      bloodGroupNeeded: r.blood_group_needed,
+      unitsNeeded: r.units_needed,
+      hospitalName: r.hospital_name,
+      hospitalAddress: r.hospital_address,
+      hospitalCity: r.hospital_city,
+      hospitalState: r.hospital_state,
+      hospitalPincode: r.hospital_pincode,
+      hospitalPhone: r.hospital_phone,
+      doctorName: r.doctor_name,
+      doctorPhone: r.doctor_phone,
+      contactPhone: r.contact_phone,
+      contactName: r.contact_name,
+      urgency: r.urgency,
+      status: r.status,
+      donorsNotified: r.donors_notified,
+      donorsResponded: r.donors_responded,
+      otpVerified: r.otp_verified,
+      flagCount: r.flag_count,
+      isFlagged: r.is_flagged,
+      notes: r.notes,
+      expiresAt: r.expires_at,
+      fulfilledAt: r.fulfilled_at,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }));
     res.json({ requests });
-  } catch {
+  } catch (err) {
+    logger.error({ err: (err as Error).message }, "Blood requests fetch failed");
     res.status(500).json({ error: "Failed to fetch blood requests" });
   }
 });
@@ -225,19 +256,26 @@ router.get("/blood/requests/active", async (req, res) => {
 // ── Donor Response ────────────────────────────────────────────────────────────
 router.post("/blood/request/:id/respond", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { response } = req.body as { response: "can_help" | "later" | "unavailable" };
+    const { response } = req.body as { response: string };
     const requestId = String(req.params.id);
-    const [existing] = await db.select().from(bloodEmergencyResponsesTable)
-      .where(and(eq(bloodEmergencyResponsesTable.requestId, requestId), eq(bloodEmergencyResponsesTable.donorId, req.userId!)));
-    if (existing) {
-      await db.update(bloodEmergencyResponsesTable).set({ response }).where(eq(bloodEmergencyResponsesTable.id, existing.id));
+    const existing = await pool.query(
+      `SELECT id FROM blood_emergency_responses WHERE request_id = $1 AND donor_id = $2`,
+      [requestId, req.userId]
+    );
+    if (existing.rows.length) {
+      await pool.query(
+        `UPDATE blood_emergency_responses SET response = $1 WHERE id = $2`,
+        [response, existing.rows[0].id]
+      );
     } else {
-      await db.insert(bloodEmergencyResponsesTable).values({
-        requestId, donorId: req.userId!, response,
-      });
+      await pool.query(
+        `INSERT INTO blood_emergency_responses (request_id, donor_id, response) VALUES ($1, $2, $3)`,
+        [requestId, req.userId, response]
+      );
     }
     res.json({ success: true });
-  } catch {
+  } catch (err) {
+    logger.error({ err: (err as Error).message }, "Blood respond failed");
     res.status(500).json({ error: "Failed to submit response" });
   }
 });
@@ -246,15 +284,19 @@ router.post("/blood/request/:id/respond", requireAuth, async (req: AuthRequest, 
 router.post("/blood/request/:id/flag", requireAuth, async (req: AuthRequest, res) => {
   try {
     const flagId = String(req.params.id);
-    const [request] = await db.select().from(bloodEmergencyRequestsTable).where(eq(bloodEmergencyRequestsTable.id, flagId));
-    if (!request) { res.status(404).json({ error: "Request not found" }); return; }
-    const newCount = request.flagCount + 1;
-    await db.update(bloodEmergencyRequestsTable).set({
-      flagCount: newCount,
-      isFlagged: newCount >= 3,
-    }).where(eq(bloodEmergencyRequestsTable.id, flagId));
+    const existing = await pool.query(
+      `SELECT id, flag_count FROM blood_emergency_requests WHERE id = $1`,
+      [flagId]
+    );
+    if (!existing.rows.length) { res.status(404).json({ error: "Request not found" }); return; }
+    const newCount = (existing.rows[0].flag_count || 0) + 1;
+    await pool.query(
+      `UPDATE blood_emergency_requests SET flag_count = $1, is_flagged = $2 WHERE id = $3`,
+      [newCount, newCount >= 3, flagId]
+    );
     res.json({ success: true });
-  } catch {
+  } catch (err) {
+    logger.error({ err: (err as Error).message }, "Blood flag failed");
     res.status(500).json({ error: "Failed to flag request" });
   }
 });
@@ -262,14 +304,14 @@ router.post("/blood/request/:id/flag", requireAuth, async (req: AuthRequest, res
 // ── Mark as Fulfilled ─────────────────────────────────────────────────────────
 router.patch("/blood/request/:id/fulfil", requireAuth, async (req: AuthRequest, res) => {
   try {
-    await db.update(bloodEmergencyRequestsTable)
-      .set({ status: "fulfilled", fulfilledAt: new Date() })
-      .where(and(
-        eq(bloodEmergencyRequestsTable.id, String(req.params.id)),
-        eq(bloodEmergencyRequestsTable.requesterId, req.userId!),
-      ));
+    await pool.query(
+      `UPDATE blood_emergency_requests SET status = 'fulfilled', fulfilled_at = NOW()
+       WHERE id = $1 AND requester_id = $2`,
+      [String(req.params.id), req.userId]
+    );
     res.json({ success: true });
-  } catch {
+  } catch (err) {
+    logger.error({ err: (err as Error).message }, "Blood fulfil failed");
     res.status(500).json({ error: "Failed to mark as fulfilled" });
   }
 });
