@@ -35,9 +35,9 @@ export default function VerifyPinScreen() {
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
-  const [biometricType, setBiometricType] = useState<"fingerprint" | "face" | "none">("none");
 
   const pinRef = useRef("");
+  const biometricAvailableRef = useRef(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
@@ -52,20 +52,15 @@ export default function VerifyPinScreen() {
       const compatible = await LocalAuthentication.hasHardwareAsync();
       const enrolled = await LocalAuthentication.isEnrolledAsync();
       if (compatible && enrolled) {
+        biometricAvailableRef.current = true;
         setBiometricAvailable(true);
-        const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
-        if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
-          setBiometricType("face");
-        } else {
-          setBiometricType("fingerprint");
-        }
         setTimeout(() => tryBiometric(), 600);
       }
     } catch { }
   };
 
   const tryBiometric = async () => {
-    if (!LocalAuthentication || !biometricAvailable) return;
+    if (!LocalAuthentication || !biometricAvailableRef.current) return;
     try {
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: "Verify your identity to open Aorane",
@@ -145,10 +140,8 @@ export default function VerifyPinScreen() {
     );
   };
 
-  const firstName = user?.phone ? `+91 ${user.phone.slice(-4).padStart(user.phone.length, "·")}` : "User";
-
   return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
+    <View style={[s.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <LinearGradient colors={["#E8F4FC", "#F0FAFB", "#E6F9F4"]} style={StyleSheet.absoluteFill} />
 
       <Animated.View style={[s.container, { opacity: fadeAnim }]}>
@@ -169,14 +162,8 @@ export default function VerifyPinScreen() {
 
         {biometricAvailable && (
           <TouchableOpacity onPress={tryBiometric} style={s.biometricBtn} activeOpacity={0.75}>
-            <Ionicons
-              name={biometricType === "face" ? "scan-outline" : "finger-print-outline"}
-              size={22}
-              color={C.primary}
-            />
-            <Text style={s.biometricTxt}>
-              Use {biometricType === "face" ? "Face ID" : "Fingerprint"}
-            </Text>
+            <Ionicons name="finger-print-outline" size={22} color={C.primary} />
+            <Text style={s.biometricTxt}>Use Biometric</Text>
           </TouchableOpacity>
         )}
 
@@ -197,11 +184,12 @@ export default function VerifyPinScreen() {
             </TouchableOpacity>
           ))}
         </View>
-
-        <TouchableOpacity onPress={handleLogout} style={s.logoutBtn} activeOpacity={0.7}>
-          <Text style={s.logoutTxt}>Forgot PIN? Sign out</Text>
-        </TouchableOpacity>
       </Animated.View>
+
+      {/* Forgot PIN — fixed at bottom, always tappable */}
+      <TouchableOpacity onPress={handleLogout} style={s.logoutBtn} activeOpacity={0.7}>
+        <Text style={s.logoutTxt}>Forgot PIN? Sign out</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -224,6 +212,6 @@ const s = StyleSheet.create({
   key:         { width: (W - 64 - 28) / 3, height: 64, borderRadius: 18, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", shadowColor: "#0077B6", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 3 },
   keyHidden:   { backgroundColor: "transparent", shadowOpacity: 0, elevation: 0 },
   keyTxt:      { fontSize: 22, fontFamily: "Inter_600SemiBold", color: "#0D1F33" },
-  logoutBtn:   { marginTop: 32 },
+  logoutBtn:   { alignItems: "center", paddingVertical: 16, paddingHorizontal: 32, marginBottom: 8 },
   logoutTxt:   { fontSize: 13, fontFamily: "Inter_400Regular", color: "#7A90A4", textDecorationLine: "underline" },
 });
