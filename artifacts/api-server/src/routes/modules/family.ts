@@ -103,7 +103,7 @@ router.post("/family/join", requireAuth, async (req: AuthRequest, res) => {
     const existing = await getMembership(req.userId!);
     if (existing) { res.status(400).json({ error: "You are already a member of a group." }); return; }
     const members = await db.select().from(familyMembersTable).where(eq(familyMembersTable.groupId, group.id));
-    if (members.length >= (group.maxMembers || 6)) { res.status(400).json({ error: "This group is full (max 6 members)." }); return; }
+    if (members.length >= (group.maxMembers || 4)) { res.status(400).json({ error: "This group is full (max 4 members)." }); return; }
 
     await db.insert(familyMembersTable).values({
       groupId: group.id, userId: req.userId!, role: "member",
