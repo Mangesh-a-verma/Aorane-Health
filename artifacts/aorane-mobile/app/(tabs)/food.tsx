@@ -133,6 +133,19 @@ export default function FoodScreen() {
     weatherContext?: string; season?: string; weatherTip?: string;
     suggestions?: Array<{ name: string; nameHindi: string; emoji: string; reason: string; calories: number; benefit: string; category: string; isSeasonalSpecial: boolean }>;
   } | null>(null);
+  const [showNutriReport, setShowNutriReport] = useState(false);
+  const [nutriTab, setNutriTab] = useState<"weekly" | "monthly">("weekly");
+  const [weeklyData, setWeeklyData] = useState<{
+    days: Array<{ date: string; totalCalories: number; totalProteinG: number; totalCarbsG: number; totalFatG: number; totalCalciumMg: number; totalVitaminB12Mcg: number; totalVitaminCMg: number; totalIronMg: number; mealCount: number }>;
+    weeklyTotals: { totalCalories: number; totalProteinG: number; totalCarbsG: number; totalFatG: number; totalCalciumMg: number; totalVitaminB12Mcg: number; totalVitaminCMg: number; totalIronMg: number };
+    weeklyAverages: Record<string, number>;
+  } | null>(null);
+  const [monthlyData, setMonthlyData] = useState<{
+    weeks: Array<{ weekLabel: string; startDate: string; endDate: string; totalCalories: number; totalProteinG: number; totalCarbsG: number; totalFatG: number; totalCalciumMg: number; totalVitaminB12Mcg: number; totalVitaminCMg: number; totalIronMg: number; mealCount: number }>;
+    monthlyTotals: { totalCalories: number; totalProteinG: number; totalCarbsG: number; totalFatG: number; totalCalciumMg: number; totalVitaminB12Mcg: number; totalVitaminCMg: number; totalIronMg: number };
+    monthlyAverages: Record<string, number>;
+  } | null>(null);
+  const [nutriLoading, setNutriLoading] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pulseAnim   = useRef(new Animated.Value(1)).current;
 
@@ -152,6 +165,22 @@ export default function FoodScreen() {
     if (favsLoaded) return;
     try { const res = await api.getFoodFavorites(); setFavorites(res.favorites as FavItem[]); setFavsLoaded(true); } catch { }
   }, [favsLoaded]);
+
+  const openNutriReport = useCallback(async (tab: "weekly" | "monthly") => {
+    setNutriTab(tab);
+    setShowNutriReport(true);
+    setNutriLoading(true);
+    try {
+      if (tab === "weekly") {
+        const res = await api.getWeeklyFoodNutrition();
+        setWeeklyData(res);
+      } else {
+        const res = await api.getMonthlyFoodNutrition();
+        setMonthlyData(res);
+      }
+    } catch { }
+    setNutriLoading(false);
+  }, []);
 
   useEffect(() => { loadLogs(); }, []);
 
@@ -394,6 +423,18 @@ export default function FoodScreen() {
         )}
       </View>
 
+      {/* ── Nutrition Report Buttons ── */}
+      <View style={{ flexDirection: "row", gap: 8, marginHorizontal: 16, marginTop: 8 }}>
+        <TouchableOpacity onPress={() => openNutriReport("weekly")} activeOpacity={0.82} style={s.reportBtn}>
+          <Text style={s.reportBtnIcon}>📊</Text>
+          <Text style={s.reportBtnText}>Weekly Report</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => openNutriReport("monthly")} activeOpacity={0.82} style={s.reportBtn}>
+          <Text style={s.reportBtnIcon}>📅</Text>
+          <Text style={s.reportBtnText}>Monthly Report</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* ── Weather Food Suggestions ── */}
       {weatherData?.suggestions && weatherData.suggestions.length > 0 && (
         <View style={{ marginTop: 8 }}>
@@ -501,6 +542,174 @@ export default function FoodScreen() {
           })}
         </ScrollView>
       )}
+
+      {/* ── NUTRITION REPORT MODAL ── */}
+      <Modal visible={showNutriReport} animationType="slide" presentationStyle="pageSheet">
+        <View style={s.modalRoot}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>{nutriTab === "weekly" ? "📊 Weekly Nutrition" : "📅 Monthly Nutrition"}</Text>
+            <TouchableOpacity onPress={() => setShowNutriReport(false)} style={s.closeBtn}>
+              <X size={20} color={DS.color.text} strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Tab switch */}
+          <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}>
+            {(["weekly", "monthly"] as const).map((t) => (
+              <TouchableOpacity
+                key={t}
+                onPress={() => openNutriReport(t)}
+                style={[s.nutriTabBtn, nutriTab === t && s.nutriTabBtnActive]}
+              >
+                <Text style={[s.nutriTabBtnText, nutriTab === t && { color: "#FFF" }]}>
+                  {t === "weekly" ? "7 Days" : "This Month"}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {nutriLoading ? (
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <ActivityIndicator color={P} size="large" />
+              <Text style={{ color: DS.color.muted, fontFamily: "Inter_400Regular", fontSize: 13, marginTop: 12 }}>Loading nutrition data...</Text>
+            </View>
+          ) : nutriTab === "weekly" && weeklyData ? (
+            <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+              {/* Weekly totals summary */}
+              <View style={s.nutriSummaryCard}>
+                <Text style={s.nutriSummaryTitle}>7-Day Totals</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                  {[
+                    { label: "Calories", val: Math.round(weeklyData.weeklyTotals.totalCalories), unit: "kcal", color: DS.color.orange },
+                    { label: "Protein",  val: Math.round(weeklyData.weeklyTotals.totalProteinG),  unit: "g",    color: DS.color.red    },
+                    { label: "Carbs",    val: Math.round(weeklyData.weeklyTotals.totalCarbsG),    unit: "g",    color: P               },
+                    { label: "Fat",      val: Math.round(weeklyData.weeklyTotals.totalFatG),      unit: "g",    color: DS.color.purple },
+                    { label: "Calcium",  val: Math.round(weeklyData.weeklyTotals.totalCalciumMg), unit: "mg",   color: "#0ea5e9"       },
+                    { label: "Vit C",    val: Math.round(weeklyData.weeklyTotals.totalVitaminCMg), unit: "mg",  color: "#f59e0b"       },
+                    { label: "B12",      val: (weeklyData.weeklyTotals.totalVitaminB12Mcg).toFixed(1), unit: "mcg", color: "#8b5cf6"  },
+                    { label: "Iron",     val: Math.round(weeklyData.weeklyTotals.totalIronMg),    unit: "mg",   color: DS.color.red    },
+                  ].map((m) => (
+                    <View key={m.label} style={[s.macroChip, { backgroundColor: m.color + "12" }]}>
+                      <Text style={[s.macroChipVal, { color: m.color, fontSize: 15 }]}>{m.val}</Text>
+                      <Text style={s.macroChipUnit}>{m.unit}</Text>
+                      <Text style={s.macroChipLabel}>{m.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* Daily breakdown */}
+              <Text style={[s.sectionLabel, { marginTop: 16, marginBottom: 8 }]}>DAILY BREAKDOWN</Text>
+              {weeklyData.days.map((day) => {
+                const d = new Date(day.date);
+                const dayLabel = d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+                const hasMicroData = day.totalCalciumMg > 0 || day.totalVitaminCMg > 0 || day.totalVitaminB12Mcg > 0 || day.totalIronMg > 0;
+                return (
+                  <View key={day.date} style={s.nutriDayCard}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.text }}>{dayLabel}</Text>
+                      <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
+                        {day.mealCount > 0 && (
+                          <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: DS.color.muted }}>{day.mealCount} meals</Text>
+                        )}
+                        <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: DS.color.orange }}>{Math.round(day.totalCalories)} kcal</Text>
+                      </View>
+                    </View>
+                    {day.totalCalories > 0 && (
+                      <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+                        {[
+                          { label: "P", val: day.totalProteinG, unit: "g", color: DS.color.red },
+                          { label: "C", val: day.totalCarbsG,   unit: "g", color: P },
+                          { label: "F", val: day.totalFatG,     unit: "g", color: DS.color.purple },
+                        ].map((m) => (
+                          <View key={m.label} style={{ flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: m.color + "12", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 }}>
+                            <Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: m.color }}>{m.label}:{Math.round(m.val)}{m.unit}</Text>
+                          </View>
+                        ))}
+                        {hasMicroData && <>
+                          {day.totalCalciumMg > 0 && <View style={{ flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: "#0ea5e912", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 }}><Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: "#0ea5e9" }}>Ca:{Math.round(day.totalCalciumMg)}mg</Text></View>}
+                          {day.totalVitaminCMg > 0 && <View style={{ flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: "#f59e0b12", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 }}><Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: "#f59e0b" }}>C:{Math.round(day.totalVitaminCMg)}mg</Text></View>}
+                          {day.totalVitaminB12Mcg > 0 && <View style={{ flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: "#8b5cf612", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 }}><Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: "#8b5cf6" }}>B12:{day.totalVitaminB12Mcg.toFixed(1)}mcg</Text></View>}
+                          {day.totalIronMg > 0 && <View style={{ flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: "#ef444412", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 }}><Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: "#ef4444" }}>Fe:{Math.round(day.totalIronMg)}mg</Text></View>}
+                        </>}
+                      </View>
+                    )}
+                    {day.totalCalories === 0 && (
+                      <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted }}>No food logged this day</Text>
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
+          ) : nutriTab === "monthly" && monthlyData ? (
+            <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+              {/* Monthly totals summary */}
+              <View style={s.nutriSummaryCard}>
+                <Text style={s.nutriSummaryTitle}>Monthly Totals</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                  {[
+                    { label: "Calories", val: Math.round(monthlyData.monthlyTotals.totalCalories), unit: "kcal", color: DS.color.orange },
+                    { label: "Protein",  val: Math.round(monthlyData.monthlyTotals.totalProteinG),  unit: "g",    color: DS.color.red    },
+                    { label: "Carbs",    val: Math.round(monthlyData.monthlyTotals.totalCarbsG),    unit: "g",    color: P               },
+                    { label: "Fat",      val: Math.round(monthlyData.monthlyTotals.totalFatG),      unit: "g",    color: DS.color.purple },
+                    { label: "Calcium",  val: Math.round(monthlyData.monthlyTotals.totalCalciumMg), unit: "mg",   color: "#0ea5e9"       },
+                    { label: "Vit C",    val: Math.round(monthlyData.monthlyTotals.totalVitaminCMg), unit: "mg",  color: "#f59e0b"       },
+                    { label: "B12",      val: (monthlyData.monthlyTotals.totalVitaminB12Mcg).toFixed(1), unit: "mcg", color: "#8b5cf6"  },
+                    { label: "Iron",     val: Math.round(monthlyData.monthlyTotals.totalIronMg),    unit: "mg",   color: DS.color.red    },
+                  ].map((m) => (
+                    <View key={m.label} style={[s.macroChip, { backgroundColor: m.color + "12" }]}>
+                      <Text style={[s.macroChipVal, { color: m.color, fontSize: 15 }]}>{m.val}</Text>
+                      <Text style={s.macroChipUnit}>{m.unit}</Text>
+                      <Text style={s.macroChipLabel}>{m.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* Weekly breakdown */}
+              <Text style={[s.sectionLabel, { marginTop: 16, marginBottom: 8 }]}>WEEK-BY-WEEK BREAKDOWN</Text>
+              {monthlyData.weeks.map((wk) => {
+                const hasMicroData = wk.totalCalciumMg > 0 || wk.totalVitaminCMg > 0 || wk.totalVitaminB12Mcg > 0 || wk.totalIronMg > 0;
+                return (
+                  <View key={wk.weekLabel} style={s.nutriDayCard}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <View>
+                        <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.text }}>{wk.weekLabel}</Text>
+                        <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: DS.color.muted }}>{wk.mealCount} meals logged</Text>
+                      </View>
+                      <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: DS.color.orange }}>{Math.round(wk.totalCalories)} kcal</Text>
+                    </View>
+                    {wk.totalCalories > 0 && (
+                      <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+                        {[
+                          { label: "P", val: wk.totalProteinG, unit: "g", color: DS.color.red },
+                          { label: "C", val: wk.totalCarbsG,   unit: "g", color: P },
+                          { label: "F", val: wk.totalFatG,     unit: "g", color: DS.color.purple },
+                        ].map((m) => (
+                          <View key={m.label} style={{ flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: m.color + "12", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 }}>
+                            <Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: m.color }}>{m.label}:{Math.round(m.val)}{m.unit}</Text>
+                          </View>
+                        ))}
+                        {hasMicroData && <>
+                          {wk.totalCalciumMg > 0 && <View style={{ flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: "#0ea5e912", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 }}><Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: "#0ea5e9" }}>Ca:{Math.round(wk.totalCalciumMg)}mg</Text></View>}
+                          {wk.totalVitaminCMg > 0 && <View style={{ flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: "#f59e0b12", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 }}><Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: "#f59e0b" }}>C:{Math.round(wk.totalVitaminCMg)}mg</Text></View>}
+                          {wk.totalVitaminB12Mcg > 0 && <View style={{ flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: "#8b5cf612", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 }}><Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: "#8b5cf6" }}>B12:{wk.totalVitaminB12Mcg.toFixed(1)}mcg</Text></View>}
+                          {wk.totalIronMg > 0 && <View style={{ flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: "#ef444412", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 }}><Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: "#ef4444" }}>Fe:{Math.round(wk.totalIronMg)}mg</Text></View>}
+                        </>}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
+          ) : (
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ fontSize: 32, marginBottom: 12 }}>📭</Text>
+              <Text style={{ color: DS.color.muted, fontFamily: "Inter_400Regular", fontSize: 14 }}>No data found</Text>
+            </View>
+          )}
+        </View>
+      </Modal>
 
       {/* ── ADD FOOD MODAL ── */}
       <Modal visible={showModal} animationType="slide" presentationStyle="pageSheet">
@@ -836,4 +1045,15 @@ const s = StyleSheet.create({
   dietTagText:      { color: G, fontSize: 10, fontFamily: "Inter_500Medium" },
   logBtn:           { borderRadius: 14, padding: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   logBtnText:       { color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 },
+
+  // Nutrition report
+  reportBtn:        { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "#FFF", borderRadius: DS.radius.lg, paddingVertical: 10, borderWidth: 1, borderColor: DS.color.border, ...DS.shadow.sm },
+  reportBtnIcon:    { fontSize: 14 },
+  reportBtnText:    { fontSize: 12, fontFamily: "Inter_600SemiBold", color: DS.color.text },
+  nutriTabBtn:      { flex: 1, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: DS.color.border, alignItems: "center", backgroundColor: "#FFF" },
+  nutriTabBtnActive:{ backgroundColor: P, borderColor: P },
+  nutriTabBtnText:  { fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.muted },
+  nutriSummaryCard: { backgroundColor: "#FFF", borderRadius: DS.radius.xl, padding: 14, borderWidth: 1, borderColor: DS.color.border, ...DS.shadow.sm },
+  nutriSummaryTitle:{ fontSize: 13, fontFamily: "Inter_700Bold", color: DS.color.text },
+  nutriDayCard:     { backgroundColor: "#FFF", borderRadius: DS.radius.lg, padding: 12, borderWidth: 1, borderColor: DS.color.border, marginBottom: 8, ...DS.shadow.sm },
 });

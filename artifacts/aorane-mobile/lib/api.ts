@@ -649,6 +649,13 @@ export const api = {
       weeklyAverages: Record<string, number>;
     }>("GET", "/food/weekly-nutrition"),
 
+  getMonthlyFoodNutrition: () =>
+    request<{
+      weeks: Array<{ weekLabel: string; startDate: string; endDate: string; totalCalories: number; totalProteinG: number; totalCarbsG: number; totalFatG: number; totalCalciumMg: number; totalVitaminB12Mcg: number; totalVitaminCMg: number; totalIronMg: number; mealCount: number }>;
+      monthlyTotals: { totalCalories: number; totalProteinG: number; totalCarbsG: number; totalFatG: number; totalCalciumMg: number; totalVitaminB12Mcg: number; totalVitaminCMg: number; totalIronMg: number };
+      monthlyAverages: Record<string, number>;
+    }>("GET", "/food/monthly-nutrition"),
+
   calculateExerciseCalories: (exerciseType: string, durationMinutes: number) =>
     request<{ exerciseType: string; durationMinutes: number; weightKg: number; met: number; caloriesBurned: number }>(
       "POST", "/health/intelligence/exercise/calories", { exerciseType, durationMinutes }
