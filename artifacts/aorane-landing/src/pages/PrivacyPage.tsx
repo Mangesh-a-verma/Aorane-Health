@@ -104,7 +104,7 @@ export default function PrivacyPage() {
             </ul>
           </section>
 
-          <section>
+          <section id="dpdpa">
             <h2 className="text-white font-semibold text-lg mb-3">6. Your Rights (DPDPA 2023)</h2>
             <p>Under India's Digital Personal Data Protection Act, 2023, you have the right to:</p>
             <ul className="list-disc pl-5 space-y-1.5 mt-2">

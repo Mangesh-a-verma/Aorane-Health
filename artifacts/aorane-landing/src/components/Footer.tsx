@@ -87,7 +87,7 @@ export default function Footer() {
               <h4 className="text-sm font-semibold text-white mb-4">{col.title}</h4>
               <ul className="space-y-2.5">
                 {col.links.map((l) => {
-                  const isInternal = l.href.startsWith("/") && !l.href.includes("://");
+                  const isInternal = l.href.startsWith("/") && !l.href.includes("://") && !l.href.includes("#");
                   return (
                     <li key={l.label}>
                       {isInternal ? (
