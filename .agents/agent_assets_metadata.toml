@@ -149,3 +149,9 @@ id = "b0ikgACQm6Ztlt2uOa9U5"
 uri = "file://screenshots/poster-09-ai-integration.jpg"
 type = "image"
 title = "Poster 9 — AI Integration"
+
+[[outputs]]
+id = "UsaXHmvMq34_kT5p30ntE"
+uri = "file://screenshots/aorane-marketing-posters.zip"
+type = "unspecified"
+title = "Aorane Marketing Posters — All 10 Images (ZIP)"
