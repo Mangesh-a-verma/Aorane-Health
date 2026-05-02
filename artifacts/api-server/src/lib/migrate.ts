@@ -969,6 +969,19 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS notified_at TIMESTAMPTZ`,
     // ── enquiries: add admin_notes column for internal tracking ──
     `ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS admin_notes TEXT`,
+
+    // ── plan_pricing: update family plan price to 499 and fix features ──
+    `UPDATE plan_pricing SET
+       monthly_price = 499,
+       yearly_price = 4990,
+       badge_text = '4 Members',
+       features = '["Everything in Pro","Up to 4 Family Members","Family Health Dashboard","Shared Health Reports","Member Health Alerts","Family Reminders"]'
+     WHERE plan_key = 'family'`,
+
+    // ── plan_pricing: fix pro plan features (remove Hindi) ──
+    `UPDATE plan_pricing SET
+       features = '["Everything in Max","Medical Report AI Scanner","Advanced Gemini AI","Priority Support","Unlimited History","Export PDF & CSV"]'
+     WHERE plan_key = 'pro' AND features::text LIKE '%Sab Max%'`,
   ];
 
   let ok = 0; let fail = 0;

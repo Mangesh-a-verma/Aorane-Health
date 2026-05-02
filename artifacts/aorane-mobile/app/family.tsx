@@ -586,7 +586,7 @@ export default function FamilyScreen() {
               Family Plan Required
             </Text>
             <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22, marginBottom: 24 }}>
-              Family Health feature ke liye Family Plan chahiye. Up to 4 members ki health ek hi jagah dekho.
+              Family Plan required to use Family Health. Track up to 4 members' health in one place.
             </Text>
             <View style={{ flexDirection: "row", gap: 12, marginBottom: 24, flexWrap: "wrap", justifyContent: "center" }}>
               {["4 Family Members", "Health Dashboard", "Shared Reports", "Reminders"].map(f => (
@@ -599,10 +599,10 @@ export default function FamilyScreen() {
             <TouchableOpacity
               onPress={() => router.push("/upgrade" as never)}
               style={{ backgroundColor: "#F59E0B", borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, width: "100%", alignItems: "center", marginBottom: 12 }}>
-              <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 16 }}>₹399/month — Upgrade Karo</Text>
+              <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 16 }}>₹499/month — Upgrade Now</Text>
             </TouchableOpacity>
             <Text style={{ color: isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.35)", fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center" }}>
-              Ya invite code se kisi Family group mein join karo
+              Or join an existing family group with an invite code
             </Text>
           </View>
         </GlassCard>

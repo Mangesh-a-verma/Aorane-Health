@@ -45,7 +45,12 @@ const FALLBACK_PLANS: PlanItem[] = [
   {
     key: "pro", label: "Pro", price: 249, badge: "Best Value",
     color: "#8B5CF6", gradient: ["#8B5CF6","#6D28D9"],
-    features: ["Sab Max features +", "Medical Report AI Scanner", "Advanced Gemini AI", "Priority Support", "Family Add-on", "Unlimited History"],
+    features: ["Everything in Max", "Medical Report AI Scanner", "Advanced Gemini AI", "Priority Support", "Unlimited History", "Export PDF & CSV"],
+  },
+  {
+    key: "family", label: "Family", price: 499, badge: "4 Members",
+    color: "#F59E0B", gradient: ["#F59E0B","#D97706"],
+    features: ["Everything in Pro", "Up to 4 Family Members", "Family Health Dashboard", "Shared Health Reports", "Member Health Alerts", "Family Reminders"],
   },
 ];
 
@@ -182,7 +187,7 @@ export default function UpgradeScreen() {
   }, []);
 
   useEffect(() => {
-    api.getPlans("individual").then(res => {
+    api.getPlans().then(res => {
       const paidPlans = res.plans.filter(p => Number(p.monthlyPrice) > 0 && p.isActive);
       if (paidPlans.length > 0) {
         const mapped: PlanItem[] = paidPlans.map(p => ({
@@ -247,11 +252,11 @@ export default function UpgradeScreen() {
   const handleCancelSubscription = async () => {
     Alert.alert(
       "Cancel Autopay",
-      "Autopay cancel karne ke baad plan expiry tak active rahega. Cancel karna chahte hain?",
+      "Your plan will remain active until expiry after cancelling autopay. Are you sure?",
       [
-        { text: "Nahi", style: "cancel" },
+        { text: "No", style: "cancel" },
         {
-          text: "Haan, Cancel Karo",
+          text: "Yes, Cancel",
           style: "destructive",
           onPress: async () => {
             setLoadingSubscription(true);
@@ -259,9 +264,9 @@ export default function UpgradeScreen() {
               const res = await api.cancelSubscription();
               const statusRes = await api.getSubscriptionStatus();
               setActiveSubscription(statusRes.subscription);
-              Alert.alert("Autopay Cancelled", res.message || "Autopay cancel ho gayi. Plan expiry tak active hai.");
+              Alert.alert("Autopay Cancelled", res.message || "Autopay cancelled. Plan remains active until expiry.");
             } catch (e: unknown) {
-              Alert.alert("Error", (e as Error).message || "Cancel nahi ho paya. Dobara try karein.");
+              Alert.alert("Error", (e as Error).message || "Could not cancel. Please try again.");
             } finally { setLoadingSubscription(false); }
           },
         },
@@ -541,7 +546,7 @@ export default function UpgradeScreen() {
           </View>
         </GlassCard>
 
-        <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 12 }}>Plan Chunein</Text>
+        <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 12 }}>Choose a Plan</Text>
         <View style={{ gap: 12, marginBottom: 16 }}>
           {plans.map(p => (
             <TouchableOpacity key={p.key} onPress={() => { setSelectedPlan(p.key); setDiscount(0); setPromoMsg(""); setPromoCode(""); }} activeOpacity={0.85}>
@@ -679,17 +684,17 @@ export default function UpgradeScreen() {
             <Text style={{ fontSize: 52, marginBottom: 16 }}>🔄</Text>
             <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 20, textAlign: "center", marginBottom: 8 }}>Autopay Setup...</Text>
             <Text style={{ color: "rgba(255,255,255,0.6)", fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center", marginBottom: 24, lineHeight: 20 }}>
-              Browser mein Razorpay mandate complete karein.{"\n"}App automatically update ho jaega.
+              Complete Razorpay mandate in the browser.{"\n"}The app will update automatically once done.
             </Text>
             <TouchableOpacity onPress={checkSubscriptionNow} disabled={loading} style={{ backgroundColor: "#E8622A", borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14, width: "100%", alignItems: "center", marginBottom: 12, opacity: loading ? 0.6 : 1 }}>
               <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>
-                {loading ? "Checking..." : "✓ Autopay Setup Ho Gaya"}
+                {loading ? "Checking..." : "✓ Autopay Setup Complete"}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => {
               stopSubPolling();
               setLoading(false);
-              Alert.alert("Setup Cancelled", "Koi baat nahi! Jab chahein tab 'Setup Autopay' tap karein.");
+              Alert.alert("Setup Cancelled", "No problem! Tap 'Setup Autopay' whenever you're ready.");
             }} style={{ paddingVertical: 10, paddingHorizontal: 20 }}>
               <Text style={{ color: "rgba(255,255,255,0.4)", fontFamily: "Inter_400Regular", fontSize: 13 }}>❌ Cancel</Text>
             </TouchableOpacity>
