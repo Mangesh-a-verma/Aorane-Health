@@ -624,13 +624,10 @@ export async function runStartupMigrations(): Promise<void> {
     // SEEDING: Default data for admin panel + platform
     // ══════════════════════════════════════════════════════
 
-    // Seed default admin user (password: admin123) — DO UPDATE ensures password is always correct on every deploy
+    // Seed default admin user (password: admin123) — ON CONFLICT DO NOTHING preserves user-changed passwords
     `INSERT INTO admin_users (email, password_hash, full_name, role, is_active)
      VALUES ('admin@aorane.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'AORANE Admin', 'superadmin', TRUE)
-     ON CONFLICT (email) DO UPDATE SET
-       password_hash = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
-       is_active = TRUE,
-       role = 'superadmin'`,
+     ON CONFLICT (email) DO NOTHING`,
 
     // Seed company settings singleton
     `INSERT INTO company_settings (id, company_name, tagline, website, support_email, support_phone)
