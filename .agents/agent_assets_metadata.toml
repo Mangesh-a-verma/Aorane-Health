@@ -95,3 +95,57 @@ id = "K_m2Js9qC7uZHxp0V9c4d"
 uri = "file://screenshots/aorane-facebook-banner.jpg"
 type = "image"
 title = "Aorane Facebook Post Banner (1200×628)"
+
+[[outputs]]
+id = "G-TbpjEzV7xviohYmw_jA"
+uri = "file://screenshots/poster-01-stress-monitor.jpg"
+type = "image"
+title = "Poster 1 — Stress Level Monitor"
+
+[[outputs]]
+id = "7kThQNd3Evod4bXKsN707"
+uri = "file://screenshots/poster-02-indian-food-database.jpg"
+type = "image"
+title = "Poster 2 — Indian Food Database"
+
+[[outputs]]
+id = "gS9nNEyyjMeiEr01HE55v"
+uri = "file://screenshots/poster-03-blood-emergency.jpg"
+type = "image"
+title = "Poster 3 — Blood Emergency Features"
+
+[[outputs]]
+id = "9a0Ifc6Xq9Dpzm_xN5u4v"
+uri = "file://screenshots/poster-04-b2b-saas.jpg"
+type = "image"
+title = "Poster 4 — B2B SaaS Platform"
+
+[[outputs]]
+id = "ZIIj0aZ5tyXkJ8EBld6sN"
+uri = "file://screenshots/poster-05-weekly-monthly-report.jpg"
+type = "image"
+title = "Poster 5 — Weekly & Monthly Health Report"
+
+[[outputs]]
+id = "lReX1SlV-WWqSD46-hnx1"
+uri = "file://screenshots/poster-06-health-score-card.jpg"
+type = "image"
+title = "Poster 6 — Health Score & Health Card"
+
+[[outputs]]
+id = "U2yzAI2hyo0Ep6TX1HOFQ"
+uri = "file://screenshots/poster-07-medical-report-analysis.jpg"
+type = "image"
+title = "Poster 7 — Medical Report Analysis"
+
+[[outputs]]
+id = "e8S3WBUdxPsDCPk_f-0ff"
+uri = "file://screenshots/poster-08-profile-analysis.jpg"
+type = "image"
+title = "Poster 8 — Profile Based Analysis"
+
+[[outputs]]
+id = "b0ikgACQm6Ztlt2uOa9U5"
+uri = "file://screenshots/poster-09-ai-integration.jpg"
+type = "image"
+title = "Poster 9 — AI Integration"

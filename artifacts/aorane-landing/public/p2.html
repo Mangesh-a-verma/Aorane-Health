@@ -1,0 +1,52 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1080px;height:1080px;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;}
+.wrap{width:1080px;height:1080px;background:linear-gradient(145deg,#fffbf0 0%,#fff7e6 50%,#f0fff4 100%);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;}
+.bg1{position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(249,115,22,0.1),transparent);top:-100px;right:-100px;}
+.bg2{position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(34,197,94,0.08),transparent);bottom:-80px;left:-80px;}
+.logo{margin-bottom:20px;}.logo img{height:56px;}
+.tag{background:linear-gradient(135deg,#f97316,#fb923c);color:#fff;font-size:13px;font-weight:700;letter-spacing:2px;padding:6px 18px;border-radius:99px;text-transform:uppercase;margin-bottom:18px;}
+.icon-wrap{width:110px;height:110px;border-radius:28px;background:linear-gradient(135deg,#f97316,#fb923c);display:flex;align-items:center;justify-content:center;font-size:52px;margin-bottom:24px;box-shadow:0 12px 32px rgba(249,115,22,0.3);}
+h1{font-size:52px;font-weight:900;color:#1e3a8a;text-align:center;line-height:1.1;margin-bottom:12px;}
+h1 span{color:#f97316;}
+.sub{font-size:19px;color:#475569;text-align:center;max-width:700px;line-height:1.6;margin-bottom:28px;}
+.food-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px;width:680px;}
+.food-card{background:#fff;border-radius:16px;padding:14px 10px;box-shadow:0 3px 14px rgba(0,0,0,0.07);text-align:center;}
+.food-emoji{font-size:30px;margin-bottom:6px;}
+.food-name{font-size:13px;font-weight:700;color:#1e3a8a;}
+.food-cal{font-size:11px;color:#f97316;font-weight:600;margin-top:2px;}
+.stat-row{display:flex;gap:24px;margin-bottom:28px;}
+.stat{text-align:center;}
+.stat-val{font-size:32px;font-weight:900;color:#f97316;}
+.stat-label{font-size:13px;color:#64748b;font-weight:500;}
+.cta{background:linear-gradient(135deg,#f97316,#ea6c10);color:#fff;font-size:17px;font-weight:700;padding:14px 36px;border-radius:99px;box-shadow:0 8px 24px rgba(249,115,22,0.35);}
+.url{position:absolute;bottom:28px;font-size:14px;color:#94a3b8;font-weight:500;}
+.bar{position:absolute;bottom:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#f97316,#1e3a8a,#22c55e);}
+</style></head><body>
+<div class="wrap">
+  <div class="bg1"></div><div class="bg2"></div>
+  <div class="logo"><img src="logo-p.png"/></div>
+  <div class="tag">Nutrition Intelligence</div>
+  <div class="icon-wrap">🥘</div>
+  <h1>Indian Food<br><span>Database</span></h1>
+  <div class="sub">From Dal Makhani to Idli Sambar — track nutrition of 10,000+ authentic Indian dishes instantly.</div>
+  <div class="food-grid">
+    <div class="food-card"><div class="food-emoji">🍛</div><div class="food-name">Dal Makhani</div><div class="food-cal">198 kcal</div></div>
+    <div class="food-card"><div class="food-emoji">🫓</div><div class="food-name">Roti</div><div class="food-cal">71 kcal</div></div>
+    <div class="food-card"><div class="food-emoji">🥗</div><div class="food-name">Palak Paneer</div><div class="food-cal">210 kcal</div></div>
+    <div class="food-card"><div class="food-emoji">🍚</div><div class="food-name">Biryani</div><div class="food-cal">290 kcal</div></div>
+    <div class="food-card"><div class="food-emoji">🥞</div><div class="food-name">Dosa</div><div class="food-cal">133 kcal</div></div>
+    <div class="food-card"><div class="food-emoji">🍵</div><div class="food-name">Masala Chai</div><div class="food-cal">60 kcal</div></div>
+    <div class="food-card"><div class="food-emoji">🧆</div><div class="food-name">Samosa</div><div class="food-cal">154 kcal</div></div>
+    <div class="food-card"><div class="food-emoji">🍮</div><div class="food-name">Kheer</div><div class="food-cal">180 kcal</div></div>
+  </div>
+  <div class="stat-row">
+    <div class="stat"><div class="stat-val">10,000+</div><div class="stat-label">Indian Foods</div></div>
+    <div class="stat"><div class="stat-val">AI</div><div class="stat-label">Photo Scan</div></div>
+    <div class="stat"><div class="stat-val">12+</div><div class="stat-label">Nutrients Tracked</div></div>
+  </div>
+  <div class="cta">Track Your Food — aorane.com</div>
+  <div class="url">aorane.com · Made in India 🇮🇳</div>
+  <div class="bar"></div>
+</div>
+</body></html>
