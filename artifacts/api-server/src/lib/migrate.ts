@@ -958,6 +958,16 @@ export async function runStartupMigrations(): Promise<void> {
     // Fix Aorane IDs: uppercase all existing, then clear any that are still invalid format
     `UPDATE user_profiles SET aorane_id = UPPER(aorane_id) WHERE aorane_id IS NOT NULL AND aorane_id <> UPPER(aorane_id)`,
     `UPDATE user_profiles SET aorane_id = NULL WHERE aorane_id IS NOT NULL AND aorane_id !~ '^[A-Z0-9]{12}$'`,
+
+    // ── ad_campaigns: add slider control columns (may be missing on older production DBs) ──
+    `ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS slide_position INTEGER DEFAULT 1`,
+    `ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS target_screen TEXT DEFAULT 'dashboard'`,
+    `ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS google_ad_code TEXT`,
+    `ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS impression_count INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS click_count INTEGER NOT NULL DEFAULT 0`,
+
+    // ── enquiries: add notified_at column if missing ──
+    `ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS notified_at TIMESTAMPTZ`,
   ];
 
   let ok = 0; let fail = 0;
