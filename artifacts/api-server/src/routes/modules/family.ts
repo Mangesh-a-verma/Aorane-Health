@@ -76,10 +76,15 @@ router.get("/family/group", requireAuth, async (req: AuthRequest, res) => {
 
 router.post("/family/create", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const userRes = await pool.query(`SELECT plan FROM users WHERE id=$1`, [req.userId!]);
+    if (userRes.rows[0]?.plan !== "family") {
+      res.status(403).json({ error: "Family plan required to access this feature", code: "FAMILY_PLAN_REQUIRED" });
+      return;
+    }
     const existing = await getMembership(req.userId!);
     if (existing) { res.status(400).json({ error: "You are already in a family group. Please leave it first." }); return; }
     const inviteCode = generateInviteCode();
-    const [group] = await db.insert(familyGroupsTable).values({ ownerId: req.userId!, inviteCode, maxMembers: 6 }).returning();
+    const [group] = await db.insert(familyGroupsTable).values({ ownerId: req.userId!, inviteCode, maxMembers: 4 }).returning();
     await db.insert(familyMembersTable).values({ groupId: group.id, userId: req.userId!, role: "owner", relation: "self", healthSharePermission: "full" });
     res.status(201).json({ success: true, group, inviteCode });
   } catch (err: unknown) {

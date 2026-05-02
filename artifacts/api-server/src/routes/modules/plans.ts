@@ -35,8 +35,8 @@ const DEFAULT_PLANS = [
   },
   {
     planKey: "family", displayName: "Family", type: "individual",
-    monthlyPrice: "399", yearlyPrice: "3990", maxSeats: 5,
-    features: ["5 Family Members", "Sab Max features +", "Family Health Dashboard", "Shared Reports", "Emergency Contacts"],
+    monthlyPrice: "399", yearlyPrice: "3990", maxSeats: 4,
+    features: ["4 Family Members", "Sab Max features +", "Family Health Dashboard", "Shared Reports", "Emergency Contacts"],
     badgeText: "Family", badgeColor: "#F59E0B",
     gradientColors: ["#F59E0B", "#D97706"] as [string, string],
     isActive: true, sortOrder: 3,

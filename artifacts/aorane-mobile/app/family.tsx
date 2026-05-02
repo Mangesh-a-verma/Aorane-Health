@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
+import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
 
 const { width: W } = Dimensions.get("window");
@@ -484,6 +485,7 @@ function PermissionSheet({ current, onUpdate, onClose }: { current: string; onUp
 export default function FamilyScreen() {
   const isDark = useIsDark();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [isOwner, setIsOwner] = useState(false);
@@ -498,6 +500,7 @@ export default function FamilyScreen() {
   const [joinRelation, setJoinRelation] = useState("other");
   const [joinIsMinor, setJoinIsMinor] = useState(false);
   const [myPermission, setMyPermission] = useState("basic");
+  const [needsUpgrade, setNeedsUpgrade] = useState(false);
 
   const bg = isDark ? "#010814" : "#F0F9FF";
 
@@ -505,6 +508,7 @@ export default function FamilyScreen() {
     if (!silent) setLoading(true);
     try {
       const res = await api.getFamilyGroup();
+      setNeedsUpgrade(false);
       setGroup(res.group as Group | null);
       const mList = (res.members || []) as Member[];
       setMembers(mList);
@@ -512,7 +516,12 @@ export default function FamilyScreen() {
       if (res.group) {
         try { const al = await api.getFamilyAlerts(); setAlerts(al.alerts as FamilyAlert[]); } catch { }
       }
-    } catch { } finally { setLoading(false); setRefreshing(false); }
+    } catch (e: unknown) {
+      const msg = (e as Error)?.message || "";
+      if (msg.includes("Family plan required")) {
+        setNeedsUpgrade(true);
+      }
+    } finally { setLoading(false); setRefreshing(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -562,6 +571,45 @@ export default function FamilyScreen() {
     </View>
   );
 
+  if (needsUpgrade) return (
+    <View style={{ flex: 1, backgroundColor: bg }}>
+      <LinearGradient colors={isDark ? ["#0077B620","transparent"] : ["#BAE6FD60","transparent"]} style={{ position: "absolute", top: 0, left: 0, right: 0, height: 200 }} />
+      <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 12 }}>
+        <Text style={{ color: isDark ? "#fff" : "#0F172A", fontSize: 24, fontFamily: "Inter_700Bold" }}>👨‍👩‍👧‍👦 Family</Text>
+        <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Family health in one place</Text>
+      </View>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 28 }}>
+        <GlassCard style={{ width: "100%" }}>
+          <View style={{ padding: 32, alignItems: "center" }}>
+            <Text style={{ fontSize: 56, marginBottom: 16 }}>👨‍👩‍👧‍👦</Text>
+            <Text style={{ color: isDark ? "#fff" : "#0F172A", fontFamily: "Inter_700Bold", fontSize: 20, marginBottom: 8, textAlign: "center" }}>
+              Family Plan Required
+            </Text>
+            <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22, marginBottom: 24 }}>
+              Family Health feature ke liye Family Plan chahiye. Up to 4 members ki health ek hi jagah dekho.
+            </Text>
+            <View style={{ flexDirection: "row", gap: 12, marginBottom: 24, flexWrap: "wrap", justifyContent: "center" }}>
+              {["4 Family Members", "Health Dashboard", "Shared Reports", "Reminders"].map(f => (
+                <View key={f} style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: isDark ? "rgba(16,185,129,0.12)" : "rgba(16,185,129,0.08)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+                  <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                  <Text style={{ color: "#10B981", fontSize: 12, fontFamily: "Inter_500Medium" }}>{f}</Text>
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity
+              onPress={() => router.push("/upgrade" as never)}
+              style={{ backgroundColor: "#F59E0B", borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, width: "100%", alignItems: "center", marginBottom: 12 }}>
+              <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 16 }}>₹399/month — Upgrade Karo</Text>
+            </TouchableOpacity>
+            <Text style={{ color: isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.35)", fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center" }}>
+              Ya invite code se kisi Family group mein join karo
+            </Text>
+          </View>
+        </GlassCard>
+      </View>
+    </View>
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: bg }}>
       <LinearGradient colors={isDark ? ["#0077B620","transparent"] : ["#BAE6FD60","transparent"]} style={{ position: "absolute", top: 0, left: 0, right: 0, height: 200 }} />
@@ -589,7 +637,7 @@ export default function FamilyScreen() {
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                   <Text style={{ color: isDark ? "#fff" : "#0F172A", fontFamily: "Inter_700Bold", fontSize: 15 }}>Invite Code</Text>
                   <View style={{ backgroundColor: "#0077B615", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
-                    <Text style={{ color: "#0077B6", fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{members.length}/{group.maxMembers || 6} members</Text>
+                    <Text style={{ color: "#0077B6", fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{members.length}/{group.maxMembers || 4} members</Text>
                   </View>
                 </View>
                 <View style={{ backgroundColor: isDark ? "rgba(0,119,182,0.15)" : "rgba(0,119,182,0.08)", borderRadius: 12, padding: 14, alignItems: "center" }}>

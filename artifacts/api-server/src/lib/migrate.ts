@@ -187,7 +187,6 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE family_members ADD COLUMN IF NOT EXISTS relation TEXT NOT NULL DEFAULT 'other'`,
     `ALTER TABLE family_members ADD COLUMN IF NOT EXISTS is_minor BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE family_members ADD COLUMN IF NOT EXISTS health_share_permission TEXT NOT NULL DEFAULT 'basic'`,
-    `UPDATE family_groups SET max_members = 6 WHERE max_members = 4`,
 
     // ── subscriptions table ──────────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS subscriptions (
