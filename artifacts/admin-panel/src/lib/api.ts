@@ -79,6 +79,8 @@ export type Flag = {
 export type FoodItem = {
   id: string; foodNameEn: string; foodNameLocal?: Record<string, string> | null;
   calories: string | number; proteinG: string | number; carbsG: string | number; fatG: string | number;
+  fiberG?: string | number | null; ironMg?: string | number | null;
+  calciumMg?: string | number | null; vitaminCMg?: string | number | null; vitaminB12Mcg?: string | number | null;
   servingSizeG?: string | number | null; servingDescription?: string | null;
   category: string; isVerified: boolean; aiGenerated?: boolean;
 };
