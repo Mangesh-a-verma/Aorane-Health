@@ -970,10 +970,11 @@ export async function runStartupMigrations(): Promise<void> {
     // ── enquiries: add admin_notes column for internal tracking ──
     `ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS admin_notes TEXT`,
 
-    // ── plan_pricing: update family plan price to 499 and fix features ──
+    // ── plan_pricing: update family plan price to 499, fix type to individual, fix features ──
     `UPDATE plan_pricing SET
        monthly_price = 499,
        yearly_price = 4990,
+       type = 'individual',
        badge_text = '4 Members',
        features = '["Everything in Pro","Up to 4 Family Members","Family Health Dashboard","Shared Health Reports","Member Health Alerts","Family Reminders"]'
      WHERE plan_key = 'family'`,

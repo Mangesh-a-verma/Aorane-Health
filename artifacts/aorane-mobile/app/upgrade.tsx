@@ -187,7 +187,7 @@ export default function UpgradeScreen() {
   }, []);
 
   useEffect(() => {
-    api.getPlans().then(res => {
+    api.getPlans("individual").then(res => {
       const paidPlans = res.plans.filter(p => Number(p.monthlyPrice) > 0 && p.isActive);
       if (paidPlans.length > 0) {
         const mapped: PlanItem[] = paidPlans.map(p => ({
