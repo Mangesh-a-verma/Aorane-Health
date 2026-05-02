@@ -1,0 +1,78 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1240px;height:1754px;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;}
+.page{width:1240px;height:1754px;background:#fff;position:relative;display:flex;flex-direction:column;}
+.top-bar{height:8px;background:linear-gradient(90deg,#f97316,#1e3a8a,#22c55e);}
+.header{padding:40px 72px 0;display:flex;align-items:center;justify-content:space-between;}
+.header-logo img{height:44px;}
+.header-title{font-size:13px;font-weight:600;color:#94a3b8;letter-spacing:2px;text-transform:uppercase;}
+.content{flex:1;padding:32px 72px 36px;}
+.section-tag{display:inline-block;background:#fff7ed;color:#f97316;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;border-radius:99px;margin-bottom:14px;}
+h2{font-size:44px;font-weight:900;color:#1e3a8a;margin-bottom:8px;line-height:1.1;}
+h2 span{color:#f97316;}
+.intro{font-size:16px;color:#475569;line-height:1.6;margin-bottom:28px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px;}
+.feature-list{background:linear-gradient(135deg,#fffbf0,#fff);border:1px solid #fed7aa;border-radius:20px;padding:28px;}
+.fl-title{font-size:17px;font-weight:800;color:#1e3a8a;margin-bottom:18px;display:flex;align-items:center;gap:10px;}
+.fl-items{display:flex;flex-direction:column;gap:12px;}
+.fl-item{display:flex;align-items:flex-start;gap:12px;}
+.fl-icon{font-size:20px;flex-shrink:0;margin-top:2px;}
+.fl-text{font-size:13px;color:#475569;line-height:1.5;}<br>.fl-bold{font-weight:700;color:#1e3a8a;display:block;font-size:14px;}
+.ai-box{background:linear-gradient(135deg,#faf5ff,#f3e8ff);border:1px solid #e9d5ff;border-radius:20px;padding:28px;}
+.nutrition-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.ng-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);}
+.ng-emoji{font-size:26px;margin-bottom:8px;}
+.ng-title{font-size:12px;font-weight:800;color:#1e3a8a;margin-bottom:4px;}
+.ng-sub{font-size:11px;color:#64748b;}
+.health-modules{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+.hm-card{background:linear-gradient(135deg,#f0f7ff,#fff);border:1px solid #dbeafe;border-radius:14px;padding:14px;text-align:center;}
+.hm-icon{font-size:24px;margin-bottom:6px;}
+.hm-label{font-size:12px;font-weight:700;color:#1e3a8a;}
+.bottom-bar{height:6px;background:linear-gradient(90deg,#f97316,#1e3a8a,#22c55e);}
+.page-num{position:absolute;bottom:24px;right:60px;font-size:12px;color:#94a3b8;font-weight:500;}
+</style></head><body>
+<div class="page">
+  <div class="top-bar"></div>
+  <div class="header"><div class="header-logo"><img src="logo-p.png"/></div><div class="header-title">Employee App Features</div></div>
+  <div class="content">
+    <div class="section-tag">Mobile App for Employees</div>
+    <h2>Everything Your Employees Need<br>in <span>One Health App</span></h2>
+    <div class="intro">Every enrolled employee gets access to the full Aorane health app — India's most comprehensive AI-powered health tracker with 15+ features including food, fitness, stress, medicine, blood emergencies, and more.</div>
+    <div class="two-col">
+      <div class="feature-list">
+        <div class="fl-title">🥘 Nutrition &amp; Food</div>
+        <div class="fl-items">
+          <div class="fl-item"><div class="fl-icon">📸</div><div class="fl-text"><span class="fl-bold">AI Food Photo Scanner</span>Scan any Indian dish — get instant calories, protein, calcium, vitamins in seconds via NVIDIA Vision AI.</div></div>
+          <div class="fl-item"><div class="fl-icon">🗄️</div><div class="fl-text"><span class="fl-bold">10,000+ Indian Foods Database</span>Dal, roti, biryani, idli, samosa — search and log any dish with precise nutritional data.</div></div>
+          <div class="fl-item"><div class="fl-icon">📊</div><div class="fl-text"><span class="fl-bold">Weekly &amp; Monthly Reports</span>Auto-generated nutrition summaries with macros (protein, carbs, fat) and micronutrients (calcium, B12, vitamin C).</div></div>
+          <div class="fl-item"><div class="fl-icon">🥗</div><div class="fl-text"><span class="fl-bold">AI Diet Planner</span>Personalized 1-day or 7-day Indian meal plans based on goals, medical history, and dietary preferences.</div></div>
+        </div>
+      </div>
+      <div class="feature-list">
+        <div class="fl-title">🧠 Mental Health &amp; Wellness</div>
+        <div class="fl-items">
+          <div class="fl-item"><div class="fl-icon">😰</div><div class="fl-text"><span class="fl-bold">Stress Level Monitor</span>Daily stress tracking with AI pattern analysis. Correlates stress with sleep, nutrition, and activity data.</div></div>
+          <div class="fl-item"><div class="fl-icon">💊</div><div class="fl-text"><span class="fl-bold">Medicine Reminders</span>Set reminders for daily medicines. Track compliance. Never miss a dose.</div></div>
+          <div class="fl-item"><div class="fl-icon">💤</div><div class="fl-text"><span class="fl-bold">Sleep &amp; Recovery</span>Log sleep duration and quality. Get AI-powered sleep improvement suggestions.</div></div>
+          <div class="fl-item"><div class="fl-icon">🏃</div><div class="fl-text"><span class="fl-bold">Exercise Tracking</span>Log workouts, steps, and physical activity. View calories burned and weekly fitness trends.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="nutrition-grid">
+      <div class="ng-card"><div class="ng-emoji">🏅</div><div class="ng-title">Health Score</div><div class="ng-sub">AI-calculated 0–100 score updated daily</div></div>
+      <div class="ng-card"><div class="ng-emoji">🪪</div><div class="ng-title">Digital Health Card</div><div class="ng-sub">Shareable ID with vitals &amp; blood group</div></div>
+      <div class="ng-card"><div class="ng-emoji">🩸</div><div class="ng-title">Blood Emergency</div><div class="ng-sub">GPS-based donor matching in minutes</div></div>
+      <div class="ng-card"><div class="ng-emoji">🔬</div><div class="ng-title">Report Analysis</div><div class="ng-sub">AI reads lab reports, explains in simple terms</div></div>
+    </div>
+    <div class="health-modules">
+      <div class="hm-card"><div class="hm-icon">💧</div><div class="hm-label">Water Tracker</div></div>
+      <div class="hm-card"><div class="hm-icon">⚖️</div><div class="hm-label">BMI Calculator</div></div>
+      <div class="hm-card"><div class="hm-icon">🌙</div><div class="hm-label">Period Tracker</div></div>
+      <div class="hm-card"><div class="hm-icon">⌚</div><div class="hm-label">Wearable Sync</div></div>
+      <div class="hm-card"><div class="hm-icon">👨‍👩‍👧</div><div class="hm-label">Family Health</div></div>
+    </div>
+  </div>
+  <div class="bottom-bar"></div>
+  <div class="page-num">Page 5 of 10</div>
+</div>
+</body></html>

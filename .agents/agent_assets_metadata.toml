@@ -155,3 +155,9 @@ id = "UsaXHmvMq34_kT5p30ntE"
 uri = "file://screenshots/aorane-marketing-posters.zip"
 type = "unspecified"
 title = "Aorane Marketing Posters — All 10 Images (ZIP)"
+
+[[outputs]]
+id = "kuCtGLOxmQUdIgxwF4CO_"
+uri = "file://screenshots/aorane-b2b-marketing.pdf"
+type = "pdf"
+title = "Aorane B2B Marketing PDF (10 Pages)"
