@@ -222,6 +222,7 @@ export const enquiriesTable = pgTable("enquiries", {
   message: text("message"),
   source: text("source"),                          // 'landing' | 'business' | etc.
   status: text("status").notNull().default("new"), // 'new' | 'contacted' | 'closed'
+  adminNotes: text("admin_notes"),
   notifiedAt: timestamp("notified_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

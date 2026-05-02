@@ -6,7 +6,7 @@ export const apiBase = API_BASE;
 
 export function getToken(): string | null { return localStorage.getItem("ap_token"); }
 
-function clearSessionAndRedirect() {
+export function clearSessionAndRedirect() {
   localStorage.removeItem("ap_token");
   localStorage.removeItem("ap_admin");
   const base = import.meta.env.BASE_URL || "/admin-panel/";
@@ -120,6 +120,7 @@ export type Enquiry = {
   message: string | null;
   source: string | null;
   status: "new" | "contacted" | "closed";
+  adminNotes: string | null;
   notifiedAt: string | null;
   createdAt: string;
 };
@@ -222,6 +223,8 @@ export const api = {
   },
   updateEnquiry: (id: string, status: "new" | "contacted" | "closed") =>
     req<{ success: boolean; enquiry: Enquiry }>(`/admin/enquiries/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  updateEnquiryNotes: (id: string, adminNotes: string) =>
+    req<{ success: boolean; enquiry: Enquiry }>(`/admin/enquiries/${id}`, { method: "PATCH", body: JSON.stringify({ adminNotes }) }),
   deleteEnquiry: (id: string) =>
     req<{ success: boolean }>(`/admin/enquiries/${id}`, { method: "DELETE" }),
 

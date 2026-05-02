@@ -211,17 +211,23 @@ router.get("/admin/enquiries", requireAdmin, async (req: AdminRequest, res) => {
   }
 });
 
-// ─── Admin: Update enquiry status ────────────────────────────────────────────
+// ─── Admin: Update enquiry status and/or notes ───────────────────────────────
 router.patch("/admin/enquiries/:id", requireAdmin, async (req: AdminRequest, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body || {};
-    if (!status || !["new", "contacted", "closed"].includes(status)) { res.status(400).json({ error: "Invalid status" }); return; }
-    const [updated] = await db.update(enquiriesTable).set({ status }).where(eq(enquiriesTable.id, String(id))).returning();
+    const { status, adminNotes } = req.body || {};
+    if (status !== undefined && !["new", "contacted", "closed"].includes(status)) {
+      res.status(400).json({ error: "Invalid status" }); return;
+    }
+    const patch: { status?: string; adminNotes?: string } = {};
+    if (status !== undefined) patch.status = String(status);
+    if (adminNotes !== undefined) patch.adminNotes = String(adminNotes);
+    if (Object.keys(patch).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
+    const [updated] = await db.update(enquiriesTable).set(patch).where(eq(enquiriesTable.id, String(id))).returning();
     if (!updated) { res.status(404).json({ error: "Enquiry not found" }); return; }
     res.json({ success: true, enquiry: updated });
   } catch (e) {
-    console.error("[enquiries] update failed:", e);
+    req.log.error({ err: e }, "[enquiries] update failed");
     res.status(500).json({ error: "Failed to update enquiry" });
   }
 });

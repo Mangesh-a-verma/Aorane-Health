@@ -28,6 +28,8 @@ export default function EnquiriesPage() {
   const [rowUpdating, setRowUpdating] = useState<Record<string, boolean>>({});
   const [rowDeleting, setRowDeleting] = useState<Record<string, boolean>>({});
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [notesText, setNotesText] = useState("");
+  const [notesSaving, setNotesSaving] = useState(false);
   const { toast } = useToast();
 
   const load = async () => {
@@ -73,12 +75,27 @@ export default function EnquiriesPage() {
     try {
       await api.deleteEnquiry(id);
       setList((l) => l.filter((e) => e.id !== id));
-      if (selected?.id === id) setSelected(null);
+      if (selected?.id === id) { setSelected(null); setNotesText(""); }
       toast({ title: "Deleted", description: "Enquiry removed successfully" });
     } catch {
       toast({ title: "Error", description: "Delete failed. Please retry.", variant: "destructive" });
     } finally {
       setRowDeleting(r => { const n = { ...r }; delete n[id]; return n; });
+    }
+  };
+
+  const saveNotes = async () => {
+    if (!selected) return;
+    setNotesSaving(true);
+    try {
+      const res = await api.updateEnquiryNotes(selected.id, notesText);
+      setList((l) => l.map((e) => e.id === selected.id ? { ...e, adminNotes: res.enquiry.adminNotes } : e));
+      setSelected({ ...selected, adminNotes: res.enquiry.adminNotes });
+      toast({ title: "Notes saved", description: "Admin notes updated successfully" });
+    } catch {
+      toast({ title: "Error", description: "Could not save notes. Please retry.", variant: "destructive" });
+    } finally {
+      setNotesSaving(false);
     }
   };
 
@@ -159,7 +176,7 @@ export default function EnquiriesPage() {
                 return (
                   <div
                     key={e.id}
-                    onClick={() => setSelected(e)}
+                    onClick={() => { setSelected(e); setNotesText(e.adminNotes || ""); }}
                     className={`bg-card border rounded-2xl p-4 cursor-pointer transition-all hover:shadow-sm ${isSelected ? "border-primary/50 shadow-sm" : "border-border"}`}
                   >
                     <div className="flex items-start gap-3">
@@ -244,6 +261,28 @@ export default function EnquiriesPage() {
 
                   <div className="text-xs text-muted-foreground mt-4 pt-3 border-t border-border">
                     Submitted {new Date(selected.createdAt).toLocaleString("en-IN")}
+                  </div>
+
+                  {/* Admin Notes */}
+                  <div className="mt-4">
+                    <div className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                      <MessageSquare size={11} /> Admin Notes
+                    </div>
+                    <textarea
+                      value={notesText}
+                      onChange={(e) => setNotesText(e.target.value)}
+                      placeholder="Add internal notes, follow-up reminders..."
+                      rows={3}
+                      className="w-full text-sm bg-muted/40 border border-border rounded-lg p-2.5 resize-none focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground/60"
+                    />
+                    <button
+                      onClick={saveNotes}
+                      disabled={notesSaving}
+                      className="mt-1.5 w-full flex items-center justify-center gap-1.5 text-xs font-semibold bg-primary text-white rounded-lg py-2 hover:opacity-90 disabled:opacity-60 transition-opacity"
+                    >
+                      {notesSaving ? <Loader2 size={12} className="animate-spin" /> : null}
+                      {notesSaving ? "Saving..." : "Save Notes"}
+                    </button>
                   </div>
 
                   <div className="mt-4 grid grid-cols-3 gap-2">

@@ -967,6 +967,8 @@ export async function runStartupMigrations(): Promise<void> {
 
     // ── enquiries: add notified_at column if missing ──
     `ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS notified_at TIMESTAMPTZ`,
+    // ── enquiries: add admin_notes column for internal tracking ──
+    `ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS admin_notes TEXT`,
   ];
 
   let ok = 0; let fail = 0;

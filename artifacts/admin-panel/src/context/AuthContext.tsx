@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
+import { clearSessionAndRedirect } from "@/lib/api";
 
 const INACTIVITY_MS = 15 * 60 * 1000; // 15 minutes
 const WARNING_MS = 14 * 60 * 1000;    // warn 1 min before logout
@@ -29,13 +30,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else { setState((s) => ({ ...s, isLoading: false })); }
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem("ap_token");
-    localStorage.removeItem("ap_admin");
+  const logout = useCallback((redirect = true) => {
     setState({ token: null, admin: null, isLoading: false });
     setInactiveWarning(false);
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     if (warningTimer.current) clearTimeout(warningTimer.current);
+    if (redirect) clearSessionAndRedirect();
   }, []);
 
   const resetInactivityTimer = useCallback(() => {
