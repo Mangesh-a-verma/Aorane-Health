@@ -37,9 +37,10 @@ export default function EnquiriesPage() {
       const data = await api.enquiries({ status: statusFilter || undefined, type: typeFilter || undefined });
       setList(data.enquiries ?? []);
       setStats(data.stats ?? { total: 0, newCount: 0, contactedCount: 0, closedCount: 0 });
-    } catch {
-      setError("Failed to load enquiries. Please check your connection and retry.");
-      toast({ title: "Error", description: "Failed to load enquiries", variant: "destructive" });
+    } catch (e: unknown) {
+      const msg = (e as Error).message || "Failed to load enquiries";
+      setError(msg);
+      toast({ title: "Error", description: msg, variant: "destructive" });
     }
     setLoading(false);
   };

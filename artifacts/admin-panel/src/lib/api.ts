@@ -9,8 +9,9 @@ export function getToken(): string | null { return localStorage.getItem("ap_toke
 function clearSessionAndRedirect() {
   localStorage.removeItem("ap_token");
   localStorage.removeItem("ap_admin");
-  if (!window.location.pathname.endsWith("/") || window.location.pathname !== import.meta.env.BASE_URL) {
-    window.location.href = import.meta.env.BASE_URL || "/admin-panel/";
+  const base = import.meta.env.BASE_URL || "/admin-panel/";
+  if (window.location.pathname !== base && window.location.pathname !== base.replace(/\/$/, "")) {
+    window.location.href = base;
   }
 }
 

@@ -404,6 +404,23 @@ export async function runStartupMigrations(): Promise<void> {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
 
+    // ── enquiries (lead capture from landing / business portal) ──
+    `CREATE TABLE IF NOT EXISTS enquiries (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      type TEXT NOT NULL,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      mobile TEXT,
+      city TEXT,
+      account_type TEXT,
+      company_name TEXT,
+      message TEXT,
+      source TEXT,
+      status TEXT NOT NULL DEFAULT 'new',
+      notified_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
     // ── admin_users ───────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS admin_users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
