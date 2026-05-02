@@ -89,3 +89,9 @@ id = "HBXSZPlFLoKJtE4JltcmX"
 uri = "file://screenshots/blood-emergency-twitter.jpg"
 type = "image"
 title = "Twitter/X Post (1200×675) — Blood Emergency"
+
+[[outputs]]
+id = "K_m2Js9qC7uZHxp0V9c4d"
+uri = "file://screenshots/aorane-facebook-banner.jpg"
+type = "image"
+title = "Aorane Facebook Post Banner (1200×628)"
