@@ -1,45 +1,73 @@
 import { useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "wouter";
-import { Activity, ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText, Mail, Phone } from "lucide-react";
 
 export default function TermsPage() {
   useEffect(() => { window.scrollTo(0, 0); }, []);
   const updated = "April 1, 2025";
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen text-white" style={{ background: "linear-gradient(135deg, #020917 0%, #041428 40%, #020f1e 100%)" }}>
       <Helmet>
         <title>Terms of Service | AORANE</title>
         <meta name="description" content="AORANE Terms of Service — usage rules, subscription terms, medical disclaimer, and user responsibilities for India's AI health platform." />
         <link rel="canonical" href="https://aorane.com/terms" />
         <meta name="robots" content="noindex, follow" />
       </Helmet>
-      <nav className="border-b border-white/10 px-6 py-4 flex items-center gap-4">
+
+      {/* Subtle bg orbs */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div style={{ position: "absolute", top: "-10%", right: "-5%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(7,71,166,0.12) 0%, transparent 70%)" }} />
+        <div style={{ position: "absolute", bottom: "10%", left: "-5%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)" }} />
+      </div>
+
+      {/* Navbar */}
+      <nav style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "rgba(2,9,23,0.85)", backdropFilter: "blur(16px)" }}
+           className="sticky top-0 z-50 px-6 py-3 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 text-white/60 hover:text-white transition-colors text-sm">
-          <ArrowLeft size={16} /> Back to Home
+          <ArrowLeft size={15} />
+          <span>Back to Home</span>
         </Link>
-        <div className="flex items-center gap-2 ml-auto">
-          <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-teal-500 rounded-lg flex items-center justify-center">
-            <Activity size={14} className="text-white" />
-          </div>
-          <span className="font-bold">Aorane</span>
-        </div>
+        <a href="/" className="flex items-center">
+          <img
+            src={import.meta.env.BASE_URL + "logo-full.png?v=3"}
+            alt="Aorane"
+            style={{ height: 44, width: "auto", objectFit: "contain" }}
+          />
+        </a>
+        <div className="w-24" />
       </nav>
 
-      <main className="max-w-3xl mx-auto px-6 py-12">
-        <h1 className="text-3xl font-bold mb-2">Terms of Service</h1>
-        <p className="text-white/40 text-sm mb-10">Last updated: {updated}</p>
+      <main className="max-w-3xl mx-auto px-6 py-14 relative">
 
-        <div className="space-y-8 text-white/75 leading-relaxed text-sm">
+        {/* Header */}
+        <div className="mb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4 text-xs font-semibold"
+               style={{ background: "rgba(7,71,166,0.15)", border: "1px solid rgba(7,71,166,0.3)", color: "#60A5FA" }}>
+            <FileText size={12} /> Governed by Laws of India
+          </div>
+          <h1 className="text-4xl font-bold mb-3" style={{ background: "linear-gradient(135deg,#fff 0%,rgba(255,255,255,0.7) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+            Terms of Service
+          </h1>
+          <p className="text-white/40 text-sm">Last updated: {updated}</p>
+        </div>
+
+        <div className="space-y-10 text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.72)" }}>
 
           <section>
-            <h2 className="text-white font-semibold text-lg mb-3">1. Acceptance of Terms</h2>
+            <h2 className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(7,71,166,0.3)", color: "#60A5FA" }}>1</span>
+              Acceptance of Terms
+            </h2>
             <p>By downloading, installing, or using the Aorane mobile application or web platform ("Platform"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not use our Platform.</p>
             <p className="mt-3">These Terms constitute a legally binding agreement between you and Aorane ("Aorane", "we", "us", "our"). These Terms are governed by the laws of India.</p>
           </section>
 
           <section>
-            <h2 className="text-white font-semibold text-lg mb-3">2. Eligibility</h2>
+            <h2 className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(7,71,166,0.3)", color: "#60A5FA" }}>2</span>
+              Eligibility
+            </h2>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>You must be at least 13 years of age to use Aorane</li>
               <li>If you are under 18, you must have parental or guardian consent</li>
@@ -49,10 +77,13 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-white font-semibold text-lg mb-3">3. Nature of Service — Medical Disclaimer</h2>
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-4">
-              <p className="text-amber-300 font-medium">⚠️ Important Medical Disclaimer</p>
-              <p className="text-amber-200/80 mt-2">Aorane is a wellness and health management tool. It is NOT a medical device and does not provide medical diagnosis, treatment, or clinical advice. Always consult a qualified healthcare professional for medical decisions.</p>
+            <h2 className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(245,158,11,0.3)", color: "#FCD34D" }}>3</span>
+              Nature of Service — Medical Disclaimer
+            </h2>
+            <div className="rounded-xl p-4 mb-4" style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)" }}>
+              <p className="font-medium mb-1" style={{ color: "#FCD34D" }}>⚠️ Important Medical Disclaimer</p>
+              <p style={{ color: "rgba(255,255,255,0.65)" }}>Aorane is a wellness and health management tool. It is NOT a medical device and does not provide medical diagnosis, treatment, or clinical advice. Always consult a qualified healthcare professional for medical decisions.</p>
             </div>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>AI-generated health suggestions are for informational purposes only</li>
@@ -64,7 +95,10 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-white font-semibold text-lg mb-3">4. User Account & Responsibilities</h2>
+            <h2 className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(7,71,166,0.3)", color: "#60A5FA" }}>4</span>
+              User Account & Responsibilities
+            </h2>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>You are responsible for maintaining the security of your account</li>
               <li>You must not share your OTP or account credentials with anyone</li>
@@ -76,7 +110,10 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-white font-semibold text-lg mb-3">5. Subscription Plans & Billing</h2>
+            <h2 className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(7,71,166,0.3)", color: "#60A5FA" }}>5</span>
+              Subscription Plans & Billing
+            </h2>
             <h3 className="text-white/90 font-medium mb-2">5.1 Free Plan</h3>
             <p>Aorane offers a free tier with basic health tracking features. Free features may change over time at our discretion.</p>
             <h3 className="text-white/90 font-medium mb-2 mt-3">5.2 Paid Subscriptions</h3>
@@ -92,7 +129,10 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-white font-semibold text-lg mb-3">6. Corporate / Business Plans</h2>
+            <h2 className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(7,71,166,0.3)", color: "#60A5FA" }}>6</span>
+              Corporate / Business Plans
+            </h2>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>Organisations registering on Aorane must provide accurate GST and company details</li>
               <li>Corporate admins are responsible for managing their organisation's members</li>
@@ -103,7 +143,10 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-white font-semibold text-lg mb-3">7. Intellectual Property</h2>
+            <h2 className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(7,71,166,0.3)", color: "#60A5FA" }}>7</span>
+              Intellectual Property
+            </h2>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>All content, design, code, and AI models on Aorane are owned by Aorane</li>
               <li>You may not copy, distribute, or reverse-engineer any part of the Platform</li>
@@ -113,7 +156,10 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-white font-semibold text-lg mb-3">8. Prohibited Uses</h2>
+            <h2 className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(239,68,68,0.25)", color: "#FCA5A5" }}>8</span>
+              Prohibited Uses
+            </h2>
             <p>You must not use Aorane to:</p>
             <ul className="list-disc pl-5 space-y-1.5 mt-2">
               <li>Upload false, misleading, or fraudulent health information</li>
@@ -126,7 +172,10 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-white font-semibold text-lg mb-3">9. Limitation of Liability</h2>
+            <h2 className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(7,71,166,0.3)", color: "#60A5FA" }}>9</span>
+              Limitation of Liability
+            </h2>
             <p>To the maximum extent permitted by applicable law:</p>
             <ul className="list-disc pl-5 space-y-1.5 mt-2">
               <li>Aorane is provided "as is" without warranties of any kind</li>
@@ -138,7 +187,10 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-white font-semibold text-lg mb-3">10. Termination</h2>
+            <h2 className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(7,71,166,0.3)", color: "#60A5FA" }}>10</span>
+              Termination
+            </h2>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>You may delete your account at any time from the app settings</li>
               <li>We may suspend or terminate accounts that violate these Terms</li>
@@ -148,28 +200,51 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-white font-semibold text-lg mb-3">11. Governing Law & Disputes</h2>
-            <p>These Terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in Uttar Pradesh, India. We encourage resolving disputes amicably — contact <a href="mailto:support@aorane.com" className="text-blue-400 hover:underline">support@aorane.com</a> first.</p>
+            <h2 className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(7,71,166,0.3)", color: "#60A5FA" }}>11</span>
+              Governing Law & Disputes
+            </h2>
+            <p>These Terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in Uttar Pradesh, India. We encourage resolving disputes amicably — contact <a href="mailto:support@aorane.com" className="hover:underline" style={{ color: "#60A5FA" }}>support@aorane.com</a> first.</p>
           </section>
 
           <section>
-            <h2 className="text-white font-semibold text-lg mb-3">12. Changes to Terms</h2>
+            <h2 className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(7,71,166,0.3)", color: "#60A5FA" }}>12</span>
+              Changes to Terms
+            </h2>
             <p>We may update these Terms from time to time. Material changes will be notified via the app or email with at least 15 days' notice. Continued use after the effective date constitutes acceptance.</p>
           </section>
 
           <section>
-            <h2 className="text-white font-semibold text-lg mb-3">13. Contact</h2>
-            <div className="space-y-1">
-              <p><strong className="text-white">Email:</strong> <a href="mailto:support@aorane.com" className="text-blue-400 hover:underline">support@aorane.com</a></p>
-              <p><strong className="text-white">Legal:</strong> <a href="mailto:legal@aorane.com" className="text-blue-400 hover:underline">legal@aorane.com</a></p>
-              <p><strong className="text-white">Phone:</strong> +91 73078 26291</p>
+            <h2 className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(7,71,166,0.3)", color: "#60A5FA" }}>13</span>
+              Contact
+            </h2>
+            <div className="rounded-xl p-5 space-y-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="flex items-center gap-2 text-sm">
+                <Mail size={13} style={{ color: "#60A5FA" }} />
+                <a href="mailto:support@aorane.com" className="hover:underline" style={{ color: "#60A5FA" }}>support@aorane.com</a>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Mail size={13} style={{ color: "#60A5FA" }} />
+                <a href="mailto:legal@aorane.com" className="hover:underline" style={{ color: "#60A5FA" }}>legal@aorane.com</a>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Phone size={13} style={{ color: "#10B981" }} />
+                <span>+91 73078 26291</span>
+              </div>
             </div>
           </section>
 
         </div>
       </main>
 
-      <footer className="border-t border-white/10 py-8 text-center text-white/30 text-xs">
+      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.25)" }} className="py-8 text-center text-xs">
+        <div className="flex items-center justify-center gap-6 mb-3">
+          <a href="/privacy" className="hover:text-white/60 transition-colors">Privacy Policy</a>
+          <a href="/terms" className="hover:text-white/60 transition-colors">Terms of Service</a>
+          <a href="/contact" className="hover:text-white/60 transition-colors">Contact</a>
+        </div>
         © {new Date().getFullYear()} Aorane. All rights reserved.
       </footer>
     </div>
