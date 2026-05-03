@@ -41,6 +41,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { path: "/feature-flags", icon: Flag,          label: "Feature Flags", color: "#F59E0B" },
       { path: "/food-items",         icon: UtensilsCrossed, label: "Food Database",      color: "#10B981" },
       { path: "/ai-food-discovery",  icon: Sparkles,        label: "AI Food Discovery", color: "#8B5CF6" },
+      { path: "/food-reports",       icon: BarChart3,       label: "Nutrition Reports",  color: "#10B981" },
       { path: "/promo-codes",   icon: Tag,           label: "Promo Codes",   color: "#EF4444" },
       { path: "/announcements", icon: Megaphone,     label: "Announcements", color: "#3B82F6" },
     ],

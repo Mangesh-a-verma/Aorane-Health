@@ -175,7 +175,7 @@ router.post("/blood/request/verify-otp", requireAuth, async (req: AuthRequest, r
          hospital_name, hospital_address, hospital_city, hospital_state,
          hospital_pincode, hospital_phone, doctor_name, doctor_phone,
          contact_phone, contact_name, urgency, notes, otp_verified, expires_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,TRUE,$17)
+       VALUES ($1,$2,$3::blood_group,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,TRUE,$17)
        RETURNING *`,
       [
         req.userId,
@@ -364,7 +364,7 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
          hospital_name, hospital_address, hospital_city, hospital_state,
          hospital_pincode, hospital_phone, doctor_name, doctor_phone,
          contact_phone, contact_name, urgency, notes, otp_verified, expires_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,TRUE,$17)
+       VALUES ($1,$2,$3::blood_group,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,TRUE,$17)
        RETURNING *`,
       [
         req.userId,
@@ -442,8 +442,9 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
       }
     })().catch(() => {});
   } catch (err) {
-    logger.error({ err: (err as Error).message }, "Blood emergency create failed");
-    res.status(500).json({ error: "Failed to create blood emergency" });
+    const errMsg = (err as Error).message || String(err);
+    logger.error({ err: errMsg }, "Blood emergency create failed");
+    res.status(500).json({ error: "Failed to create blood emergency", debug: errMsg });
   }
 });
 

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, foodScanCacheTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable, planPricingTable, orgPaymentsTable } from "@workspace/db";
+import { db, pool, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, foodScanCacheTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable, planPricingTable, orgPaymentsTable } from "@workspace/db";
 import { eq, desc, ilike, count, or, sql, and, inArray } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import { signAdminToken } from "../../lib/jwt";
@@ -962,6 +962,62 @@ router.get("/admin/org-invoices", requireAdmin, async (_req: AdminRequest, res) 
     .orderBy(desc(orgPaymentsTable.createdAt));
     res.json({ invoices });
   } catch { res.status(500).json({ error: "Failed to fetch org invoices" }); }
+});
+
+// ─── Nutrition Reports (weekly / monthly aggregates from food_logs) ──────────
+router.get("/admin/nutrition/reports", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const period = (req.query.period as string) === "month" ? "month" : "week";
+    const days = period === "month" ? 30 : 7;
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    const [dailyRows, summaryRows] = await Promise.all([
+      pool.query(
+        `SELECT
+           DATE(logged_at AT TIME ZONE 'Asia/Kolkata')::text AS date,
+           COUNT(*)::int                                       AS log_count,
+           COUNT(DISTINCT user_id)::int                        AS active_users,
+           ROUND(AVG(calories::numeric), 0)::float             AS avg_calories,
+           ROUND(AVG(protein_g::numeric), 1)::float            AS avg_protein,
+           ROUND(AVG(carbs_g::numeric), 1)::float              AS avg_carbs,
+           ROUND(AVG(fat_g::numeric), 1)::float                AS avg_fat,
+           ROUND(AVG(fiber_g::numeric), 1)::float              AS avg_fiber,
+           ROUND(AVG(calcium_mg::numeric), 1)::float           AS avg_calcium,
+           ROUND(AVG(vitamin_c_mg::numeric), 2)::float         AS avg_vitamin_c,
+           ROUND(AVG(vitamin_b12_mcg::numeric), 2)::float      AS avg_vitamin_b12
+         FROM food_logs
+         WHERE logged_at >= $1
+         GROUP BY DATE(logged_at AT TIME ZONE 'Asia/Kolkata')
+         ORDER BY DATE(logged_at AT TIME ZONE 'Asia/Kolkata') DESC`,
+        [since]
+      ),
+      pool.query(
+        `SELECT
+           COUNT(*)::int                                       AS total_logs,
+           COUNT(DISTINCT user_id)::int                        AS unique_users,
+           ROUND(AVG(calories::numeric), 0)::float             AS avg_calories,
+           ROUND(AVG(protein_g::numeric), 1)::float            AS avg_protein,
+           ROUND(AVG(carbs_g::numeric), 1)::float              AS avg_carbs,
+           ROUND(AVG(fat_g::numeric), 1)::float                AS avg_fat,
+           ROUND(AVG(fiber_g::numeric), 1)::float              AS avg_fiber,
+           ROUND(AVG(calcium_mg::numeric), 1)::float           AS avg_calcium,
+           ROUND(AVG(vitamin_c_mg::numeric), 2)::float         AS avg_vitamin_c,
+           ROUND(AVG(vitamin_b12_mcg::numeric), 2)::float      AS avg_vitamin_b12,
+           COUNT(CASE WHEN meal_type = 'breakfast' THEN 1 END)::int AS breakfast_count,
+           COUNT(CASE WHEN meal_type = 'lunch' THEN 1 END)::int     AS lunch_count,
+           COUNT(CASE WHEN meal_type = 'dinner' THEN 1 END)::int    AS dinner_count,
+           COUNT(CASE WHEN meal_type = 'snack' THEN 1 END)::int     AS snack_count
+         FROM food_logs
+         WHERE logged_at >= $1`,
+        [since]
+      ),
+    ]);
+
+    res.json({ period, days, daily: dailyRows.rows, summary: summaryRows.rows[0] || {} });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch nutrition reports" });
+  }
 });
 
 router.post("/admin/change-password", requireAdmin, async (req: AdminRequest, res) => {
