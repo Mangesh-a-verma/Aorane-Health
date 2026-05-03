@@ -52,12 +52,19 @@ function StatCard({ icon, value, suffix, label, started }: {
 }
 
 function PricingCard({
-  plan, price, annualPrice, features, highlighted = false, billing,
+  plan, perSeatPrice, discountPct, minSeats, maxSeats, features, crmFree,
+  highlighted = false, isEnterprise = false, billing,
 }: {
-  plan: string; price: number; annualPrice: number; features: string[]; highlighted?: boolean; billing: "monthly" | "annual";
+  plan: string; perSeatPrice: number; discountPct: number; minSeats: number;
+  maxSeats?: number; features: string[]; crmFree: boolean;
+  highlighted?: boolean; isEnterprise?: boolean; billing: "monthly" | "annual";
 }) {
   const [, navigate] = useLocation();
-  const displayPrice = billing === "annual" ? annualPrice : price;
+  const discountedPrice = Math.round(perSeatPrice * (1 - discountPct / 100));
+  const annualPrice = Math.round(discountedPrice * 0.83);
+  const displayPrice = billing === "annual" ? annualPrice : discountedPrice;
+  const extraAnnualSaving = Math.round((1 - annualPrice / discountedPrice) * 100);
+
   return (
     <div style={{
       background: highlighted
@@ -67,7 +74,7 @@ function PricingCard({
       borderRadius: 24,
       border: highlighted ? "none" : "1.5px solid rgba(0,93,144,0.1)",
       padding: "2.5rem 2rem",
-      display: "flex", flexDirection: "column" as const, gap: 24,
+      display: "flex", flexDirection: "column" as const, gap: 20,
       boxShadow: highlighted ? "0 24px 64px rgba(0,93,144,0.25)" : "0 4px 24px rgba(0,0,0,0.06)",
       transform: highlighted ? "scale(1.04)" : "scale(1)",
       position: "relative" as const, overflow: "hidden",
@@ -78,38 +85,109 @@ function PricingCard({
           Most Popular
         </div>
       )}
+
+      {/* Plan name + discount badge */}
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" as const, color: highlighted ? "rgba(255,255,255,0.7)" : TEAL, marginBottom: 10 }}>{plan}</div>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 4 }}>
-          <span style={{ fontSize: "clamp(36px,3.5vw,48px)", fontWeight: 800, color: highlighted ? "white" : "#181c20", fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1 }}>
-            {displayPrice === 0 ? "Free" : `₹${displayPrice}`}
-          </span>
-          {displayPrice > 0 && (
-            <span style={{ color: highlighted ? "rgba(255,255,255,0.65)" : "#6b7280", fontSize: 14, marginBottom: 8 }}>/month</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" as const }}>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" as const, color: highlighted ? "rgba(255,255,255,0.7)" : TEAL }}>
+            {plan}
+          </div>
+          {discountPct > 0 && (
+            <div style={{ background: highlighted ? "rgba(255,255,255,0.2)" : "rgba(0,107,86,0.1)", color: highlighted ? "white" : TEAL, borderRadius: 99, padding: "2px 10px", fontSize: 11, fontWeight: 800 }}>
+              {discountPct}% Volume Discount
+            </div>
           )}
         </div>
-        {billing === "annual" && displayPrice > 0 && (
-          <div style={{ fontSize: 12, color: highlighted ? "rgba(255,255,255,0.65)" : TEAL, marginTop: 4, fontWeight: 600 }}>Save 17% — billed annually</div>
+
+        {/* Seat range */}
+        <div style={{ fontSize: 13, fontWeight: 600, color: highlighted ? "rgba(255,255,255,0.65)" : "#6b7280", marginBottom: 14 }}>
+          {isEnterprise ? `${minSeats}+ seats minimum` : `${minSeats}–${maxSeats} seats`}
+        </div>
+
+        {/* Price display */}
+        {isEnterprise ? (
+          <div>
+            <div style={{ fontSize: "clamp(28px,3vw,38px)", fontWeight: 800, color: highlighted ? "white" : "#181c20", fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1 }}>
+              Custom Pricing
+            </div>
+            <div style={{ fontSize: 13, color: highlighted ? "rgba(255,255,255,0.6)" : "#6b7280", marginTop: 6 }}>
+              Tailored to your team size & needs
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 6 }}>
+              <span style={{ fontSize: "clamp(32px,3vw,44px)", fontWeight: 800, color: highlighted ? "white" : "#181c20", fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1 }}>
+                ₹{displayPrice}
+              </span>
+              <span style={{ color: highlighted ? "rgba(255,255,255,0.65)" : "#6b7280", fontSize: 13, marginBottom: 7 }}>/seat/month</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 5 }}>
+              <span style={{ fontSize: 12, color: highlighted ? "rgba(255,255,255,0.5)" : "#9ca3af", textDecoration: "line-through" }}>
+                ₹{perSeatPrice}/seat MRP
+              </span>
+              {billing === "annual" && (
+                <span style={{ fontSize: 11, fontWeight: 700, color: highlighted ? "rgba(134,239,172,1)" : TEAL }}>
+                  +{extraAnnualSaving}% annual saving
+                </span>
+              )}
+            </div>
+          </div>
         )}
       </div>
-      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column" as const, gap: 12 }}>
+
+      {/* Business CRM badge */}
+      <div style={{
+        background: crmFree
+          ? (highlighted ? "rgba(255,255,255,0.12)" : "rgba(0,107,86,0.07)")
+          : (highlighted ? "rgba(255,255,255,0.07)" : "rgba(0,93,144,0.05)"),
+        borderRadius: 12, padding: "10px 14px",
+        border: `1.5px solid ${crmFree
+          ? (highlighted ? "rgba(255,255,255,0.18)" : "rgba(0,107,86,0.15)")
+          : (highlighted ? "rgba(255,255,255,0.1)" : "rgba(0,93,144,0.1)")}`,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: highlighted ? "rgba(255,255,255,0.9)" : "#374151" }}>
+          Business CRM
+        </span>
+        {crmFree ? (
+          <span style={{ fontSize: 12, fontWeight: 800, color: highlighted ? "#86efac" : TEAL, background: highlighted ? "rgba(134,239,172,0.12)" : "rgba(0,107,86,0.08)", borderRadius: 99, padding: "3px 10px" }}>
+            FREE 🎁
+          </span>
+        ) : (
+          <span style={{ fontSize: 12, fontWeight: 600, color: highlighted ? "rgba(255,255,255,0.6)" : "#6b7280" }}>
+            ₹499/month add-on
+          </span>
+        )}
+      </div>
+
+      {/* Features list */}
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column" as const, gap: 9, flex: 1 }}>
         {features.map((f, i) => (
-          <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: highlighted ? "rgba(255,255,255,0.85)" : "#374151" }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 18, color: highlighted ? TEAL_LIGHT : TEAL, flexShrink: 0, marginTop: 1 }}>check_circle</span>
+          <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: highlighted ? "rgba(255,255,255,0.85)" : "#374151" }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 16, color: highlighted ? TEAL_LIGHT : TEAL, flexShrink: 0, marginTop: 2 }}>check_circle</span>
             {f}
           </li>
         ))}
       </ul>
+
+      {/* CTA */}
       <button
-        onClick={() => navigate("/register")}
+        onClick={() => {
+          if (isEnterprise) {
+            window.location.href = "mailto:sales@aorane.com?subject=Enterprise Plan Enquiry";
+          } else {
+            navigate("/register");
+          }
+        }}
         style={{
           background: highlighted ? "rgba(255,255,255,0.18)" : `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`,
           color: "white", border: highlighted ? "2px solid rgba(255,255,255,0.35)" : "none",
           borderRadius: 99, padding: "14px 0", fontWeight: 700, fontSize: 15,
-          cursor: "pointer", width: "100%", transition: "opacity 0.2s",
+          cursor: "pointer", width: "100%", transition: "opacity 0.2s", marginTop: 4,
         }}
       >
-        {displayPrice === 0 ? "Get Started Free" : "Start Free Trial"}
+        {isEnterprise ? "Contact Sales →" : "Start Free Trial"}
       </button>
     </div>
   );
@@ -180,19 +258,71 @@ export default function Landing() {
   const plans = [
     {
       plan: "Starter",
-      price: 999, annualPrice: 833,
-      features: ["Up to 50 member seats", "Aggregate health dashboard", "Enrollment code management", "Employee search & filter", "GST-ready invoicing", "Department analytics", "Email support"],
+      perSeatPrice: 249,
+      discountPct: 10,
+      minSeats: 20,
+      maxSeats: 50,
+      crmFree: false,
+      features: [
+        "All Pro app features for every member",
+        "Daily Health Score — 100-point scale",
+        "Nutrition: Calories, Protein, Carbs, Fiber",
+        "Micronutrients: Calcium, Iron, B12, Vit C & D (ICMR RDA 2024)",
+        "Exercise tracking (WHO MET-minutes)",
+        "Smart water intake — activity-adjusted goals",
+        "Medicine adherence (WHO protocol)",
+        "Sleep quality monitoring (CDC/WHO 7–9h)",
+        "BMI — Asia-Pacific Indian-calibrated",
+        "Real-time team health dashboard",
+        "Enrollment code management",
+        "Department-wise analytics",
+        "Exportable PDF health reports",
+        "GST-ready invoicing",
+        "Email support",
+      ],
     },
     {
       plan: "Growth",
-      price: 2999, annualPrice: 2499,
-      features: ["Up to 200 member seats", "Everything in Starter", "Advanced health analytics", "Health risk alerts", "Custom wellness programs", "Weekly & monthly reports", "Priority support"],
+      perSeatPrice: 249,
+      discountPct: 15,
+      minSeats: 51,
+      maxSeats: 250,
+      crmFree: true,
       highlighted: true,
+      features: [
+        "Everything in Starter",
+        "Advanced analytics & health trends",
+        "AI burnout & absenteeism prediction",
+        "Health risk alerts — early warning system",
+        "Custom wellness programs",
+        "Weekly & monthly automated reports",
+        "Personalized goals via Harris-Benedict BMR",
+        "5-Pillar stress assessment",
+        "Blood group & emergency health profiles",
+        "Member bulk management",
+        "Business CRM — FREE",
+        "Priority support",
+      ],
     },
     {
       plan: "Enterprise",
-      price: 6999, annualPrice: 5832,
-      features: ["Up to 500 member seats", "Everything in Growth", "Custom integrations", "SLA guarantee", "On-premise option", "Compliance reports", "Dedicated account manager"],
+      perSeatPrice: 249,
+      discountPct: 0,
+      minSeats: 251,
+      crmFree: true,
+      isEnterprise: true,
+      features: [
+        "Everything in Growth",
+        "Dedicated account manager",
+        "Custom HRMS / ERP integrations",
+        "SLA guarantee — 99.9% uptime",
+        "On-premise / private cloud deployment",
+        "DPDPA & compliance reports",
+        "Executive leadership health dashboards",
+        "Custom wellness program design",
+        "White-label option on request",
+        "Business CRM — FREE",
+      ],
     },
   ];
 
@@ -543,9 +673,9 @@ export default function Landing() {
               <span style={{ fontSize: 13, fontWeight: 700, color: TEAL }}>Transparent Pricing</span>
             </div>
             <h2 style={{ fontSize: "clamp(26px,4vw,48px)", fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.025em", margin: "0 0 16px" }}>
-              Simple Pricing. No Hidden Costs.
+              Per-Seat Pricing. Zero Hidden Costs.
             </h2>
-            <p style={{ fontSize: 18, color: "#6b7280", margin: "0 0 32px" }}>Start free, scale as you grow. Cancel anytime.</p>
+            <p style={{ fontSize: 18, color: "#6b7280", margin: "0 0 32px" }}>Pay only for your team size. More seats = more savings. Cancel anytime.</p>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 0, background: "white", borderRadius: 99, padding: 4, boxShadow: "0 2px 14px rgba(0,0,0,0.08)", border: "1px solid rgba(191,199,209,0.3)" }}>
               {(["monthly", "annual"] as const).map(b => (
                 <button
@@ -567,9 +697,11 @@ export default function Landing() {
             {plans.map((p, i) => <PricingCard key={i} {...p} billing={billing} />)}
           </div>
           <p style={{ textAlign: "center", color: "#9ca3af", fontSize: 13, marginTop: 24 }}>
-            Promo codes accepted at checkout.{" "}
-            <span style={{ color: PRIMARY, cursor: "pointer", fontWeight: 600 }}>Contact Sales</span>{" "}
-            for enterprise plans.
+            Promo codes accepted at checkout. All prices exclusive of 18% GST.{" "}
+            <span style={{ color: PRIMARY, cursor: "pointer", fontWeight: 600 }} onClick={() => { window.location.href = "mailto:sales@aorane.com?subject=Enterprise Plan Enquiry"; }}>
+              Contact Sales
+            </span>{" "}
+            for 251+ seat Enterprise plans.
           </p>
         </div>
       </section>

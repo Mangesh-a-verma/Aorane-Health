@@ -13,7 +13,7 @@ import {
   verifySubscriptionSignature, verifyPaymentSignature, createOrder,
 } from "../../lib/razorpay";
 import { sendInvoiceEmail } from "../../lib/invoice-email";
-import { sendBusinessWelcomeEmail } from "../../lib/welcome-email";
+import { sendBusinessWelcomeEmail, sendCorporatePaymentWelcomeEmail } from "../../lib/welcome-email";
 
 const router = Router();
 
@@ -653,6 +653,24 @@ router.post("/business/billing/verify", requireBusinessAuth, async (req: Busines
       totalSeats: planInfo.seats, plan: billingPlanToOrgPlan(plan as string), isVerified: true,
     }).where(eq(organizationsTable.id, req.orgId!));
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
+    // Fire-and-forget corporate payment welcome email with Enrollment Code
+    if (org?.contactEmail) {
+      db.select({ fullName: orgAdminsTable.fullName }).from(orgAdminsTable)
+        .where(and(eq(orgAdminsTable.orgId, req.orgId!), eq(orgAdminsTable.role, "owner"))).limit(1)
+        .then((admins) => {
+          const expiresAt = new Date(); expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+          sendCorporatePaymentWelcomeEmail({
+            toEmail: org.contactEmail!,
+            adminName: admins[0]?.fullName || org.name,
+            orgName: org.name,
+            orgCode: org.orgCode,
+            planName: planInfo.label,
+            seats: planInfo.seats,
+            amountPaid: Number(existingPayment.amount),
+            expiresAt,
+          }).catch(() => {});
+        }).catch(() => {});
+    }
     res.json({ success: true, org, message: `${planInfo.label} plan activated! ${planInfo.seats} seats unlocked.`, expiresAt });
   } catch { res.status(500).json({ error: "Failed to verify payment" }); }
 });
@@ -725,6 +743,23 @@ router.post("/business/billing/subscription/verify", requireBusinessAuth, async 
       totalSeats: planInfo.seats, plan: billingPlanToOrgPlan(plan), isVerified: true,
     }).where(eq(organizationsTable.id, req.orgId!));
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
+    // Fire-and-forget corporate payment welcome email with Enrollment Code
+    if (org?.contactEmail) {
+      db.select({ fullName: orgAdminsTable.fullName }).from(orgAdminsTable)
+        .where(and(eq(orgAdminsTable.orgId, req.orgId!), eq(orgAdminsTable.role, "owner"))).limit(1)
+        .then((admins) => {
+          sendCorporatePaymentWelcomeEmail({
+            toEmail: org.contactEmail!,
+            adminName: admins[0]?.fullName || org.name,
+            orgName: org.name,
+            orgCode: org.orgCode,
+            planName: planInfo.label,
+            seats: planInfo.seats,
+            amountPaid: 0,
+            expiresAt,
+          }).catch(() => {});
+        }).catch(() => {});
+    }
     res.json({ success: true, org, message: `${planInfo.label} auto-subscription activated!`, expiresAt });
   } catch { res.status(500).json({ error: "Failed to verify subscription" }); }
 });
@@ -1261,6 +1296,21 @@ router.post("/business/billing/seat-verify", requireBusinessAuth, async (req: Bu
           razorpayPaymentId: String(razorpayPaymentId || ""),
         },
       }).catch((err) => console.warn("[Invoice Email] fire-and-forget error:", err));
+      // Also send corporate payment welcome email with Enrollment Code
+      db.select({ fullName: orgAdminsTable.fullName }).from(orgAdminsTable)
+        .where(and(eq(orgAdminsTable.orgId, req.orgId!), eq(orgAdminsTable.role, "owner"))).limit(1)
+        .then((admins) => {
+          sendCorporatePaymentWelcomeEmail({
+            toEmail: org.contactEmail!,
+            adminName: admins[0]?.fullName || org.name,
+            orgName: org.name,
+            orgCode: org.orgCode,
+            planName: planInfo.label,
+            seats: seatCount,
+            amountPaid: totalAmt,
+            expiresAt,
+          }).catch(() => {});
+        }).catch(() => {});
     }
 
     res.json({ success: true, message: `${seatCount} seats activated! Your enrollment code is ready.`, org, expiresAt });

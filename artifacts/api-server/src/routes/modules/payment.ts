@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, subscriptionsTable, paymentsTable, promoCodesTable, planPricingTable, familyGroupsTable, familyMembersTable } from "@workspace/db";
+import { db, pool, usersTable, subscriptionsTable, paymentsTable, promoCodesTable, planPricingTable, familyGroupsTable, familyMembersTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 
 import { requireAuth } from "../../middlewares/user-auth";
@@ -8,6 +8,7 @@ import {
   isLiveMode, createPlan, createSubscription, cancelSubscription,
   verifySubscriptionSignature, verifyPaymentSignature, createOrder,
 } from "../../lib/razorpay";
+import { sendIndividualPaymentWelcomeEmail } from "../../lib/welcome-email";
 
 function generateFamilyCode() {
   return "FAM" + Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -181,6 +182,23 @@ router.post("/payment/verify", requireAuth, async (req: AuthRequest, res) => {
     await db.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, req.userId!));
     let inviteCode: string | null = null;
     if (plan === "family") inviteCode = await autoCreateFamilyGroup(req.userId!);
+    // Fire-and-forget payment welcome email with Aorane ID
+    pool.query(
+      `SELECT u.email, up.full_name, up.aorane_id FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = $1 LIMIT 1`,
+      [req.userId!]
+    ).then((r) => {
+      const row = r.rows[0];
+      if (row?.email) {
+        sendIndividualPaymentWelcomeEmail({
+          toEmail: row.email,
+          name: row.full_name || "",
+          aoraneId: row.aorane_id || "",
+          planName: safePlanLabel(plan as string),
+          amountPaid: Number(existingPayment.amount),
+          expiresAt,
+        }).catch(() => {});
+      }
+    }).catch(() => {});
     res.json({ success: true, message: `${plan} plan activated successfully!`, expiresAt, inviteCode });
   } catch {
     res.status(500).json({ error: "Failed to verify payment" });
@@ -259,6 +277,23 @@ router.post("/payment/subscription/verify", requireAuth, async (req: AuthRequest
     await db.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, req.userId!));
     let inviteCode: string | null = null;
     if (plan === "family") inviteCode = await autoCreateFamilyGroup(req.userId!);
+    // Fire-and-forget payment welcome email with Aorane ID
+    pool.query(
+      `SELECT u.email, up.full_name, up.aorane_id FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = $1 LIMIT 1`,
+      [req.userId!]
+    ).then((r) => {
+      const row = r.rows[0];
+      if (row?.email) {
+        sendIndividualPaymentWelcomeEmail({
+          toEmail: row.email,
+          name: row.full_name || "",
+          aoraneId: row.aorane_id || "",
+          planName: safePlanLabel(plan),
+          amountPaid: 0,
+          expiresAt,
+        }).catch(() => {});
+      }
+    }).catch(() => {});
     res.json({ success: true, message: "Auto-renew subscription activated!", expiresAt, inviteCode });
   } catch {
     res.status(500).json({ error: "Failed to verify subscription" });
@@ -425,6 +460,23 @@ router.post("/payment/rzp-callback", async (req, res) => {
           .set({ plan: payment.plan as "free" | "pro" | "max" | "family" })
           .where(eq(usersTable.id, payment.userId));
         if (payment.plan === "family") await autoCreateFamilyGroup(payment.userId);
+        // Fire-and-forget payment welcome email with Aorane ID
+        pool.query(
+          `SELECT u.email, up.full_name, up.aorane_id FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = $1 LIMIT 1`,
+          [payment.userId]
+        ).then((r) => {
+          const row = r.rows[0];
+          if (row?.email) {
+            sendIndividualPaymentWelcomeEmail({
+              toEmail: row.email,
+              name: row.full_name || "",
+              aoraneId: row.aorane_id || "",
+              planName: safePlanLabel(payment.plan),
+              amountPaid: Number(payment.amount),
+              expiresAt,
+            }).catch(() => {});
+          }
+        }).catch(() => {});
       }
     } catch { /* best effort */ }
   }
