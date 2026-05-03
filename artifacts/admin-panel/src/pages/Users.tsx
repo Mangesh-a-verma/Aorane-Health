@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Layout from "@/components/Layout";
 import { api, type User, type SearchResult } from "@/lib/api";
-import { Search, Shield, Ban, CheckCircle, RefreshCw, Fingerprint, X, User as UserIcon, Mail, Phone, Copy, Check } from "lucide-react";
+import { Search, Shield, Ban, CheckCircle, RefreshCw, Fingerprint, X, User as UserIcon, Mail, Phone, Copy, Check, Percent, Loader2, AlertCircle, Calendar } from "lucide-react";
 
 const PLANS = ["free", "max", "pro", "family"];
 const PLAN_COLORS: Record<string, string> = {
@@ -27,13 +27,86 @@ function CopyBadge({ value }: { value: string }) {
   );
 }
 
+function DiscountModal({ user, onClose, onSaved }: { user: User; onClose: () => void; onSaved: (d: Partial<User>) => void }) {
+  const [pct, setPct] = useState(user.customDiscountPct ? String(user.customDiscountPct) : "");
+  const [note, setNote] = useState(user.customDiscountNote || "");
+  const [validUntil, setValidUntil] = useState(user.customDiscountValidUntil ? new Date(user.customDiscountValidUntil).toISOString().split("T")[0] : "");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  const save = async () => {
+    if (!pct || Number(pct) < 1 || Number(pct) > 100) { setErr("1–100 ke beech value do"); return; }
+    setSaving(true); setErr("");
+    try {
+      await api.setUserCustomDiscount(user.id, { customDiscountPct: Number(pct), customDiscountNote: note || undefined, customDiscountValidUntil: validUntil || null });
+      onSaved({ customDiscountPct: Number(pct), customDiscountNote: note || null, customDiscountValidUntil: validUntil || null });
+      onClose();
+    } catch (e) { setErr((e as Error).message); } finally { setSaving(false); }
+  };
+  const remove = async () => {
+    setSaving(true);
+    try {
+      await api.setUserCustomDiscount(user.id, { remove: true });
+      onSaved({ customDiscountPct: null, customDiscountNote: null, customDiscountValidUntil: null });
+      onClose();
+    } catch (e) { setErr((e as Error).message); } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div>
+            <div className="font-bold text-sm text-foreground">Custom Discount</div>
+            <div className="text-xs text-muted-foreground">{user.fullName || user.phone || "—"}</div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X size={14} /></button>
+        </div>
+        <div className="p-4 space-y-3">
+          {err && <div className="text-xs text-red-500 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 flex items-center gap-1.5"><AlertCircle size={11}/>{err}</div>}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground block mb-1">Discount % *</label>
+            <div className="relative">
+              <input type="number" min="1" max="100" value={pct} onChange={e => setPct(e.target.value)} placeholder="e.g. 20"
+                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm pr-8 focus:outline-none focus:border-primary" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">%</span>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground block mb-1">Note</label>
+            <input value={note} onChange={e => setNote(e.target.value)} placeholder="Beta tester, loyalty reward..."
+              className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground block mb-1">Valid Until (optional)</label>
+            <input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)} min={new Date().toISOString().split("T")[0]}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 p-4 pt-0">
+          {user.customDiscountPct && (
+            <button onClick={remove} disabled={saving} className="px-3 py-2 rounded-xl text-xs font-semibold border border-red-200 text-red-500 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/20">Remove</button>
+          )}
+          <button onClick={save} disabled={saving || !pct}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-50">
+            {saving ? <Loader2 size={12} className="animate-spin" /> : <Percent size={12} />}
+            {saving ? "Saving…" : user.customDiscountPct ? "Update" : "Set Discount"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function UserRow({ user, onUpdate }: { user: User; onUpdate: (id: string, d: Partial<User>) => void }) {
   const [updating, setUpdating] = useState(false);
+  const [discountOpen, setDiscountOpen] = useState(false);
   const act = async (data: Partial<User>) => { setUpdating(true); await onUpdate(user.id, data); setUpdating(false); };
   const aoraneDisplay = user.aoraneId;
   const name = user.fullName;
 
   return (
+    <>
     <tr className="border-b border-border hover:bg-muted/30 transition-colors">
       <td className="px-4 py-3 min-w-[180px]">
         <div className="flex items-center gap-2.5">
@@ -107,9 +180,22 @@ function UserRow({ user, onUpdate }: { user: User; onUpdate: (id: string, d: Par
             title={user.isActive ? "Deactivate" : "Activate"}>
             <Shield size={13} />
           </button>
+          <button onClick={() => setDiscountOpen(true)}
+            className={`p-1.5 rounded-lg text-xs transition-all ${user.customDiscountPct ? "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+            title={user.customDiscountPct ? `Discount: ${user.customDiscountPct}%` : "Set Discount"}>
+            <Percent size={13} />
+          </button>
         </div>
       </td>
     </tr>
+    {discountOpen && (
+      <DiscountModal
+        user={user}
+        onClose={() => setDiscountOpen(false)}
+        onSaved={(d) => { onUpdate(user.id, d); setDiscountOpen(false); }}
+      />
+    )}
+    </>
   );
 }
 

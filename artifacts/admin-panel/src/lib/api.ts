@@ -67,10 +67,30 @@ export type User = {
   id: string; phone: string; email: string | null; plan: string; isActive: boolean; isBanned: boolean;
   createdAt: string; lastActiveAt: string | null; lastLoginAt: string | null;
   fullName: string | null; aoraneId: string | null;
+  customDiscountPct: number | null;
+  customDiscountNote: string | null;
+  customDiscountValidUntil: string | null;
 };
 export type Org = {
   id: string; name: string; orgType: string; orgCode: string; contactEmail: string;
-  city: string; state: string; totalSeats: number; usedSeats: number; isActive: boolean; createdAt: string;
+  city: string | null; state: string | null; totalSeats: number; usedSeats: number;
+  isActive: boolean; createdAt: string; discountPct: number;
+  customPricePerSeat: string | null;
+  customPriceNote: string | null;
+  customPriceValidUntil: string | null;
+  customPriceAppliedBy: string | null;
+};
+export type CustomDealOrg = {
+  id: string; name: string; orgCode: string; orgType: string;
+  customPricePerSeat: string; customPriceNote: string | null;
+  customPriceValidUntil: string | null; customPriceAppliedBy: string | null;
+  updatedAt: string;
+};
+export type CustomDealUser = {
+  id: string; phone: string | null; email: string | null; plan: string;
+  fullName: string | null; aoraneId: string | null;
+  customDiscountPct: number; customDiscountNote: string | null;
+  customDiscountValidUntil: string | null; updatedAt: string;
 };
 export type Flag = {
   id: string; key: string; label: string; description: string; isEnabled: boolean;
@@ -175,6 +195,11 @@ export const api = {
   toggleOrgActive: (id: string) => req<{ organization: Org; success: boolean }>(`/admin/organizations/${id}/toggle-active`, { method: "PATCH" }),
   updateOrg: (id: string, data: Partial<Org>) => req<{ organization: Org; success: boolean }>(`/admin/organizations/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteOrg: (id: string) => req<{ success: boolean }>(`/admin/organizations/${id}`, { method: "DELETE" }),
+  setOrgCustomPricing: (id: string, data: { customPricePerSeat?: number; customPriceNote?: string; customPriceValidUntil?: string | null; remove?: boolean }) =>
+    req<{ organization: Org; success: boolean }>(`/admin/organizations/${id}/custom-pricing`, { method: "PATCH", body: JSON.stringify(data) }),
+  setUserCustomDiscount: (id: string, data: { customDiscountPct?: number; customDiscountNote?: string; customDiscountValidUntil?: string | null; remove?: boolean }) =>
+    req<{ user: User; success: boolean }>(`/admin/users/${id}/custom-discount`, { method: "PATCH", body: JSON.stringify(data) }),
+  customDeals: () => req<{ orgs: CustomDealOrg[]; users: CustomDealUser[] }>("/admin/custom-deals"),
   flags: () => req<{ flags: Flag[] }>("/admin/feature-flags"),
   createFlag: (data: Partial<Flag>) => req<{ flag: Flag }>("/admin/feature-flags", { method: "POST", body: JSON.stringify(data) }),
   updateFlag: (key: string, data: Partial<Flag>) => req<{ flag: Flag }>(`/admin/feature-flags/${key}`, { method: "PATCH", body: JSON.stringify(data) }),

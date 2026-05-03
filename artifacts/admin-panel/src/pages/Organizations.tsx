@@ -6,6 +6,7 @@ import {
   Search, ChevronRight, Activity, Hash, Shield, Briefcase,
   ToggleLeft, ToggleRight, Loader2, Pencil, Trash2, X, Check,
   AlertTriangle, Plus, LayoutGrid, List, ArrowUpDown, ArrowUp, ArrowDown,
+  IndianRupee, CheckCircle2,
 } from "lucide-react";
 
 const ORG_TYPES = ["corporate", "hospital", "gym", "insurance", "ngo", "yoga", "school", "other"] as const;
@@ -271,9 +272,83 @@ function DeleteConfirmModal({ org, onClose, onConfirm }: { org: Org; onClose: ()
   );
 }
 
-function OrgCard({ org, onToggleActive, onEdit, onDelete }: {
+function CustomPricingModal({ org, onClose, onSaved }: { org: Org; onClose: () => void; onSaved: (updated: Org) => void }) {
+  const STANDARD = 249;
+  const [price, setPrice] = useState(org.customPricePerSeat ? String(org.customPricePerSeat) : "");
+  const [note, setNote] = useState(org.customPriceNote || "");
+  const [validUntil, setValidUntil] = useState(org.customPriceValidUntil ? new Date(org.customPriceValidUntil).toISOString().split("T")[0] : "");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const discount = price && Number(price) < STANDARD ? Math.round((1 - Number(price) / STANDARD) * 100) : 0;
+
+  const save = async () => {
+    if (!price || Number(price) <= 0) { setErr("Price enter karo"); return; }
+    setSaving(true); setErr("");
+    try {
+      const r = await api.setOrgCustomPricing(org.id, { customPricePerSeat: Number(price), customPriceNote: note || undefined, customPriceValidUntil: validUntil || null });
+      onSaved(r.organization); onClose();
+    } catch (e) { setErr((e as Error).message); } finally { setSaving(false); }
+  };
+  const remove = async () => {
+    if (!org.customPricePerSeat) return;
+    setSaving(true);
+    try {
+      const r = await api.setOrgCustomPricing(org.id, { remove: true });
+      onSaved(r.organization); onClose();
+    } catch (e) { setErr((e as Error).message); } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div>
+            <div className="font-bold text-sm text-foreground flex items-center gap-1.5"><IndianRupee size={14} className="text-amber-500" />Custom Pricing</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{org.name} · {org.orgCode}</div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X size={14} /></button>
+        </div>
+        <div className="p-4 space-y-3">
+          {err && <div className="text-xs text-red-500 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2">{err}</div>}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground block mb-1">Price per Seat (₹) *</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">₹</span>
+              <input type="number" min="1" value={price} onChange={e => setPrice(e.target.value)} placeholder={`Standard: ₹${STANDARD}`}
+                className="w-full bg-background border border-border rounded-xl pl-7 pr-4 py-2 text-sm focus:outline-none focus:border-primary" />
+            </div>
+            {discount > 0 && <div className="text-[11px] text-green-600 mt-1 flex items-center gap-1"><CheckCircle2 size={10}/>{discount}% off standard</div>}
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground block mb-1">Note / Reason</label>
+            <input value={note} onChange={e => setNote(e.target.value)} placeholder="Enterprise deal, sales negotiation..."
+              className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground block mb-1">Valid Until (optional)</label>
+            <input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)} min={new Date().toISOString().split("T")[0]}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 p-4 pt-0">
+          {org.customPricePerSeat && (
+            <button onClick={remove} disabled={saving} className="px-3 py-2 rounded-xl text-xs font-semibold border border-red-200 text-red-500 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/20">Remove</button>
+          )}
+          <button onClick={save} disabled={saving || !price}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-50">
+            {saving ? <Loader2 size={12} className="animate-spin" /> : <IndianRupee size={12} />}
+            {saving ? "Saving…" : org.customPricePerSeat ? "Update Price" : "Set Price"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OrgCard({ org, onToggleActive, onEdit, onDelete, onCustomPrice }: {
   org: Org; onToggleActive: (id: string) => Promise<void>;
   onEdit: (org: Org) => void; onDelete: (org: Org) => void;
+  onCustomPrice: (org: Org) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [toggling, setToggling] = useState(false);
@@ -374,7 +449,16 @@ function OrgCard({ org, onToggleActive, onEdit, onDelete }: {
             {org.contactEmail
               ? <a href={`mailto:${org.contactEmail}`} className="inline-flex items-center gap-2 text-xs text-primary hover:underline font-medium"><Mail size={11} />Send Email</a>
               : <span />}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button onClick={() => onCustomPrice(org)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                  org.customPricePerSeat
+                    ? "border-amber-300 text-amber-600 bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:bg-amber-900/20"
+                    : "border-border text-muted-foreground hover:bg-muted/50"}`}
+                title="Custom Pricing">
+                <IndianRupee size={11} />
+                {org.customPricePerSeat ? `₹${Number(org.customPricePerSeat)}/seat` : "Set Price"}
+              </button>
               <button onClick={handleToggle} disabled={toggling}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
                   org.isActive
@@ -418,6 +502,7 @@ export default function Organizations() {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [editOrg, setEditOrg] = useState<Org | null>(null);
   const [deleteOrg, setDeleteOrg] = useState<Org | null>(null);
+  const [pricingOrg, setPricingOrg] = useState<Org | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
@@ -444,6 +529,7 @@ export default function Organizations() {
 
   const handleOrgCreated = (org: Org) => { setOrgs(prev => [org, ...prev]); setShowCreate(false); };
   const handleOrgUpdated = (updated: Org) => { setOrgs(prev => prev.map(o => o.id === updated.id ? updated : o)); setEditOrg(null); };
+  const handlePricingUpdated = (updated: Org) => { setOrgs(prev => prev.map(o => o.id === updated.id ? updated : o)); setPricingOrg(null); };
   const handleOrgDeleted = async () => {
     if (!deleteOrg) return;
     await api.deleteOrg(deleteOrg.id);
@@ -657,7 +743,7 @@ export default function Organizations() {
         ) : viewMode === "grid" ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((org) => (
-              <OrgCard key={org.id} org={org} onToggleActive={handleToggleActive} onEdit={setEditOrg} onDelete={setDeleteOrg} />
+              <OrgCard key={org.id} org={org} onToggleActive={handleToggleActive} onEdit={setEditOrg} onDelete={setDeleteOrg} onCustomPrice={setPricingOrg} />
             ))}
           </div>
         ) : (
@@ -757,6 +843,7 @@ export default function Organizations() {
       {showCreate && <CreateOrgModal onClose={() => setShowCreate(false)} onCreate={handleOrgCreated} />}
       {editOrg && <EditOrgModal org={editOrg} onClose={() => setEditOrg(null)} onSave={handleOrgUpdated} />}
       {deleteOrg && <DeleteConfirmModal org={deleteOrg} onClose={() => setDeleteOrg(null)} onConfirm={handleOrgDeleted} />}
+      {pricingOrg && <CustomPricingModal org={pricingOrg} onClose={() => setPricingOrg(null)} onSaved={handlePricingUpdated} />}
     </Layout>
   );
 }

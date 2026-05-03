@@ -28,6 +28,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { path: "/plan-pricing",   icon: Sliders,     label: "Plan Pricing",       color: "#0077B6" },
       { path: "/subscriptions",  icon: CreditCard,  label: "Subscriptions",      color: "#8B5CF6" },
       { path: "/invoices",       icon: FileText,    label: "Business Invoices",  color: "#10B981" },
+      { path: "/custom-deals",   icon: Tag,         label: "Custom Deals",        color: "#F59E0B" },
       { path: "/analytics",      icon: BarChart3,   label: "Analytics",          color: "#F59E0B" },
       { path: "/platform-costs", icon: DollarSign,  label: "Platform Costs",     color: "#6B7280" },
     ],

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, foodScanCacheTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable, planPricingTable, orgPaymentsTable } from "@workspace/db";
-import { eq, desc, ilike, count, or, sql, and, inArray } from "drizzle-orm";
+import { eq, desc, ilike, count, or, sql, and, inArray, isNotNull } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import { signAdminToken } from "../../lib/jwt";
 import { invalidatePlanCache } from "../../middlewares/plan-check";
@@ -336,6 +336,84 @@ router.delete("/admin/organizations/:id", requireAdmin, async (req: AdminRequest
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Failed to delete organization" });
+  }
+});
+
+// ─── Custom Deals ─────────────────────────────────────────────────────────────
+
+router.patch("/admin/organizations/:id/custom-pricing", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { id } = req.params as { id: string };
+    const { customPricePerSeat, customPriceNote, customPriceValidUntil, remove } = req.body as Record<string, unknown>;
+    const updates = remove
+      ? { customPricePerSeat: null, customPriceNote: null, customPriceValidUntil: null, customPriceAppliedBy: null, updatedAt: new Date() }
+      : {
+          customPricePerSeat: customPricePerSeat != null ? String(customPricePerSeat) : null,
+          customPriceNote: customPriceNote ? String(customPriceNote) : null,
+          customPriceValidUntil: customPriceValidUntil ? new Date(String(customPriceValidUntil)) : null,
+          customPriceAppliedBy: req.adminId || "admin",
+          updatedAt: new Date(),
+        };
+    const [updated] = await db.update(organizationsTable)
+      .set(updates as Partial<typeof organizationsTable.$inferInsert>)
+      .where(eq(organizationsTable.id, id)).returning();
+    if (!updated) { res.status(404).json({ error: "Organization not found" }); return; }
+    res.json({ organization: updated, success: true });
+  } catch (e) {
+    req.log?.error(e);
+    res.status(500).json({ error: "Failed to update custom pricing" });
+  }
+});
+
+router.patch("/admin/users/:id/custom-discount", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { id } = req.params as { id: string };
+    const { customDiscountPct, customDiscountNote, customDiscountValidUntil, remove } = req.body as Record<string, unknown>;
+    const updates = remove
+      ? { customDiscountPct: null, customDiscountNote: null, customDiscountValidUntil: null, updatedAt: new Date() }
+      : {
+          customDiscountPct: customDiscountPct != null ? Number(customDiscountPct) : null,
+          customDiscountNote: customDiscountNote ? String(customDiscountNote) : null,
+          customDiscountValidUntil: customDiscountValidUntil ? new Date(String(customDiscountValidUntil)) : null,
+          updatedAt: new Date(),
+        };
+    const [updated] = await db.update(usersTable)
+      .set(updates as Partial<typeof usersTable.$inferInsert>)
+      .where(eq(usersTable.id, id)).returning();
+    if (!updated) { res.status(404).json({ error: "User not found" }); return; }
+    res.json({ user: updated, success: true });
+  } catch (e) {
+    req.log?.error(e);
+    res.status(500).json({ error: "Failed to update custom discount" });
+  }
+});
+
+router.get("/admin/custom-deals", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const orgs = await db.select().from(organizationsTable)
+      .where(isNotNull(organizationsTable.customPricePerSeat))
+      .orderBy(desc(organizationsTable.updatedAt));
+    const users = await db
+      .select({
+        id: usersTable.id,
+        phone: usersTable.phone,
+        email: usersTable.email,
+        plan: usersTable.plan,
+        customDiscountPct: usersTable.customDiscountPct,
+        customDiscountNote: usersTable.customDiscountNote,
+        customDiscountValidUntil: usersTable.customDiscountValidUntil,
+        updatedAt: usersTable.updatedAt,
+        fullName: userProfilesTable.fullName,
+        aoraneId: userProfilesTable.aoraneId,
+      })
+      .from(usersTable)
+      .leftJoin(userProfilesTable, eq(usersTable.id, userProfilesTable.userId))
+      .where(isNotNull(usersTable.customDiscountPct))
+      .orderBy(desc(usersTable.updatedAt));
+    res.json({ orgs, users });
+  } catch (e) {
+    req.log?.error(e);
+    res.status(500).json({ error: "Failed to fetch custom deals" });
   }
 });
 
