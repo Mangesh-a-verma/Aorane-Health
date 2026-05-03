@@ -34,7 +34,7 @@ export const pushTokensTable = pgTable("push_tokens", {
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => [{ name: "push_tokens_user_token_unique", columns: [t.userId, t.token], unique: true }]);
 
 export const notificationsTable = pgTable("notifications", {
   id: uuid("id").primaryKey().defaultRandom(),
