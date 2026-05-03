@@ -1,3 +1,4 @@
+// Blood Emergency Module — pool.query fix applied
 import { Router } from "express";
 import { db, pool, bloodDonorsTable, bloodDonationsTable } from "@workspace/db";
 import { eq, and, or, ilike, isNull, lt, sql, inArray, ne } from "drizzle-orm";
