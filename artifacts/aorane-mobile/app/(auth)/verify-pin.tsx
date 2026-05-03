@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
+import { storage } from "@/lib/storage";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -51,7 +51,8 @@ export default function VerifyPinScreen() {
     try {
       const compatible = await LocalAuthentication.hasHardwareAsync();
       const enrolled = await LocalAuthentication.isEnrolledAsync();
-      if (compatible && enrolled) {
+      const userEnabled = await storage.isBiometricEnabled();
+      if (compatible && enrolled && userEnabled) {
         biometricAvailableRef.current = true;
         setBiometricAvailable(true);
         setTimeout(() => tryBiometric(), 600);
@@ -89,15 +90,15 @@ export default function VerifyPinScreen() {
     if (enteredPin.length !== 4) return;
     setLoading(true);
     try {
-      const phone = user?.phone || "";
-      if (!phone) {
+      const storedPin = await storage.getPin();
+      if (!storedPin) {
         Alert.alert("Session Error", "Could not verify your session. Please sign in again.", [
           { text: "Sign In", onPress: () => logout() },
         ]);
         setLoading(false);
         return;
       }
-      await api.loginWithPIN(phone, enteredPin);
+      if (storedPin !== enteredPin) throw new Error("wrong_pin");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       clearPinVerification();
       router.replace("/(tabs)/dashboard");
