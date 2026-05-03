@@ -121,7 +121,8 @@ router.patch("/users/profile", requireAuth, async (req: AuthRequest, res) => {
     );
     res.json({ profile: result.rows[0] ?? null });
   } catch (e) {
-    res.status(500).json({ error: "Failed to update profile" });
+    const msg = (e as Error).message || String(e);
+    res.status(500).json({ error: "Failed to update profile", detail: msg });
   }
 });
 

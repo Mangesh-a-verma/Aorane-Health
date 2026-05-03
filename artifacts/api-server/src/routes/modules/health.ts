@@ -308,6 +308,8 @@ async function computeDailyScore(userId: string, date: string): Promise<Record<s
     totalPossibleFields: 3,
     // Scientific transparency
     methodology:        s.methodology,
+    // Personalisation metadata (v2 engine)
+    personalisation:    s.personalisation,
   };
 }
 
