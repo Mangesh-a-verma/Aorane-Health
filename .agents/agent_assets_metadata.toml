@@ -185,3 +185,15 @@ id = "wGJJ8Kh3r1ewCbOA06fMB"
 uri = "file://screenshots/fb-cover4-b2b-employee-wellness.jpg"
 type = "image"
 title = "Cover 4 — Employee Wellness, Reinvented (Dark Blue/Tech)"
+
+[[outputs]]
+id = "nFbDlOFfrJET9g87NcVNA"
+uri = "file://screenshots/poster-square.jpg"
+type = "image"
+title = "AORANE Marketing Poster — Instagram Square (1080×1080)"
+
+[[outputs]]
+id = "MP5SY_wOZqk6wV6ayYE8S"
+uri = "file://screenshots/poster-story.jpg"
+type = "image"
+title = "AORANE Marketing Poster — Instagram Story (1080×1920)"

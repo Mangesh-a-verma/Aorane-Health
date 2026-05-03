@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1080" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1080px; height: 1920px; overflow: hidden;
+    font-family: 'Inter', sans-serif;
+    background: #060c1a;
+    color: #fff;
+  }
+
+  .bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 800px 700px at 50% 5%, rgba(0,119,182,0.25) 0%, transparent 55%),
+      radial-gradient(ellipse 700px 700px at 80% 55%, rgba(27,153,139,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse 600px 600px at 10% 90%, rgba(0,119,182,0.12) 0%, transparent 60%);
+  }
+
+  .noise {
+    position: absolute; inset: 0; opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    background-size: 256px;
+  }
+
+  .grid-overlay {
+    position: absolute; inset: 0; opacity: 0.03;
+    background-image:
+      linear-gradient(rgba(255,255,255,1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px);
+    background-size: 80px 80px;
+  }
+
+  .container {
+    position: relative; z-index: 2;
+    width: 1080px; height: 1920px;
+    padding: 100px 70px 100px;
+    display: flex; flex-direction: column; gap: 0;
+  }
+
+  /* ── Top section ── */
+  .top-logo {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 64px;
+  }
+  .logo-row { display: flex; align-items: center; gap: 16px; }
+  .logo-icon {
+    width: 64px; height: 64px; border-radius: 18px;
+    background: linear-gradient(135deg, #0077B6, #1B998B);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; font-weight: 900; color: #fff;
+    box-shadow: 0 12px 40px rgba(0,119,182,0.45);
+  }
+  .logo-name { font-size: 34px; font-weight: 800; letter-spacing: 0.06em; }
+  .logo-tag  { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.35); letter-spacing: 0.2em; text-transform: uppercase; margin-top: 2px; }
+
+  .live-badge {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(27,153,139,0.12); border: 1px solid rgba(27,153,139,0.3);
+    border-radius: 100px; padding: 10px 22px;
+    font-size: 13px; font-weight: 600; color: #1B998B;
+  }
+  .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: #1B998B; animation: p 2s infinite; }
+  @keyframes p { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+
+  /* ── Hero headline ── */
+  .hero { margin-bottom: 60px; }
+  .eyebrow {
+    font-size: 14px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;
+    color: #0077B6; margin-bottom: 14px;
+  }
+  .h1 {
+    font-size: 80px; font-weight: 900; line-height: 1.02; margin-bottom: 18px;
+  }
+  .h1 .grad {
+    background: linear-gradient(135deg, #0077B6 0%, #1B998B 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .h1-sub {
+    font-size: 22px; font-weight: 400; color: rgba(255,255,255,0.48); line-height: 1.6; max-width: 800px;
+  }
+
+  /* ── Score hero ── */
+  .score-hero {
+    display: flex; align-items: center; gap: 48px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 28px; padding: 40px 44px;
+    margin-bottom: 52px; position: relative; overflow: hidden;
+  }
+  .score-hero::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, #0077B6, #1B998B, transparent);
+  }
+  .ring-wrap { position: relative; width: 160px; height: 160px; flex-shrink: 0; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-center {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .ring-num  { font-size: 48px; font-weight: 900; line-height: 1; }
+  .ring-sub  { font-size: 12px; color: rgba(255,255,255,0.35); letter-spacing: 0.12em; margin-top: 3px; }
+  .score-info {}
+  .grade-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: linear-gradient(135deg, rgba(0,119,182,0.2), rgba(27,153,139,0.2));
+    border: 1px solid rgba(0,119,182,0.35);
+    border-radius: 100px; padding: 8px 20px; margin-bottom: 14px;
+  }
+  .grade-pill-text { font-size: 14px; font-weight: 700; color: #38BDF8; }
+  .score-info-title { font-size: 28px; font-weight: 800; line-height: 1.2; margin-bottom: 10px; }
+  .score-info-desc  { font-size: 16px; color: rgba(255,255,255,0.45); line-height: 1.65; }
+
+  /* ── Section title ── */
+  .section-title {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+    color: rgba(255,255,255,0.3); margin-bottom: 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.06);
+  }
+
+  /* ── Parameters grid ── */
+  .params-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    margin-bottom: 50px;
+  }
+  .param-card {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 20px; padding: 22px 22px;
+    position: relative; overflow: hidden;
+  }
+  .param-card::before {
+    content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 3px;
+    background: var(--c); border-radius: 0 2px 2px 0;
+  }
+  .param-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+  .param-icon-wrap {
+    width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0;
+    background: rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .param-pct {
+    font-size: 36px; font-weight: 900; color: var(--c); line-height: 1;
+    display: flex; align-items: baseline; gap: 2px;
+  }
+  .param-pct-sign { font-size: 18px; font-weight: 600; }
+  .param-name { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 5px; }
+  .param-details { font-size: 12px; color: rgba(255,255,255,0.38); line-height: 1.65; }
+  .param-bar-wrap {
+    height: 4px; background: rgba(255,255,255,0.06); border-radius: 10px; margin-top: 14px; overflow: hidden;
+  }
+  .param-bar { height: 100%; border-radius: 10px; background: var(--c); width: var(--w); }
+
+  /* ── How it works ── */
+  .how-steps {
+    display: flex; flex-direction: column; gap: 14px; margin-bottom: 50px;
+  }
+  .step {
+    display: flex; align-items: center; gap: 20px;
+    background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px; padding: 20px 24px;
+  }
+  .step-num {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #0077B6, #1B998B);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800;
+  }
+  .step-text { font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.75); line-height: 1.5; }
+  .step-text span { color: rgba(255,255,255,0.35); font-weight: 400; display: block; font-size: 13px; margin-top: 2px; }
+
+  /* ── References ── */
+  .refs-row {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 52px;
+  }
+  .ref-tag {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    padding: 7px 14px; border-radius: 100px;
+    background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.35);
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+
+  /* ── CTA ── */
+  .cta-block {
+    background: linear-gradient(135deg, rgba(0,119,182,0.15), rgba(27,153,139,0.15));
+    border: 1px solid rgba(0,119,182,0.3);
+    border-radius: 28px; padding: 44px 44px;
+    text-align: center; position: relative; overflow: hidden;
+  }
+  .cta-block::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 600px 300px at 50% 100%, rgba(0,119,182,0.12), transparent);
+  }
+  .cta-title { font-size: 36px; font-weight: 900; margin-bottom: 12px; position: relative; }
+  .cta-sub   { font-size: 16px; color: rgba(255,255,255,0.5); margin-bottom: 32px; position: relative; }
+  .cta-btn {
+    display: inline-block;
+    background: linear-gradient(135deg, #0077B6, #1B998B);
+    border-radius: 100px; padding: 18px 52px;
+    font-size: 18px; font-weight: 800; color: #fff;
+    box-shadow: 0 8px 32px rgba(0,119,182,0.4);
+    letter-spacing: 0.03em; position: relative;
+  }
+  .cta-url { font-size: 14px; color: rgba(255,255,255,0.25); margin-top: 18px; letter-spacing: 0.1em; position: relative; }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="noise"></div>
+<div class="grid-overlay"></div>
+<div class="container">
+
+  <!-- Logo bar -->
+  <div class="top-logo">
+    <div class="logo-row">
+      <div class="logo-icon">A</div>
+      <div>
+        <div class="logo-name">AORANE</div>
+        <div class="logo-tag">Indian Health Platform</div>
+      </div>
+    </div>
+    <div class="live-badge">
+      <div class="pulse-dot"></div>
+      WHO · ICMR Backed
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="eyebrow">Scientific Health Scoring</div>
+    <div class="h1">Aapki Health<br/>ka Real<br/><span class="grad">Score</span></div>
+    <div class="h1-sub">Sirf steps count karna kaafi nahi — AORANE 6 scientific parameters se aapki actual health measure karta hai</div>
+  </div>
+
+  <!-- Score hero -->
+  <div class="score-hero">
+    <div class="ring-wrap">
+      <svg width="160" height="160" viewBox="0 0 160 160">
+        <circle cx="80" cy="80" r="66" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="12"/>
+        <circle cx="80" cy="80" r="66" fill="none" stroke="url(#sg)" stroke-width="12"
+          stroke-linecap="round" stroke-dasharray="414.7" stroke-dashoffset="82.9"/>
+        <defs>
+          <linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#0077B6"/>
+            <stop offset="100%" stop-color="#1B998B"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <div class="ring-center">
+        <div class="ring-num">82</div>
+        <div class="ring-sub">/ 100</div>
+      </div>
+    </div>
+    <div class="score-info">
+      <div class="grade-pill"><div class="grade-pill-text">Grade A — Very Good ✦</div></div>
+      <div class="score-info-title">Aaj ka<br/>Health Score</div>
+      <div class="score-info-desc">Har din ke data se calculate hone wala scientific health index</div>
+    </div>
+  </div>
+
+  <!-- Parameters -->
+  <div class="section-title">6 Score Parameters</div>
+  <div class="params-grid">
+    <div class="param-card" style="--c:#0077B6;--w:30%">
+      <div class="param-top">
+        <div class="param-icon-wrap">🍽️</div>
+        <div class="param-pct">30<span class="param-pct-sign">%</span></div>
+      </div>
+      <div class="param-name">Nutrition</div>
+      <div class="param-details">Calories · Protein · Fiber<br/>Micronutrients (ICMR RDA)</div>
+      <div class="param-bar-wrap"><div class="param-bar"></div></div>
+    </div>
+    <div class="param-card" style="--c:#1B998B;--w:25%">
+      <div class="param-top">
+        <div class="param-icon-wrap">💪</div>
+        <div class="param-pct">25<span class="param-pct-sign">%</span></div>
+      </div>
+      <div class="param-name">Exercise</div>
+      <div class="param-details">WHO MET-minutes<br/>≥600 MET-min/week goal</div>
+      <div class="param-bar-wrap"><div class="param-bar"></div></div>
+    </div>
+    <div class="param-card" style="--c:#38BDF8;--w:15%">
+      <div class="param-top">
+        <div class="param-icon-wrap">💧</div>
+        <div class="param-pct">15<span class="param-pct-sign">%</span></div>
+      </div>
+      <div class="param-name">Hydration</div>
+      <div class="param-details">2000–3000ml daily<br/>Activity-adjusted goals</div>
+      <div class="param-bar-wrap"><div class="param-bar"></div></div>
+    </div>
+    <div class="param-card" style="--c:#A78BFA;--w:15%">
+      <div class="param-top">
+        <div class="param-icon-wrap">💊</div>
+        <div class="param-pct">15<span class="param-pct-sign">%</span></div>
+      </div>
+      <div class="param-name">Medicine</div>
+      <div class="param-details">WHO Adherence<br/>Daily dose tracking</div>
+      <div class="param-bar-wrap"><div class="param-bar"></div></div>
+    </div>
+    <div class="param-card" style="--c:#F59E0B;--w:10%">
+      <div class="param-top">
+        <div class="param-icon-wrap">😴</div>
+        <div class="param-pct">10<span class="param-pct-sign">%</span></div>
+      </div>
+      <div class="param-name">Sleep</div>
+      <div class="param-details">CDC/WHO: 7–9h optimal<br/>Quality scoring</div>
+      <div class="param-bar-wrap"><div class="param-bar"></div></div>
+    </div>
+    <div class="param-card" style="--c:#34D399;--w:5%">
+      <div class="param-top">
+        <div class="param-icon-wrap">⚖️</div>
+        <div class="param-pct">5<span class="param-pct-sign">%</span></div>
+      </div>
+      <div class="param-name">BMI</div>
+      <div class="param-details">Asia-Pacific guidelines<br/>Indians ke liye calibrated</div>
+      <div class="param-bar-wrap"><div class="param-bar"></div></div>
+    </div>
+  </div>
+
+  <!-- How it works steps -->
+  <div class="section-title">Kaise kaam karta hai</div>
+  <div class="how-steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">Apna data log karo
+        <span>Khaana, exercise, paani, medicine, neend — sab ek jagah</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">AI aapka personalised goal calculate karta hai
+        <span>Harris-Benedict BMR · Aapki age, weight, height, goal ke hisaab se</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">Real-time scientific health score milta hai
+        <span>WHO + ICMR guidelines pe based — sirf aapke liye</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- References -->
+  <div class="refs-row">
+    <div class="ref-tag">WHO Physical Activity 2020</div>
+    <div class="ref-tag">ICMR Dietary Guidelines 2024</div>
+    <div class="ref-tag">ICMR RDA 2020</div>
+    <div class="ref-tag">Harris-Benedict BMR</div>
+    <div class="ref-tag">CDC Sleep Guidelines</div>
+    <div class="ref-tag">Asia-Pacific BMI</div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-block">
+    <div class="cta-title">Abhi Download Karo 🚀</div>
+    <div class="cta-sub">India ka pehla scientifically backed health scoring app</div>
+    <div class="cta-btn">AORANE App Download</div>
+    <div class="cta-url">aorane.com · Available on iOS & Android</div>
+  </div>
+
+</div>
+</body>
+</html>
