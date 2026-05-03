@@ -226,8 +226,9 @@ function calcMicronutrientTargets(
   // Vitamin C: ICMR RDA — 40mg/day adults
   const vitaminCMg = 40;
 
-  // Vitamin B12: ICMR RDA — 1.0mcg/day (widespread deficiency in India, especially vegetarians)
-  const vitaminB12Mcg = 1.0;
+  // Vitamin B12: WHO RDA 2.4mcg/day (ICMR is 1.0mcg but WHO is more clinically meaningful;
+  // B12 deficiency is widespread in India esp. vegetarians — higher target gives actionable score)
+  const vitaminB12Mcg = 2.4;
 
   // Vitamin D: ICMR RDA — 10mcg (400 IU)/day; elderly 15mcg
   const vitaminDMcg = isElderly ? 15 : 10;
@@ -301,14 +302,17 @@ function calcFoodScore(
   micronutrients: DailyHealthScore["food"]["micronutrients"],
 ): { score: number; data: DailyHealthScore["food"] } {
   // 1. Calorie adequacy — penalise both under and over-eating
+  // Over-eating penalised more strictly than under-eating (metabolic risk)
   const calRatio = calorieGoal > 0 ? totalCalories / calorieGoal : 0;
   let calScore = 0;
-  if      (calRatio >= 0.85 && calRatio <= 1.10) calScore = 100;   // Ideal
-  else if (calRatio >= 0.70 && calRatio <  0.85) calScore = 75;    // Mild under
-  else if (calRatio >  1.10 && calRatio <= 1.25) calScore = 75;    // Mild over
-  else if (calRatio >= 0.50 && calRatio <  0.70) calScore = 50;    // Moderate under
-  else if (calRatio >  1.25 && calRatio <= 1.50) calScore = 40;    // Moderate over
-  else if (calRatio > 0)                          calScore = 20;    // Something logged
+  if      (calRatio >= 0.85 && calRatio <= 1.10) calScore = 100;   // Ideal (±10%)
+  else if (calRatio >= 0.70 && calRatio <  0.85) calScore = 75;    // Mild under (-15 to -30%)
+  else if (calRatio >  1.10 && calRatio <= 1.20) calScore = 70;    // Mild over (+10-20%)
+  else if (calRatio >= 0.50 && calRatio <  0.70) calScore = 50;    // Moderate under (-30-50%)
+  else if (calRatio >  1.20 && calRatio <= 1.35) calScore = 45;    // Moderate over (+20-35%)
+  else if (calRatio >  1.35 && calRatio <= 1.50) calScore = 25;    // Heavy over (+35-50%)
+  else if (calRatio >  1.50)                      calScore = 10;    // Severe over (>50% — critical)
+  else if (calRatio > 0)                          calScore = 20;    // Severe under (<50%)
 
   // 2. Protein adequacy
   const protScore = proteinGoalG > 0
@@ -363,6 +367,7 @@ function calcWaterScore(
   let mlGoal = gender === "female" ? 2000 : 2500;
   if (activityLevel === "very" || activityLevel === "very_active" || activityLevel === "athlete") mlGoal += 500;
   else if (activityLevel === "moderate" || activityLevel === "moderately_active") mlGoal += 250;
+  else if (activityLevel === "light" || activityLevel === "lightly_active") mlGoal += 150;
   const actual = mlConsumed > 0 ? mlConsumed : glasses * 250;
   const score  = Math.min(100, Math.round((actual / mlGoal) * 100));
   return { score, mlGoal, data: { mlConsumed: Math.round(actual), mlGoal, glasses } };
@@ -426,8 +431,10 @@ function calcDataConfidence(
 
 // ─── Main Scoring Function ────────────────────────────────────────────────────
 export async function computeScientificScore(userId: string, date: string): Promise<DailyHealthScore> {
-  const dayStart = date + "T00:00:00Z";
-  const dayEnd   = date + "T23:59:59Z";
+  // IST = UTC+05:30 — use IST boundaries so Indian users' midnight-5:30 AM activity
+  // is correctly assigned to the date they intended, not the previous UTC day
+  const dayStart = date + "T00:00:00+05:30";
+  const dayEnd   = date + "T23:59:59+05:30";
 
   // Fetch all data in parallel — now includes height, DOB, goals, conditions, micronutrients, sleep
   const [foodR, exR, waterR, medSchedR, medTakenR, prefsR, profileR, goalsR, conditionsR, sleepR] = await Promise.all([
@@ -446,7 +453,9 @@ export async function computeScientificScore(userId: string, date: string): Prom
         COALESCE(SUM(vitamin_d_mcg::numeric),0) AS total_vitamin_d,
         COUNT(*)                                AS meal_count,
         COUNT(CASE WHEN calcium_mg::numeric > 0 OR iron_mg::numeric > 0
-                        OR vitamin_c_mg::numeric > 0 THEN 1 END) AS micro_logged_count
+                        OR vitamin_c_mg::numeric > 0
+                        OR vitamin_b12_mcg::numeric > 0
+                        OR vitamin_d_mcg::numeric > 0 THEN 1 END) AS micro_logged_count
        FROM food_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`,
       [userId, dayStart, dayEnd],
     ),
@@ -535,7 +544,13 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const weightKg     = parseFloat(profile?.weight_kg     || "60");
   const heightCm     = parseFloat(profile?.height_cm     || "0");
   const gender       = profile?.gender        || "other";
-  const bmiValue     = parseFloat(profile?.bmi           || "0");
+  // Issue 2 fix: always compute BMI fresh from latest weight + height
+  // Stored profile.bmi can be stale if user updates weight without recalculating
+  const heightM      = heightCm / 100;
+  const freshBmi     = (weightKg > 0 && heightM > 0)
+    ? parseFloat((weightKg / (heightM * heightM)).toFixed(1))
+    : 0;
+  const bmiValue     = freshBmi > 0 ? freshBmi : parseFloat(profile?.bmi || "0");
   const activityLevel = profile?.activity_level || "moderate";
   // Use actual daily sleep log if available, fall back to profile average
   const dailySleepLog = sleepR.rows[0];
