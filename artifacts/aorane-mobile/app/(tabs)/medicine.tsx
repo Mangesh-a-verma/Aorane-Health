@@ -13,8 +13,8 @@ import { useFocusEffect } from "expo-router";
 import { api } from "@/lib/api";
 import { DS } from "@/lib/theme";
 import { exportMedicalReportPDF } from "@/lib/pdfExport";
-import { scheduleMedicineReminders, requestNotificationPermissions, checkNotificationPermissions } from "@/lib/notifications";
-import { Plus, X, ScanLine, Pill, Sparkles, Camera, Image as ImageIcon, FileText, AlertTriangle, ChevronRight } from "lucide-react-native";
+import { scheduleMedicineReminders, cancelMedicineReminders, requestNotificationPermissions, checkNotificationPermissions } from "@/lib/notifications";
+import { Plus, X, ScanLine, Pill, Sparkles, Camera, Image as ImageIcon, FileText, AlertTriangle, ChevronRight, Trash2 } from "lucide-react-native";
 
 const P = DS.color.primary;
 const G = DS.color.green;
@@ -146,6 +146,32 @@ export default function MedicineScreen() {
 
     Alert.alert("✅ Medicine Added!", `${savedName} has been added to your schedule.`, [{ text: "OK" }]);
     setIsSubmitting(false);
+  };
+
+  const handleDelete = (med: Schedule) => {
+    Alert.alert(
+      "Remove Medicine",
+      `"${med.medicineName}" reminder hatana chahte hain?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.deleteMedicineSchedule(med.id);
+              setSchedules((prev) => prev.filter((s) => s.id !== med.id));
+              if (Platform.OS !== "web") {
+                await cancelMedicineReminders(`medicine_${med.medicineName.toLowerCase().replace(/\s+/g, "_")}`);
+              }
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch {
+              Alert.alert("Error", "Could not remove medicine. Please try again.");
+            }
+          },
+        },
+      ]
+    );
   };
 
   useFocusEffect(useCallback(() => {
@@ -290,6 +316,13 @@ export default function MedicineScreen() {
                     {med.isActive ? "Active" : "Paused"}
                   </Text>
                 </View>
+                <TouchableOpacity
+                  onPress={() => handleDelete(med)}
+                  activeOpacity={0.7}
+                  style={s.deleteBtn}
+                >
+                  <Trash2 size={15} color={DS.color.red} strokeWidth={2} />
+                </TouchableOpacity>
               </View>
             );
           })}
@@ -563,6 +596,7 @@ const s = StyleSheet.create({
   statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, flexDirection: "row", alignItems: "center", gap: 5 },
   statusDot:   { width: 6, height: 6, borderRadius: 3 },
   statusText:  { fontSize: 12, fontFamily: "Inter_500Medium" },
+  deleteBtn:   { width: 32, height: 32, borderRadius: 10, backgroundColor: DS.color.redSoft, alignItems: "center", justifyContent: "center", marginLeft: 6 },
 
   modalRoot:   { flex: 1, backgroundColor: "#FFF" },
   modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", padding: 20, paddingTop: 56, borderBottomWidth: 1, borderBottomColor: DS.color.borderLight },
