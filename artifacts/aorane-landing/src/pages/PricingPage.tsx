@@ -101,7 +101,7 @@ export default function PricingPage() {
         </div>
       </div>
 
-      <PricingSection />
+      <PricingSection onBusinessSignUp={() => { window.location.href = "https://business.aorane.com/#pricing"; }} />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
         <motion.div

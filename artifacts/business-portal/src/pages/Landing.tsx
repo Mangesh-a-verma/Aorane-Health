@@ -61,7 +61,7 @@ function PricingCard({
 }) {
   const [, navigate] = useLocation();
   const discountedPrice = Math.round(perSeatPrice * (1 - discountPct / 100));
-  const annualPrice = Math.round(discountedPrice * 0.83);
+  const annualPrice = Math.round(discountedPrice * 0.90);
   const displayPrice = billing === "annual" ? annualPrice : discountedPrice;
   const extraAnnualSaving = Math.round((1 - annualPrice / discountedPrice) * 100);
 
@@ -83,6 +83,11 @@ function PricingCard({
       {highlighted && (
         <div style={{ position: "absolute", top: 18, right: 18, background: "rgba(255,255,255,0.18)", color: "white", borderRadius: 99, padding: "4px 14px", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" as const }}>
           Most Popular
+        </div>
+      )}
+      {isEnterprise && (
+        <div style={{ position: "absolute", top: 18, right: 18, background: "rgba(251,191,36,0.15)", color: "#b45309", borderRadius: 99, padding: "4px 14px", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" as const, border: "1px solid rgba(251,191,36,0.3)" }}>
+          🚧 Coming Soon
         </div>
       )}
 
@@ -172,23 +177,32 @@ function PricingCard({
       </ul>
 
       {/* CTA */}
-      <button
-        onClick={() => {
-          if (isEnterprise) {
-            window.location.href = "mailto:sales@aorane.com?subject=Enterprise Plan Enquiry";
-          } else {
-            navigate("/register");
-          }
-        }}
-        style={{
-          background: highlighted ? "rgba(255,255,255,0.18)" : `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`,
-          color: "white", border: highlighted ? "2px solid rgba(255,255,255,0.35)" : "none",
-          borderRadius: 99, padding: "14px 0", fontWeight: 700, fontSize: 15,
-          cursor: "pointer", width: "100%", transition: "opacity 0.2s", marginTop: 4,
-        }}
-      >
-        {isEnterprise ? "Contact Sales →" : "Start Free Trial"}
-      </button>
+      {isEnterprise ? (
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: 8, marginTop: 4 }}>
+          <div style={{ background: "rgba(251,191,36,0.1)", border: "1.5px solid rgba(251,191,36,0.3)", borderRadius: 12, padding: "12px 16px", textAlign: "center" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e", marginBottom: 4 }}>🚧 Coming Soon</div>
+            <div style={{ fontSize: 11, color: "#b45309", lineHeight: 1.5 }}>Enterprise self-serve is under development. Contact us for early access.</div>
+          </div>
+          <button
+            onClick={() => { window.location.href = "mailto:sales@aorane.com?subject=Enterprise Plan Early Access"; }}
+            style={{ background: "transparent", color: PRIMARY, border: `2px solid ${PRIMARY}`, borderRadius: 99, padding: "13px 0", fontWeight: 700, fontSize: 14, cursor: "pointer", width: "100%", transition: "opacity 0.2s" }}
+          >
+            Contact Sales →
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => navigate("/register")}
+          style={{
+            background: highlighted ? "rgba(255,255,255,0.18)" : `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`,
+            color: "white", border: highlighted ? "2px solid rgba(255,255,255,0.35)" : "none",
+            borderRadius: 99, padding: "14px 0", fontWeight: 700, fontSize: 15,
+            cursor: "pointer", width: "100%", transition: "opacity 0.2s", marginTop: 4,
+          }}
+        >
+          Start Free Trial
+        </button>
+      )}
     </div>
   );
 }
@@ -652,6 +666,93 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* WHAT BUSINESSES CAN SEE */}
+      <section style={{ padding: "96px 24px", background: BG }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 64 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,93,144,0.08)", borderRadius: 99, padding: "8px 18px", marginBottom: 20 }}>
+              <Icon name="monitoring" size={15} color={PRIMARY} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: PRIMARY }}>Employee Health Data</span>
+            </div>
+            <h2 style={{ fontSize: "clamp(26px,4vw,48px)", fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.025em", margin: "0 0 16px" }}>
+              What Your Business Dashboard Shows
+            </h2>
+            <p style={{ fontSize: 18, color: "#6b7280", maxWidth: 600, margin: "0 auto", lineHeight: 1.75 }}>
+              Track your team's health across 8+ categories — real-time, secure, and privacy-first. Every metric is backed by ICMR, WHO & CDC standards.
+            </p>
+          </div>
+
+          {/* Health data categories grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, marginBottom: 56 }} className="segment-grid">
+            {[
+              { icon: "favorite", color: "#ef4444", bg: "rgba(239,68,68,0.08)", title: "Health Score", desc: "Daily 100-point composite score — nutrition, exercise, sleep, stress & hydration combined.", badge: "Live" },
+              { icon: "psychology", color: "#7c3aed", bg: "rgba(124,58,237,0.08)", title: "Stress Level", desc: "5-pillar burnout risk assessment. Flags high-stress members for early HR intervention.", badge: "AI" },
+              { icon: "restaurant", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", title: "Nutrition Tracking", desc: "Calories, Protein, Carbs, Fiber, Calcium, Iron, Vitamin B12, Vitamin C & D — ICMR RDA 2024.", badge: "9 Nutrients" },
+              { icon: "directions_run", color: "#10b981", bg: "rgba(16,185,129,0.08)", title: "Exercise & Activity", desc: "Steps, workout minutes, WHO MET-minutes, active vs. sedentary time per member.", badge: "WHO" },
+              { icon: "water_drop", color: "#0077b6", bg: "rgba(0,119,182,0.08)", title: "Water Intake", desc: "Daily hydration goal completion %. Activity-adjusted targets per individual.", badge: "Daily" },
+              { icon: "bedtime", color: "#4f46e5", bg: "rgba(79,70,229,0.08)", title: "Sleep Quality", desc: "Total hours, CDC/WHO 7–9h benchmark compliance, and weekly sleep trend per member.", badge: "CDC" },
+              { icon: "monitor_weight", color: PRIMARY, bg: `rgba(0,93,144,0.08)`, title: "BMI & Body Profile", desc: "Asia-Pacific Indian-calibrated BMI. Blood group & emergency health profile on record.", badge: "India" },
+              { icon: "bloodtype", color: TEAL, bg: `rgba(0,107,86,0.08)`, title: "Blood & Vitals", desc: "Blood glucose, BP logs, and medicine adherence tracking — WHO protocol compliant.", badge: "Optional" },
+            ].map((item, i) => (
+              <div key={i} className="card-lift" style={{ background: "white", borderRadius: 20, padding: "28px 24px", border: "1.5px solid rgba(191,199,209,0.25)", boxShadow: "0 4px 20px rgba(0,0,0,0.04)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: item.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Icon name={item.icon} size={22} color={item.color} />
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: item.color, background: item.bg, borderRadius: 99, padding: "3px 10px", letterSpacing: 0.5 }}>{item.badge}</span>
+                </div>
+                <h3 style={{ fontSize: 14, fontWeight: 800, color: "#181c20", margin: "0 0 8px", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{item.title}</h3>
+                <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.65, margin: 0 }}>{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Privacy & Security strip */}
+          <div style={{ background: `linear-gradient(135deg, rgba(0,93,144,0.04) 0%, rgba(0,107,86,0.04) 100%)`, borderRadius: 24, padding: "clamp(32px,4vw,52px)", border: "1.5px solid rgba(0,93,144,0.12)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, alignItems: "center" }} className="hero-grid">
+              <div>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,107,86,0.09)", borderRadius: 99, padding: "7px 16px", marginBottom: 20 }}>
+                  <Icon name="shield" size={14} color={TEAL} />
+                  <span style={{ fontSize: 12, fontWeight: 700, color: TEAL }}>Privacy & Security</span>
+                </div>
+                <h3 style={{ fontSize: "clamp(20px,3vw,32px)", fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.02em", margin: "0 0 16px" }}>
+                  Your Data. Your Team's Control.
+                </h3>
+                <p style={{ fontSize: 15, color: "#6b7280", lineHeight: 1.8, margin: "0 0 28px" }}>
+                  Aorane is built with privacy-by-design. Employees always own their health data — your organization sees aggregated insights, not personal records, unless the member explicitly opts in.
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  {["DPDPA 2023 Compliant", "AES-256 Encrypted", "Indian Servers Only", "ISO 27001 Ready"].map((badge, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: "white", borderRadius: 99, padding: "7px 14px", border: "1.5px solid rgba(0,107,86,0.2)", fontSize: 12, fontWeight: 700, color: TEAL }}>
+                      <Icon name="verified" size={13} color={TEAL} />
+                      {badge}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column" as const, gap: 14 }}>
+                {[
+                  { icon: "person_off", title: "Anonymized by Default", desc: "Your org dashboard shows only team-level aggregates. Individual data is never shared without member consent." },
+                  { icon: "manage_accounts", title: "Member-Controlled Sharing", desc: "Each employee decides what to share. HR/admins only access data the member explicitly approves." },
+                  { icon: "lock", title: "Role-Based Access Control", desc: "Admins, HR managers, and department heads each see only what they're permitted — no data leakage." },
+                  { icon: "history", title: "Full Audit Trail", desc: "Every data access is logged. Complete transparency on who viewed what, and when." },
+                ].map((item, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 14, background: "white", borderRadius: 16, padding: "18px 20px", border: "1px solid rgba(191,199,209,0.25)" }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: `rgba(0,107,86,0.08)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Icon name={item.icon} size={18} color={TEAL} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#181c20", marginBottom: 4 }}>{item.title}</div>
+                      <div style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.6 }}>{item.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* STATS SECTION */}
       <div ref={statsRef} style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)`, padding: "72px 24px" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -684,11 +785,11 @@ export default function Landing() {
                   style={{
                     background: billing === b ? `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)` : "transparent",
                     color: billing === b ? "white" : "#6b7280",
-                    border: "none", borderRadius: 99, padding: "10px 28px",
+                    border: "none", borderRadius: 99, padding: "10px 28px", minWidth: 186,
                     fontWeight: 700, fontSize: 14, cursor: "pointer", transition: "all 0.25s",
                   }}
                 >
-                  {b === "monthly" ? "Monthly" : "Annual (Save 17%)"}
+                  {b === "monthly" ? "Monthly" : "Annual (Save 10%)"}
                 </button>
               ))}
             </div>
