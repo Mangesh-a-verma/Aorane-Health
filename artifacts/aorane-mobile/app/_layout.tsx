@@ -23,6 +23,17 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import { useNetworkSync } from "@/hooks/useNetworkSync";
 import { rawRequest, warmupServer } from "@/lib/api";
 
+// ── Must be at module level so ALL notifications show alert/sound from app start ──
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
