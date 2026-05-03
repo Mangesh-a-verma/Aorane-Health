@@ -442,9 +442,8 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
       }
     })().catch(() => {});
   } catch (err) {
-    const errMsg = (err as Error).message || String(err);
-    logger.error({ err: errMsg }, "Blood emergency create failed");
-    res.status(500).json({ error: "Failed to create blood emergency", debug: errMsg });
+    logger.error({ err: (err as Error).message }, "Blood emergency create failed");
+    res.status(500).json({ error: "Failed to create blood emergency" });
   }
 });
 

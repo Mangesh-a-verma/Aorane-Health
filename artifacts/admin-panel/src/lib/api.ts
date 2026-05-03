@@ -197,9 +197,6 @@ export const api = {
 
   auditLogs: () => req<{ logs: AuditLog[] }>("/admin/audit-logs"),
 
-  nutritionReports: (period: "week" | "month" = "week") =>
-    req<{ period: string; days: number; daily: Record<string, unknown>[]; summary: Record<string, unknown> }>(`/admin/nutrition/reports?period=${period}`),
-
   subscriptions: () => req<{ subscriptions: Array<Record<string, unknown>> }>("/admin/subscriptions"),
   grantSubscription: (userId: string, plan: string, durationDays?: number) =>
     req<{ success: boolean; subscription: Record<string, unknown> }>("/admin/subscriptions/grant", { method: "POST", body: JSON.stringify({ userId, plan, durationDays }) }),
