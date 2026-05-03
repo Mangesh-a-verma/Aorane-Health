@@ -54,7 +54,7 @@ function DiscountModal({ user, onClose, onSaved }: { user: User; onClose: () => 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="Custom Discount" className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div>
             <div className="font-bold text-sm text-foreground">Custom Discount</div>
@@ -181,6 +181,7 @@ function UserRow({ user, onUpdate }: { user: User; onUpdate: (id: string, d: Par
             <Shield size={13} />
           </button>
           <button onClick={() => setDiscountOpen(true)}
+            aria-label="Set custom discount"
             className={`p-1.5 rounded-lg text-xs transition-all ${user.customDiscountPct ? "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
             title={user.customDiscountPct ? `Discount: ${user.customDiscountPct}%` : "Set Discount"}>
             <Percent size={13} />

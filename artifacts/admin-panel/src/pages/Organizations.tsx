@@ -300,7 +300,7 @@ function CustomPricingModal({ org, onClose, onSaved }: { org: Org; onClose: () =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="Custom Pricing" className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div>
             <div className="font-bold text-sm text-foreground flex items-center gap-1.5"><IndianRupee size={14} className="text-amber-500" />Custom Pricing</div>
@@ -451,6 +451,7 @@ function OrgCard({ org, onToggleActive, onEdit, onDelete, onCustomPrice }: {
               : <span />}
             <div className="flex items-center gap-2 flex-wrap">
               <button onClick={() => onCustomPrice(org)}
+                aria-label="Set custom pricing"
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
                   org.customPricePerSeat
                     ? "border-amber-300 text-amber-600 bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:bg-amber-900/20"
