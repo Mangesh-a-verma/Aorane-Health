@@ -161,3 +161,27 @@ id = "kuCtGLOxmQUdIgxwF4CO_"
 uri = "file://screenshots/aorane-b2b-marketing.pdf"
 type = "pdf"
 title = "Aorane B2B Marketing PDF (10 Pages)"
+
+[[outputs]]
+id = "KM9NZ-jMqnwpq18WrdOCC"
+uri = "file://screenshots/fb-cover1-health-digitized.jpg"
+type = "image"
+title = "Cover 1 — Your Health, Digitized (Teal/Cyan)"
+
+[[outputs]]
+id = "gnIwj5YkFq5UnwtUNOw22"
+uri = "file://screenshots/fb-cover2-track-analyze-thrive.jpg"
+type = "image"
+title = "Cover 2 — Track. Analyze. Thrive. (Green)"
+
+[[outputs]]
+id = "Z8fiAqKKbolDS5IsdYz9y"
+uri = "file://screenshots/fb-cover3-india-health-revolution.jpg"
+type = "image"
+title = "Cover 3 — India's Health Revolution (Orange/Saffron)"
+
+[[outputs]]
+id = "wGJJ8Kh3r1ewCbOA06fMB"
+uri = "file://screenshots/fb-cover4-b2b-employee-wellness.jpg"
+type = "image"
+title = "Cover 4 — Employee Wellness, Reinvented (Dark Blue/Tech)"
