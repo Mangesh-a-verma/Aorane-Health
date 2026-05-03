@@ -256,6 +256,124 @@ router.get("/health/scores/history", requireAuth, async (req: AuthRequest, res) 
   }
 });
 
+// ─── Sleep Logging ────────────────────────────────────────────────────────────
+router.post("/health/sleep", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { sleepDate, sleepHours, bedtime, wakeTime, quality, notes, isOfflineEntry } = req.body as Record<string, unknown>;
+    if (!sleepDate || !sleepHours) {
+      res.status(400).json({ error: "sleepDate and sleepHours are required" });
+      return;
+    }
+    const hours = parseFloat(String(sleepHours));
+    if (isNaN(hours) || hours <= 0 || hours > 24) {
+      res.status(400).json({ error: "sleepHours must be between 0.1 and 24" });
+      return;
+    }
+    const validQualities = ["poor", "fair", "good", "excellent"];
+    if (quality && !validQualities.includes(String(quality))) {
+      res.status(400).json({ error: `quality must be one of: ${validQualities.join(", ")}` });
+      return;
+    }
+    const result = await pool.query(
+      `INSERT INTO sleep_logs (user_id, sleep_date, sleep_hours, bedtime, wake_time, quality, notes, is_offline_entry, logged_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+       ON CONFLICT DO NOTHING
+       RETURNING *`,
+      [
+        req.userId!,
+        String(sleepDate),
+        hours,
+        bedtime ? String(bedtime) : null,
+        wakeTime ? String(wakeTime) : null,
+        quality ? String(quality) : null,
+        notes ? String(notes) : null,
+        Boolean(isOfflineEntry ?? false),
+      ]
+    );
+    const log = result.rows[0];
+    if (!log) {
+      const existing = await pool.query(
+        `SELECT * FROM sleep_logs WHERE user_id=$1 AND sleep_date=$2 ORDER BY logged_at DESC LIMIT 1`,
+        [req.userId!, String(sleepDate)]
+      );
+      res.status(200).json({ success: true, log: existing.rows[0], updated: false });
+      return;
+    }
+    res.status(201).json({ success: true, log, sleepHours: hours });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to log sleep", detail: (e as Error).message });
+  }
+});
+
+router.put("/health/sleep/:date", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { date } = req.params;
+    const { sleepHours, bedtime, wakeTime, quality, notes } = req.body as Record<string, unknown>;
+    if (!sleepHours) {
+      res.status(400).json({ error: "sleepHours is required" });
+      return;
+    }
+    const hours = parseFloat(String(sleepHours));
+    if (isNaN(hours) || hours <= 0 || hours > 24) {
+      res.status(400).json({ error: "sleepHours must be between 0.1 and 24" });
+      return;
+    }
+    const existing = await pool.query(
+      `SELECT id FROM sleep_logs WHERE user_id=$1 AND sleep_date=$2 ORDER BY logged_at DESC LIMIT 1`,
+      [req.userId!, date]
+    );
+    if (existing.rows.length === 0) {
+      res.status(404).json({ error: "No sleep log found for this date. Use POST /health/sleep to create one." });
+      return;
+    }
+    const result = await pool.query(
+      `UPDATE sleep_logs SET sleep_hours=$1, bedtime=$2, wake_time=$3, quality=$4, notes=$5, logged_at=NOW()
+       WHERE id=$6 RETURNING *`,
+      [hours, bedtime ?? null, wakeTime ?? null, quality ?? null, notes ?? null, existing.rows[0].id]
+    );
+    res.json({ success: true, log: result.rows[0], sleepHours: hours });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to update sleep log", detail: (e as Error).message });
+  }
+});
+
+router.get("/health/sleep/history", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { days = "7" } = req.query as { days?: string };
+    const limit = Math.min(parseInt(days), 90);
+    const result = await pool.query(
+      `SELECT * FROM sleep_logs WHERE user_id=$1 ORDER BY sleep_date DESC LIMIT $2`,
+      [req.userId!, limit]
+    );
+    const logs = result.rows;
+    const avgHours = logs.length > 0
+      ? Math.round((logs.reduce((sum: number, l: Record<string, unknown>) => sum + parseFloat(String(l.sleep_hours || "0")), 0) / logs.length) * 10) / 10
+      : null;
+    res.json({ logs, count: logs.length, avgHours });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch sleep history", detail: (e as Error).message });
+  }
+});
+
+router.get("/health/sleep/:date", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { date } = req.params;
+    const result = await pool.query(
+      `SELECT * FROM sleep_logs WHERE user_id=$1 AND sleep_date=$2 ORDER BY logged_at DESC LIMIT 1`,
+      [req.userId!, date]
+    );
+    const log = result.rows[0] || null;
+    res.json({
+      log,
+      sleepHours: log ? parseFloat(log.sleep_hours) : null,
+      quality: log?.quality || null,
+      isLogged: !!log,
+    });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch sleep log", detail: (e as Error).message });
+  }
+});
+
 router.get("/health/weekly-activity", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;

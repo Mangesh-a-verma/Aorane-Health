@@ -128,8 +128,11 @@ function calcBMRandTDEE(
     : 66  + (13.7 * weightKg) + (5 * heightCm) - (6.8 * age);
   const multipliers: Record<string, number> = {
     sedentary:          1.2,
+    light:              1.375,
     lightly_active:     1.375,
+    moderate:           1.55,
     moderately_active:  1.55,
+    very:               1.725,
     very_active:        1.725,
     athlete:            1.9,
   };
@@ -358,8 +361,8 @@ function calcWaterScore(
   mlConsumed: number, glasses: number, gender: string, activityLevel: string,
 ): { score: number; mlGoal: number; data: DailyHealthScore["water"] } {
   let mlGoal = gender === "female" ? 2000 : 2500;
-  if (activityLevel === "very_active" || activityLevel === "athlete") mlGoal += 500;
-  else if (activityLevel === "moderately_active") mlGoal += 250;
+  if (activityLevel === "very" || activityLevel === "very_active" || activityLevel === "athlete") mlGoal += 500;
+  else if (activityLevel === "moderate" || activityLevel === "moderately_active") mlGoal += 250;
   const actual = mlConsumed > 0 ? mlConsumed : glasses * 250;
   const score  = Math.min(100, Math.round((actual / mlGoal) * 100));
   return { score, mlGoal, data: { mlConsumed: Math.round(actual), mlGoal, glasses } };
@@ -426,8 +429,8 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const dayStart = date + "T00:00:00Z";
   const dayEnd   = date + "T23:59:59Z";
 
-  // Fetch all data in parallel — now includes height, DOB, goals, conditions, micronutrients
-  const [foodR, exR, waterR, medSchedR, medTakenR, prefsR, profileR, goalsR, conditionsR] = await Promise.all([
+  // Fetch all data in parallel — now includes height, DOB, goals, conditions, micronutrients, sleep
+  const [foodR, exR, waterR, medSchedR, medTakenR, prefsR, profileR, goalsR, conditionsR, sleepR] = await Promise.all([
     // Food — now includes micronutrients + tracking if micronutrient data was actually logged
     pool.query(
       `SELECT
@@ -493,6 +496,11 @@ export async function computeScientificScore(userId: string, date: string): Prom
       `SELECT condition FROM user_medical_conditions WHERE user_id=$1 AND is_active=true`,
       [userId],
     ),
+    // Sleep log for this specific date (actual daily tracking)
+    pool.query(
+      `SELECT sleep_hours, quality, bedtime, wake_time FROM sleep_logs WHERE user_id=$1 AND sleep_date=$2 ORDER BY logged_at DESC LIMIT 1`,
+      [userId, date],
+    ),
   ]);
 
   // ── Parse raw data ───────────────────────────────────────────────────────────
@@ -528,8 +536,14 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const heightCm     = parseFloat(profile?.height_cm     || "0");
   const gender       = profile?.gender        || "other";
   const bmiValue     = parseFloat(profile?.bmi           || "0");
-  const activityLevel = profile?.activity_level || "moderately_active";
-  const sleepHours   = parseFloat(profile?.sleep_hours_avg || "0");
+  const activityLevel = profile?.activity_level || "moderate";
+  // Use actual daily sleep log if available, fall back to profile average
+  const dailySleepLog = sleepR.rows[0];
+  const sleepHours = dailySleepLog
+    ? parseFloat(dailySleepLog.sleep_hours || "0")
+    : parseFloat(profile?.sleep_hours_avg || "0");
+  const sleepQuality  = dailySleepLog?.quality || null;
+  const sleepIsLogged = !!dailySleepLog;
   const dateOfBirth  = profile?.date_of_birth  || null;
 
   const primaryGoal  = goalsR.rows[0]?.primary_goal || "general_wellness";
@@ -602,7 +616,7 @@ export async function computeScientificScore(userId: string, date: string): Prom
     food:     food.data,
     water:    water.data,
     medicine: med.data,
-    sleep:    { hoursLogged: sleepHours, isOptimal: sleep.isOptimal },
+    sleep:    { hoursLogged: sleepHours, isOptimal: sleep.isOptimal, quality: sleepQuality, isLogged: sleepIsLogged },
     bmi:      { value: bmi.value, category: bmi.category },
     personalisation: {
       ageYears:          age,

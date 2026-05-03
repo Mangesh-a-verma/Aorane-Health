@@ -319,6 +319,19 @@ export const api = {
       weightKg: number; gender: string; metValue: number; caloriesBurned: number; formula: string;
     }>("POST", "/health/exercise/calculate", data),
 
+  // ── Sleep ──────────────────────────────────────────────
+  logSleep: (data: { sleepDate: string; sleepHours: number; bedtime?: string; wakeTime?: string; quality?: "poor" | "fair" | "good" | "excellent"; notes?: string; isOfflineEntry?: boolean }) =>
+    request<{ success: boolean; log: Record<string, unknown>; sleepHours: number }>("POST", "/health/sleep", data as Record<string, unknown>),
+
+  getSleepLog: (date: string) =>
+    request<{ log: Record<string, unknown> | null; sleepHours: number | null; quality: string | null; isLogged: boolean }>("GET", `/health/sleep/${date}`),
+
+  updateSleepLog: (date: string, data: { sleepHours: number; bedtime?: string; wakeTime?: string; quality?: string; notes?: string }) =>
+    request<{ success: boolean; log: Record<string, unknown>; sleepHours: number }>("PUT", `/health/sleep/${date}`, data as Record<string, unknown>),
+
+  getSleepHistory: (days = 7) =>
+    request<{ logs: Array<Record<string, unknown>>; count: number; avgHours: number | null }>("GET", `/health/sleep/history?days=${days}`),
+
   // ── Water ──────────────────────────────────────────────
   getWaterLog: (date: string) =>
     request<{ logs: Array<Record<string, unknown>>; totalGlasses: number; goal: number }>("GET", `/health/water/${date}`),

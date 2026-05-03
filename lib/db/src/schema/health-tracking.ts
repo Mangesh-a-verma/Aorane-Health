@@ -156,11 +156,29 @@ export const dailyHealthScoresTable = pgTable("daily_health_scores", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
+export const sleepQualityEnum = pgEnum("sleep_quality", ["poor", "fair", "good", "excellent"]);
+
+export const sleepLogsTable = pgTable("sleep_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  sleepDate: text("sleep_date").notNull(),
+  bedtime: text("bedtime"),
+  wakeTime: text("wake_time"),
+  sleepHours: decimal("sleep_hours", { precision: 3, scale: 1 }).notNull(),
+  quality: sleepQualityEnum("quality"),
+  notes: text("notes"),
+  isOfflineEntry: boolean("is_offline_entry").notNull().default(false),
+  syncedAt: timestamp("synced_at", { withTimezone: true }),
+  loggedAt: timestamp("logged_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const insertExerciseLogSchema = createInsertSchema(exerciseLogsTable).omit({ id: true, createdAt: true });
 export const insertWaterLogSchema = createInsertSchema(waterLogsTable).omit({ id: true, createdAt: true });
 export const insertMedicineScheduleSchema = createInsertSchema(medicineSchedulesTable).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertMedicineLogSchema = createInsertSchema(medicineLogsTable).omit({ id: true, createdAt: true });
 export const insertStressLogSchema = createInsertSchema(stressLogsTable).omit({ id: true, createdAt: true });
+export const insertSleepLogSchema = createInsertSchema(sleepLogsTable).omit({ id: true, createdAt: true });
 
 // ── Daily AI Suggestions Cache (per user per day) ────────────────────────────
 export const dailySuggestionsTable = pgTable("daily_suggestions", {
