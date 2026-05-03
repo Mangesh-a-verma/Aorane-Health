@@ -423,8 +423,9 @@ export default function CustomDeals() {
 
         {err && (
           <div className="flex items-center gap-2 text-sm rounded-xl px-4 py-3 bg-red-500/10 border border-red-500/20 text-red-500">
-            <AlertCircle size={15} />{err}
-            <button onClick={load} className="ml-auto text-xs hover:underline font-medium">Retry</button>
+            <AlertCircle size={15} />
+            <span>Custom deals load nahi hue — server se data fetch karne mein dikkat aayi.</span>
+            <button onClick={load} className="ml-auto text-xs hover:underline font-medium shrink-0">Dobara Try Karo</button>
           </div>
         )}
 

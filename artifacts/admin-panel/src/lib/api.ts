@@ -209,6 +209,9 @@ export const api = {
 
   promoCodes: () => req<{ codes: PromoCode[] }>("/admin/promo-codes"),
   createPromoCode: (data: Partial<PromoCode>) => req<{ code: PromoCode }>("/admin/promo-codes", { method: "POST", body: JSON.stringify(data) }),
+  updatePromoCode: (id: string, data: { discountPct?: number; applicablePlans?: string[]; usageLimit?: number | null; expiresAt?: string | null; isActive?: boolean }) =>
+    req<{ code: PromoCode }>(`/admin/promo-codes/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deletePromoCode: (id: string) => req<{ success: boolean }>(`/admin/promo-codes/${id}`, { method: "DELETE" }),
 
   announcements: () => req<{ announcements: Announcement[] }>("/admin/announcements"),
   createAnnouncement: (data: Partial<Announcement>) => req<{ announcement: Announcement }>("/admin/announcements", { method: "POST", body: JSON.stringify(data) }),

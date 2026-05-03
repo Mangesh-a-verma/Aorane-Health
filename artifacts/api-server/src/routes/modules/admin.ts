@@ -497,6 +497,36 @@ router.post("/admin/promo-codes", requireAdmin, async (req: AdminRequest, res) =
   }
 });
 
+router.patch("/admin/promo-codes/:id", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { id } = req.params as { id: string };
+    const { discountPct, applicablePlans, usageLimit, expiresAt, isActive } = req.body as Record<string, unknown>;
+    const updates: Record<string, unknown> = {};
+    if (discountPct !== undefined) updates.discountPct = Number(discountPct);
+    if (applicablePlans !== undefined) updates.applicablePlans = applicablePlans;
+    if (usageLimit !== undefined) updates.usageLimit = usageLimit ? Number(usageLimit) : null;
+    if (expiresAt !== undefined) updates.expiresAt = expiresAt ? new Date(expiresAt as string) : null;
+    if (isActive !== undefined) updates.isActive = Boolean(isActive);
+    const [updated] = await db.update(promoCodesTable).set(updates as Partial<typeof promoCodesTable.$inferInsert>).where(eq(promoCodesTable.id, id)).returning();
+    if (!updated) { res.status(404).json({ error: "Promo code not found" }); return; }
+    res.json({ code: updated });
+  } catch {
+    res.status(500).json({ error: "Failed to update promo code" });
+  }
+});
+
+router.delete("/admin/promo-codes/:id", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { id } = req.params as { id: string };
+    const [deleted] = await db.delete(promoCodesTable).where(eq(promoCodesTable.id, id)).returning();
+    if (!deleted) { res.status(404).json({ error: "Promo code not found" }); return; }
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "delete_promo_code", targetType: "promo_code", targetId: id, details: { code: deleted.code } });
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Failed to delete promo code" });
+  }
+});
+
 router.get("/admin/announcements", requireAdmin, async (req: AdminRequest, res) => {
   try {
     const announcements = await db.select().from(announcementsTable).orderBy(desc(announcementsTable.createdAt));

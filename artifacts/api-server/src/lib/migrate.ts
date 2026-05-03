@@ -983,6 +983,20 @@ export async function runStartupMigrations(): Promise<void> {
     `UPDATE plan_pricing SET
        features = '["Everything in Max","Medical Report AI Scanner","Advanced Gemini AI","Priority Support","Unlimited History","Export PDF & CSV"]'
      WHERE plan_key = 'pro' AND features::text LIKE '%Sab Max%'`,
+
+    // ── organizations: custom pricing columns (admin panel — custom deals) ────
+    `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS custom_price_per_seat NUMERIC(10,2)`,
+    `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS custom_price_note TEXT`,
+    `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS custom_price_valid_until TIMESTAMPTZ`,
+    `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS custom_price_applied_by TEXT`,
+
+    // ── users: custom discount columns (admin panel — custom deals) ──────────
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_discount_pct INTEGER`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_discount_note TEXT`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_discount_valid_until TIMESTAMPTZ`,
+
+    // ── promo_codes: toggle active endpoint support ───────────────────────────
+    `ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE`,
   ];
 
   let ok = 0; let fail = 0;
