@@ -1,6 +1,6 @@
 // Blood Emergency Module — pool.query fix applied
 import { Router } from "express";
-import { db, pool, bloodDonorsTable, bloodDonationsTable } from "@workspace/db";
+import { db, pool, bloodDonorsTable, bloodDonationsTable, bloodEmergencyRequestsTable } from "@workspace/db";
 import { eq, and, or, ilike, isNull, lt, sql, inArray, ne } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import { cache } from "../../lib/redis";
@@ -169,35 +169,26 @@ router.post("/blood/request/verify-otp", requireAuth, async (req: AuthRequest, r
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 48);
 
-    const insertResult = await pool.query(
-      `INSERT INTO blood_emergency_requests
-        (requester_id, patient_name, blood_group_needed, units_needed,
-         hospital_name, hospital_address, hospital_city, hospital_state,
-         hospital_pincode, hospital_phone, doctor_name, doctor_phone,
-         contact_phone, contact_name, urgency, notes, otp_verified, expires_at)
-       VALUES ($1,$2,$3::blood_group,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,TRUE,$17)
-       RETURNING *`,
-      [
-        req.userId,
-        String(pending.patientName || ""),
-        String(pending.bloodGroupNeeded || ""),
-        Number(pending.unitsNeeded) || 1,
-        String(pending.hospitalName || ""),
-        pending.hospitalAddress ? String(pending.hospitalAddress) : null,
-        String(pending.hospitalCity || ""),
-        String(pending.hospitalState || ""),
-        pending.hospitalPincode ? String(pending.hospitalPincode) : null,
-        pending.hospitalPhone ? String(pending.hospitalPhone) : null,
-        pending.doctorName ? String(pending.doctorName) : null,
-        pending.doctorPhone ? String(pending.doctorPhone) : null,
-        String(pending.contactPhone || ""),
-        pending.contactName ? String(pending.contactName) : null,
-        String(pending.urgency || "urgent"),
-        pending.notes ? String(pending.notes) : null,
-        expiresAt,
-      ]
-    );
-    const request = insertResult.rows[0];
+    const [request] = await db.insert(bloodEmergencyRequestsTable).values({
+      requesterId: req.userId as string,
+      patientName: String(pending.patientName || ""),
+      bloodGroupNeeded: String(pending.bloodGroupNeeded || "") as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-",
+      unitsNeeded: Number(pending.unitsNeeded) || 1,
+      hospitalName: String(pending.hospitalName || ""),
+      hospitalAddress: pending.hospitalAddress ? String(pending.hospitalAddress) : undefined,
+      hospitalCity: String(pending.hospitalCity || ""),
+      hospitalState: String(pending.hospitalState || ""),
+      hospitalPincode: pending.hospitalPincode ? String(pending.hospitalPincode) : undefined,
+      hospitalPhone: pending.hospitalPhone ? String(pending.hospitalPhone) : undefined,
+      doctorName: pending.doctorName ? String(pending.doctorName) : undefined,
+      doctorPhone: pending.doctorPhone ? String(pending.doctorPhone) : undefined,
+      contactPhone: String(pending.contactPhone || ""),
+      contactName: pending.contactName ? String(pending.contactName) : undefined,
+      urgency: String(pending.urgency || "urgent"),
+      notes: pending.notes ? String(pending.notes) : undefined,
+      otpVerified: true,
+      expiresAt,
+    }).returning();
 
     const monthKey = `blood_req:${req.userId}:${new Date().toISOString().slice(0, 7)}`;
     cache.incrementRateLimit(monthKey, 31 * 24 * 3600);
@@ -358,35 +349,26 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 72);
 
-    const insertResult = await pool.query(
-      `INSERT INTO blood_emergency_requests
-        (requester_id, patient_name, blood_group_needed, units_needed,
-         hospital_name, hospital_address, hospital_city, hospital_state,
-         hospital_pincode, hospital_phone, doctor_name, doctor_phone,
-         contact_phone, contact_name, urgency, notes, otp_verified, expires_at)
-       VALUES ($1,$2,$3::blood_group,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,TRUE,$17)
-       RETURNING *`,
-      [
-        req.userId,
-        String(patientName),
-        String(bloodGroup),
-        Number(unitsNeeded) || 1,
-        String(hospitalName),
-        hospitalAddress ? String(hospitalAddress) : null,
-        String(hospitalCity),
-        String(hospitalState || ""),
-        hospitalPincode ? String(hospitalPincode) : null,
-        String(hospitalPhone),
-        doctorName ? String(doctorName) : null,
-        doctorPhone ? String(doctorPhone) : null,
-        String(contactPhone),
-        contactName ? String(contactName) : null,
-        String(urgency || "urgent"),
-        notes ? String(notes) : null,
-        expiresAt,
-      ]
-    );
-    const request = insertResult.rows[0];
+    const [request] = await db.insert(bloodEmergencyRequestsTable).values({
+      requesterId: req.userId as string,
+      patientName: String(patientName),
+      bloodGroupNeeded: String(bloodGroup) as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-",
+      unitsNeeded: Number(unitsNeeded) || 1,
+      hospitalName: String(hospitalName),
+      hospitalAddress: hospitalAddress ? String(hospitalAddress) : undefined,
+      hospitalCity: String(hospitalCity),
+      hospitalState: String(hospitalState || ""),
+      hospitalPincode: hospitalPincode ? String(hospitalPincode) : undefined,
+      hospitalPhone: String(hospitalPhone),
+      doctorName: doctorName ? String(doctorName) : undefined,
+      doctorPhone: doctorPhone ? String(doctorPhone) : undefined,
+      contactPhone: String(contactPhone),
+      contactName: contactName ? String(contactName) : undefined,
+      urgency: String(urgency || "urgent"),
+      notes: notes ? String(notes) : undefined,
+      otpVerified: true,
+      expiresAt,
+    }).returning();
 
     cache.incrementRateLimit(monthKey, 31 * 24 * 3600);
 
