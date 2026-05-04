@@ -13,31 +13,27 @@ workflows:
         EXPO_NO_TELEMETRY: "1"
 
     scripts:
-      - name: Prepare workspace (hide pnpm config from npm/expo/gradle)
+      - name: Prepare workspace
         script: |
           mv pnpm-workspace.yaml pnpm-workspace.yaml.bak
 
-      - name: Install dependencies
+      - name: Install dependencies + verify HC
         script: |
           cd artifacts/aorane-mobile
           npm install --legacy-peer-deps
+          echo "=== Verifying react-native-health-connect install ==="
+          if [ -f "node_modules/react-native-health-connect/package.json" ]; then
+            echo "HC FOUND: $(cat node_modules/react-native-health-connect/package.json | python3 -c 'import sys,json; print(json.load(sys.stdin).get(\"version\"))')"
+          else
+            echo "HC MISSING - installing explicitly..."
+            npm install --legacy-peer-deps react-native-health-connect@3.5.0
+            ls node_modules/react-native-health-connect/package.json && echo "HC now FOUND" || echo "HC install FAILED"
+          fi
 
-      - name: Expo Prebuild (generate Android native code + autolink)
+      - name: Expo Prebuild
         script: |
           cd artifacts/aorane-mobile
-          npx expo prebuild \
-            --platform android \
-            --clean \
-            --no-install
-
-      - name: Verify Health Connect autolinking
-        script: |
-          echo "=== settings.gradle (HC autolink check) ==="
-          grep -i "health" artifacts/aorane-mobile/android/settings.gradle || echo "HC NOT FOUND in settings.gradle!"
-          echo "=== PackageList check ==="
-          find artifacts/aorane-mobile/android -name "PackageList.java" -exec grep -l "HealthConnect" {} \; 2>/dev/null || echo "PackageList not found or HC missing"
-          echo "=== node_modules HC check ==="
-          ls artifacts/aorane-mobile/node_modules/react-native-health-connect/android/src/main/java/dev/matinzd/healthconnect/ 2>/dev/null | head -5 || echo "HC android src not found"
+          npx expo prebuild --platform android --clean --no-install
 
       - name: Build Android AAB
         script: |
@@ -76,29 +72,28 @@ workflows:
         EXPO_NO_TELEMETRY: "1"
 
     scripts:
-      - name: Prepare workspace (hide pnpm config from npm/expo/gradle)
+      - name: Prepare workspace
         script: |
           mv pnpm-workspace.yaml pnpm-workspace.yaml.bak
 
-      - name: Install dependencies
+      - name: Install dependencies + verify HC
         script: |
           cd artifacts/aorane-mobile
           npm install --legacy-peer-deps
+          echo "=== Verifying react-native-health-connect install ==="
+          if [ -f "node_modules/react-native-health-connect/package.json" ]; then
+            echo "HC FOUND: $(cat node_modules/react-native-health-connect/package.json | python3 -c 'import sys,json; print(json.load(sys.stdin).get(\"version\"))')"
+            echo "HC entry: react-native field = $(cat node_modules/react-native-health-connect/package.json | python3 -c 'import sys,json; print(json.load(sys.stdin).get(\"react-native\",\"NONE\"))')"
+          else
+            echo "HC MISSING - installing explicitly..."
+            npm install --legacy-peer-deps react-native-health-connect@3.5.0
+            ls node_modules/react-native-health-connect/package.json && echo "HC now FOUND" || echo "HC install FAILED"
+          fi
 
-      - name: Expo Prebuild (generate Android native code + autolink)
+      - name: Expo Prebuild
         script: |
           cd artifacts/aorane-mobile
-          npx expo prebuild \
-            --platform android \
-            --clean \
-            --no-install
-
-      - name: Verify Health Connect autolinking
-        script: |
-          echo "=== settings.gradle (HC check) ==="
-          grep -i "health" artifacts/aorane-mobile/android/settings.gradle || echo "HC NOT FOUND in settings.gradle!"
-          echo "=== node_modules HC native src ==="
-          ls artifacts/aorane-mobile/node_modules/react-native-health-connect/android/src/main/java/dev/matinzd/healthconnect/ 2>/dev/null || echo "NOT FOUND"
+          npx expo prebuild --platform android --clean --no-install
 
       - name: Build Android Release APK
         script: |
