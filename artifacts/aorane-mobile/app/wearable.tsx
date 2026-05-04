@@ -293,8 +293,8 @@ export default function WearableScreen() {
         return;
       }
 
-      // Defensive check — ensure all required HC functions exist
-      if (typeof hc.getSdkStatus !== "function" || typeof hc.initialize !== "function" || typeof hc.requestPermission !== "function") {
+      // Defensive check — ensure required HC functions exist
+      if (typeof hc.initialize !== "function" || typeof hc.requestPermission !== "function") {
         Alert.alert(
           "Module Error",
           "Health Connect module is incomplete in this build. Please update the app.",
@@ -304,17 +304,17 @@ export default function WearableScreen() {
         return;
       }
 
-      // Step 1: Check SDK availability — individual try-catch so native crash is caught
-      let status: number = -1;
+      // Step 1: Initialize SDK directly (skip getSdkStatus — it can hard-crash on some devices/builds)
+      // initialize() returns false when HC is not installed, true when ready
+      let initialized = false;
       try {
-        status = await hc.getSdkStatus();
-        console.log("[HC] getSdkStatus →", status);
-      } catch (sdkErr) {
-        console.warn("[HC] getSdkStatus threw:", sdkErr);
-        // HC not installed or device not compatible — prompt install
+        initialized = await hc.initialize();
+        console.log("[HC] initialize →", initialized);
+      } catch (initErr) {
+        console.warn("[HC] initialize threw:", initErr);
         Alert.alert(
-          "Health Connect Not Found",
-          "Health Connect app is not installed on this device. Please install it from the Play Store to sync wearable data.",
+          "Health Connect Not Available",
+          "Health Connect is not installed or not supported on this device.\n\nInstall it from the Play Store and try again.",
           [
             { text: "Install HC", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
             { text: "Cancel", style: "cancel" },
@@ -324,50 +324,15 @@ export default function WearableScreen() {
         return;
       }
 
-      // Safe fallback values in case SdkAvailabilityStatus is undefined
-      const SDK_UNAVAILABLE = hc.SdkAvailabilityStatus?.SDK_UNAVAILABLE ?? 0;
-      const SDK_UPDATE_REQUIRED = hc.SdkAvailabilityStatus?.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED ?? 1;
-
-      if (status === SDK_UNAVAILABLE) {
-        Alert.alert(
-          "Health Connect Not Installed",
-          "Please install Health Connect from the Play Store to sync your wearable data.",
-          [
-            { text: "Install", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
-            { text: "Cancel", style: "cancel" },
-          ]
-        );
-        setConnectingHC(false);
-        return;
-      }
-
-      if (status === SDK_UPDATE_REQUIRED) {
-        Alert.alert(
-          "Health Connect Update Required",
-          "Please update Health Connect from the Play Store.",
-          [
-            { text: "Update", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
-            { text: "Cancel", style: "cancel" },
-          ]
-        );
-        setConnectingHC(false);
-        return;
-      }
-
-      // Step 2: Initialize SDK — individual try-catch
-      let initialized = false;
-      try {
-        initialized = await hc.initialize();
-        console.log("[HC] initialize →", initialized);
-      } catch (initErr) {
-        console.warn("[HC] initialize threw:", initErr);
-        Alert.alert("Init Failed", "Health Connect could not be initialized. Please make sure Health Connect is updated and try again.");
-        setConnectingHC(false);
-        return;
-      }
-
       if (!initialized) {
-        Alert.alert("Init Failed", "Health Connect could not be initialized. Please restart the app and try again.");
+        Alert.alert(
+          "Health Connect Not Found",
+          "Health Connect is not installed or needs an update. Please install it from the Play Store.",
+          [
+            { text: "Install HC", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
+            { text: "Cancel", style: "cancel" },
+          ]
+        );
         setConnectingHC(false);
         return;
       }
