@@ -26,6 +26,11 @@ workflows:
         script: pnpm install --no-frozen-lockfile
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
+      - name: Force-install react-native-health-connect via npm (bypass pnpm symlinks)
+        script: |
+          npm install react-native-health-connect --legacy-peer-deps --no-save
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
+
       - name: Expo prebuild (generate Android native code)
         script: |
           npx expo prebuild \
@@ -75,6 +80,11 @@ workflows:
 
       - name: Install mobile workspace dependencies
         script: pnpm install --no-frozen-lockfile
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
+
+      - name: Force-install react-native-health-connect via npm (bypass pnpm symlinks)
+        script: |
+          npm install react-native-health-connect --legacy-peer-deps --no-save
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
       - name: Expo prebuild (generate Android native code)
