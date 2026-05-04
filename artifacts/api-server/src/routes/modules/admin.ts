@@ -140,6 +140,9 @@ router.get("/admin/users", requireAdmin, async (req: AdminRequest, res) => {
           lastLoginAt: usersTable.lastLoginAt,
           aoraneId: userProfilesTable.aoraneId,
           fullName: userProfilesTable.fullName,
+          customDiscountPct: usersTable.customDiscountPct,
+          customDiscountNote: usersTable.customDiscountNote,
+          customDiscountValidUntil: usersTable.customDiscountValidUntil,
         })
         .from(usersTable)
         .leftJoin(userProfilesTable, eq(usersTable.id, userProfilesTable.userId))

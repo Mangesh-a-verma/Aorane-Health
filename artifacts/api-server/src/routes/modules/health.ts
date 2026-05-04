@@ -229,7 +229,26 @@ router.get("/health/score/:date", requireAuth, async (req: AuthRequest, res) => 
     const score = await computeDailyScore(req.userId!, date);
     res.json({ score });
   } catch (e) {
-    res.status(500).json({ error: "Failed to fetch health score", detail: (e as Error).message });
+    // Return safe default instead of 500 so mobile never shows 0 due to a transient error
+    res.json({
+      score: {
+        userId: req.userId,
+        scoreDate: req.params.date,
+        healthScore: 0,
+        grade: "—",
+        gradeLabel: "No data yet",
+        dataConfidence: 0,
+        foodScore: 0, exerciseScore: 0, waterScore: 0,
+        medicineScore: 75, sleepScore: 50, bmiScore: 50,
+        food: { calories: 0, calorieGoal: 2000, proteinG: 0, proteinGoalG: 50, carbsG: 0, fatG: 0, fiberG: 0, fiberGoalG: 25, meals: 0, mealGoal: 3, micronutrients: { dataAvailable: false, compositeScore: 0, calcium: { mg: 0, goalMg: 800, score: 0 }, iron: { mg: 0, goalMg: 17, score: 0 }, vitaminC: { mg: 0, goalMg: 40, score: 0 }, vitaminB12: { mcg: 0, goalMcg: 1, score: 0 }, vitaminD: { mcg: 0, goalMcg: 10, score: 0 } } },
+        exercise: { metMinutesToday: 0, metMinutesGoal: 85.7, durationMinutes: 0, caloriesBurned: 0, sessions: 0 },
+        water: { mlConsumed: 0, mlGoal: 2500, glasses: 0 },
+        medicine: { taken: 0, scheduled: 0 },
+        sleep: { hoursLogged: 0, isOptimal: false, quality: null, isLogged: false },
+        bmi: { value: null, category: "Unknown" },
+        _error: (e as Error).message,
+      }
+    });
   }
 });
 

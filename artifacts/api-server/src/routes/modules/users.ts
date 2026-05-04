@@ -304,6 +304,7 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
       memberSince: user?.created_at,
       qrData: JSON.stringify({ aoraneId, name: profile?.full_name, bloodGroup: profile?.blood_group }),
       activePercent: activeData,
+      healthScore: activeData.overall,
       healthGrade: activeData.grade,
       healthGradeLabel: activeData.gradeLabel,
     });
