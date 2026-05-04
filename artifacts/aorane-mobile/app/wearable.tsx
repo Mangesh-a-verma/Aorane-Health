@@ -21,13 +21,12 @@ const { width: W } = Dimensions.get("window");
 
 // ─── Provider config ──────────────────────────────────────────────────────────
 const PROVIDER_META: Record<string, { emoji: string; name: string; color: string; grad: [string, string] }> = {
-  health_connect:  { emoji: "🤖", name: "Health Connect",           color: "#0B6E4F", grad: ["#0B6E4F","#1B998B"] },
-  apple_healthkit: { emoji: "🍎", name: "Apple HealthKit (iOS)",    color: "#FF3B30", grad: ["#FF3B30","#FF6B6B"] },
-  garmin:          { emoji: "⌚", name: "Garmin Connect",           color: "#007DC6", grad: ["#007DC6","#005A92"] },
-  fitbit:          { emoji: "🏃", name: "Fitbit",                   color: "#00B0B9", grad: ["#00B0B9","#005F63"] },
-  samsung_health:  { emoji: "💙", name: "Samsung Health",           color: "#1428A0", grad: ["#1428A0","#00A8E0"] },
-  manual:          { emoji: "✍️", name: "Manual Entry",             color: "#6B7280", grad: ["#6B7280","#374151"] },
+  health_connect:  { emoji: "🤖", name: "Health Connect",        color: "#0B6E4F", grad: ["#0B6E4F","#1B998B"] },
+  apple_healthkit: { emoji: "🍎", name: "Apple HealthKit (iOS)", color: "#FF3B30", grad: ["#FF3B30","#FF6B6B"] },
+  samsung_health:  { emoji: "💙", name: "Samsung Health",        color: "#1428A0", grad: ["#1428A0","#00A8E0"] },
 };
+
+const ALLOWED_PROVIDERS = ["health_connect", "apple_healthkit", "samsung_health"];
 
 type WearableData = {
   steps: number | null; heartRateAvg: number | null; heartRateMin: number | null;
@@ -434,7 +433,7 @@ export default function WearableScreen() {
                   <Text style={{ fontSize: 40, marginBottom: 12 }}>⌚</Text>
                   <Text style={{ fontFamily: "Inter_700Bold", fontSize: 16, color: "#0D1F33", textAlign: "center" }}>No Device Connected</Text>
                   <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: "#7A90A4", textAlign: "center", marginTop: 6, lineHeight: 20 }}>
-                    Connect Health Connect (Android) or manually enter data from your smart band / watch.
+                    Connect Health Connect (Android), Apple HealthKit (iOS), or Samsung Health.
                   </Text>
                   <TouchableOpacity onPress={() => setShowConnect(true)}
                     style={{ backgroundColor: "#0077B6", borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 16 }}>
@@ -577,16 +576,14 @@ export default function WearableScreen() {
               <TouchableOpacity onPress={() => setShowConnect(false)}><Ionicons name="close" size={22} color="#7A90A4" /></TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
-              {providers.filter((p) => p.id !== "manual").map((p) => {
-                const meta = PROVIDER_META[p.id] || { emoji: "📱", name: p.name, color: "#0077B6", grad: ["#0077B6", "#1B998B"] as [string, string] };
+              {providers.filter((p) => ALLOWED_PROVIDERS.includes(p.id)).map((p) => {
+                const meta = PROVIDER_META[p.id] ?? { emoji: "📱", name: p.name, color: "#0077B6", grad: ["#0077B6", "#1B998B"] as [string, string] };
                 const alreadyConnected = activeConnections.some((c) => c.provider === p.id);
                 const isHC = p.id === "health_connect";
                 return (
                   <TouchableOpacity key={p.id}
                     disabled={!p.available || alreadyConnected || (isHC && connectingHC)}
-                    onPress={() => {
-                      if (isHC) connectHealthConnect();
-                    }}
+                    onPress={() => { if (isHC) connectHealthConnect(); }}
                     style={[styles.providerBtn, { opacity: !p.available ? 0.45 : 1 }]}
                   >
                     <LinearGradient
@@ -609,20 +606,6 @@ export default function WearableScreen() {
                   </TouchableOpacity>
                 );
               })}
-              {/* Manual Entry */}
-              <TouchableOpacity onPress={() => { setShowConnect(false); setShowManual(true); }}
-                style={styles.providerBtn}>
-                <LinearGradient colors={["#6B7280", "#374151"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.providerBtnGrad}>
-                  <Text style={{ fontSize: 26 }}>✍️</Text>
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>Manual Entry</Text>
-                    <Text style={{ color: "rgba(255,255,255,0.75)", fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 2 }}>
-                      Enter data manually from any smartwatch or smart band
-                    </Text>
-                  </View>
-                  <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.8)" />
-                </LinearGradient>
-              </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
