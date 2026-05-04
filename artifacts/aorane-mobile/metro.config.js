@@ -3,26 +3,24 @@ const fs = require("fs");
 const path = require("path");
 
 const projectRoot = __dirname;
+const workspaceRoot = path.resolve(projectRoot, "../..");
+
 const config = getDefaultConfig(projectRoot);
 
-// Force projectRoot to be the app directory (not auto-detected monorepo root)
 config.projectRoot = projectRoot;
 
-// Filter out watchFolders that don't physically exist (fixes CI builds
-// where getDefaultConfig adds monorepo root but root node_modules are absent)
-if (config.watchFolders) {
-  config.watchFolders = config.watchFolders.filter((folder) => {
-    try {
-      fs.statSync(folder);
-      return true;
-    } catch {
-      return false;
-    }
-  });
-}
+// Include workspace root so Metro can resolve pnpm hoisted packages
+const foldersToWatch = [workspaceRoot, projectRoot];
+config.watchFolders = foldersToWatch.filter((folder) => {
+  try { fs.statSync(folder); return true; } catch { return false; }
+});
 
-// Ensure resolver only looks in existing locations
+// Look in both app node_modules AND monorepo root node_modules
+// pnpm installs packages at root level — both paths needed
 config.resolver = config.resolver || {};
-config.resolver.nodeModulesPaths = [path.resolve(projectRoot, "node_modules")];
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, "node_modules"),
+  path.resolve(workspaceRoot, "node_modules"),
+];
 
 module.exports = config;
