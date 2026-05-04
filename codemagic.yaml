@@ -11,18 +11,13 @@ workflows:
         PACKAGE_NAME: in.aorane.app
 
     scripts:
-      - name: Install dependencies
+      - name: Install & Prebuild (with autolinking)
         script: |
           cd artifacts/aorane-mobile
           npm install --legacy-peer-deps
-
-      - name: Expo Prebuild (generate Android native code)
-        script: |
-          cd artifacts/aorane-mobile
           npx expo prebuild \
             --platform android \
-            --clean \
-            --no-install
+            --clean
 
       - name: Build Android AAB
         script: |
@@ -60,18 +55,13 @@ workflows:
         PACKAGE_NAME: in.aorane.app
 
     scripts:
-      - name: Install dependencies
+      - name: Install & Prebuild (with autolinking)
         script: |
           cd artifacts/aorane-mobile
           npm install --legacy-peer-deps
-
-      - name: Expo Prebuild (generate Android native code)
-        script: |
-          cd artifacts/aorane-mobile
           npx expo prebuild \
             --platform android \
-            --clean \
-            --no-install
+            --clean
 
       - name: Build Android Release APK
         script: |
