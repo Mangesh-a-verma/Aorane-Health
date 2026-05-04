@@ -69,7 +69,7 @@ function MetricCard({ icon, label, value, unit, color }: {
 function DeviceCard({ conn, onSync, onDisconnect, syncing }: {
   conn: Connection; onSync: () => void; onDisconnect: () => void; syncing: boolean;
 }) {
-  const meta = PROVIDER_META[conn.provider] || PROVIDER_META.manual;
+  const meta = PROVIDER_META[conn.provider] ?? { emoji: "📱", name: conn.provider, color: "#0077B6", grad: ["#0077B6", "#1B998B"] as [string, string] };
   const lastSync = conn.lastSyncedAt
     ? new Date(conn.lastSyncedAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
     : "Never synced";
