@@ -140,22 +140,7 @@
           "cameraPermission": "AORANE uses the camera to scan food items and analyse nutritional content."
         }
       ],
-      [
-        "react-native-health-connect",
-        {
-          "android": {
-            "permissions": [
-              "Steps",
-              "HeartRate",
-              "TotalCaloriesBurned",
-              "ActiveCaloriesBurned",
-              "SleepSession",
-              "OxygenSaturation",
-              "Distance"
-            ]
-          }
-        }
-      ]
+      "./plugins/with-health-connect.js"
     ],
     "experiments": {
       "typedRoutes": true,
