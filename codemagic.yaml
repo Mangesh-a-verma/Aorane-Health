@@ -21,7 +21,7 @@ workflows:
       - name: Expo Prebuild (generate Android native code + autolink HC)
         script: |
           cd artifacts/aorane-mobile
-          npx expo prebuild \
+          yes | npx expo prebuild \
             --platform android \
             --clean
 
@@ -71,7 +71,7 @@ workflows:
       - name: Expo Prebuild (generate Android native code + autolink HC)
         script: |
           cd artifacts/aorane-mobile
-          npx expo prebuild \
+          yes | npx expo prebuild \
             --platform android \
             --clean
 
