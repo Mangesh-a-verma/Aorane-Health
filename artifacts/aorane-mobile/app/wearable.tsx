@@ -253,7 +253,7 @@ export default function WearableScreen() {
   // ─── Connect Health Connect (native Android permission flow) ─────────────────
   const connectHealthConnect = async () => {
     if (Platform.OS !== "android") {
-      Alert.alert("Android Only", "Health Connect is only available on Android devices. iOS users can use Manual Entry.");
+      Alert.alert("Android Only", "Health Connect is only available on Android devices. iOS users can use Apple HealthKit (coming soon).");
       return;
     }
     setConnectingHC(true);

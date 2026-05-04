@@ -13,7 +13,6 @@ const PROVIDERS = [
   {
     id: "health_connect",
     name: "Health Connect (Android)",
-    icon: null,
     description: "Sync steps, heart rate, sleep, SpO2, calories from any Android wearable",
     supported: true,
     requiresCredentials: false,
@@ -21,41 +20,15 @@ const PROVIDERS = [
   {
     id: "apple_healthkit",
     name: "Apple HealthKit (iOS)",
-    icon: null,
     description: "Sync from Apple Watch & all iOS health apps via HealthKit",
     supported: false,
     requiresCredentials: false,
   },
   {
-    id: "garmin",
-    name: "Garmin Connect",
-    icon: null,
-    description: "Sync from Garmin smartwatches (coming soon)",
-    supported: false,
-    requiresCredentials: true,
-  },
-  {
-    id: "fitbit",
-    name: "Fitbit",
-    icon: null,
-    description: "Sync from Fitbit devices (coming soon)",
-    supported: false,
-    requiresCredentials: true,
-  },
-  {
     id: "samsung_health",
     name: "Samsung Health",
-    icon: null,
     description: "Sync from Samsung Galaxy Watch/Band (coming soon)",
     supported: false,
-    requiresCredentials: false,
-  },
-  {
-    id: "manual",
-    name: "Manual Entry",
-    icon: null,
-    description: "Manually log health data from any device",
-    supported: true,
     requiresCredentials: false,
   },
 ];
@@ -67,7 +40,7 @@ router.get("/wearable/providers", requireAuth, async (_req: AuthRequest, res) =>
   res.json({
     providers: PROVIDERS.map((p) => ({
       ...p,
-      available: p.id === "manual" || p.id === "health_connect",
+      available: p.id === "health_connect",
     })),
   });
 });
