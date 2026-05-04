@@ -370,7 +370,7 @@ function OrgCard({ org, onToggleActive, onEdit, onDelete, onCustomPrice }: {
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <h3 className="font-bold text-foreground truncate text-sm">{org.name}</h3>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center flex-wrap gap-1.5 mt-1">
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                         style={{ background: `${meta.color}18`, color: meta.color }}>{meta.label}</span>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
@@ -378,9 +378,19 @@ function OrgCard({ org, onToggleActive, onEdit, onDelete, onCustomPrice }: {
                                  : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"}`}>
                     {org.isActive ? "● Active" : "○ Inactive"}
                   </span>
+                  {org.customPricePerSeat && (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                      <IndianRupee size={8} />{Number(org.customPricePerSeat)}/seat
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => onCustomPrice(org)}
+                  className={`p-1.5 rounded-lg text-xs transition-all ${org.customPricePerSeat ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" : "text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10"}`}
+                  title={org.customPricePerSeat ? `Custom: ₹${Number(org.customPricePerSeat)}/seat` : "Set Custom Price"}>
+                  <IndianRupee size={13} />
+                </button>
                 <button onClick={() => onEdit(org)} className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" title="Edit">
                   <Pencil size={13} />
                 </button>
@@ -815,6 +825,11 @@ export default function Organizations() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
+                            <button onClick={() => setPricingOrg(org)}
+                              className={`p-1.5 rounded-lg text-xs transition-all ${org.customPricePerSeat ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" : "text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10"}`}
+                              title={org.customPricePerSeat ? `Custom: ₹${Number(org.customPricePerSeat)}/seat` : "Set Custom Price"}>
+                              <IndianRupee size={12} />
+                            </button>
                             <button onClick={() => setEditOrg(org)}
                               className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" title="Edit">
                               <Pencil size={12} />
