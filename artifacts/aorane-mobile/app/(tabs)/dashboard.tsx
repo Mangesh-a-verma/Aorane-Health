@@ -203,7 +203,7 @@ const wp = StyleSheet.create({
   mClose:    { marginTop: 14, fontSize: 11, color: "rgba(255,255,255,0.45)", textAlign: "center", fontFamily: "Inter_400Regular" },
 });
 
-function todayDate() { return new Date().toISOString().slice(0, 10); }
+function todayDate() { return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }); }
 
 function getGreeting() {
   const h = new Date().getHours();

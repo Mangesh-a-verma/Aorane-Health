@@ -257,7 +257,7 @@ export default function StressScreen() {
   useEffect(() => { loadAll(); }, []);
   useFocusEffect(useCallback(() => { loadAll(); }, [loadAll]));
 
-  const todayStr  = new Date().toISOString().split("T")[0]!;
+  const todayStr  = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
   const todayLogs = logs.filter(l => l.loggedAt?.split("T")[0] === todayStr);
   const todayAvg  = todayLogs.length ? Math.round(todayLogs.reduce((s, l) => s + l.stressScore, 0) / todayLogs.length) : 0;
 

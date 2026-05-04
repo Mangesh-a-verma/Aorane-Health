@@ -41,7 +41,7 @@ function hoursColor(h: number): string {
 }
 
 function todayStr(): string {
-  return new Date().toISOString().split("T")[0];
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
 function formatDate(dateStr: string): string {

@@ -45,7 +45,7 @@ type ScanResult = {
 };
 type ScanMeta = { fromHistory: boolean; fromDb: boolean; fromCache: boolean; historyCount?: number };
 
-function today() { return new Date().toISOString().slice(0, 10); }
+function today() { return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }); }
 
 function SourceBadge({ fromHistory, fromDb, fromCache }: { fromHistory: boolean; fromDb: boolean; fromCache: boolean }) {
   const text = fromHistory ? "⏱️ History" : fromDb ? "📚 DB" : fromCache ? "💾 Cache" : "🤖 AI";

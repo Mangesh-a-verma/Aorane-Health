@@ -96,7 +96,7 @@ const INTENSITIES = [
   { value: "intense",  label: "Intense 🔥",  grad: ["#FF3B30", "#AF52DE"]      as [string, string] },
 ];
 
-function todayDate() { return new Date().toISOString().slice(0, 10); }
+function todayDate() { return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }); }
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
 export default function ExerciseScreen() {
