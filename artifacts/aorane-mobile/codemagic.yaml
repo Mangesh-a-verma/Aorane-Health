@@ -18,25 +18,30 @@ workflows:
       - name: Install pnpm
         script: npm install -g pnpm@10
 
-      - name: Install dependencies
-        script: pnpm install --frozen-lockfile
+      - name: Install monorepo dependencies
+        script: pnpm install --no-frozen-lockfile
+        working_directory: $CM_BUILD_DIR
 
-      - name: Expo prebuild (generate native Android code)
+      - name: Install mobile workspace dependencies
+        script: pnpm install --no-frozen-lockfile
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
+
+      - name: Expo prebuild (generate Android native code)
         script: |
           npx expo prebuild \
             --platform android \
             --clean \
             --no-install
-        working_directory: /builds/clone/artifacts/aorane-mobile
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
       - name: Build Android debug APK
         script: |
           chmod +x gradlew
           ./gradlew assembleDebug
-        working_directory: /builds/clone/artifacts/aorane-mobile/android
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile/android
 
     artifacts:
-      - /builds/clone/artifacts/aorane-mobile/android/app/build/outputs/apk/debug/*.apk
+      - $CM_BUILD_DIR/artifacts/aorane-mobile/android/app/build/outputs/apk/debug/*.apk
 
     publishing:
       email:
@@ -64,16 +69,21 @@ workflows:
       - name: Install pnpm
         script: npm install -g pnpm@10
 
-      - name: Install dependencies
-        script: pnpm install --frozen-lockfile
+      - name: Install monorepo dependencies
+        script: pnpm install --no-frozen-lockfile
+        working_directory: $CM_BUILD_DIR
 
-      - name: Expo prebuild (generate native Android code)
+      - name: Install mobile workspace dependencies
+        script: pnpm install --no-frozen-lockfile
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
+
+      - name: Expo prebuild (generate Android native code)
         script: |
           npx expo prebuild \
             --platform android \
             --clean \
             --no-install
-        working_directory: /builds/clone/artifacts/aorane-mobile
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
       - name: Build Android release AAB
         script: |
@@ -81,7 +91,7 @@ workflows:
           ./gradlew bundleRelease \
             -PandroidVersionCode=1 \
             -PandroidVersionName=1.0.0
-        working_directory: /builds/clone/artifacts/aorane-mobile/android
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile/android
 
       - name: Sign AAB
         script: |
@@ -90,13 +100,13 @@ workflows:
             -keystore $CM_KEYSTORE_PATH \
             -storepass $CM_KEYSTORE_PASSWORD \
             -keypass $CM_KEY_PASSWORD \
-            -signedjar /builds/clone/artifacts/aorane-mobile/android/app/build/outputs/bundle/release/app-release-signed.aab \
-            /builds/clone/artifacts/aorane-mobile/android/app/build/outputs/bundle/release/app-release.aab \
+            -signedjar $CM_BUILD_DIR/artifacts/aorane-mobile/android/app/build/outputs/bundle/release/app-release-signed.aab \
+            $CM_BUILD_DIR/artifacts/aorane-mobile/android/app/build/outputs/bundle/release/app-release.aab \
             $CM_KEY_ALIAS
 
     artifacts:
-      - /builds/clone/artifacts/aorane-mobile/android/app/build/outputs/bundle/release/*.aab
-      - /builds/clone/artifacts/aorane-mobile/android/app/build/outputs/apk/**/*.apk
+      - $CM_BUILD_DIR/artifacts/aorane-mobile/android/app/build/outputs/bundle/release/*.aab
+      - $CM_BUILD_DIR/artifacts/aorane-mobile/android/app/build/outputs/apk/**/*.apk
 
     publishing:
       email:
