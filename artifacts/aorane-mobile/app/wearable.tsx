@@ -343,7 +343,6 @@ export default function WearableScreen() {
         { accessType: "read", recordType: "Steps" },
         { accessType: "read", recordType: "HeartRate" },
         { accessType: "read", recordType: "TotalCaloriesBurned" },
-        { accessType: "read", recordType: "ActiveCaloriesBurned" },
         { accessType: "read", recordType: "SleepSession" },
         { accessType: "read", recordType: "OxygenSaturation" },
         { accessType: "read", recordType: "Distance" },
