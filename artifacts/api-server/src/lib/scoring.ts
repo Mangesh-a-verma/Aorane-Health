@@ -71,6 +71,8 @@ export interface DailyHealthScore {
   sleep: {
     hoursLogged: number;         // self-reported from profile
     isOptimal:   boolean;        // 7–9 hours
+    quality:     string | null;  // self-reported quality label
+    isLogged:    boolean;        // whether a sleep log exists today
   };
   bmi: {
     value:    number | null;
