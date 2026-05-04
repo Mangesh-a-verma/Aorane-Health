@@ -22,8 +22,8 @@ workflows:
         script: pnpm install --no-frozen-lockfile
         working_directory: $CM_BUILD_DIR
 
-      - name: Install mobile workspace dependencies
-        script: pnpm install --no-frozen-lockfile
+      - name: Install mobile deps with shameful hoist (flat node_modules, no symlinks)
+        script: pnpm install --no-frozen-lockfile --shamefully-hoist
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
       - name: Expo prebuild (generate Android native code)
@@ -32,11 +32,6 @@ workflows:
             --platform android \
             --clean \
             --no-install
-        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
-
-      - name: Force-install react-native-health-connect (AFTER prebuild so it persists)
-        script: |
-          npm install react-native-health-connect --legacy-peer-deps --no-save
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
       - name: Build Android debug APK
@@ -78,8 +73,8 @@ workflows:
         script: pnpm install --no-frozen-lockfile
         working_directory: $CM_BUILD_DIR
 
-      - name: Install mobile workspace dependencies
-        script: pnpm install --no-frozen-lockfile
+      - name: Install mobile deps with shameful hoist (flat node_modules, no symlinks)
+        script: pnpm install --no-frozen-lockfile --shamefully-hoist
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
       - name: Expo prebuild (generate Android native code)
@@ -88,11 +83,6 @@ workflows:
             --platform android \
             --clean \
             --no-install
-        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
-
-      - name: Force-install react-native-health-connect (AFTER prebuild so it persists)
-        script: |
-          npm install react-native-health-connect --legacy-peer-deps --no-save
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
       - name: Build Android release AAB
