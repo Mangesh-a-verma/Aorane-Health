@@ -2,14 +2,18 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Platform, Alert, Dimensions, ActivityIndicator, Modal,
-  TextInput, RefreshControl, Linking,
+  TextInput, RefreshControl, Linking, NativeModules,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/lib/api";
-// HC loaded lazily so a missing/unlinked native module does NOT crash the app
+
+// HC loaded lazily — missing/null native module must NOT crash the app.
+// Root cause of crashes: JS wrapper functions exist but underlying
+// NativeModules.HealthConnect is null → calling them causes JVM crash
+// that JS try-catch CANNOT intercept. We guard at the NativeModules level.
 type HCModule = {
   initialize: () => Promise<boolean>;
   requestPermission: (perms: Array<{ accessType: string; recordType: string }>) => Promise<Array<unknown>>;
@@ -23,12 +27,27 @@ function getHC(): HCModule | null {
   if (_hcAttempted) return _hc;
   _hcAttempted = true;
   try {
+    // ── CRITICAL GUARD ──────────────────────────────────────────────────────
+    // Check native module exists BEFORE requiring the JS wrapper.
+    // If NativeModules.HealthConnect is null/undefined, calling any method on
+    // the JS module causes a JVM crash that JS try-catch cannot catch.
+    // The module may register under either key depending on build config.
+    const nativeBridge =
+      NativeModules.HealthConnect ??
+      NativeModules.RNHealthConnect ??
+      NativeModules.ReactNativeHealthConnect;
+    if (!nativeBridge) {
+      _hc = null;
+      return null;
+    }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require("react-native-health-connect");
-    // Verify the loaded module actually has the required functions.
-    // After the getEnforcing→get patch, the internal NativeHealthConnect
-    // may be null — validate before caching so we don't cache a broken module.
-    if (mod && typeof mod.initialize === "function" && typeof mod.requestPermission === "function") {
+    if (
+      mod &&
+      typeof mod.initialize === "function" &&
+      typeof mod.requestPermission === "function" &&
+      typeof mod.readRecords === "function"
+    ) {
       _hc = mod as HCModule;
     } else {
       _hc = null;
@@ -37,6 +56,26 @@ function getHC(): HCModule | null {
   } catch {
     _hc = null;
     return null;
+  }
+}
+
+// Check if Health Connect app is installed on this device
+async function isHCAppInstalled(): Promise<boolean> {
+  try {
+    const urls = [
+      "healthconnect://",
+      "https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata",
+    ];
+    for (const url of urls) {
+      try {
+        const can = await Linking.canOpenURL(url);
+        if (url === "healthconnect://" && can) return true;
+      } catch { /* ignore */ }
+    }
+    // Fallback: assume installed if native module is present
+    return getHC() !== null;
+  } catch {
+    return false;
   }
 }
 
@@ -292,42 +331,54 @@ export default function WearableScreen() {
     }
     setConnectingHC(true);
     try {
-      // Load HC module — if null, the native module wasn't linked in this build
+      // ── Guard 1: NativeModules check (prevents JVM crash) ───────────────────
+      // getHC() validates NativeModules.HealthConnect != null before returning.
+      // If null → native module not linked in this build → safe error, no crash.
       const hc = getHC();
       if (!hc) {
         Alert.alert(
-          "Update Required",
-          "Health Connect is not yet linked in this build. Please update the app from the latest APK.",
+          "Health Connect Not Available",
+          "Health Connect module is not linked in this build.\n\nPlease install the latest APK from Codemagic.",
           [{ text: "OK" }]
         );
         setConnectingHC(false);
         return;
       }
 
-      // Defensive check — ensure required HC functions exist
-      if (typeof hc.initialize !== "function" || typeof hc.requestPermission !== "function") {
+      // ── Guard 2: HC app installation check ──────────────────────────────────
+      // requestPermission() crashes if HC app is not installed (ActivityNotFoundException).
+      // Check BEFORE calling any native HC method.
+      const hcInstalled = await isHCAppInstalled();
+      if (!hcInstalled) {
         Alert.alert(
-          "Module Error",
-          "Health Connect module is incomplete in this build. Please update the app.",
-          [{ text: "OK" }]
+          "Health Connect Not Installed",
+          "Please install the Health Connect app from Play Store first, then try again.",
+          [
+            {
+              text: "Install from Play Store",
+              onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata"),
+            },
+            { text: "Cancel", style: "cancel" },
+          ]
         );
         setConnectingHC(false);
         return;
       }
 
-      // Step 1: Initialize SDK directly (skip getSdkStatus — it can hard-crash on some devices/builds)
-      // initialize() returns false when HC is not installed, true when ready
+      // ── Step 1: Initialize SDK ───────────────────────────────────────────────
       let initialized = false;
       try {
         initialized = await hc.initialize();
-        console.log("[HC] initialize →", initialized);
       } catch (initErr) {
         console.warn("[HC] initialize threw:", initErr);
         Alert.alert(
-          "Health Connect Not Available",
-          "Health Connect is not installed or not supported on this device.\n\nInstall it from the Play Store and try again.",
+          "Health Connect Error",
+          "Could not initialize Health Connect.\n\nMake sure the app is updated from the Play Store.",
           [
-            { text: "Install HC", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
+            {
+              text: "Update HC",
+              onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata"),
+            },
             { text: "Cancel", style: "cancel" },
           ]
         );
@@ -337,10 +388,15 @@ export default function WearableScreen() {
 
       if (!initialized) {
         Alert.alert(
-          "Health Connect Not Found",
-          "Health Connect is not installed or needs an update. Please install it from the Play Store.",
+          "Health Connect Not Ready",
+          "Health Connect is installed but could not be initialized.\n\nOpen the Health Connect app once, then try again.",
           [
-            { text: "Install HC", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
+            {
+              text: "Open HC",
+              onPress: () => Linking.openURL("healthconnect://").catch(() =>
+                Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")
+              ),
+            },
             { text: "Cancel", style: "cancel" },
           ]
         );
@@ -348,7 +404,7 @@ export default function WearableScreen() {
         return;
       }
 
-      // Step 3: Request permissions — opens HC permission dialog
+      // ── Step 2: Request permissions ──────────────────────────────────────────
       let granted: Array<unknown> = [];
       try {
         granted = await hc.requestPermission([
@@ -360,12 +416,11 @@ export default function WearableScreen() {
           { accessType: "read", recordType: "Distance" },
           { accessType: "read", recordType: "ExerciseSession" },
         ]);
-        console.log("[HC] requestPermission → granted count:", granted?.length);
       } catch (permErr) {
         console.warn("[HC] requestPermission threw:", permErr);
         Alert.alert(
           "Permission Error",
-          "Could not open Health Connect permissions.\n\nGo to: Health Connect → App Permissions → AORANE → Allow All."
+          "Could not open Health Connect permissions.\n\nManually allow: Health Connect → App Permissions → AORANE → Allow All"
         );
         setConnectingHC(false);
         return;
@@ -374,30 +429,29 @@ export default function WearableScreen() {
       if (!granted || granted.length === 0) {
         Alert.alert(
           "Permission Denied",
-          "Allow AORANE to access Health Connect data.\n\nGo to: Health Connect → App Permissions → AORANE → Allow All.",
+          "No permissions granted.\n\nTo allow manually: Health Connect → App Permissions → AORANE → Allow All",
           [{ text: "OK" }]
         );
         setConnectingHC(false);
         return;
       }
 
-      // Step 4: Initial data sync
+      // ── Step 3: Initial data sync ────────────────────────────────────────────
       const hasData = await syncHealthConnectNative();
       await loadAll();
       setShowConnect(false);
       Alert.alert(
-        "✅ Connected!",
+        "Connected!",
         hasData
-          ? "Health Connect connected and data synced!"
-          : "Health Connect connected! No activity today yet — open your wearable app, sync it, then tap Refresh here."
+          ? "Health Connect connected and today's data synced!"
+          : "Health Connect connected!\n\nNo activity data yet — open your wearable app, sync to HC, then tap Refresh."
       );
     } catch (e: unknown) {
       const msg = (e as Error)?.message ?? String(e) ?? "Unknown error";
-      const name = (e as Error)?.name ?? "";
-      console.error("[HC] connectHealthConnect error:", name, msg);
+      console.error("[HC] connectHealthConnect error:", msg);
       Alert.alert(
-        "Connection Error",
-        `Could not connect to Health Connect.\n\nPlease make sure:\n• Health Connect app is installed & updated\n• Your wearable app has synced data to it\n\nError: ${msg}`
+        "Connection Failed",
+        `Could not connect Health Connect.\n\nMake sure:\n• Health Connect app is installed & updated\n• Your wearable has synced to it\n\nError: ${msg}`
       );
     }
     setConnectingHC(false);
@@ -413,17 +467,37 @@ export default function WearableScreen() {
           setSyncingProvider(null);
           return;
         }
+        // Guard: NativeModules check first (prevents JVM crash)
         const hc = getHC();
-        if (!hc) throw new Error("Health Connect module not available in this build. Please update the app.");
-        const initialized = await hc.initialize();
-        if (!initialized) throw new Error("Health Connect init failed");
+        if (!hc) {
+          Alert.alert("Update Required", "Health Connect module not linked in this build. Install the latest APK.");
+          setSyncingProvider(null);
+          return;
+        }
+        // Guard: HC app installed?
+        const installed = await isHCAppInstalled();
+        if (!installed) {
+          Alert.alert(
+            "Health Connect Not Installed",
+            "Install the Health Connect app from Play Store first.",
+            [{ text: "Install", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") }, { text: "Cancel", style: "cancel" }]
+          );
+          setSyncingProvider(null);
+          return;
+        }
+        let initialized = false;
+        try { initialized = await hc.initialize(); } catch { initialized = false; }
+        if (!initialized) {
+          Alert.alert("Sync Failed", "Health Connect could not be initialized. Open the HC app once, then try again.");
+          setSyncingProvider(null);
+          return;
+        }
         const hasData = await syncHealthConnectNative();
         await loadAll();
-        if (hasData) {
-          Alert.alert("✅ Synced!", "Health Connect data updated successfully!");
-        } else {
-          Alert.alert("Sync Complete", "No activity data found for today. Make sure your wearable is syncing to Health Connect, then try again.");
-        }
+        Alert.alert(
+          hasData ? "Synced!" : "Sync Complete",
+          hasData ? "Health Connect data updated!" : "No new data found. Make sure your wearable is syncing to Health Connect."
+        );
       } else {
         Alert.alert("Not Supported", `${PROVIDER_META[provider]?.name || provider} sync is not yet available.`);
       }
