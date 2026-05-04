@@ -375,6 +375,8 @@ router.post("/food/scan", requireAuth, planAiRateLimit("food_scan", { free: 5, p
     // ── Level 4: AI fallback ──────────────────────────────────────────────────
     // Text search → NVIDIA LLaMA 3.3 70B (fast, no quota issues)
     // Image scan → Gemini (vision support needed, food images only, no personal data)
+    // IMPORTANT: If AI fails (key missing / server down), return a generic estimate
+    // so the user can still log food rather than seeing a hard error.
     let result: Record<string, unknown>;
 
     if (searchTerm) {
@@ -408,9 +410,31 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
   "healthTip": "1 sentence health tip in English"
 }`;
 
-      const jsonStr = await callAI("food_ai", [{ role: "user", content: prompt }], { maxTokens: 1500, temperature: 0.3 });
-      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-      result = jsonMatch ? JSON.parse(jsonMatch[0]) : { foodNameEn: searchTerm, calories: 100, proteinG: 0, carbsG: 25, fatG: 2, fiberG: 0, servingSizeG: 100, servingDescription: "100g", category: "food", dietaryTags: [], vitamins: {} };
+      try {
+        const jsonStr = await callAI("food_ai", [{ role: "user", content: prompt }], { maxTokens: 1500, temperature: 0.3 });
+        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+        result = jsonMatch ? JSON.parse(jsonMatch[0]) : { foodNameEn: searchTerm, calories: 150, proteinG: 4, carbsG: 25, fatG: 3, fiberG: 2, servingSizeG: 100, servingDescription: "~100g (estimate)", category: "food", dietaryTags: [], vitamins: {}, healthTip: "Nutrition values are estimated — please verify." };
+      } catch {
+        // AI unavailable — return a generic estimate so user can still log food
+        result = {
+          foodNameEn: searchTerm,
+          calories: 150,
+          proteinG: 4,
+          carbsG: 25,
+          fatG: 3,
+          fiberG: 2,
+          sodiumMg: 100,
+          sugarG: 2,
+          servingSizeG: 100,
+          servingDescription: "~100g (estimated)",
+          category: "food",
+          dietaryTags: [],
+          vitamins: {},
+          glycemicIndex: null,
+          healthTip: "AI analysis unavailable — nutrition values are estimated. Please update manually if needed.",
+          _aiEstimate: true,
+        };
+      }
     } else if (imageBase64) {
       // Image-based food scan — Gemini only (NVIDIA LLaMA does not support vision)
       const geminiKey = process.env["GOOGLE_GEMINI_API_KEY"];
