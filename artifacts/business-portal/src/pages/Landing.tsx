@@ -217,11 +217,33 @@ export default function Landing() {
   const [investorOpen, setInvestorOpen] = useState(false);
   const [expertOpen, setExpertOpen] = useState(false);
   const settings = useSiteSettings();
+  const [planPrices, setPlanPrices] = useState<Record<string, { perSeat: number; perSeatYearly: number }>>({});
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_URL
+      ? `${import.meta.env.VITE_API_URL}/api`
+      : `${import.meta.env.BASE_URL}api`;
+    fetch(`${apiBase}/plans?type=organization`)
+      .then(r => r.json())
+      .then((data: { plans?: Array<{ planKey: string; monthlyPrice: string; yearlyPrice?: string; maxSeats?: number }> }) => {
+        if (data.plans?.length) {
+          const m: Record<string, { perSeat: number; perSeatYearly: number }> = {};
+          data.plans.forEach(p => {
+            const seats = p.maxSeats && p.maxSeats > 0 ? p.maxSeats : 1;
+            const monthly = Number(p.monthlyPrice) / seats;
+            const yearly = p.yearlyPrice ? Number(p.yearlyPrice) / seats / 12 : monthly * 0.9;
+            if (monthly > 0) m[p.planKey] = { perSeat: Math.round(monthly), perSeatYearly: Math.round(yearly) };
+          });
+          if (Object.keys(m).length) setPlanPrices(m);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -272,7 +294,7 @@ export default function Landing() {
   const plans = [
     {
       plan: "Starter",
-      perSeatPrice: 249,
+      perSeatPrice: planPrices["starter"]?.perSeat ?? 249,
       discountPct: 10,
       minSeats: 20,
       maxSeats: 50,
@@ -297,7 +319,7 @@ export default function Landing() {
     },
     {
       plan: "Growth",
-      perSeatPrice: 249,
+      perSeatPrice: planPrices["growth"]?.perSeat ?? 249,
       discountPct: 15,
       minSeats: 51,
       maxSeats: 250,
@@ -320,7 +342,7 @@ export default function Landing() {
     },
     {
       plan: "Enterprise",
-      perSeatPrice: 249,
+      perSeatPrice: planPrices["enterprise"]?.perSeat ?? 249,
       discountPct: 0,
       minSeats: 251,
       crmFree: true,
@@ -785,11 +807,12 @@ export default function Landing() {
                   style={{
                     background: billing === b ? `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)` : "transparent",
                     color: billing === b ? "white" : "#6b7280",
-                    border: "none", borderRadius: 99, padding: "10px 28px", minWidth: 186,
+                    border: "none", borderRadius: 99, padding: "10px 0",
+                    width: 190, textAlign: "center" as const,
                     fontWeight: 700, fontSize: 14, cursor: "pointer", transition: "all 0.25s",
                   }}
                 >
-                  {b === "monthly" ? "Monthly" : "Annual (Save 10%)"}
+                  {b === "monthly" ? "Monthly" : "Annual  (Save 10%)"}
                 </button>
               ))}
             </div>
