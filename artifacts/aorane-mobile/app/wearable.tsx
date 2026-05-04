@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Platform, Alert, Dimensions, ActivityIndicator, Modal,
-  TextInput, RefreshControl,
+  TextInput, RefreshControl, Linking,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -253,37 +253,57 @@ export default function WearableScreen() {
   // ─── Connect Health Connect (native Android permission flow) ─────────────────
   const connectHealthConnect = async () => {
     if (Platform.OS !== "android") {
-      Alert.alert("Android Only", "Health Connect is only available on Android devices. iOS users can use Apple HealthKit (coming soon).");
+      Alert.alert("Android Only", "Health Connect is only available on Android devices.");
       return;
     }
     setConnectingHC(true);
     try {
+      // Step 1: Check SDK availability
       const status = await getSdkStatus();
+      console.log("[HC] getSdkStatus →", status);
+
       if (status === SdkAvailabilityStatus.SDK_UNAVAILABLE) {
         Alert.alert(
           "Health Connect Not Installed",
-          "Please install Health Connect from the Play Store to sync your wearable data.",
+          "Please install Health Connect from the Play Store.",
           [
-            { text: "Install", onPress: () => { /* Linking to Play Store */ } },
+            {
+              text: "Install from Play Store",
+              onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata"),
+            },
             { text: "Cancel", style: "cancel" },
           ]
         );
         setConnectingHC(false);
         return;
       }
+
       if (status === SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
-        Alert.alert("Update Required", "Please update Health Connect from the Play Store and try again.");
+        Alert.alert(
+          "Update Required",
+          "Please update Health Connect from the Play Store.",
+          [
+            {
+              text: "Update",
+              onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata"),
+            },
+            { text: "Cancel", style: "cancel" },
+          ]
+        );
         setConnectingHC(false);
         return;
       }
 
+      // Step 2: Initialize SDK
       const initialized = await initialize();
+      console.log("[HC] initialize →", initialized);
       if (!initialized) {
-        Alert.alert("Error", "Could not initialize Health Connect. Please try again.");
+        Alert.alert("Init Failed", "Health Connect could not be initialized. Please restart the app and try again.");
         setConnectingHC(false);
         return;
       }
 
+      // Step 3: Request permissions — opens HC permission dialog
       const granted = await requestPermission([
         { accessType: "read", recordType: "Steps" },
         { accessType: "read", recordType: "HeartRate" },
@@ -293,28 +313,55 @@ export default function WearableScreen() {
         { accessType: "read", recordType: "OxygenSaturation" },
         { accessType: "read", recordType: "Distance" },
       ]);
+      console.log("[HC] requestPermission → granted count:", granted?.length);
 
       if (!granted || granted.length === 0) {
-        Alert.alert("Permission Denied", "Health Connect permissions are required to sync your health data. Please allow access and try again.");
+        Alert.alert(
+          "Permission Denied",
+          "Allow AORANE to access Health Connect data.\n\nGo to: Health Connect → App Permissions → AORANE → Allow All.",
+          [{ text: "OK" }]
+        );
         setConnectingHC(false);
         return;
       }
 
-      // Permissions granted — do initial sync
+      // Step 4: Initial data sync
       const hasData = await syncHealthConnectNative();
       await loadAll();
       setShowConnect(false);
-      if (hasData) {
-        Alert.alert("✅ Connected!", "Health Connect connected and data synced successfully!");
-      } else {
-        Alert.alert("✅ Connected!", "Health Connect connected! No activity recorded today. Open your wearable app and sync data, then tap Refresh.");
-      }
+      Alert.alert(
+        "✅ Connected!",
+        hasData
+          ? "Health Connect connected and data synced!"
+          : "Health Connect connected! No activity today yet — open your wearable app, sync it, then tap Refresh here."
+      );
     } catch (e: unknown) {
-      const msg = (e as Error)?.message || "";
-      if (msg.includes("permission") || msg.includes("Permission")) {
-        Alert.alert("Permission Error", "Could not request Health Connect permissions. Please check device settings.");
+      const msg = (e as Error)?.message ?? String(e) ?? "Unknown error";
+      const name = (e as Error)?.name ?? "";
+      console.error("[HC] connectHealthConnect error:", name, msg);
+
+      if (msg.toLowerCase().includes("permission")) {
+        Alert.alert(
+          "Permission Error",
+          "Go to Settings → Apps → AORANE → Permissions and allow Health Connect access."
+        );
+      } else if (msg.toLowerCase().includes("not available") || msg.toLowerCase().includes("unavailable")) {
+        Alert.alert(
+          "Not Available",
+          "Health Connect is not available on this device. Please install it from the Play Store.",
+          [
+            {
+              text: "Install",
+              onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata"),
+            },
+            { text: "Cancel", style: "cancel" },
+          ]
+        );
       } else {
-        Alert.alert("Connection Error", "Could not connect to Health Connect. Please try again.");
+        Alert.alert(
+          "Connection Error",
+          `Could not connect to Health Connect.\n\nError: ${msg}\n\nMake sure Health Connect is installed, updated, and your wearable app has synced data to it.`
+        );
       }
     }
     setConnectingHC(false);
