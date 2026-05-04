@@ -9,13 +9,25 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/lib/api";
-import {
-  initialize,
-  requestPermission,
-  readRecords,
-  getSdkStatus,
-  SdkAvailabilityStatus,
-} from "react-native-health-connect";
+// HC loaded lazily so a missing/unlinked native module does NOT crash the app
+type HCModule = {
+  initialize: () => Promise<boolean>;
+  requestPermission: (perms: Array<{ accessType: string; recordType: string }>) => Promise<Array<unknown>>;
+  readRecords: (type: string, opts: unknown) => Promise<unknown>;
+  getSdkStatus: () => Promise<number>;
+  SdkAvailabilityStatus: { SDK_UNAVAILABLE: number; SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED: number; SDK_AVAILABLE: number };
+};
+let _hc: HCModule | null = null;
+function getHC(): HCModule | null {
+  if (_hc) return _hc;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    _hc = require("react-native-health-connect") as HCModule;
+    return _hc;
+  } catch {
+    return null;
+  }
+}
 
 const { width: W } = Dimensions.get("window");
 
@@ -189,18 +201,20 @@ export default function WearableScreen() {
 
   // ─── Health Connect: read native SDK data and send to server ─────────────────
   const syncHealthConnectNative = async (): Promise<boolean> => {
+    const hc = getHC();
+    if (!hc) throw new Error("Health Connect module not available in this build.");
     const now = new Date();
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const timeRangeFilter = { operator: "between" as const, startTime: yesterday.toISOString(), endTime: now.toISOString() };
 
     const [stepsRes, hrRes, calRes, sleepRes, spo2Res, distRes, activeRes] = await Promise.allSettled([
-      readRecords("Steps", { timeRangeFilter }),
-      readRecords("HeartRate", { timeRangeFilter }),
-      readRecords("TotalCaloriesBurned", { timeRangeFilter }),
-      readRecords("SleepSession", { timeRangeFilter }),
-      readRecords("OxygenSaturation", { timeRangeFilter }),
-      readRecords("Distance", { timeRangeFilter }),
-      readRecords("ActiveCaloriesBurned", { timeRangeFilter }),
+      hc.readRecords("Steps", { timeRangeFilter }),
+      hc.readRecords("HeartRate", { timeRangeFilter }),
+      hc.readRecords("TotalCaloriesBurned", { timeRangeFilter }),
+      hc.readRecords("SleepSession", { timeRangeFilter }),
+      hc.readRecords("OxygenSaturation", { timeRangeFilter }),
+      hc.readRecords("Distance", { timeRangeFilter }),
+      hc.readRecords("ActiveCaloriesBurned", { timeRangeFilter }),
     ]);
 
     let steps: number | null = null;
@@ -258,11 +272,23 @@ export default function WearableScreen() {
     }
     setConnectingHC(true);
     try {
+      // Load HC module — if null, the native module wasn't linked in this build
+      const hc = getHC();
+      if (!hc) {
+        Alert.alert(
+          "Update Required",
+          "Health Connect is not yet linked in this build. A new build is in progress — please update the app from the latest APK.",
+          [{ text: "OK" }]
+        );
+        setConnectingHC(false);
+        return;
+      }
+
       // Step 1: Check SDK availability
-      const status = await getSdkStatus();
+      const status = await hc.getSdkStatus();
       console.log("[HC] getSdkStatus →", status);
 
-      if (status === SdkAvailabilityStatus.SDK_UNAVAILABLE) {
+      if (status === hc.SdkAvailabilityStatus.SDK_UNAVAILABLE) {
         Alert.alert(
           "Health Connect Not Installed",
           "Please install Health Connect from the Play Store.",
@@ -278,7 +304,7 @@ export default function WearableScreen() {
         return;
       }
 
-      if (status === SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
+      if (status === hc.SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
         Alert.alert(
           "Update Required",
           "Please update Health Connect from the Play Store.",
@@ -295,7 +321,7 @@ export default function WearableScreen() {
       }
 
       // Step 2: Initialize SDK
-      const initialized = await initialize();
+      const initialized = await hc.initialize();
       console.log("[HC] initialize →", initialized);
       if (!initialized) {
         Alert.alert("Init Failed", "Health Connect could not be initialized. Please restart the app and try again.");
@@ -304,7 +330,7 @@ export default function WearableScreen() {
       }
 
       // Step 3: Request permissions — opens HC permission dialog
-      const granted = await requestPermission([
+      const granted = await hc.requestPermission([
         { accessType: "read", recordType: "Steps" },
         { accessType: "read", recordType: "HeartRate" },
         { accessType: "read", recordType: "TotalCaloriesBurned" },
@@ -377,7 +403,9 @@ export default function WearableScreen() {
           setSyncingProvider(null);
           return;
         }
-        const initialized = await initialize();
+        const hc = getHC();
+        if (!hc) throw new Error("Health Connect module not available in this build. Please update the app.");
+        const initialized = await hc.initialize();
         if (!initialized) throw new Error("Health Connect init failed");
         const hasData = await syncHealthConnectNative();
         await loadAll();
