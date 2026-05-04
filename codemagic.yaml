@@ -13,12 +13,16 @@ workflows:
         EXPO_NO_TELEMETRY: "1"
 
     scripts:
+      - name: Prepare workspace (hide pnpm config from npm/expo/gradle)
+        script: |
+          mv pnpm-workspace.yaml pnpm-workspace.yaml.bak
+
       - name: Install dependencies
         script: |
           cd artifacts/aorane-mobile
           npm install --legacy-peer-deps
 
-      - name: Expo Prebuild (generate Android native code + autolink HC)
+      - name: Expo Prebuild (generate Android native code + autolink)
         script: |
           cd artifacts/aorane-mobile
           npx expo prebuild \
@@ -26,16 +30,24 @@ workflows:
             --clean \
             --no-install
 
+      - name: Verify Health Connect autolinking
+        script: |
+          echo "=== settings.gradle (HC autolink check) ==="
+          grep -i "health" artifacts/aorane-mobile/android/settings.gradle || echo "HC NOT FOUND in settings.gradle!"
+          echo "=== PackageList check ==="
+          find artifacts/aorane-mobile/android -name "PackageList.java" -exec grep -l "HealthConnect" {} \; 2>/dev/null || echo "PackageList not found or HC missing"
+          echo "=== node_modules HC check ==="
+          ls artifacts/aorane-mobile/node_modules/react-native-health-connect/android/src/main/java/dev/matinzd/healthconnect/ 2>/dev/null | head -5 || echo "HC android src not found"
+
       - name: Build Android AAB
         script: |
           set -e
-          REPO_ROOT="$(pwd)"
-          mv "$REPO_ROOT/pnpm-workspace.yaml" "$REPO_ROOT/pnpm-workspace.yaml.bak"
-          cd "$REPO_ROOT/artifacts/aorane-mobile/android"
+          cd artifacts/aorane-mobile/android
           chmod +x gradlew
           ./gradlew bundleRelease 2>&1
           RESULT=$?
-          mv "$REPO_ROOT/pnpm-workspace.yaml.bak" "$REPO_ROOT/pnpm-workspace.yaml"
+          cd ../../..
+          mv pnpm-workspace.yaml.bak pnpm-workspace.yaml
           exit $RESULT
 
     artifacts:
@@ -64,12 +76,16 @@ workflows:
         EXPO_NO_TELEMETRY: "1"
 
     scripts:
+      - name: Prepare workspace (hide pnpm config from npm/expo/gradle)
+        script: |
+          mv pnpm-workspace.yaml pnpm-workspace.yaml.bak
+
       - name: Install dependencies
         script: |
           cd artifacts/aorane-mobile
           npm install --legacy-peer-deps
 
-      - name: Expo Prebuild (generate Android native code + autolink HC)
+      - name: Expo Prebuild (generate Android native code + autolink)
         script: |
           cd artifacts/aorane-mobile
           npx expo prebuild \
@@ -77,16 +93,22 @@ workflows:
             --clean \
             --no-install
 
+      - name: Verify Health Connect autolinking
+        script: |
+          echo "=== settings.gradle (HC check) ==="
+          grep -i "health" artifacts/aorane-mobile/android/settings.gradle || echo "HC NOT FOUND in settings.gradle!"
+          echo "=== node_modules HC native src ==="
+          ls artifacts/aorane-mobile/node_modules/react-native-health-connect/android/src/main/java/dev/matinzd/healthconnect/ 2>/dev/null || echo "NOT FOUND"
+
       - name: Build Android Release APK
         script: |
           set -e
-          REPO_ROOT="$(pwd)"
-          mv "$REPO_ROOT/pnpm-workspace.yaml" "$REPO_ROOT/pnpm-workspace.yaml.bak"
-          cd "$REPO_ROOT/artifacts/aorane-mobile/android"
+          cd artifacts/aorane-mobile/android
           chmod +x gradlew
           ./gradlew assembleRelease 2>&1
           RESULT=$?
-          mv "$REPO_ROOT/pnpm-workspace.yaml.bak" "$REPO_ROOT/pnpm-workspace.yaml"
+          cd ../../..
+          mv pnpm-workspace.yaml.bak pnpm-workspace.yaml
           exit $RESULT
 
     artifacts:
