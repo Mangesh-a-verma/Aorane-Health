@@ -22,7 +22,7 @@ workflows:
         script: pnpm install --no-frozen-lockfile
         working_directory: $CM_BUILD_DIR
 
-      - name: Install mobile deps (shamefully-hoist for flat node_modules)
+      - name: Install mobile deps + patch HC TurboModule
         script: |
           pnpm install --no-frozen-lockfile --shamefully-hoist
           # Belt-and-suspenders: force real (non-symlink) HC install via npm
@@ -31,6 +31,25 @@ workflows:
             npm install react-native-health-connect@3.5.0 --legacy-peer-deps --no-save
           fi
           echo "=== HC check ===" && ls node_modules/react-native-health-connect/package.json && echo "HC OK"
+
+          # ── CRITICAL PATCH ──────────────────────────────────────────────────
+          # TurboModuleRegistry.getEnforcing() hard-crashes the app when HC
+          # native module is unavailable (e.g. device missing HC app).
+          # Patching to .get() which returns null instead of crashing.
+          HC_SRC="node_modules/react-native-health-connect/src/NativeHealthConnect.ts"
+          if [ -f "$HC_SRC" ]; then
+            sed -i 's/TurboModuleRegistry\.getEnforcing/TurboModuleRegistry.get/g' "$HC_SRC"
+            echo "=== HC TurboModule patched: getEnforcing → get ==="
+            tail -3 "$HC_SRC"
+          else
+            echo "WARNING: HC NativeHealthConnect.ts not found at $HC_SRC"
+          fi
+          # Also patch compiled lib if present
+          HC_LIB="node_modules/react-native-health-connect/lib/commonjs/NativeHealthConnect.js"
+          if [ -f "$HC_LIB" ]; then
+            sed -i 's/getEnforcing/get/g' "$HC_LIB"
+            echo "=== HC lib/commonjs patched ==="
+          fi
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
       - name: Expo prebuild (generate Android native code)
@@ -80,7 +99,7 @@ workflows:
         script: pnpm install --no-frozen-lockfile
         working_directory: $CM_BUILD_DIR
 
-      - name: Install mobile deps (shamefully-hoist for flat node_modules)
+      - name: Install mobile deps + patch HC TurboModule
         script: |
           pnpm install --no-frozen-lockfile --shamefully-hoist
           # Belt-and-suspenders: force real (non-symlink) HC install via npm
@@ -89,6 +108,25 @@ workflows:
             npm install react-native-health-connect@3.5.0 --legacy-peer-deps --no-save
           fi
           echo "=== HC check ===" && ls node_modules/react-native-health-connect/package.json && echo "HC OK"
+
+          # ── CRITICAL PATCH ──────────────────────────────────────────────────
+          # TurboModuleRegistry.getEnforcing() hard-crashes the app when HC
+          # native module is unavailable (e.g. device missing HC app).
+          # Patching to .get() which returns null instead of crashing.
+          HC_SRC="node_modules/react-native-health-connect/src/NativeHealthConnect.ts"
+          if [ -f "$HC_SRC" ]; then
+            sed -i 's/TurboModuleRegistry\.getEnforcing/TurboModuleRegistry.get/g' "$HC_SRC"
+            echo "=== HC TurboModule patched: getEnforcing → get ==="
+            tail -3 "$HC_SRC"
+          else
+            echo "WARNING: HC NativeHealthConnect.ts not found at $HC_SRC"
+          fi
+          # Also patch compiled lib if present
+          HC_LIB="node_modules/react-native-health-connect/lib/commonjs/NativeHealthConnect.js"
+          if [ -f "$HC_LIB" ]; then
+            sed -i 's/getEnforcing/get/g' "$HC_LIB"
+            echo "=== HC lib/commonjs patched ==="
+          fi
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
       - name: Expo prebuild (generate Android native code)
