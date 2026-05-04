@@ -149,11 +149,46 @@ export default function Analytics() {
               <Calendar size={12} />
               Last 30 Days
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95"
-                    style={{
-                      background: "linear-gradient(135deg,#0077B6,#1B998B)",
-                      color: "white",
-                    }}>
+            <button
+              onClick={() => {
+                if (!data) return;
+                const date = new Date().toLocaleDateString("en-IN", { day:"2-digit", month:"long", year:"numeric" });
+                const convRate = data.totalUsers > 0 ? ((data.activeSubscriptions / data.totalUsers) * 100).toFixed(1) : "0.0";
+                const revTrend = buildRevenueTrend(data.totalRevenue);
+                const rows = [
+                  ["AORANE Platform Analytics Report"],
+                  [`Generated: ${date}`],
+                  [],
+                  ["── KPI Summary ──"],
+                  ["Metric", "Value"],
+                  ["Total Users", data.totalUsers],
+                  ["Total Organizations", data.totalOrganizations],
+                  ["Active Subscriptions", data.activeSubscriptions],
+                  ["Total Revenue (MRR)", `₹${data.totalRevenue.toLocaleString("en-IN")}`],
+                  ["Conversion Rate (Free→Paid)", `${convRate}%`],
+                  [],
+                  ["── Plan Breakdown ──"],
+                  ["Plan", "User Count"],
+                  ...(data.planBreakdown || []).map(p => [p.plan.charAt(0).toUpperCase() + p.plan.slice(1), p.count]),
+                  [],
+                  ["── Revenue Trend (8-month estimate) ──"],
+                  ["Month", "Revenue (₹)", "Costs (₹)"],
+                  ...revTrend.map(r => [r.month, r.revenue, r.costs]),
+                  [],
+                  ["── Feature Affinity ──"],
+                  ["Feature", "Usage %"],
+                  ...buildRadarData().map(r => [r.feature, `${r.usage}%`]),
+                ];
+                const csv = rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = `aorane-analytics-report-${new Date().toISOString().slice(0,10)}.csv`;
+                a.click();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95"
+              style={{ background: "linear-gradient(135deg,#0077B6,#1B998B)", color: "white" }}
+            >
               <Download size={12} />
               Export Report
             </button>
