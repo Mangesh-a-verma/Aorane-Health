@@ -225,7 +225,13 @@ router.get("/health/water/:date", requireAuth, async (req: AuthRequest, res) => 
 
 router.get("/health/score/:date", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const date = String(req.params.date);
+    let date = String(req.params.date);
+    // IST auto-correction: old APK sends UTC date via toISOString().slice(0,10)
+    // Between 00:00–05:30 IST, UTC date is 1 day behind the actual IST date.
+    // If client sent "yesterday" in IST, silently correct to today's IST date.
+    const nowIST  = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    const prevIST = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    if (date === prevIST) date = nowIST;
     const score = await computeDailyScore(req.userId!, date);
     res.json({ score });
   } catch (e) {
@@ -254,7 +260,10 @@ router.get("/health/score/:date", requireAuth, async (req: AuthRequest, res) => 
 
 router.post("/health/score/:date/compute", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const date = String(req.params.date);
+    let date = String(req.params.date);
+    const nowIST  = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    const prevIST = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    if (date === prevIST) date = nowIST;
     const score = await computeDailyScore(req.userId!, date);
     res.json({ score });
   } catch (e) {
