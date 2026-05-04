@@ -584,7 +584,7 @@ export default function Invoices() {
             </div>
             <div className="px-4 py-3 border-t bg-muted/20 flex items-center justify-between text-xs text-muted-foreground">
               <span>Showing {filtered.length} of {invoices.length} invoices</span>
-              <span className="text-xs">Click PDF to download · Opens print dialog → Save as PDF</span>
+              <span className="text-xs">Click PDF → Print dialog opens → "Save as PDF" select karo</span>
             </div>
           </div>
         )}
