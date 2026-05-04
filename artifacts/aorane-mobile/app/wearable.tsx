@@ -735,32 +735,33 @@ export default function WearableScreen() {
               <TouchableOpacity onPress={() => setShowConnect(false)}><Ionicons name="close" size={22} color="#7A90A4" /></TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
+              <View style={{ backgroundColor: "#FFF8E1", borderRadius: 12, padding: 12, marginBottom: 4, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={{ fontSize: 18 }}>🚧</Text>
+                <Text style={{ flex: 1, fontFamily: "Inter_500Medium", fontSize: 12, color: "#92400E", lineHeight: 18 }}>
+                  Wearable integrations are under development. Manual data entry is available right now.
+                </Text>
+              </View>
               {providers.filter((p) => ALLOWED_PROVIDERS.includes(p.id)).map((p) => {
                 const meta = PROVIDER_META[p.id] ?? { emoji: "📱", name: p.name, color: "#0077B6", grad: ["#0077B6", "#1B998B"] as [string, string] };
-                const alreadyConnected = activeConnections.some((c) => c.provider === p.id);
-                const isHC = p.id === "health_connect";
+                // All wearable providers are Coming Soon — disable connect for all
+                const comingSoon = true;
                 return (
                   <TouchableOpacity key={p.id}
-                    disabled={!p.available || alreadyConnected || (isHC && connectingHC)}
-                    onPress={() => { if (isHC) connectHealthConnect(); }}
-                    style={[styles.providerBtn, { opacity: !p.available ? 0.45 : 1 }]}
+                    disabled={true}
+                    style={[styles.providerBtn, { opacity: 0.55 }]}
                   >
                     <LinearGradient
-                      colors={alreadyConnected ? ["#10B981", "#059669"] : (p.available ? meta.grad : ["#D1D5DB", "#9CA3AF"])}
+                      colors={["#D1D5DB", "#9CA3AF"]}
                       start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                       style={styles.providerBtnGrad}>
                       <Text style={{ fontSize: 26 }}>{meta.emoji}</Text>
                       <View style={{ flex: 1, marginLeft: 12 }}>
                         <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>{p.name}</Text>
-                        <Text style={{ color: "rgba(255,255,255,0.75)", fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 2 }}>
-                          {alreadyConnected ? "✓ Already Connected" : (!p.available ? "Coming Soon" : p.description)}
+                        <Text style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 2 }}>
+                          {comingSoon ? "🔜 Coming Soon" : p.description}
                         </Text>
                       </View>
-                      {p.available && !alreadyConnected && (
-                        isHC && connectingHC
-                          ? <ActivityIndicator size="small" color="#FFF" />
-                          : <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.8)" />
-                      )}
+                      <Text style={{ color: "rgba(255,255,255,0.9)", fontFamily: "Inter_700Bold", fontSize: 10, backgroundColor: "rgba(0,0,0,0.15)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>SOON</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 );
