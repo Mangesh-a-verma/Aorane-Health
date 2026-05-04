@@ -12,7 +12,7 @@ import { cachedGet } from "@/lib/api";
 import { useOfflineLog } from "@/hooks/useOfflineLog";
 
 const { width: W } = Dimensions.get("window");
-const GOAL = 8;
+const ML_PER_GLASS = 250;
 
 const DRINK_TYPES = [
   { key: "water",   label: "Water",   emoji: "💧", color: "#0077B6" },
@@ -38,6 +38,7 @@ export default function WaterScreen() {
   const isDark = useColorScheme() === "dark";
   const insets = useSafeAreaInsets();
   const [glasses, setGlasses] = useState(0);
+  const [goalGlasses, setGoalGlasses] = useState(10); // default 2500ml / 250 = 10
   const [logs, setLogs] = useState<Array<{ drinkType?: string; drink_type?: string; glassesCount?: number; glasses_count?: number; loggedAt?: string; logged_at?: string; _offline?: boolean }>>([]);
   const [selectedDrink, setSelectedDrink] = useState("water");
   const [loading, setLoading] = useState(false);
@@ -56,14 +57,24 @@ export default function WaterScreen() {
     } catch { }
   }, [today]);
 
-  useEffect(() => { loadWater(); }, [loadWater]);
+  const loadGoal = useCallback(async () => {
+    try {
+      const { data } = await cachedGet<{ score?: { water?: { mlGoal?: number } } }>(`/health/score/${today}`);
+      const mlGoal = data?.score?.water?.mlGoal;
+      if (mlGoal && mlGoal > 0) {
+        setGoalGlasses(Math.round(mlGoal / ML_PER_GLASS));
+      }
+    } catch { }
+  }, [today]);
+
+  useEffect(() => { loadWater(); loadGoal(); }, [loadWater, loadGoal]);
 
   // Refresh when offline queue syncs
   useEffect(() => onSync(loadWater), [onSync, loadWater]);
 
   useEffect(() => {
-    Animated.timing(progressAnim, { toValue: Math.min(1, glasses / GOAL), duration: 600, useNativeDriver: false }).start();
-  }, [glasses]);
+    Animated.timing(progressAnim, { toValue: Math.min(1, glasses / goalGlasses), duration: 600, useNativeDriver: false }).start();
+  }, [glasses, goalGlasses]);
 
   const addGlass = async () => {
     setLoading(true);
@@ -92,7 +103,7 @@ export default function WaterScreen() {
     } catch { } finally { setLoading(false); }
   };
 
-  const pct = Math.min(100, Math.round((glasses / GOAL) * 100));
+  const pct = Math.min(100, Math.round((glasses / goalGlasses) * 100));
   const progressWidth = progressAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
 
   const getMsgColor = () => pct >= 100 ? "#10B981" : pct >= 60 ? "#F59E0B" : "#DC2626";
@@ -115,7 +126,7 @@ export default function WaterScreen() {
           </TouchableOpacity>
           <View>
             <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>Water Tracker 💧</Text>
-            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Stay hydrated — drink 8 glasses daily</Text>
+            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Stay hydrated — daily goal: {goalGlasses * ML_PER_GLASS} ml</Text>
           </View>
         </View>
 
@@ -123,7 +134,7 @@ export default function WaterScreen() {
         <LinearGradient colors={["#0077B6","#1B998B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 22, padding: 24, marginBottom: 16, alignItems: "center" }}>
           <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 8 }}>Today's Water</Text>
           <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 56 }}>{glasses}</Text>
-          <Text style={{ color: "rgba(255,255,255,0.7)", fontFamily: "Inter_500Medium", fontSize: 16 }}>/ {GOAL} glasses ({glasses * 250} ml)</Text>
+          <Text style={{ color: "rgba(255,255,255,0.7)", fontFamily: "Inter_500Medium", fontSize: 16 }}>/ {goalGlasses} glasses ({goalGlasses * ML_PER_GLASS} ml goal)</Text>
           <View style={{ width: "100%", height: 10, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 5, marginTop: 16, overflow: "hidden" }}>
             <Animated.View style={{ height: "100%", width: progressWidth, backgroundColor: "#FFF", borderRadius: 5 }} />
           </View>
@@ -136,8 +147,8 @@ export default function WaterScreen() {
             {Platform.OS === "ios" ? <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(4,16,32,0.45)" : "rgba(255,255,255,0.45)" }]} />}
             <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 16, textAlign: "center" }}>Progress: {pct}%</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 12 }}>
-              {Array.from({ length: GOAL }).map((_, i) => (
-                <GlassIcon key={i} filled={i < glasses} partial={i === glasses && glasses < GOAL} />
+              {Array.from({ length: goalGlasses }).map((_, i) => (
+                <GlassIcon key={i} filled={i < glasses} partial={i === glasses && glasses < goalGlasses} />
               ))}
             </View>
           </View>
