@@ -822,15 +822,18 @@ export default function DashboardScreen() {
                 { emoji: "🧘", label: "Stress",      sub: "Mood check",     route: "/stress",            iconBg: "#F3E8FF" },
               ],
               [
+                { emoji: "😴", label: "Sleep",       sub: "Rest tracker",   route: "/sleep",             iconBg: "#EDE9FE" },
                 { emoji: "🏃", label: "Exercise",    sub: "Workouts",       route: "/(tabs)/exercise",   iconBg: "#FEF3C7" },
                 { emoji: "💊", label: "Medicine",    sub: "Reminders",      route: "/(tabs)/medicine",   iconBg: "#DBEAFE" },
                 { emoji: "📊", label: "Reports",     sub: "Health report",  route: "/health-report",     iconBg: "#F1F5F9" },
+              ],
+              [
                 userGender === "female"
                   ? { emoji: "🌸", label: "Period",  sub: "Cycle tracker",  route: "/period",            iconBg: "#FCE7F3" }
                   : { emoji: "🔥", label: "Calories", sub: "Nutrition",     route: "/(tabs)/food",       iconBg: "#FEE2E2" },
               ],
             ].map((row, ri) => (
-              <View key={ri} style={[s.toolGrid, ri === 1 && { marginTop: 8 }]}>
+              <View key={ri} style={[s.toolGrid, ri > 0 && { marginTop: 8 }]}>
                 {row.map((t) => (
                   <TouchableOpacity key={t.label} style={{ flex: 1 }} onPress={() => router.push(t.route as never)} activeOpacity={0.85}>
                     <View style={s.toolCard}>
