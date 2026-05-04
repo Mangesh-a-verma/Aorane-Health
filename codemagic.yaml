@@ -9,12 +9,18 @@ workflows:
       vars:
         EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
         PACKAGE_NAME: in.aorane.app
+        NPM_CONFIG_LEGACY_PEER_DEPS: "true"
+        EXPO_NO_TELEMETRY: "1"
 
     scripts:
-      - name: Install & Prebuild (with autolinking)
+      - name: Install dependencies
         script: |
           cd artifacts/aorane-mobile
           npm install --legacy-peer-deps
+
+      - name: Expo Prebuild (generate Android native code + autolink HC)
+        script: |
+          cd artifacts/aorane-mobile
           npx expo prebuild \
             --platform android \
             --clean
@@ -53,12 +59,18 @@ workflows:
       vars:
         EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
         PACKAGE_NAME: in.aorane.app
+        NPM_CONFIG_LEGACY_PEER_DEPS: "true"
+        EXPO_NO_TELEMETRY: "1"
 
     scripts:
-      - name: Install & Prebuild (with autolinking)
+      - name: Install dependencies
         script: |
           cd artifacts/aorane-mobile
           npm install --legacy-peer-deps
+
+      - name: Expo Prebuild (generate Android native code + autolink HC)
+        script: |
+          cd artifacts/aorane-mobile
           npx expo prebuild \
             --platform android \
             --clean
