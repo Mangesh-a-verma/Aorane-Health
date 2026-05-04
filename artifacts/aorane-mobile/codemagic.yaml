@@ -22,8 +22,15 @@ workflows:
         script: pnpm install --no-frozen-lockfile
         working_directory: $CM_BUILD_DIR
 
-      - name: Install mobile deps with shameful hoist (flat node_modules, no symlinks)
-        script: pnpm install --no-frozen-lockfile --shamefully-hoist
+      - name: Install mobile deps (shamefully-hoist for flat node_modules)
+        script: |
+          pnpm install --no-frozen-lockfile --shamefully-hoist
+          # Belt-and-suspenders: force real (non-symlink) HC install via npm
+          if [ ! -f "node_modules/react-native-health-connect/package.json" ] || [ -L "node_modules/react-native-health-connect" ]; then
+            echo "HC symlink or missing — forcing npm install..."
+            npm install react-native-health-connect@3.5.0 --legacy-peer-deps --no-save
+          fi
+          echo "=== HC check ===" && ls node_modules/react-native-health-connect/package.json && echo "HC OK"
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
       - name: Expo prebuild (generate Android native code)
@@ -73,8 +80,15 @@ workflows:
         script: pnpm install --no-frozen-lockfile
         working_directory: $CM_BUILD_DIR
 
-      - name: Install mobile deps with shameful hoist (flat node_modules, no symlinks)
-        script: pnpm install --no-frozen-lockfile --shamefully-hoist
+      - name: Install mobile deps (shamefully-hoist for flat node_modules)
+        script: |
+          pnpm install --no-frozen-lockfile --shamefully-hoist
+          # Belt-and-suspenders: force real (non-symlink) HC install via npm
+          if [ ! -f "node_modules/react-native-health-connect/package.json" ] || [ -L "node_modules/react-native-health-connect" ]; then
+            echo "HC symlink or missing — forcing npm install..."
+            npm install react-native-health-connect@3.5.0 --legacy-peer-deps --no-save
+          fi
+          echo "=== HC check ===" && ls node_modules/react-native-health-connect/package.json && echo "HC OK"
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
       - name: Expo prebuild (generate Android native code)
