@@ -26,17 +26,17 @@ workflows:
         script: pnpm install --no-frozen-lockfile
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
-      - name: Force-install react-native-health-connect via npm (bypass pnpm symlinks)
-        script: |
-          npm install react-native-health-connect --legacy-peer-deps --no-save
-        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
-
       - name: Expo prebuild (generate Android native code)
         script: |
           npx expo prebuild \
             --platform android \
             --clean \
             --no-install
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
+
+      - name: Force-install react-native-health-connect (AFTER prebuild so it persists)
+        script: |
+          npm install react-native-health-connect --legacy-peer-deps --no-save
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
       - name: Build Android debug APK
@@ -82,17 +82,17 @@ workflows:
         script: pnpm install --no-frozen-lockfile
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
-      - name: Force-install react-native-health-connect via npm (bypass pnpm symlinks)
-        script: |
-          npm install react-native-health-connect --legacy-peer-deps --no-save
-        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
-
       - name: Expo prebuild (generate Android native code)
         script: |
           npx expo prebuild \
             --platform android \
             --clean \
             --no-install
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
+
+      - name: Force-install react-native-health-connect (AFTER prebuild so it persists)
+        script: |
+          npm install react-native-health-connect --legacy-peer-deps --no-save
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
       - name: Build Android release AAB
