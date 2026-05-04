@@ -11,8 +11,8 @@ workflows:
       java: 17
       vars:
         EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
-        BUNDLE_ID: com.aorane.app
-        PACKAGE_NAME: com.aorane.app
+        BUNDLE_ID: in.aorane.app
+        PACKAGE_NAME: in.aorane.app
 
     scripts:
       - name: Install pnpm
@@ -69,8 +69,8 @@ workflows:
       java: 17
       vars:
         EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
-        BUNDLE_ID: com.aorane.app
-        PACKAGE_NAME: com.aorane.app
+        BUNDLE_ID: in.aorane.app
+        PACKAGE_NAME: in.aorane.app
 
     scripts:
       - name: Install pnpm
