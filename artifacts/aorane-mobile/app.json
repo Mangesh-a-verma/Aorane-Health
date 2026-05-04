@@ -30,7 +30,7 @@
       }
     },
     "android": {
-      "package": "com.aorane.app",
+      "package": "in.aorane.app",
       "googleServicesFile": "./google-services.json",
       "versionCode": 1,
       "adaptiveIcon": {
@@ -81,7 +81,8 @@
         "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
         "android.permission.health.READ_SLEEP",
         "android.permission.health.READ_OXYGEN_SATURATION",
-        "android.permission.health.READ_DISTANCE"
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_EXERCISE"
       ]
     },
     "web": {

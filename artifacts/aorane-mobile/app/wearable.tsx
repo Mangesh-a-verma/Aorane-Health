@@ -207,18 +207,20 @@ export default function WearableScreen() {
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const timeRangeFilter = { operator: "between" as const, startTime: yesterday.toISOString(), endTime: now.toISOString() };
 
-    const [stepsRes, hrRes, calRes, sleepRes, spo2Res, distRes, activeRes] = await Promise.allSettled([
+    const [stepsRes, hrRes, calRes, sleepRes, spo2Res, distRes, exerciseRes] = await Promise.allSettled([
       hc.readRecords("Steps", { timeRangeFilter }),
       hc.readRecords("HeartRate", { timeRangeFilter }),
       hc.readRecords("TotalCaloriesBurned", { timeRangeFilter }),
       hc.readRecords("SleepSession", { timeRangeFilter }),
       hc.readRecords("OxygenSaturation", { timeRangeFilter }),
       hc.readRecords("Distance", { timeRangeFilter }),
-      hc.readRecords("ActiveCaloriesBurned", { timeRangeFilter }),
+      hc.readRecords("ExerciseSession", { timeRangeFilter }),
     ]);
 
     let steps: number | null = null;
     let heartRateAvg: number | null = null;
+    let heartRateMin: number | null = null;
+    let heartRateMax: number | null = null;
     let caloriesBurned: number | null = null;
     let sleepHours: number | null = null;
     let bloodOxygen: number | null = null;
@@ -232,7 +234,12 @@ export default function WearableScreen() {
     if (hrRes.status === "fulfilled") {
       const recs = (hrRes.value as { records: Array<{ samples: Array<{ beatsPerMinute: number }> }> }).records;
       const all = recs.flatMap((r) => r.samples || []);
-      if (all.length > 0) heartRateAvg = Math.round(all.reduce((s, r) => s + r.beatsPerMinute, 0) / all.length);
+      if (all.length > 0) {
+        const bpms = all.map((r) => r.beatsPerMinute);
+        heartRateAvg = Math.round(bpms.reduce((s, v) => s + v, 0) / bpms.length);
+        heartRateMin = Math.min(...bpms);
+        heartRateMax = Math.max(...bpms);
+      }
     }
     if (calRes.status === "fulfilled") {
       const recs = (calRes.value as { records: Array<{ energy: { inKilocalories: number } }> }).records;
@@ -253,14 +260,16 @@ export default function WearableScreen() {
       const recs = (distRes.value as { records: Array<{ distance: { inMeters: number } }> }).records;
       distanceKm = Math.round(recs.reduce((s, r) => s + (r.distance?.inMeters || 0), 0) / 1000 * 100) / 100;
     }
-    if (activeRes.status === "fulfilled") {
-      const recs = (activeRes.value as { records: Array<{ energy: { inKilocalories: number } }> }).records;
-      // Estimate: 4 kcal/min average
-      const totalKcal = recs.reduce((s, r) => s + (r.energy?.inKilocalories || 0), 0);
-      if (totalKcal > 0) activeMinutes = Math.round(totalKcal / 4);
+    if (exerciseRes.status === "fulfilled") {
+      // ExerciseSession gives exact duration — far more accurate than calorie estimation
+      const recs = (exerciseRes.value as { records: Array<{ startTime: string; endTime: string }> }).records;
+      if (recs.length > 0) {
+        const totalMs = recs.reduce((s, r) => s + (new Date(r.endTime).getTime() - new Date(r.startTime).getTime()), 0);
+        activeMinutes = Math.round(totalMs / 60_000);
+      }
     }
 
-    const result = await api.syncHealthConnect({ steps, heartRateAvg, caloriesBurned, sleepHours, bloodOxygen, distanceKm, activeMinutes });
+    const result = await api.syncHealthConnect({ steps, heartRateAvg, heartRateMin, heartRateMax, caloriesBurned, sleepHours, bloodOxygen, distanceKm, activeMinutes });
     return (result as { hasData: boolean }).hasData;
   };
 
@@ -338,6 +347,7 @@ export default function WearableScreen() {
         { accessType: "read", recordType: "SleepSession" },
         { accessType: "read", recordType: "OxygenSaturation" },
         { accessType: "read", recordType: "Distance" },
+        { accessType: "read", recordType: "ExerciseSession" },
       ]);
       console.log("[HC] requestPermission → granted count:", granted?.length);
 

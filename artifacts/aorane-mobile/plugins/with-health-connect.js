@@ -8,6 +8,7 @@ const HC_PERMISSIONS = [
   "SleepSession",
   "OxygenSaturation",
   "Distance",
+  "ExerciseSession",
 ];
 
 const withHealthConnect = (config) => {
@@ -62,6 +63,7 @@ const withHealthConnect = (config) => {
       SleepSession:          "android.permission.health.READ_SLEEP",
       OxygenSaturation:      "android.permission.health.READ_OXYGEN_SATURATION",
       Distance:              "android.permission.health.READ_DISTANCE",
+      ExerciseSession:       "android.permission.health.READ_EXERCISE",
     };
 
     for (const perm of HC_PERMISSIONS) {
