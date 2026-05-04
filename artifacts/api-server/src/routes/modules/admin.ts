@@ -257,7 +257,17 @@ router.patch("/admin/users/:id", requireAdmin, async (req: AdminRequest, res) =>
 router.get("/admin/organizations", requireAdmin, async (req: AdminRequest, res) => {
   try {
     const orgs = await db.select().from(organizationsTable).orderBy(desc(organizationsTable.createdAt));
-    res.json({ organizations: orgs });
+    const revenues = await db
+      .select({
+        orgId: orgPaymentsTable.orgId,
+        total: sql<string>`COALESCE(SUM(CAST(${orgPaymentsTable.amount} AS NUMERIC)), 0)`,
+      })
+      .from(orgPaymentsTable)
+      .where(sql`${orgPaymentsTable.status} = 'paid'`)
+      .groupBy(orgPaymentsTable.orgId);
+    const revenueMap = new Map(revenues.map(r => [r.orgId, Math.round(parseFloat(r.total))]));
+    const result = orgs.map(o => ({ ...o, totalRevenue: revenueMap.get(o.id) ?? 0 }));
+    res.json({ organizations: result });
   } catch {
     res.status(500).json({ error: "Failed to fetch organizations" });
   }
