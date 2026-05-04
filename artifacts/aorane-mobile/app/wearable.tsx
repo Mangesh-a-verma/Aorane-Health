@@ -4,20 +4,24 @@ import {
   Platform, Alert, Dimensions, ActivityIndicator, Modal,
   TextInput, RefreshControl,
 } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import * as WebBrowser from "expo-web-browser";
-import * as Linking from "expo-linking";
 import { api } from "@/lib/api";
+import {
+  initialize,
+  requestPermission,
+  readRecords,
+  getSdkStatus,
+  SdkAvailabilityStatus,
+} from "react-native-health-connect";
 
 const { width: W } = Dimensions.get("window");
 
 // ─── Provider config ──────────────────────────────────────────────────────────
 const PROVIDER_META: Record<string, { emoji: string; name: string; color: string; grad: [string, string] }> = {
-  google_fit:      { emoji: "💚", name: "Google Fit",               color: "#34A853", grad: ["#34A853","#1A73E8"] },
-  health_connect:  { emoji: "🤖", name: "Health Connect (Android)", color: "#0B6E4F", grad: ["#0B6E4F","#1B998B"] },
+  health_connect:  { emoji: "🤖", name: "Health Connect",           color: "#0B6E4F", grad: ["#0B6E4F","#1B998B"] },
   apple_healthkit: { emoji: "🍎", name: "Apple HealthKit (iOS)",    color: "#FF3B30", grad: ["#FF3B30","#FF6B6B"] },
   garmin:          { emoji: "⌚", name: "Garmin Connect",           color: "#007DC6", grad: ["#007DC6","#005A92"] },
   fitbit:          { emoji: "🏃", name: "Fitbit",                   color: "#00B0B9", grad: ["#00B0B9","#005F63"] },
@@ -44,10 +48,9 @@ type ProviderConfig = {
   available: boolean; requiresCredentials: boolean;
 };
 
-// ─── Metric Row (compact) ─────────────────────────────────────────────────────
+// ─── Metric Row ───────────────────────────────────────────────────────────────
 function MetricCard({ icon, label, value, unit, color }: {
-  icon: string; label: string; value: string | number | null; unit?: string;
-  color: string; grad?: [string, string]; sub?: string; small?: boolean;
+  icon: string; label: string; value: string | number | null; unit?: string; color: string;
 }) {
   const hasData = value !== null && value !== undefined;
   return (
@@ -157,7 +160,6 @@ function ManualEntryModal({ visible, onClose, onSave }: {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function WearableScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ connected?: string; error?: string }>();
   const [data, setData] = useState<{ latest: WearableData | null; summary: Summary | null; history: WearableData[] }>({ latest: null, summary: null, history: [] });
   const [connections, setConnections] = useState<Connection[]>([]);
   const [providers, setProviders] = useState<ProviderConfig[]>([]);
@@ -166,29 +168,12 @@ export default function WearableScreen() {
   const [syncingProvider, setSyncingProvider] = useState<string | null>(null);
   const [showManual, setShowManual] = useState(false);
   const [showConnect, setShowConnect] = useState(false);
-  const [connectingGoogle, setConnectingGoogle] = useState(false);
+  const [connectingHC, setConnectingHC] = useState(false);
   const topPad = insets.top;
 
   useEffect(() => { loadAll(); }, []);
 
-  useEffect(() => {
-    if (params.connected) {
-      Alert.alert("✅ Connected!", `${PROVIDER_META[params.connected]?.name || params.connected} connected successfully! Data sync ho raha hai...`);
-      loadAll();
-    }
-    if (params.error) {
-      const msgs: Record<string, string> = {
-        google_fit_denied: "Google Fit access was denied.",
-        token_failed: "Failed to get access token. Please try again.",
-        callback_failed: "Connection failed. Please try again.",
-        invalid_state: "Session expired. Please try again.",
-      };
-      Alert.alert("Connection Failed", msgs[params.error] || "Unknown error occurred.");
-    }
-  }, [params.connected, params.error]);
-
   const loadAll = async () => {
-    // Use allSettled so one failed request doesn't hide the others
     const [wearableResult, connectionsResult, providersResult] = await Promise.allSettled([
       api.getWearableData(),
       api.getWearableConnections(),
@@ -203,150 +188,163 @@ export default function WearableScreen() {
 
   const onRefresh = useCallback(() => { setRefreshing(true); loadAll(); }, []);
 
-  const handleOAuthUrl = useCallback(async (url: string) => {
-    try {
-      const parsed = new URL(url);
-      const connected = parsed.searchParams.get("connected");
-      const err = parsed.searchParams.get("error");
-      if (connected) {
-        Alert.alert("✅ Connected!", `${PROVIDER_META[connected]?.name || connected} connected! Syncing your data...`);
-        await loadAll();
-      } else if (err) {
-        const msgs: Record<string, string> = {
-          google_fit_denied: "Google Fit access was denied. Please try again and tap 'Allow'.",
-          token_failed: "Failed to get access token. Please try again.",
-          callback_failed: "Connection failed. Please try again.",
-          invalid_state: "Session expired. Please try again.",
-        };
-        Alert.alert("Connection Failed", msgs[err] || "Unknown error occurred.");
-      }
-    } catch { /* ignore malformed URLs */ }
-    setConnectingGoogle(false);
-  }, []);
+  // ─── Health Connect: read native SDK data and send to server ─────────────────
+  const syncHealthConnectNative = async (): Promise<boolean> => {
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const timeRangeFilter = { operator: "between" as const, startTime: yesterday.toISOString(), endTime: now.toISOString() };
 
-  // Listen for deep links while screen is mounted (handles Android OAuth return)
-  useEffect(() => {
-    const sub = Linking.addEventListener("url", ({ url }) => {
-      if (url.includes("wearable") && (url.includes("connected=") || url.includes("error="))) {
-        handleOAuthUrl(url);
-      }
-    });
-    return () => sub.remove();
-  }, [handleOAuthUrl]);
+    const [stepsRes, hrRes, calRes, sleepRes, spo2Res, distRes, activeRes] = await Promise.allSettled([
+      readRecords("Steps", { timeRangeFilter }),
+      readRecords("HeartRate", { timeRangeFilter }),
+      readRecords("TotalCaloriesBurned", { timeRangeFilter }),
+      readRecords("SleepSession", { timeRangeFilter }),
+      readRecords("OxygenSaturation", { timeRangeFilter }),
+      readRecords("Distance", { timeRangeFilter }),
+      readRecords("ActiveCaloriesBurned", { timeRangeFilter }),
+    ]);
 
-  const connectGoogleFit = async () => {
-    setConnectingGoogle(true);
+    let steps: number | null = null;
+    let heartRateAvg: number | null = null;
+    let caloriesBurned: number | null = null;
+    let sleepHours: number | null = null;
+    let bloodOxygen: number | null = null;
+    let distanceKm: number | null = null;
+    let activeMinutes: number | null = null;
+
+    if (stepsRes.status === "fulfilled") {
+      const recs = (stepsRes.value as { records: Array<{ count: number }> }).records;
+      steps = recs.reduce((s, r) => s + (r.count || 0), 0);
+    }
+    if (hrRes.status === "fulfilled") {
+      const recs = (hrRes.value as { records: Array<{ samples: Array<{ beatsPerMinute: number }> }> }).records;
+      const all = recs.flatMap((r) => r.samples || []);
+      if (all.length > 0) heartRateAvg = Math.round(all.reduce((s, r) => s + r.beatsPerMinute, 0) / all.length);
+    }
+    if (calRes.status === "fulfilled") {
+      const recs = (calRes.value as { records: Array<{ energy: { inKilocalories: number } }> }).records;
+      caloriesBurned = Math.round(recs.reduce((s, r) => s + (r.energy?.inKilocalories || 0), 0));
+    }
+    if (sleepRes.status === "fulfilled") {
+      const recs = (sleepRes.value as { records: Array<{ startTime: string; endTime: string }> }).records;
+      if (recs.length > 0) {
+        const ms = recs.reduce((s, r) => s + (new Date(r.endTime).getTime() - new Date(r.startTime).getTime()), 0);
+        sleepHours = Math.round((ms / 3_600_000) * 10) / 10;
+      }
+    }
+    if (spo2Res.status === "fulfilled") {
+      const recs = (spo2Res.value as { records: Array<{ percentage: number }> }).records;
+      if (recs.length > 0) bloodOxygen = Math.round(recs.reduce((s, r) => s + r.percentage, 0) / recs.length * 10) / 10;
+    }
+    if (distRes.status === "fulfilled") {
+      const recs = (distRes.value as { records: Array<{ distance: { inMeters: number } }> }).records;
+      distanceKm = Math.round(recs.reduce((s, r) => s + (r.distance?.inMeters || 0), 0) / 1000 * 100) / 100;
+    }
+    if (activeRes.status === "fulfilled") {
+      const recs = (activeRes.value as { records: Array<{ energy: { inKilocalories: number } }> }).records;
+      // Estimate: 4 kcal/min average
+      const totalKcal = recs.reduce((s, r) => s + (r.energy?.inKilocalories || 0), 0);
+      if (totalKcal > 0) activeMinutes = Math.round(totalKcal / 4);
+    }
+
+    const result = await api.syncHealthConnect({ steps, heartRateAvg, caloriesBurned, sleepHours, bloodOxygen, distanceKm, activeMinutes });
+    return (result as { hasData: boolean }).hasData;
+  };
+
+  // ─── Connect Health Connect (native Android permission flow) ─────────────────
+  const connectHealthConnect = async () => {
+    if (Platform.OS !== "android") {
+      Alert.alert("Android Only", "Health Connect is only available on Android devices. iOS users can use Manual Entry.");
+      return;
+    }
+    setConnectingHC(true);
     try {
-      if (Platform.OS === "web" && typeof window !== "undefined") {
-        const returnUrl = window.location.href.split("?")[0];
-        const d = await api.getGoogleFitAuthUrl(returnUrl);
-        const { authUrl } = d as { authUrl: string };
-        window.location.href = authUrl;
+      const status = await getSdkStatus();
+      if (status === SdkAvailabilityStatus.SDK_UNAVAILABLE) {
+        Alert.alert(
+          "Health Connect Not Installed",
+          "Please install Health Connect from the Play Store to sync your wearable data.",
+          [
+            { text: "Install", onPress: () => { /* Linking to Play Store */ } },
+            { text: "Cancel", style: "cancel" },
+          ]
+        );
+        setConnectingHC(false);
+        return;
+      }
+      if (status === SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
+        Alert.alert("Update Required", "Please update Health Connect from the Play Store and try again.");
+        setConnectingHC(false);
         return;
       }
 
-      // Native deep link return URL — used by the server to redirect back to this screen
-      const returnUrl = Linking.createURL("wearable");
-      const d = await api.getGoogleFitAuthUrl(returnUrl);
-      const { authUrl } = d as { authUrl: string };
-
-      if (Platform.OS !== "web") {
-        await WebBrowser.warmUpAsync().catch(() => {});
+      const initialized = await initialize();
+      if (!initialized) {
+        Alert.alert("Error", "Could not initialize Health Connect. Please try again.");
+        setConnectingHC(false);
+        return;
       }
 
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl, {
-        showInRecents: false,
-        // NOTE: Do NOT use preferEphemeralSession on Android — Chrome Custom Tab
-        // ephemeral mode blocks the custom-scheme deep link redirect on some devices.
-        preferEphemeralSession: Platform.OS === "ios",
-      });
+      const granted = await requestPermission([
+        { accessType: "read", recordType: "Steps" },
+        { accessType: "read", recordType: "HeartRate" },
+        { accessType: "read", recordType: "TotalCaloriesBurned" },
+        { accessType: "read", recordType: "ActiveCaloriesBurned" },
+        { accessType: "read", recordType: "SleepSession" },
+        { accessType: "read", recordType: "OxygenSaturation" },
+        { accessType: "read", recordType: "Distance" },
+      ]);
 
-      if (Platform.OS !== "web") {
-        await WebBrowser.coolDownAsync().catch(() => {});
+      if (!granted || granted.length === 0) {
+        Alert.alert("Permission Denied", "Health Connect permissions are required to sync your health data. Please allow access and try again.");
+        setConnectingHC(false);
+        return;
       }
 
-      if (result.type === "success") {
-        // iOS primary path: ASWebAuthenticationSession returns the full URL directly
-        await handleOAuthUrl(result.url);
-      } else if (result.type === "cancel" || result.type === "dismiss") {
-        // Android normal path: Chrome Custom Tab closes when it intercepts the
-        // aorane:// deep link redirect. The Linking event listener (below) fires
-        // with the result URL. Wait briefly for the Linking event, then check DB.
-        if (Platform.OS === "android") {
-          // Give the Linking event 1.5 s to fire and call handleOAuthUrl.
-          // If it fires, handleOAuthUrl will call loadAll() and clear connectingGoogle.
-          // If it doesn't fire (true user cancel), fall through to loadAll anyway.
-          await new Promise<void>((resolve) => setTimeout(resolve, 1500));
-          // Refresh connections regardless — if server saved the token, it'll show up
-          await loadAll();
-          setConnectingGoogle(false);
-        } else {
-          // iOS: dismiss/cancel = genuine user cancel — silent reset
-          setConnectingGoogle(false);
-        }
+      // Permissions granted — do initial sync
+      const hasData = await syncHealthConnectNative();
+      await loadAll();
+      setShowConnect(false);
+      if (hasData) {
+        Alert.alert("✅ Connected!", "Health Connect connected and data synced successfully!");
       } else {
-        // Locked browser or other edge case
-        setConnectingGoogle(false);
+        Alert.alert("✅ Connected!", "Health Connect connected! No activity recorded today. Open your wearable app and sync data, then tap Refresh.");
       }
     } catch (e: unknown) {
       const msg = (e as Error)?.message || "";
-      if (msg.includes("not configured")) {
-        Alert.alert("Setup Required", "Google Fit credentials not configured yet. Contact support.");
+      if (msg.includes("permission") || msg.includes("Permission")) {
+        Alert.alert("Permission Error", "Could not request Health Connect permissions. Please check device settings.");
       } else {
-        Alert.alert("Connection Error", "Could not open Google sign-in. Please try again.");
+        Alert.alert("Connection Error", "Could not connect to Health Connect. Please try again.");
       }
-      setConnectingGoogle(false);
     }
+    setConnectingHC(false);
   };
 
+  // ─── Sync provider (called from device card Refresh button) ─────────────────
   const syncProvider = async (provider: string) => {
     setSyncingProvider(provider);
     try {
-      const result = await api.syncWearableProvider(provider);
-      await loadAll();
-      if (result.hasData) {
-        Alert.alert("✅ Synced!", "Google Fit data updated successfully!");
+      if (provider === "health_connect") {
+        if (Platform.OS !== "android") {
+          Alert.alert("Android Only", "Health Connect sync is only available on Android.");
+          setSyncingProvider(null);
+          return;
+        }
+        const initialized = await initialize();
+        if (!initialized) throw new Error("Health Connect init failed");
+        const hasData = await syncHealthConnectNative();
+        await loadAll();
+        if (hasData) {
+          Alert.alert("✅ Synced!", "Health Connect data updated successfully!");
+        } else {
+          Alert.alert("Sync Complete", "No activity data found for today. Make sure your wearable is syncing to Health Connect, then try again.");
+        }
       } else {
-        Alert.alert(
-          "Sync Complete — No Data Found",
-          "Connected to Google Fit, but no activity data was found for today (steps, heart rate, etc.).\n\n📱 Open the Google Fit app → record some activity or add it manually → then tap Sync again.",
-          [{ text: "OK" }]
-        );
+        Alert.alert("Not Supported", `${PROVIDER_META[provider]?.name || provider} sync is not yet available.`);
       }
     } catch (err: unknown) {
-      const msg = (err as Error)?.message || "";
-      // Detect if the Google Fitness REST API has been deprecated/shut down
-      const isDeprecated = msg.toLowerCase().includes("api_deprecated") ||
-        msg.toLowerCase().includes("shut down") ||
-        msg.toLowerCase().includes("no longer available") ||
-        msg.toLowerCase().includes("deprecated");
-      // Detect Google Fit OAuth expiry
-      const isReauth = msg.toLowerCase().includes("reconnect") ||
-        msg.toLowerCase().includes("reauth") ||
-        msg.toLowerCase().includes("access expired") ||
-        msg.toLowerCase().includes("auth failed");
-      if (isDeprecated) {
-        Alert.alert(
-          "⚠️ Google Fit API Unavailable",
-          "Google shut down the Fitness REST API in May 2025. Data sync via Google Fit is no longer supported.\n\nKripya Manual Entry use karein apna health data log karne ke liye. Tap 'Log Data' above.",
-          [{ text: "OK" }]
-        );
-      } else if (isReauth) {
-        Alert.alert(
-          "Reconnect Google Fit",
-          "Your Google Fit authorization has expired. Tap Reconnect to relink your account.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Reconnect", onPress: () => connectGoogleFit() },
-          ]
-        );
-      } else {
-        Alert.alert(
-          "Sync Failed",
-          msg || "Data sync failed. Please try again.",
-          [{ text: "OK" }]
-        );
-      }
+      Alert.alert("Sync Failed", (err as Error)?.message || "Could not sync data. Please try again.");
     }
     setSyncingProvider(null);
   };
@@ -404,7 +402,7 @@ export default function WearableScreen() {
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.pageTitle}>Smart Wearables</Text>
-            <Text style={styles.pageSub}>Google Fit, Smart Band & Health Trackers</Text>
+            <Text style={styles.pageSub}>Health Connect & Wearable Trackers</Text>
           </View>
           <TouchableOpacity onPress={() => setShowManual(true)}
             style={{ backgroundColor: "#0077B6", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 5 }}>
@@ -436,7 +434,7 @@ export default function WearableScreen() {
                   <Text style={{ fontSize: 40, marginBottom: 12 }}>⌚</Text>
                   <Text style={{ fontFamily: "Inter_700Bold", fontSize: 16, color: "#0D1F33", textAlign: "center" }}>No Device Connected</Text>
                   <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: "#7A90A4", textAlign: "center", marginTop: 6, lineHeight: 20 }}>
-                    Connect Google Fit or manually enter data from your smart band / watch.
+                    Connect Health Connect (Android) or manually enter data from your smart band / watch.
                   </Text>
                   <TouchableOpacity onPress={() => setShowConnect(true)}
                     style={{ backgroundColor: "#0077B6", borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 16 }}>
@@ -505,11 +503,11 @@ export default function WearableScreen() {
                 <View style={[styles.emptyCard, { paddingVertical: 32 }]}>
                   <Text style={{ fontSize: 48, marginBottom: 12 }}>📊</Text>
                   <Text style={{ fontFamily: "Inter_700Bold", fontSize: 16, color: "#0D1F33", textAlign: "center" }}>
-                    {activeConnections.length > 0 ? "No Data in Google Fit" : "No Health Data Yet"}
+                    {activeConnections.length > 0 ? "No Data Synced Yet" : "No Health Data Yet"}
                   </Text>
                   <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: "#7A90A4", textAlign: "center", marginTop: 6, lineHeight: 20 }}>
                     {activeConnections.length > 0
-                      ? "No recorded data found in Google Fit (steps, heart rate, etc.). Open Google Fit on your phone, record some activity, then tap Sync."
+                      ? "No activity data found for today. Open your wearable app, sync it to Health Connect, then tap Sync."
                       : "Connect a device or manually log your health data to see metrics here."}
                   </Text>
                   {activeConnections.length > 0 && (
@@ -535,7 +533,7 @@ export default function WearableScreen() {
               </View>
             )}
 
-            {/* ─── HEALTH TIPS ─── */}
+            {/* ─── HEALTH TARGETS ─── */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Health Targets (WHO Guidelines)</Text>
               <View style={{ gap: 8 }}>
@@ -544,7 +542,7 @@ export default function WearableScreen() {
                   { icon: "❤️", target: "60–100", label: "Resting Heart Rate", current: latest?.heartRateAvg ?? null, unit: "bpm", good: (v: number) => v >= 60 && v <= 100 },
                   { icon: "😴", target: "7–9", label: "Sleep Duration", current: latest?.sleepHours ? parseFloat(latest.sleepHours) : null, unit: "hours", good: (v: number) => v >= 7 && v <= 9 },
                   { icon: "🩸", target: "≥95", label: "Blood Oxygen (SpO2)", current: latest?.bloodOxygen ? parseFloat(latest.bloodOxygen) : null, unit: "%", good: (v: number) => v >= 95 },
-                  { icon: "⚡", target: "150+", label: "Weekly Active Minutes", current: data.summary?.totalActiveMin ?? null, unit: "min", good: (v: number) => v >= 150 },
+                  { icon: "⚡", target: "150+", label: "Weekly Active Minutes", current: summary?.totalActiveMin ?? null, unit: "min", good: (v: number) => v >= 150 },
                 ].map((t) => {
                   const isGood = t.current !== null && t.good(t.current);
                   const hasData = t.current !== null;
@@ -582,16 +580,17 @@ export default function WearableScreen() {
               {providers.filter((p) => p.id !== "manual").map((p) => {
                 const meta = PROVIDER_META[p.id] || { emoji: "📱", name: p.name, color: "#0077B6", grad: ["#0077B6", "#1B998B"] as [string, string] };
                 const alreadyConnected = activeConnections.some((c) => c.provider === p.id);
+                const isHC = p.id === "health_connect";
                 return (
                   <TouchableOpacity key={p.id}
-                    disabled={!p.supported || !p.available || alreadyConnected}
+                    disabled={!p.available || alreadyConnected || (isHC && connectingHC)}
                     onPress={() => {
-                      setShowConnect(false);
-                      if (p.id === "google_fit") connectGoogleFit();
+                      if (isHC) connectHealthConnect();
                     }}
-                    style={[styles.providerBtn, { opacity: (!p.supported || !p.available) ? 0.45 : 1 }]}
+                    style={[styles.providerBtn, { opacity: !p.available ? 0.45 : 1 }]}
                   >
-                    <LinearGradient colors={alreadyConnected ? ["#10B981", "#059669"] : (p.available ? meta.grad : ["#D1D5DB", "#9CA3AF"])}
+                    <LinearGradient
+                      colors={alreadyConnected ? ["#10B981", "#059669"] : (p.available ? meta.grad : ["#D1D5DB", "#9CA3AF"])}
                       start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                       style={styles.providerBtnGrad}>
                       <Text style={{ fontSize: 26 }}>{meta.emoji}</Text>
@@ -602,7 +601,7 @@ export default function WearableScreen() {
                         </Text>
                       </View>
                       {p.available && !alreadyConnected && (
-                        p.id === "google_fit" && connectingGoogle
+                        isHC && connectingHC
                           ? <ActivityIndicator size="small" color="#FFF" />
                           : <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.8)" />
                       )}
@@ -644,7 +643,6 @@ const styles = StyleSheet.create({
     borderRadius: 20, padding: 16, marginBottom: 16,
     shadowColor: "#0077B6", shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 10, elevation: 2,
-    backdropFilter: "blur(10px)",
   },
   sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 16, color: "#0D1F33" },
   metricRow: {

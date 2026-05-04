@@ -74,7 +74,8 @@
         "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.USE_EXACT_ALARM",
         "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO"
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.health.READ_HEALTH_DATA"
       ]
     },
     "web": {
@@ -94,7 +95,7 @@
           "android": {
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
-            "minSdkVersion": 24,
+            "minSdkVersion": 26,
             "buildToolsVersion": "35.0.0",
             "kotlinVersion": "2.0.21",
             "ndkVersion": "27.1.12297006",
@@ -132,6 +133,9 @@
           "photosPermission": "AORANE accesses your photos to upload and analyse medical reports.",
           "cameraPermission": "AORANE uses the camera to scan food items and analyse nutritional content."
         }
+      ],
+      [
+        "react-native-health-connect"
       ]
     ],
     "experiments": {

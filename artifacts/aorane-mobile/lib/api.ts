@@ -590,15 +590,17 @@ export const api = {
 
   // ── Wearable / Smart Watch ─────────────────────────────────
   getWearableProviders: () =>
-    request<{ providers: unknown[]; googleFitConfigured: boolean }>("GET", "/wearable/providers"),
+    request<{ providers: unknown[] }>("GET", "/wearable/providers"),
   getWearableConnections: () =>
     request<{ connections: unknown[] }>("GET", "/wearable/connections"),
   getWearableData: (params?: { provider?: string; limit?: number }) =>
     request<{ latest: unknown; history: unknown[]; summary: unknown }>("GET", `/wearable/data${params?.limit ? `?limit=${params.limit}` : ""}`),
-  getGoogleFitAuthUrl: (returnUrl?: string) =>
-    request<{ authUrl: string }>("GET", `/wearable/oauth/google-fit/url${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ""}`),
-  syncWearableProvider: (provider: string) =>
-    request<{ success: boolean; hasData: boolean; message: string; data: unknown; code?: string }>("POST", `/wearable/sync/${provider}`, {}),
+  syncHealthConnect: (data: {
+    steps?: number | null; heartRateAvg?: number | null; caloriesBurned?: number | null;
+    sleepHours?: number | null; bloodOxygen?: number | null; distanceKm?: number | null;
+    activeMinutes?: number | null; heartRateMin?: number | null; heartRateMax?: number | null;
+  }) =>
+    request<{ success: boolean; hasData: boolean; data: unknown }>("POST", "/wearable/sync/health_connect", data),
   addManualWearableData: (data: Record<string, unknown>) =>
     request<{ success: boolean; data: unknown }>("POST", "/wearable/data/manual", data),
   disconnectWearable: (provider: string) =>
