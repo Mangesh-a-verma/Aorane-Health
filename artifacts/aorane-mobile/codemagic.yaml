@@ -36,19 +36,36 @@ workflows:
           # TurboModuleRegistry.getEnforcing() hard-crashes the app when HC
           # native module is unavailable (e.g. device missing HC app).
           # Patching to .get() which returns null instead of crashing.
-          HC_SRC="node_modules/react-native-health-connect/src/NativeHealthConnect.ts"
-          if [ -f "$HC_SRC" ]; then
-            sed -i 's/TurboModuleRegistry\.getEnforcing/TurboModuleRegistry.get/g' "$HC_SRC"
-            echo "=== HC TurboModule patched: getEnforcing → get ==="
-            tail -3 "$HC_SRC"
-          else
-            echo "WARNING: HC NativeHealthConnect.ts not found at $HC_SRC"
+          #
+          # FIX: Metro bundler uses lib/module/ (ESM) NOT lib/commonjs/.
+          # Previous patch only fixed commonjs — lib/module was left unpatched → crash.
+          # Now patching ALL .js and .ts files in the entire HC package.
+          HC_DIR="node_modules/react-native-health-connect"
+          echo "=== Patching ALL HC files containing getEnforcing ==="
+          PATCHED=0
+          while IFS= read -r f; do
+            sed -i 's/TurboModuleRegistry\.getEnforcing/TurboModuleRegistry.get/g' "$f"
+            echo "  Patched: $f"
+            PATCHED=$((PATCHED + 1))
+          done < <(grep -rl "getEnforcing" "$HC_DIR" 2>/dev/null)
+          echo "=== Done: $PATCHED file(s) patched ==="
+
+          # Verify lib/module (the one Metro actually uses) is patched
+          HC_MOD="$HC_DIR/lib/module/NativeHealthConnect.js"
+          if [ -f "$HC_MOD" ]; then
+            if grep -q "getEnforcing" "$HC_MOD"; then
+              echo "ERROR: lib/module still contains getEnforcing — force patching"
+              sed -i 's/getEnforcing/get/g' "$HC_MOD"
+            else
+              echo "OK: lib/module/NativeHealthConnect.js is clean"
+            fi
+            tail -3 "$HC_MOD"
           fi
-          # Also patch compiled lib if present
-          HC_LIB="node_modules/react-native-health-connect/lib/commonjs/NativeHealthConnect.js"
+          # Verify lib/commonjs as well
+          HC_LIB="$HC_DIR/lib/commonjs/NativeHealthConnect.js"
           if [ -f "$HC_LIB" ]; then
-            sed -i 's/getEnforcing/get/g' "$HC_LIB"
-            echo "=== HC lib/commonjs patched ==="
+            grep -q "getEnforcing" "$HC_LIB" && sed -i 's/getEnforcing/get/g' "$HC_LIB"
+            echo "OK: lib/commonjs/NativeHealthConnect.js clean"
           fi
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 
@@ -110,22 +127,26 @@ workflows:
           echo "=== HC check ===" && ls node_modules/react-native-health-connect/package.json && echo "HC OK"
 
           # ── CRITICAL PATCH ──────────────────────────────────────────────────
-          # TurboModuleRegistry.getEnforcing() hard-crashes the app when HC
-          # native module is unavailable (e.g. device missing HC app).
-          # Patching to .get() which returns null instead of crashing.
-          HC_SRC="node_modules/react-native-health-connect/src/NativeHealthConnect.ts"
-          if [ -f "$HC_SRC" ]; then
-            sed -i 's/TurboModuleRegistry\.getEnforcing/TurboModuleRegistry.get/g' "$HC_SRC"
-            echo "=== HC TurboModule patched: getEnforcing → get ==="
-            tail -3 "$HC_SRC"
-          else
-            echo "WARNING: HC NativeHealthConnect.ts not found at $HC_SRC"
+          # FIX: Metro bundler uses lib/module/ (ESM) NOT lib/commonjs/.
+          # Patching ALL .js and .ts files in the entire HC package.
+          HC_DIR="node_modules/react-native-health-connect"
+          echo "=== Patching ALL HC files containing getEnforcing ==="
+          PATCHED=0
+          while IFS= read -r f; do
+            sed -i 's/TurboModuleRegistry\.getEnforcing/TurboModuleRegistry.get/g' "$f"
+            echo "  Patched: $f"
+            PATCHED=$((PATCHED + 1))
+          done < <(grep -rl "getEnforcing" "$HC_DIR" 2>/dev/null)
+          echo "=== Done: $PATCHED file(s) patched ==="
+          HC_MOD="$HC_DIR/lib/module/NativeHealthConnect.js"
+          if [ -f "$HC_MOD" ]; then
+            grep -q "getEnforcing" "$HC_MOD" && sed -i 's/getEnforcing/get/g' "$HC_MOD"
+            echo "OK: lib/module/NativeHealthConnect.js clean" && tail -3 "$HC_MOD"
           fi
-          # Also patch compiled lib if present
-          HC_LIB="node_modules/react-native-health-connect/lib/commonjs/NativeHealthConnect.js"
+          HC_LIB="$HC_DIR/lib/commonjs/NativeHealthConnect.js"
           if [ -f "$HC_LIB" ]; then
-            sed -i 's/getEnforcing/get/g' "$HC_LIB"
-            echo "=== HC lib/commonjs patched ==="
+            grep -q "getEnforcing" "$HC_LIB" && sed -i 's/getEnforcing/get/g' "$HC_LIB"
+            echo "OK: lib/commonjs/NativeHealthConnect.js clean"
           fi
         working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
 

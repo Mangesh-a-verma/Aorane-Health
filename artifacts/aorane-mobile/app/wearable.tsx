@@ -18,13 +18,24 @@ type HCModule = {
   SdkAvailabilityStatus: { SDK_UNAVAILABLE: number; SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED: number; SDK_AVAILABLE: number };
 };
 let _hc: HCModule | null = null;
+let _hcAttempted = false;
 function getHC(): HCModule | null {
-  if (_hc) return _hc;
+  if (_hcAttempted) return _hc;
+  _hcAttempted = true;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    _hc = require("react-native-health-connect") as HCModule;
+    const mod = require("react-native-health-connect");
+    // Verify the loaded module actually has the required functions.
+    // After the getEnforcing→get patch, the internal NativeHealthConnect
+    // may be null — validate before caching so we don't cache a broken module.
+    if (mod && typeof mod.initialize === "function" && typeof mod.requestPermission === "function") {
+      _hc = mod as HCModule;
+    } else {
+      _hc = null;
+    }
     return _hc;
   } catch {
+    _hc = null;
     return null;
   }
 }
