@@ -8,6 +8,7 @@ workflows:
       groups:
         - aorane_credentials
       node: 20.18.0
+      java: 17
       vars:
         EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
         BUNDLE_ID: com.aorane.app
@@ -18,9 +19,7 @@ workflows:
         script: npm install -g pnpm@10
 
       - name: Install dependencies
-        script: |
-          cd ../..
-          pnpm install --frozen-lockfile
+        script: pnpm install --frozen-lockfile
 
       - name: Expo prebuild (generate native Android code)
         script: |
@@ -32,13 +31,12 @@ workflows:
 
       - name: Build Android debug APK
         script: |
-          cd android
           chmod +x gradlew
           ./gradlew assembleDebug
-        working_directory: /builds/clone/artifacts/aorane-mobile
+        working_directory: /builds/clone/artifacts/aorane-mobile/android
 
     artifacts:
-      - artifacts/aorane-mobile/android/app/build/outputs/apk/debug/*.apk
+      - /builds/clone/artifacts/aorane-mobile/android/app/build/outputs/apk/debug/*.apk
 
     publishing:
       email:
@@ -56,6 +54,7 @@ workflows:
       groups:
         - aorane_credentials
       node: 20.18.0
+      java: 17
       vars:
         EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
         BUNDLE_ID: com.aorane.app
@@ -66,9 +65,7 @@ workflows:
         script: npm install -g pnpm@10
 
       - name: Install dependencies
-        script: |
-          cd ../..
-          pnpm install --frozen-lockfile
+        script: pnpm install --frozen-lockfile
 
       - name: Expo prebuild (generate native Android code)
         script: |
@@ -80,12 +77,11 @@ workflows:
 
       - name: Build Android release AAB
         script: |
-          cd android
           chmod +x gradlew
           ./gradlew bundleRelease \
             -PandroidVersionCode=1 \
             -PandroidVersionName=1.0.0
-        working_directory: /builds/clone/artifacts/aorane-mobile
+        working_directory: /builds/clone/artifacts/aorane-mobile/android
 
       - name: Sign AAB
         script: |
@@ -94,14 +90,13 @@ workflows:
             -keystore $CM_KEYSTORE_PATH \
             -storepass $CM_KEYSTORE_PASSWORD \
             -keypass $CM_KEY_PASSWORD \
-            -signedjar android/app/build/outputs/bundle/release/app-release-signed.aab \
-            android/app/build/outputs/bundle/release/app-release.aab \
+            -signedjar /builds/clone/artifacts/aorane-mobile/android/app/build/outputs/bundle/release/app-release-signed.aab \
+            /builds/clone/artifacts/aorane-mobile/android/app/build/outputs/bundle/release/app-release.aab \
             $CM_KEY_ALIAS
-        working_directory: /builds/clone/artifacts/aorane-mobile
 
     artifacts:
-      - artifacts/aorane-mobile/android/app/build/outputs/bundle/release/*.aab
-      - artifacts/aorane-mobile/android/app/build/outputs/apk/**/*.apk
+      - /builds/clone/artifacts/aorane-mobile/android/app/build/outputs/bundle/release/*.aab
+      - /builds/clone/artifacts/aorane-mobile/android/app/build/outputs/apk/**/*.apk
 
     publishing:
       email:

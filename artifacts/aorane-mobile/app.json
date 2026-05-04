@@ -75,7 +75,13 @@
         "android.permission.USE_EXACT_ALARM",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.health.READ_HEALTH_DATA"
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_OXYGEN_SATURATION",
+        "android.permission.health.READ_DISTANCE"
       ]
     },
     "web": {
@@ -135,7 +141,20 @@
         }
       ],
       [
-        "react-native-health-connect"
+        "react-native-health-connect",
+        {
+          "android": {
+            "permissions": [
+              "Steps",
+              "HeartRate",
+              "TotalCaloriesBurned",
+              "ActiveCaloriesBurned",
+              "SleepSession",
+              "OxygenSaturation",
+              "Distance"
+            ]
+          }
+        }
       ]
     ],
     "experiments": {
