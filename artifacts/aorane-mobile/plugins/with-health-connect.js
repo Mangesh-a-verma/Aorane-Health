@@ -53,6 +53,21 @@ const withHealthConnect = (config) => {
       });
     }
 
+    // Also add healthconnect:// scheme to queries so Linking.canOpenURL works
+    const hcSchemeExists = manifest.queries.some(
+      (q) => q.intent?.[0]?.data?.[0]?.$?.["android:scheme"] === "healthconnect"
+    );
+    if (!hcSchemeExists) {
+      manifest.queries.push({
+        intent: [
+          {
+            action: [{ $: { "android:name": "android.intent.action.VIEW" } }],
+            data: [{ $: { "android:scheme": "healthconnect" } }],
+          },
+        ],
+      });
+    }
+
     // Add READ_* health permissions to manifest
     if (!manifest["uses-permission"]) manifest["uses-permission"] = [];
     const permissionMap = {
