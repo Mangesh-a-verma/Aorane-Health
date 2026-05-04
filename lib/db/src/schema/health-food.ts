@@ -38,6 +38,7 @@ export const foodItemsTable = pgTable("food_items", {
   calciumMg: decimal("calcium_mg", { precision: 7, scale: 2 }),
   ironMg: decimal("iron_mg", { precision: 6, scale: 2 }),
   vitaminCMg: decimal("vitamin_c_mg", { precision: 6, scale: 2 }),
+  vitaminB12Mcg: decimal("vitamin_b12_mcg", { precision: 6, scale: 2 }),
   vitaminDMcg: decimal("vitamin_d_mcg", { precision: 6, scale: 2 }),
   servingSizeG: decimal("serving_size_g", { precision: 6, scale: 2 }),
   servingDescription: text("serving_description"),

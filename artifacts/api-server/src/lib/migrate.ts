@@ -997,6 +997,9 @@ export async function runStartupMigrations(): Promise<void> {
 
     // ── promo_codes: toggle active endpoint support ───────────────────────────
     `ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE`,
+
+    // ── food_items: add vitamin_b12_mcg column (was missing — food_logs has it, food_items didn't) ──
+    `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS vitamin_b12_mcg NUMERIC(6,2)`,
   ];
 
   let ok = 0; let fail = 0;

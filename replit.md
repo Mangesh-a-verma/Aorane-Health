@@ -67,7 +67,7 @@ All core APIs tested and working: profile, food CRUD, water logging, exercise + 
 - `artifacts/aorane-mobile/lib/api.ts` — 96 API calls, all endpoints verified
 - `artifacts/aorane-mobile/app.json` — package: com.aorane.app, versionCode: 1
 - `artifacts/aorane-landing/src/pages/PrivacyPage.tsx` — DPDPA 2023 compliant privacy policy
-- `lib/db/src/schema/` — all Drizzle ORM table definitions; food_logs now includes sugarG, sodiumMg, calciumMg, ironMg, vitaminCMg, vitaminB12Mcg, vitaminDMcg (micronutrient tracking)
+- `lib/db/src/schema/` — all Drizzle ORM table definitions; food_logs includes sugarG, sodiumMg, calciumMg, ironMg, vitaminCMg, vitaminB12Mcg, vitaminDMcg; food_items also now has vitamin_b12_mcg (added via startup migration)
 - `lib/db/src/index.ts` — `export * from "./schema"` (all tables exported)
 
 ## External Dependencies
