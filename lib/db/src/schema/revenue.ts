@@ -86,6 +86,11 @@ export const planPricingTable = pgTable("plan_pricing", {
   gradientColors: jsonb("gradient_colors").$type<[string, string]>(),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
+  // ── Offer / Discount fields ───────────────────────────────────────────────
+  discountPercent: decimal("discount_percent", { precision: 5, scale: 2 }).notNull().default("0"),
+  offerLabel: text("offer_label"),
+  offerValidFrom: timestamp("offer_valid_from", { withTimezone: true }),
+  offerValidTo: timestamp("offer_valid_to", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
