@@ -152,7 +152,7 @@ function buildReportHtml(
   const P  = company.primaryColor || "#0077B6";
   const A  = company.accentColor  || "#00B896";
   const overall     = card?.activePercent?.overall ?? 0;
-  const healthScore = rangeScore !== null ? rangeScore : (card?.healthScore ?? overall);
+  const healthScore = (rangeScore !== null && rangeScore > 0) ? rangeScore : (card?.healthScore ?? overall);
   const stressAvg   = stress?.weekAvg ?? 0;
   const heightCm    = profile?.height_cm ? Number(profile.height_cm) : null;
   const weightKg    = profile?.weight_kg ? Number(profile.weight_kg) : null;
@@ -589,7 +589,7 @@ export default function HealthReportScreen() {
   const generatedAt = new Date();
   const P           = company.primaryColor || "#0077B6";
   const overall     = card?.activePercent?.overall ?? 0;
-  const healthScore = rangeScore !== null ? rangeScore : (card?.healthScore ?? overall);
+  const healthScore = (rangeScore !== null && rangeScore > 0) ? rangeScore : (card?.healthScore ?? overall);
   const stressAvg   = stressData?.weekAvg ?? 0;
   const heightCm    = profile?.height_cm ? Number(profile.height_cm) : null;
   const weightKg    = profile?.weight_kg ? Number(profile.weight_kg) : null;

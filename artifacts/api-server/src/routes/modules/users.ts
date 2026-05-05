@@ -283,7 +283,7 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
       ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / (86400000 * 365.25))
       : null;
 
-    const [activeData, monthlyHealthRes] = await Promise.all([
+    const [activeData, monthlyHealthRes, freshScore] = await Promise.all([
       calculateActivePercent(uid).catch(() => ({
         pct: 0, todayPct: 0, weekPct: 0, daysTracked: 0, trend: "stable" as const,
       })),
@@ -293,14 +293,19 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
          WHERE user_id=$1 AND score_date >= to_char(NOW() - INTERVAL '30 days','YYYY-MM-DD')`,
         [uid]
       ).catch(() => ({ rows: [{ avg_score: null }] })),
+      computeScientificScore(uid, new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })).catch(() => null),
     ]);
 
     let monthlyHealthScore = Math.round(parseFloat(monthlyHealthRes.rows[0]?.avg_score || "0"));
-
     if (!monthlyHealthScore) {
-      const fresh = await computeScientificScore(uid).catch(() => null);
-      monthlyHealthScore = fresh?.score ?? Math.round(activeData.weekPct);
+      monthlyHealthScore = freshScore?.overallScore ?? Math.round(activeData.weekPct);
     }
+
+    // Component-level percentages for health report breakdown
+    const foodPct     = freshScore ? Math.round(freshScore.foodScore)     : 0;
+    const waterPct    = freshScore ? Math.round(freshScore.waterScore)    : 0;
+    const exercisePct = freshScore ? Math.round(freshScore.exerciseScore) : 0;
+    const medicinePct = freshScore ? Math.round(freshScore.medicineScore) : 0;
 
     res.json({
       aoraneId,
@@ -322,6 +327,10 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
         weekPct: activeData.weekPct,
         daysTracked: activeData.daysTracked,
         trend: activeData.trend,
+        foodPct,
+        waterPct,
+        exercisePct,
+        medicinePct,
       },
       healthScore: monthlyHealthScore,
     });
