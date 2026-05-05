@@ -1018,6 +1018,17 @@ export async function runStartupMigrations(): Promise<void> {
        ('enterprise', 'Enterprise', 'organization', 0,   null, null, '["Everything in Growth","Dedicated account manager","Custom HRMS / ERP integrations","SLA guarantee","White-label option"]', '#F59E0B', 12)
      ON CONFLICT (plan_key) DO NOTHING`,
 
+    // ── plan_pricing: add org_seat plans (org_max, org_pro) used by Business Portal billing ──
+    `INSERT INTO plan_pricing (plan_key, display_name, type, monthly_price, yearly_price, max_seats, features, badge_color, sort_order, is_active)
+     VALUES
+       ('org_max', 'Max', 'org_seat', 199, null, null,
+        '["Basic aggregate health dashboard","Enrollment code management","Employee search","GST-ready invoice","Email support"]',
+        '#0077B6', 20, true),
+       ('org_pro', 'Pro', 'org_seat', 249, null, null,
+        '["Everything in Max","Advanced health analytics & charts","Health risk distribution alerts","Weekly & monthly team reports","Priority support","Custom announcements to employees"]',
+        '#7C3AED', 21, true)
+     ON CONFLICT (plan_key) DO NOTHING`,
+
     // ── daily_activity_scores: task-based active percentage per day ────────────
     `CREATE TABLE IF NOT EXISTS daily_activity_scores (
       id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
