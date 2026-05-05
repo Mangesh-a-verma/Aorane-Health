@@ -655,13 +655,12 @@ export default function DashboardScreen() {
         setExerciseMin(logs.reduce((s, l) => s + l.durationMinutes, 0));
         setCalories((c) => ({ ...c, burned: Math.round(logs.reduce((s, l) => s + Number(l.caloriesBurned || 0), 0)) }));
       }
-      if (activityRes.status === "fulfilled") {
-        const pct = activityRes.value.pct ?? 0;
-        setActivityPct(pct);
-        setHealthScore(pct);
-      } else if (scoreRes.status === "fulfilled") {
+      if (scoreRes.status === "fulfilled") {
         const sc = scoreRes.value.score as Record<string, number>;
         setHealthScore(sc.healthScore ?? 0);
+      }
+      if (activityRes.status === "fulfilled") {
+        setActivityPct(activityRes.value.pct ?? 0);
       }
       if (profileRes.status === "fulfilled") {
         const p = profileRes.value.profile as Record<string, string>;
