@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #FFFFFF; }
+  .ad {
+    width: 100vw; height: 100vh;
+    background: #FFFFFF;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 6vh 7vw;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 1vw;
+  }
+  .logo-mark {
+    width: 4.5vh; height: 4.5vh;
+    background: #0077B6;
+    border-radius: 30%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-mark svg { width: 60%; height: 60%; }
+  .logo-text {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 900; font-size: 2.8vh;
+    color: #0077B6; letter-spacing: 0.05em;
+  }
+  .middle { display: flex; flex-direction: column; gap: 3vh; }
+  .tag {
+    display: inline-block;
+    background: #EFF6FF;
+    color: #0077B6;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500; font-size: 1.6vh;
+    padding: 0.6vh 1.6vw;
+    border-radius: 100px;
+    letter-spacing: 0.05em;
+    width: fit-content;
+  }
+  .headline {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 900; font-size: 7.8vw;
+    color: #0D1F33; line-height: 1.1;
+  }
+  .headline span { color: #0077B6; }
+  .benefit {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400; font-size: 2.2vh;
+    color: #64748B; line-height: 1.5;
+    max-width: 70%;
+  }
+  .cta {
+    display: inline-block;
+    background: #0077B6;
+    color: #FFFFFF;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700; font-size: 2vh;
+    padding: 1.8vh 5vw;
+    border-radius: 1vw;
+    letter-spacing: 0.02em;
+    align-self: flex-start;
+  }
+  .footer {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.6vh; color: #94A3B8;
+    letter-spacing: 0.03em;
+  }
+</style>
+</head>
+<body>
+<div class="ad">
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L4 7v10l8 5 8-5V7L12 2z" fill="white"/></svg>
+    </div>
+    <span class="logo-text">AORANE</span>
+  </div>
+  <div class="middle">
+    <span class="tag">AI-POWERED HEALTH APP</span>
+    <div class="headline">Health <span>Chaos</span><br>Stops Here.</div>
+    <div class="benefit">Track food, sleep & medicine — all in one smart app.</div>
+    <div class="cta">Download Free</div>
+  </div>
+  <span class="footer">aorane.com</span>
+</div>
+</body>
+</html>
