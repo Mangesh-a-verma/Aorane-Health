@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { api, type Admin, type Org } from "@/lib/api";
 
-const INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes
+const INACTIVITY_MS = 15 * 60 * 1000; // 15 minutes
+const WARNING_MS    = 14 * 60 * 1000; // warn 1 min before logout
 
 interface AuthState {
   token: string | null;
@@ -18,6 +19,8 @@ interface AuthContextType extends AuthState {
   setOrg: (org: Org) => void;
   refreshSubscription: () => Promise<void>;
   isPaidActive: boolean;
+  inactiveWarning: boolean;
+  resetInactivityTimer: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
