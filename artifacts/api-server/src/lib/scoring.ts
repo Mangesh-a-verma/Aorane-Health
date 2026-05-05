@@ -438,36 +438,26 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const dayStart = date + "T00:00:00+05:30";
   const dayEnd   = date + "T23:59:59+05:30";
 
-  // Fetch all data in parallel — now includes height, DOB, goals, conditions, micronutrients, sleep
-  const [foodR, exR, waterR, medSchedR, medTakenR, prefsR, profileR, goalsR, conditionsR, sleepR] = await Promise.all([
-    // Food — now includes micronutrients + tracking if micronutrient data was actually logged
+  // ── Step 1: Fetch core data (always-present columns) in parallel ─────────────
+  const [foodBasicR, exBasicR, waterR, medSchedR, medTakenR, prefsR, profileBasicR, goalsR, conditionsR, sleepR] = await Promise.all([
+    // Food — basic macros only (always present columns)
     pool.query(
       `SELECT
-        COALESCE(SUM(calories::numeric),0)      AS total_cal,
-        COALESCE(SUM(protein_g::numeric),0)     AS total_protein,
-        COALESCE(SUM(carbs_g::numeric),0)       AS total_carbs,
-        COALESCE(SUM(fat_g::numeric),0)         AS total_fat,
-        COALESCE(SUM(fiber_g::numeric),0)       AS total_fiber,
-        COALESCE(SUM(calcium_mg::numeric),0)    AS total_calcium,
-        COALESCE(SUM(iron_mg::numeric),0)       AS total_iron,
-        COALESCE(SUM(vitamin_c_mg::numeric),0)  AS total_vitamin_c,
-        COALESCE(SUM(vitamin_b12_mcg::numeric),0) AS total_b12,
-        COALESCE(SUM(vitamin_d_mcg::numeric),0) AS total_vitamin_d,
-        COUNT(*)                                AS meal_count,
-        COUNT(CASE WHEN calcium_mg::numeric > 0 OR iron_mg::numeric > 0
-                        OR vitamin_c_mg::numeric > 0
-                        OR vitamin_b12_mcg::numeric > 0
-                        OR vitamin_d_mcg::numeric > 0 THEN 1 END) AS micro_logged_count
+        COALESCE(SUM(calories::numeric),0)   AS total_cal,
+        COALESCE(SUM(protein_g::numeric),0)  AS total_protein,
+        COALESCE(SUM(carbs_g::numeric),0)    AS total_carbs,
+        COALESCE(SUM(fat_g::numeric),0)      AS total_fat,
+        COALESCE(SUM(fiber_g::numeric),0)    AS total_fiber,
+        COUNT(*)                             AS meal_count
        FROM food_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`,
       [userId, dayStart, dayEnd],
     ),
-    // Exercise
+    // Exercise — basic columns only (duration, calories; met_value added later)
     pool.query(
       `SELECT
-        COALESCE(SUM(met_value::numeric * duration_minutes),0) AS met_minutes,
-        COALESCE(SUM(duration_minutes),0)                      AS total_duration,
-        COALESCE(SUM(calories_burned::numeric),0)              AS total_calories,
-        COUNT(*)                                               AS sessions
+        COALESCE(SUM(duration_minutes),0)          AS total_duration,
+        COALESCE(SUM(calories_burned::numeric),0)  AS total_calories,
+        COUNT(*)                                   AS sessions
        FROM exercise_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`,
       [userId, dayStart, dayEnd],
     ),
@@ -491,28 +481,62 @@ export async function computeScientificScore(userId: string, date: string): Prom
       `SELECT water_goal_glasses, calorie_goal FROM user_preferences WHERE user_id=$1`,
       [userId],
     ),
-    // User profile — now includes height_cm and date_of_birth for BMR
+    // User profile — basic columns only (always present)
     pool.query(
-      `SELECT weight_kg, gender, bmi, activity_level, sleep_hours_avg, height_cm, date_of_birth
-       FROM user_profiles WHERE user_id=$1`,
+      `SELECT weight_kg, gender, bmi, sleep_hours_avg FROM user_profiles WHERE user_id=$1`,
       [userId],
     ),
-    // Health goals — for personalised calorie + protein targets
+    // Health goals
     pool.query(
       `SELECT primary_goal FROM user_health_goals WHERE user_id=$1 LIMIT 1`,
       [userId],
     ),
-    // Medical conditions — for fiber, iron, calcium target adjustments
+    // Medical conditions
     pool.query(
       `SELECT condition FROM user_medical_conditions WHERE user_id=$1 AND is_active=true`,
       [userId],
     ),
-    // Sleep log for this specific date (actual daily tracking)
+    // Sleep log
     pool.query(
       `SELECT sleep_hours, quality, bedtime, wake_time FROM sleep_logs WHERE user_id=$1 AND sleep_date=$2 ORDER BY logged_at DESC LIMIT 1`,
       [userId, date],
     ),
   ]);
+
+  // ── Step 2: Fetch optional columns separately — silently degrade if missing ──
+  // height_cm, date_of_birth, activity_level — added via migration; may be absent on older DBs
+  const profileExtR = await pool.query(
+    `SELECT height_cm, date_of_birth, activity_level FROM user_profiles WHERE user_id=$1`,
+    [userId],
+  ).catch(() => ({ rows: [{}] }));
+
+  // met_value column on exercise_logs — added via migration
+  const exMetR = await pool.query(
+    `SELECT COALESCE(SUM(met_value::numeric * duration_minutes),0) AS met_minutes
+     FROM exercise_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`,
+    [userId, dayStart, dayEnd],
+  ).catch(() => ({ rows: [{ met_minutes: "0" }] }));
+
+  // Micronutrient columns on food_logs — added via migration
+  const foodMicroR = await pool.query(
+    `SELECT
+      COALESCE(SUM(calcium_mg::numeric),0)      AS total_calcium,
+      COALESCE(SUM(iron_mg::numeric),0)         AS total_iron,
+      COALESCE(SUM(vitamin_c_mg::numeric),0)    AS total_vitamin_c,
+      COALESCE(SUM(vitamin_b12_mcg::numeric),0) AS total_b12,
+      COALESCE(SUM(vitamin_d_mcg::numeric),0)   AS total_vitamin_d,
+      COUNT(CASE WHEN calcium_mg::numeric > 0 OR iron_mg::numeric > 0
+                      OR vitamin_c_mg::numeric > 0
+                      OR vitamin_b12_mcg::numeric > 0
+                      OR vitamin_d_mcg::numeric > 0 THEN 1 END) AS micro_logged_count
+     FROM food_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`,
+    [userId, dayStart, dayEnd],
+  ).catch(() => ({ rows: [{ total_calcium: "0", total_iron: "0", total_vitamin_c: "0", total_b12: "0", total_vitamin_d: "0", micro_logged_count: "0" }] }));
+
+  // Merge results — use aliases that match the old variable names
+  const foodR     = { rows: [{ ...foodBasicR.rows[0], ...foodMicroR.rows[0] }] };
+  const exR       = { rows: [{ ...exBasicR.rows[0], met_minutes: exMetR.rows[0]?.met_minutes ?? "0" }] };
+  const profileR  = { rows: [{ ...profileBasicR.rows[0], ...profileExtR.rows[0] }] };
 
   // ── Parse raw data ───────────────────────────────────────────────────────────
   const totalCalories  = parseFloat(foodR.rows[0]?.total_cal     || "0");
