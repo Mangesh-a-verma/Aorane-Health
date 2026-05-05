@@ -55,7 +55,7 @@ function TypeDistributionBar({ orgs }: { orgs: Org[] }) {
 
 const ALL_TYPES = ["all", ...Object.keys(TYPE_META)];
 
-type SortKey = "name" | "createdAt" | "usedSeats" | "totalSeats";
+type SortKey = "name" | "createdAt" | "usedSeats" | "totalSeats" | "totalRevenue";
 type SortDir = "asc" | "desc";
 type ViewMode = "grid" | "table";
 type EditForm = { name: string; contactEmail: string; city: string; state: string; totalSeats: number; orgType: string };
