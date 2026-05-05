@@ -3,6 +3,7 @@ import { pool } from "@workspace/db";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { getCumulativeActivePercent } from "../../lib/activityScore";
+import { computeScientificScore } from "../../lib/scoring";
 
 // ── AORANE ID Generation (12 chars, alphanumeric uppercase, immutable) ────────
 // Format: [G][YY][CCC][XXXXXXX]
@@ -294,7 +295,12 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
       ).catch(() => ({ rows: [{ avg_score: null }] })),
     ]);
 
-    const monthlyHealthScore = Math.round(parseFloat(monthlyHealthRes.rows[0]?.avg_score || "0"));
+    let monthlyHealthScore = Math.round(parseFloat(monthlyHealthRes.rows[0]?.avg_score || "0"));
+
+    if (!monthlyHealthScore) {
+      const fresh = await computeScientificScore(uid).catch(() => null);
+      monthlyHealthScore = fresh?.score ?? Math.round(activeData.weekPct);
+    }
 
     res.json({
       aoraneId,
