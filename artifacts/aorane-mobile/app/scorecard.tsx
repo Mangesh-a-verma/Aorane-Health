@@ -42,6 +42,7 @@ type Scorecard = {
   bmiCategory: string; plan: string; gender: string; age: number | null;
   memberSince: string; city: string | null; state: string | null;
   workProfile: string | null; profilePhotoUrl?: string | null;
+  healthScore?: number;
   activePercent: ActivePercent;
 };
 type CompanySettings = {
@@ -465,7 +466,7 @@ export default function ScorecardScreen() {
                     <View style={{ flexDirection: "row", gap: 6 }}>
                       <View style={{ backgroundColor: "rgba(255,255,255,0.14)", borderRadius: 7, paddingHorizontal: 7, paddingVertical: 4, alignItems: "center" }}>
                         <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 6, fontFamily: "Inter_500Medium", letterSpacing: 0.8 }}>HEALTH</Text>
-                        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13 }}>{Math.round(card.activePercent?.weekPct ?? 0)}%</Text>
+                        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13 }}>{Math.round(card.healthScore ?? card.activePercent?.overall ?? 0)}%</Text>
                       </View>
                       <View style={{ backgroundColor: "rgba(255,255,255,0.14)", borderRadius: 7, paddingHorizontal: 7, paddingVertical: 4, alignItems: "center" }}>
                         <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 6, fontFamily: "Inter_500Medium", letterSpacing: 0.8 }}>THIS WEEK</Text>

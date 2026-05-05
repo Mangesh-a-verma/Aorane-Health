@@ -1,7 +1,17 @@
 import { pool } from "@workspace/db";
+import { computeScientificScore } from "./scoring";
 
 function todayIST(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
+/**
+ * Recalculate and save today's scientific health score to daily_health_scores.
+ * Call this after ANY log action (food, water, exercise, medicine, sleep, stress).
+ */
+export async function upsertDailyHealthScore(userId: string): Promise<void> {
+  const date = todayIST();
+  await computeScientificScore(userId, date).catch(() => {});
 }
 
 /**

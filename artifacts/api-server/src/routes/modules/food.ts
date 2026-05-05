@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { upsertDailyActivityScore } from "../../lib/activityScore";
+import { upsertDailyActivityScore, upsertDailyHealthScore } from "../../lib/activityScore";
 import { db, foodLogsTable, foodItemsTable, foodScanCacheTable, userProfilesTable } from "@workspace/db";
 import { eq, and, gte, lte, ilike, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -168,6 +168,7 @@ router.post("/food/log", requireAuth, async (req: AuthRequest, res) => {
       loggedAt: new Date(),
     }).returning();
     upsertDailyActivityScore(req.userId!).catch(() => {});
+    upsertDailyHealthScore(req.userId!).catch(() => {});
     res.status(201).json({ log });
   } catch {
     res.status(500).json({ error: "Failed to log food" });

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { upsertDailyActivityScore } from "../../lib/activityScore";
+import { upsertDailyActivityScore, upsertDailyHealthScore } from "../../lib/activityScore";
 import { getCumulativeActivePercent } from "../../lib/activityScore";
 import { pool } from "@workspace/db";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -149,6 +149,7 @@ router.post("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
        String(finalCalories), String(finalMet), inputMethod || "manual", notes || null]
     );
     upsertDailyActivityScore(req.userId!).catch(() => {});
+    upsertDailyHealthScore(req.userId!).catch(() => {});
     res.status(201).json({
       log: result.rows[0],
       calculation: { weightKg, gender, metValue: finalMet, caloriesBurned: finalCalories },
@@ -204,6 +205,7 @@ router.post("/health/water", requireAuth, async (req: AuthRequest, res) => {
       [req.userId!, Number(glassesCount), Number(mlAmount), drinkType]
     );
     upsertDailyActivityScore(req.userId!).catch(() => {});
+    upsertDailyHealthScore(req.userId!).catch(() => {});
     res.status(201).json({ log: result.rows[0] });
   } catch (e) {
     res.status(500).json({ error: "Failed to log water", detail: (e as Error).message });
@@ -331,6 +333,8 @@ router.post("/health/sleep", requireAuth, async (req: AuthRequest, res) => {
       res.status(200).json({ success: true, log: existing.rows[0], updated: false });
       return;
     }
+    upsertDailyActivityScore(req.userId!).catch(() => {});
+    upsertDailyHealthScore(req.userId!).catch(() => {});
     res.status(201).json({ success: true, log, sleepHours: hours });
   } catch (e) {
     res.status(500).json({ error: "Failed to log sleep", detail: (e as Error).message });
@@ -414,9 +418,9 @@ router.get("/health/score-range", requireAuth, async (req: AuthRequest, res) => 
       return;
     }
     const result = await pool.query(
-      `SELECT ROUND(AVG(normalized_pct)) AS avg_pct, COUNT(*) AS days
-       FROM daily_activity_scores
-       WHERE user_id=$1 AND activity_date >= $2 AND activity_date <= $3`,
+      `SELECT ROUND(AVG(health_score)) AS avg_pct, COUNT(*) AS days
+       FROM daily_health_scores
+       WHERE user_id=$1 AND score_date >= $2 AND score_date <= $3`,
       [req.userId!, startDate, endDate]
     );
     const avgPct = Math.round(parseFloat(result.rows[0]?.avg_pct || "0"));

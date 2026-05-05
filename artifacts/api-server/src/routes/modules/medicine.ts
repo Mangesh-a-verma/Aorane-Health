@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { upsertDailyActivityScore } from "../../lib/activityScore";
+import { upsertDailyActivityScore, upsertDailyHealthScore } from "../../lib/activityScore";
 import { db, medicineSchedulesTable, medicineLogsTable } from "@workspace/db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -85,6 +85,7 @@ router.post("/medicine/log", requireAuth, async (req: AuthRequest, res) => {
       takenAt: takenAt ? new Date(takenAt as string) : (status === "taken" ? new Date() : undefined),
     }).returning();
     upsertDailyActivityScore(req.userId!).catch(() => {});
+    upsertDailyHealthScore(req.userId!).catch(() => {});
     res.status(201).json({ log });
   } catch {
     res.status(500).json({ error: "Failed to log medicine" });

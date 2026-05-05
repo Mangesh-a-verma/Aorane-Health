@@ -79,6 +79,7 @@ export type Org = {
   customPriceNote: string | null;
   customPriceValidUntil: string | null;
   customPriceAppliedBy: string | null;
+  totalRevenue?: number;
 };
 export type CustomDealOrg = {
   id: string; name: string; orgCode: string; orgType: string;

@@ -282,9 +282,19 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
       ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / (86400000 * 365.25))
       : null;
 
-    const activeData = await calculateActivePercent(uid).catch(() => ({
-      pct: 0, todayPct: 0, weekPct: 0, daysTracked: 0, trend: "stable" as const,
-    }));
+    const [activeData, monthlyHealthRes] = await Promise.all([
+      calculateActivePercent(uid).catch(() => ({
+        pct: 0, todayPct: 0, weekPct: 0, daysTracked: 0, trend: "stable" as const,
+      })),
+      pool.query(
+        `SELECT ROUND(AVG(health_score)) AS avg_score
+         FROM daily_health_scores
+         WHERE user_id=$1 AND score_date >= to_char(NOW() - INTERVAL '30 days','YYYY-MM-DD')`,
+        [uid]
+      ).catch(() => ({ rows: [{ avg_score: null }] })),
+    ]);
+
+    const monthlyHealthScore = Math.round(parseFloat(monthlyHealthRes.rows[0]?.avg_score || "0"));
 
     res.json({
       aoraneId,
@@ -307,7 +317,7 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
         daysTracked: activeData.daysTracked,
         trend: activeData.trend,
       },
-      healthScore: activeData.weekPct,
+      healthScore: monthlyHealthScore,
     });
   } catch (e) {
     console.error("[SCORECARD ERROR]", (e as Error).message);
