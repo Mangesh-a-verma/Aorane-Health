@@ -1,0 +1,65 @@
+Core idea: Per day tasks complete karo → daily % → average since install = Final Active %
+
+Strengths (Jo bahut acha hai):
+Point	Kyu Acha Hai
+"Jitne din use kiya utne ka average"	Honest metric — padding nahi hoti
+Daily task-based %	User ko pata hai woh kya miss kar raha hai
+Since install date	Long-term consistency dikhata hai
+Stress check-in include	Differentiator hai — koi aur app nahi karta
+Medicine conditional	Sahi — jo medicine nahi leta uske liye unfair nahi
+Gaps (Jo sochna padega):
+Question	Problem
+"3 times food" — kya 2 meals = 67% ya 0%?	Define karna padega
+Jo din user app hi nahi khola — 0% count karo ya skip?	Bada design decision
+Snacks & drinks — alag count karein ya food mein?	Complexity badhegi
+Rest day (exercise skip) — 0% ya adjust?	Athletes ke liye unfair hoga
+🟢 Ideal Design — Meri Recommendation
+Step 1: Daily Task Completion Score
+Har din ke "expected tasks" define karo based on user profile:
+✅ Food Log    → 3 meals logged?      = 30 points (10 each)
+✅ Water       → daily goal reach?    = 20 points
+✅ Exercise    → logged?              = 20 points (rest day = auto 20)
+✅ Medicine    → sirf agar scheduled  = 15 points
+✅ Stress      → check-in done?       = 10 points
+✅ Snacks      → food ke andar count  = no extra
+Max per day = 100 points
+
+Step 2: Smart Missing Day Logic
+Ek bhi screen open kiya aur kuch bhi nahi kiya → 0%
+App hi nahi khola → "No data" (average mein count na ho)
+
+Yeh important hai — warna jo 10 din app nahi khola uska average bahut low ho jayega unfairly.
+
+Step 3: Cumulative Average (Aapka idea ✅)
+Install date se aaj tak ke "app khola" wale dino ka average
+March 1 install → March 20 tak
+→ 15 din app khola (5 din nahi khola)
+→ In 15 dino ka average daily score = Final Active %
+
+Step 4: Kya Display Karo
+Active % breakdown:
+┌─────────────────────────────┐
+│  🔥 Active Score: 74%       │
+│  ─────────────────────────  │
+│  Today:      82%            │
+│  This Week:  68%            │
+│  All Time:   74%  ← main   │
+│  Trend:      ↑ improving    │
+└─────────────────────────────┘
+
+⚖️ Current vs Proposed — Head to Head
+Feature	Abhi	Aapka Idea	Ideal Design
+Measurement	"Din active tha ya nahi"	Daily task % ka average	Task-weighted daily score
+Time window	Last 7 days only	Since install	Since install (app khola wale din)
+Granularity	Binary (0 or 1)	Multi-task	Multi-task + weighted
+Fairness	Low (ek log = active)	High	Highest
+Missing days	0% in calculation	0%	Skip (only app-open days)
+User motivation	Low	High	Highest
+🎯 Final Verdict
+Aapka idea current system se bahut better hai. Jo ek cheez main change karunga:
+
+❌ "20 mein se 20 dino ka average" → unfair for missed days
+
+✅ "20 mein se jo 15 din app khola, unka average" → honest aur motivating
+
+Yeh "streak + consistency" ka perfect combination hai — user ko daily engage karta hai bina punish kiye jab woh chutti pe ho.
