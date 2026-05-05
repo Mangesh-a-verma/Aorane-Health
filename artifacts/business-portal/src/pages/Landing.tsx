@@ -250,7 +250,7 @@ export default function Landing() {
   const plans = [
     {
       plan: "Starter",
-      perSeatPrice: 249,
+      perSeatPrice: 199,
       minSeats: 20,
       maxSeats: 50,
       crmFree: false,
