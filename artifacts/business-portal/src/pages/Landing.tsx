@@ -52,18 +52,18 @@ function StatCard({ icon, value, suffix, label, started }: {
 }
 
 function PricingCard({
-  plan, perSeatPrice, discountPct, minSeats, maxSeats, features, crmFree,
+  plan, perSeatPrice, perSeatYearly = 0, discountPct, minSeats, maxSeats, features, crmFree,
   highlighted = false, isEnterprise = false, billing,
 }: {
-  plan: string; perSeatPrice: number; discountPct: number; minSeats: number;
+  plan: string; perSeatPrice: number; perSeatYearly?: number; discountPct: number; minSeats: number;
   maxSeats?: number; features: string[]; crmFree: boolean;
   highlighted?: boolean; isEnterprise?: boolean; billing: "monthly" | "annual";
 }) {
   const [, navigate] = useLocation();
   const discountedPrice = Math.round(perSeatPrice * (1 - discountPct / 100));
-  const annualPrice = Math.round(discountedPrice * 0.90);
+  const annualPrice = perSeatYearly > 0 ? Math.round(perSeatYearly * (1 - discountPct / 100)) : Math.round(discountedPrice * 0.90);
   const displayPrice = billing === "annual" ? annualPrice : discountedPrice;
-  const extraAnnualSaving = Math.round((1 - annualPrice / discountedPrice) * 100);
+  const extraAnnualSaving = annualPrice > 0 && discountedPrice > 0 ? Math.round((1 - annualPrice / discountedPrice) * 100) : 10;
 
   return (
     <div style={{
@@ -231,13 +231,14 @@ export default function Landing() {
       : `${import.meta.env.BASE_URL}api`;
     fetch(`${apiBase}/plans?type=organization`)
       .then(r => r.json())
-      .then((data: { plans?: Array<{ planKey: string; monthlyPrice: string; yearlyPrice?: string; maxSeats?: number }> }) => {
+      .then((data: { plans?: Array<{ planKey: string; monthlyPrice: string; yearlyPrice?: string; effectiveMonthlyPrice?: string; effectiveYearlyPrice?: string; maxSeats?: number }> }) => {
         if (data.plans?.length) {
           const m: Record<string, { perSeat: number; perSeatYearly: number }> = {};
           data.plans.forEach(p => {
             const seats = p.maxSeats && p.maxSeats > 0 ? p.maxSeats : 1;
-            const monthly = Number(p.monthlyPrice) / seats;
-            const yearly = p.yearlyPrice ? Number(p.yearlyPrice) / seats / 12 : monthly * 0.9;
+            const monthly = Number(p.effectiveMonthlyPrice ?? p.monthlyPrice) / seats;
+            const yearlyTotal = p.effectiveYearlyPrice ?? p.yearlyPrice;
+            const yearly = yearlyTotal ? Number(yearlyTotal) / seats / 12 : monthly * 0.9;
             if (monthly > 0) m[p.planKey] = { perSeat: Math.round(monthly), perSeatYearly: Math.round(yearly) };
           });
           if (Object.keys(m).length) setPlanPrices(m);
@@ -295,6 +296,7 @@ export default function Landing() {
     {
       plan: "Starter",
       perSeatPrice: planPrices["starter"]?.perSeat ?? 249,
+      perSeatYearly: planPrices["starter"]?.perSeatYearly ?? 0,
       discountPct: 10,
       minSeats: 20,
       maxSeats: 50,
@@ -320,6 +322,7 @@ export default function Landing() {
     {
       plan: "Growth",
       perSeatPrice: planPrices["growth"]?.perSeat ?? 249,
+      perSeatYearly: planPrices["growth"]?.perSeatYearly ?? 0,
       discountPct: 15,
       minSeats: 51,
       maxSeats: 250,
@@ -343,6 +346,7 @@ export default function Landing() {
     {
       plan: "Enterprise",
       perSeatPrice: planPrices["enterprise"]?.perSeat ?? 249,
+      perSeatYearly: planPrices["enterprise"]?.perSeatYearly ?? 0,
       discountPct: 0,
       minSeats: 251,
       crmFree: true,
@@ -812,7 +816,13 @@ export default function Landing() {
                     fontWeight: 700, fontSize: 14, cursor: "pointer", transition: "all 0.25s",
                   }}
                 >
-                  {b === "monthly" ? "Monthly" : "Annual  (Save 10%)"}
+                  {b === "monthly" ? "Monthly" : (() => {
+                    const p = planPrices["growth"] ?? planPrices["starter"];
+                    const savePct = p && p.perSeat > 0 && p.perSeatYearly > 0
+                      ? Math.round((1 - p.perSeatYearly / p.perSeat) * 100)
+                      : 10;
+                    return `Annual  (Save ${savePct}%)`;
+                  })()}
                 </button>
               ))}
             </div>
