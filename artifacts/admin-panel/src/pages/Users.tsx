@@ -168,6 +168,14 @@ function UserRow({ user, onUpdate }: { user: User; onUpdate: (id: string, d: Par
       <td className="px-4 py-3 text-xs text-muted-foreground">
         {user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" }) : "—"}
       </td>
+      <td className="px-4 py-3 text-xs text-muted-foreground">
+        {user.lastLoginAt
+          ? <div>
+              <div>{new Date(user.lastLoginAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" })}</div>
+              <div className="text-[10px] text-muted-foreground/60">{new Date(user.lastLoginAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>
+            </div>
+          : <span className="italic text-muted-foreground/50">Never</span>}
+      </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1">
           <button onClick={() => act({ isBanned: !user.isBanned })} disabled={updating}
@@ -409,7 +417,7 @@ export default function Users() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    {["User", "Email", "Aorane ID / UUID", "Plan", "Status", "Joined", "Actions"].map((h) => (
+                    {["User", "Email", "Aorane ID / UUID", "Plan", "Status", "Joined", "Last Login", "Actions"].map((h) => (
                       <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -418,13 +426,13 @@ export default function Users() {
                   {loading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <tr key={i} className="border-b border-border">
-                        {Array.from({ length: 7 }).map((_, j) => (
+                        {Array.from({ length: 8 }).map((_, j) => (
                           <td key={j} className="px-4 py-3"><div className="h-4 bg-muted rounded animate-pulse" /></td>
                         ))}
                       </tr>
                     ))
                   ) : users.length === 0 ? (
-                    <tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground text-sm">
+                    <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground text-sm">
                       {search ? `No users found matching "${search}"` : "No users found"}
                     </td></tr>
                   ) : (
