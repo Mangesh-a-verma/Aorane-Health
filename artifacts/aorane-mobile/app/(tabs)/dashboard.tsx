@@ -639,10 +639,6 @@ export default function DashboardScreen() {
       } else {
         setIsOffline(false);
       }
-      if (scoreRes.status === "fulfilled") {
-        const sc = scoreRes.value.score as Record<string, number>;
-        setHealthScore(sc.healthScore ?? 0);
-      }
       if (waterRes.status === "fulfilled")
         setWater({ current: waterRes.value.totalGlasses || 0, goal: waterRes.value.goal || 8 });
       if (foodRes.status === "fulfilled") {
@@ -660,7 +656,12 @@ export default function DashboardScreen() {
         setCalories((c) => ({ ...c, burned: Math.round(logs.reduce((s, l) => s + Number(l.caloriesBurned || 0), 0)) }));
       }
       if (activityRes.status === "fulfilled") {
-        setActivityPct(activityRes.value.pct ?? 0);
+        const pct = activityRes.value.pct ?? 0;
+        setActivityPct(pct);
+        setHealthScore(pct);
+      } else if (scoreRes.status === "fulfilled") {
+        const sc = scoreRes.value.score as Record<string, number>;
+        setHealthScore(sc.healthScore ?? 0);
       }
       if (profileRes.status === "fulfilled") {
         const p = profileRes.value.profile as Record<string, string>;
