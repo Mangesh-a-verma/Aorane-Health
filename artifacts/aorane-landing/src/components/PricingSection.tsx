@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Sparkles, Building2, Star, Zap, Crown, Users, Rocket, Smartphone, Apple, X, ArrowRight } from "lucide-react";
 import { useSiteSettings } from "@/lib/useSiteSettings";
@@ -14,9 +14,6 @@ interface Plan {
   color: string;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL
-  ? (import.meta.env.VITE_API_URL as string).replace(/\/$/, "")
-  : import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const defaultIndividual: Plan[] = [
   { planKey: "free", displayName: "Free", type: "individual", monthlyPrice: "0", yearlyPrice: "0",
@@ -198,42 +195,11 @@ function PlanCard({ plan, isYearly, highlight, onBusinessSignUp, onMobileInstall
 export default function PricingSection({ onBusinessSignUp, orgOnly }: { onBusinessSignUp?: () => void; orgOnly?: boolean } = {}) {
   const [tab, setTab] = useState<"individual" | "organization">(orgOnly ? "organization" : "individual");
   const [isYearly, setIsYearly] = useState(false);
-  const [indPlans, setIndPlans] = useState<Plan[]>(defaultIndividual);
-  const [orgPlans, setOrgPlans] = useState<Plan[]>(defaultOrg);
-  const [loading, setLoading] = useState(true);
+  const indPlans = defaultIndividual;
+  const orgPlans = defaultOrg;
+  const loading = false;
   const [installOpen, setInstallOpen] = useState(false);
   const settings = useSiteSettings();
-
-  useEffect(() => {
-    const fetchPlans = async () => {
-      try {
-        const [indRes, orgRes] = await Promise.all([
-          fetch(`${API_BASE}/api/plans?type=individual`),
-          fetch(`${API_BASE}/api/plans?type=organization`),
-        ]);
-        if (indRes.ok) {
-          const d = await indRes.json();
-          if (d.plans?.length) setIndPlans(d.plans.map((p: Record<string, unknown>) => ({
-            ...p,
-            badge: p.badgeText ?? "",
-            color: p.badgeColor ?? "#6B7280",
-          })));
-        }
-        if (orgRes.ok) {
-          const d = await orgRes.json();
-          if (d.plans?.length) setOrgPlans(d.plans.map((p: Record<string, unknown>) => ({
-            ...p,
-            badge: p.badgeText ?? "",
-            color: p.badgeColor ?? "#6B7280",
-          })));
-        }
-      } catch {
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPlans();
-  }, []);
 
   const rawPlans = tab === "individual" ? indPlans : orgPlans;
   const plans = orgOnly ? rawPlans.filter(p => p.planKey === "starter" || p.planKey === "growth") : rawPlans;

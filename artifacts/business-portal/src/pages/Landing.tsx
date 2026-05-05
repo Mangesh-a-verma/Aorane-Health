@@ -217,34 +217,16 @@ export default function Landing() {
   const [investorOpen, setInvestorOpen] = useState(false);
   const [expertOpen, setExpertOpen] = useState(false);
   const settings = useSiteSettings();
-  const [planPrices, setPlanPrices] = useState<Record<string, { perSeat: number; perSeatYearly: number }>>({});
+  const planPrices: Record<string, { perSeat: number; perSeatYearly: number }> = {
+    starter:    { perSeat: 249, perSeatYearly: 224 },
+    growth:     { perSeat: 249, perSeatYearly: 224 },
+    enterprise: { perSeat: 249, perSeatYearly: 224 },
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    const apiBase = import.meta.env.VITE_API_URL
-      ? `${import.meta.env.VITE_API_URL}/api`
-      : `${import.meta.env.BASE_URL}api`;
-    fetch(`${apiBase}/plans?type=organization`)
-      .then(r => r.json())
-      .then((data: { plans?: Array<{ planKey: string; monthlyPrice: string; yearlyPrice?: string; effectiveMonthlyPrice?: string; effectiveYearlyPrice?: string; maxSeats?: number }> }) => {
-        if (data.plans?.length) {
-          const m: Record<string, { perSeat: number; perSeatYearly: number }> = {};
-          data.plans.forEach(p => {
-            const seats = p.maxSeats && p.maxSeats > 0 ? p.maxSeats : 1;
-            const monthly = Number(p.effectiveMonthlyPrice ?? p.monthlyPrice) / seats;
-            const yearlyTotal = p.effectiveYearlyPrice ?? p.yearlyPrice;
-            const yearly = yearlyTotal ? Number(yearlyTotal) / seats / 12 : monthly * 0.9;
-            if (monthly > 0) m[p.planKey] = { perSeat: Math.round(monthly), perSeatYearly: Math.round(yearly) };
-          });
-          if (Object.keys(m).length) setPlanPrices(m);
-        }
-      })
-      .catch(() => {});
   }, []);
 
   useEffect(() => {
