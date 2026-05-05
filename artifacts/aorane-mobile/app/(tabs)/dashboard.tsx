@@ -622,12 +622,6 @@ export default function DashboardScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      // Detect offline state before loading
-      const online = typeof navigator !== "undefined"
-        ? navigator.onLine
-        : true;
-      setIsOffline(!online);
-
       const date = todayDate();
       const [scoreRes, waterRes, foodRes, exerciseRes, profileRes, medRes, activityRes, stressRes] = await Promise.allSettled([
         api.getHealthScore(date), api.getWaterLog(date), api.getFoodSummary(date),
@@ -635,10 +629,16 @@ export default function DashboardScreen() {
         api.getActivePercent(), api.getStressToday(),
       ]);
 
-      // If all API calls failed → likely offline
-      const allFailed = [scoreRes, waterRes, foodRes, exerciseRes, profileRes, medRes, activityRes, stressRes]
-        .every((r) => r.status === "rejected");
-      if (allFailed) setIsOffline(true);
+      const results = [scoreRes, waterRes, foodRes, exerciseRes, profileRes, medRes, activityRes, stressRes];
+      const allFailed = results.every((r) => r.status === "rejected");
+      if (allFailed) {
+        const firstErr = (results.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined)?.reason as Error | undefined;
+        const msg = (firstErr?.message || "").toLowerCase();
+        const isNetErr = msg.includes("network") || msg.includes("fetch") || msg.includes("internet") || msg.includes("starting up") || firstErr?.name === "TypeError";
+        setIsOffline(isNetErr);
+      } else {
+        setIsOffline(false);
+      }
       if (scoreRes.status === "fulfilled") {
         const sc = scoreRes.value.score as Record<string, number>;
         setHealthScore(sc.healthScore ?? 0);

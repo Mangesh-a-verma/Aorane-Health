@@ -20,6 +20,9 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS sleep_time TEXT`,
     `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS stress_level_self TEXT`,
     `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS exercise_frequency TEXT`,
+    `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS height_cm NUMERIC(5,2)`,
+    `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS date_of_birth TEXT`,
+    `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS activity_level TEXT`,
 
     // user_preferences missing columns
     `ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS calorie_goal INTEGER`,

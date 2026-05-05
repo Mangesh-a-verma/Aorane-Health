@@ -408,7 +408,11 @@ router.get("/health/sleep/:date", requireAuth, async (req: AuthRequest, res) => 
 
 router.get("/health/active-percent", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const data = await getCumulativeActivePercent(req.userId!);
+    let data = await getCumulativeActivePercent(req.userId!);
+    if (data.daysTracked === 0) {
+      await upsertDailyActivityScore(req.userId!);
+      data = await getCumulativeActivePercent(req.userId!);
+    }
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: "Failed to fetch active percent", detail: (e as Error).message });
