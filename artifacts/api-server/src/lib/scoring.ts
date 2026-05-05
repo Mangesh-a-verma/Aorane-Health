@@ -438,9 +438,10 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const dayStart = date + "T00:00:00+05:30";
   const dayEnd   = date + "T23:59:59+05:30";
 
-  // ── Step 1: Fetch core data (always-present columns) in parallel ─────────────
+  // ── Step 1: Fetch all data — every query has .catch() so a missing table/column
+  //           never causes the entire function to throw (which returns healthScore:0)
   const [foodBasicR, exBasicR, waterR, medSchedR, medTakenR, prefsR, profileBasicR, goalsR, conditionsR, sleepR] = await Promise.all([
-    // Food — basic macros only (always present columns)
+    // Food — basic macros
     pool.query(
       `SELECT
         COALESCE(SUM(calories::numeric),0)   AS total_cal,
@@ -451,8 +452,8 @@ export async function computeScientificScore(userId: string, date: string): Prom
         COUNT(*)                             AS meal_count
        FROM food_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`,
       [userId, dayStart, dayEnd],
-    ),
-    // Exercise — basic columns only (duration, calories; met_value added later)
+    ).catch(() => ({ rows: [{ total_cal: "0", total_protein: "0", total_carbs: "0", total_fat: "0", total_fiber: "0", meal_count: "0" }] })),
+    // Exercise — basic columns
     pool.query(
       `SELECT
         COALESCE(SUM(duration_minutes),0)          AS total_duration,
@@ -460,7 +461,7 @@ export async function computeScientificScore(userId: string, date: string): Prom
         COUNT(*)                                   AS sessions
        FROM exercise_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`,
       [userId, dayStart, dayEnd],
-    ),
+    ).catch(() => ({ rows: [{ total_duration: "0", total_calories: "0", sessions: "0" }] })),
     // Water
     pool.query(
       `SELECT
@@ -468,39 +469,42 @@ export async function computeScientificScore(userId: string, date: string): Prom
         COALESCE(SUM(glasses_count),0) AS total_glasses
        FROM water_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`,
       [userId, dayStart, dayEnd],
-    ),
+    ).catch(() => ({ rows: [{ total_ml: "0", total_glasses: "0" }] })),
     // Medicine scheduled
-    pool.query(`SELECT COUNT(*) FROM medicine_schedules WHERE user_id=$1 AND is_active=true`, [userId]),
+    pool.query(
+      `SELECT COUNT(*) FROM medicine_schedules WHERE user_id=$1 AND is_active=true`,
+      [userId],
+    ).catch(() => ({ rows: [{ count: "0" }] })),
     // Medicine taken today
     pool.query(
       `SELECT COUNT(*) FROM medicine_logs WHERE user_id=$1 AND status='taken' AND taken_at>=$2 AND taken_at<=$3`,
       [userId, dayStart, dayEnd],
-    ),
-    // User preferences (calorie goal fallback, water goal)
+    ).catch(() => ({ rows: [{ count: "0" }] })),
+    // User preferences
     pool.query(
       `SELECT water_goal_glasses, calorie_goal FROM user_preferences WHERE user_id=$1`,
       [userId],
-    ),
-    // User profile — basic columns only (always present)
+    ).catch(() => ({ rows: [{ water_goal_glasses: null, calorie_goal: "2000" }] })),
+    // User profile — basic columns
     pool.query(
       `SELECT weight_kg, gender, bmi, sleep_hours_avg FROM user_profiles WHERE user_id=$1`,
       [userId],
-    ),
+    ).catch(() => ({ rows: [{ weight_kg: "60", gender: "other", bmi: null, sleep_hours_avg: "0" }] })),
     // Health goals
     pool.query(
       `SELECT primary_goal FROM user_health_goals WHERE user_id=$1 LIMIT 1`,
       [userId],
-    ),
+    ).catch(() => ({ rows: [{ primary_goal: "general_wellness" }] })),
     // Medical conditions
     pool.query(
       `SELECT condition FROM user_medical_conditions WHERE user_id=$1 AND is_active=true`,
       [userId],
-    ),
+    ).catch(() => ({ rows: [] })),
     // Sleep log
     pool.query(
       `SELECT sleep_hours, quality, bedtime, wake_time FROM sleep_logs WHERE user_id=$1 AND sleep_date=$2 ORDER BY logged_at DESC LIMIT 1`,
       [userId, date],
-    ),
+    ).catch(() => ({ rows: [] })),
   ]);
 
   // ── Step 2: Fetch optional columns separately — silently degrade if missing ──
