@@ -1000,6 +1000,25 @@ export async function runStartupMigrations(): Promise<void> {
 
     // ── food_items: add vitamin_b12_mcg column (was missing — food_logs has it, food_items didn't) ──
     `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS vitamin_b12_mcg NUMERIC(6,2)`,
+
+    // ── daily_activity_scores: task-based active percentage per day ────────────
+    `CREATE TABLE IF NOT EXISTS daily_activity_scores (
+      id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id          UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      activity_date    DATE        NOT NULL,
+      food_score       SMALLINT    NOT NULL DEFAULT 0,
+      water_score      SMALLINT    NOT NULL DEFAULT 0,
+      exercise_score   SMALLINT    NOT NULL DEFAULT 0,
+      medicine_score   SMALLINT,
+      stress_score     SMALLINT    NOT NULL DEFAULT 0,
+      total_score      SMALLINT    NOT NULL DEFAULT 0,
+      max_possible     SMALLINT    NOT NULL DEFAULT 85,
+      normalized_pct   SMALLINT    NOT NULL DEFAULT 0,
+      app_opened       BOOLEAN     NOT NULL DEFAULT true,
+      calculated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(user_id, activity_date)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_daily_activity_user_date ON daily_activity_scores(user_id, activity_date DESC)`,
   ];
 
   let ok = 0; let fail = 0;

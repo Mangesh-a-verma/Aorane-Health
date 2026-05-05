@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { upsertDailyActivityScore } from "../../lib/activityScore";
+import { getCumulativeActivePercent } from "../../lib/activityScore";
 import { pool } from "@workspace/db";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
@@ -146,6 +148,7 @@ router.post("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
        sets ? Number(sets) : null, reps ? Number(reps) : null, steps ? Number(steps) : null,
        String(finalCalories), String(finalMet), inputMethod || "manual", notes || null]
     );
+    upsertDailyActivityScore(req.userId!).catch(() => {});
     res.status(201).json({
       log: result.rows[0],
       calculation: { weightKg, gender, metValue: finalMet, caloriesBurned: finalCalories },
@@ -200,6 +203,7 @@ router.post("/health/water", requireAuth, async (req: AuthRequest, res) => {
       `INSERT INTO water_logs (user_id, glasses_count, ml_amount, drink_type, logged_at) VALUES ($1,$2,$3,$4,NOW()) RETURNING *`,
       [req.userId!, Number(glassesCount), Number(mlAmount), drinkType]
     );
+    upsertDailyActivityScore(req.userId!).catch(() => {});
     res.status(201).json({ log: result.rows[0] });
   } catch (e) {
     res.status(500).json({ error: "Failed to log water", detail: (e as Error).message });
@@ -402,25 +406,12 @@ router.get("/health/sleep/:date", requireAuth, async (req: AuthRequest, res) => 
   }
 });
 
-router.get("/health/weekly-activity", requireAuth, async (req: AuthRequest, res) => {
+router.get("/health/active-percent", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const userId = req.userId!;
-    const result = await pool.query(
-      `SELECT COUNT(DISTINCT day) AS active_days FROM (
-        SELECT DATE(logged_at) AS day FROM food_logs WHERE user_id=$1 AND logged_at >= NOW() - INTERVAL '7 days'
-        UNION
-        SELECT DATE(logged_at) AS day FROM exercise_logs WHERE user_id=$1 AND logged_at >= NOW() - INTERVAL '7 days'
-        UNION
-        SELECT DATE(logged_at) AS day FROM water_logs WHERE user_id=$1 AND logged_at >= NOW() - INTERVAL '7 days'
-      ) sub`,
-      [userId]
-    );
-    const activeDays = parseInt(result.rows[0]?.active_days || "0");
-    // Cap at 100% — NOW()-7days can span 8 calendar days giving 114% otherwise
-    const percentage = Math.min(100, Math.round((activeDays / 7) * 100));
-    res.json({ activeDays, totalDays: 7, percentage });
+    const data = await getCumulativeActivePercent(req.userId!);
+    res.json(data);
   } catch (e) {
-    res.status(500).json({ error: "Failed to fetch weekly activity", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to fetch active percent", detail: (e as Error).message });
   }
 });
 

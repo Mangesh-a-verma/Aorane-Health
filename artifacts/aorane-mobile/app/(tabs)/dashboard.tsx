@@ -632,7 +632,7 @@ export default function DashboardScreen() {
       const [scoreRes, waterRes, foodRes, exerciseRes, profileRes, medRes, activityRes, stressRes] = await Promise.allSettled([
         api.getHealthScore(date), api.getWaterLog(date), api.getFoodSummary(date),
         api.getExerciseLogs(date), api.getProfile(), api.getMedicineSchedules(),
-        api.getWeeklyActivity(), api.getStressToday(),
+        api.getActivePercent(), api.getStressToday(),
       ]);
 
       // If all API calls failed → likely offline
@@ -660,7 +660,7 @@ export default function DashboardScreen() {
         setCalories((c) => ({ ...c, burned: Math.round(logs.reduce((s, l) => s + Number(l.caloriesBurned || 0), 0)) }));
       }
       if (activityRes.status === "fulfilled") {
-        setActivityPct(activityRes.value.percentage ?? 0);
+        setActivityPct(activityRes.value.pct ?? 0);
       }
       if (profileRes.status === "fulfilled") {
         const p = profileRes.value.profile as Record<string, string>;

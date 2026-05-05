@@ -31,8 +31,11 @@ const AVATARS = [
 ];
 
 type ActivePercent = {
-  overall: number; foodPct: number; waterPct: number;
-  exercisePct: number; medicinePct: number;
+  overall: number;
+  todayPct: number;
+  weekPct: number;
+  daysTracked: number;
+  trend: string;
 };
 type Scorecard = {
   aoraneId: string; name: string; bloodGroup: string; bmi: string;
@@ -154,7 +157,7 @@ export default function ScorecardScreen() {
     const planLabel = PLAN_LABELS[c.plan] || "FREE";
     const formattedId = formatId(c.aoraneId);
     const healthPct = Math.round(c.activePercent?.overall ?? 0);
-    const activePct = Math.round(c.activePercent?.exercisePct ?? 0);
+    const activePct = Math.round(c.activePercent?.weekPct ?? 0);
     const ageGender = [
       c.age ? `Age ${c.age}` : "",
       c.gender === "male" ? "Male" : c.gender === "female" ? "Female" : "",
@@ -355,7 +358,7 @@ export default function ScorecardScreen() {
         } else {
           await Share.share({
             title: "My Aorane Health Card",
-            message: `My Aorane ID: ${(card.aoraneId || "").replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")}\nHealth: ${Math.round(card.activePercent?.overall ?? 0)}%\n\nhttps://aorane.com`,
+            message: `My Aorane ID: ${(card.aoraneId || "").replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3")}\nActive Score: ${Math.round(card.activePercent?.overall ?? 0)}%\n\nhttps://aorane.com`,
           });
         }
       } catch {
@@ -465,8 +468,8 @@ export default function ScorecardScreen() {
                         <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13 }}>{Math.round(card.activePercent?.overall ?? 0)}%</Text>
                       </View>
                       <View style={{ backgroundColor: "rgba(255,255,255,0.14)", borderRadius: 7, paddingHorizontal: 7, paddingVertical: 4, alignItems: "center" }}>
-                        <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 6, fontFamily: "Inter_500Medium", letterSpacing: 0.8 }}>ACTIVE</Text>
-                        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13 }}>{Math.round(card.activePercent?.exercisePct ?? 0)}%</Text>
+                        <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 6, fontFamily: "Inter_500Medium", letterSpacing: 0.8 }}>THIS WEEK</Text>
+                        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13 }}>{Math.round(card.activePercent?.weekPct ?? 0)}%</Text>
                       </View>
                       {card.bloodGroup ? (
                         <View style={{ backgroundColor: "rgba(255,255,255,0.14)", borderRadius: 7, paddingHorizontal: 7, paddingVertical: 4, alignItems: "center" }}>

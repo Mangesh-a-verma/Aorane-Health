@@ -2,7 +2,7 @@ import { Router } from "express";
 import { pool } from "@workspace/db";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { computeActivePercent } from "../../lib/scoring";
+import { getCumulativeActivePercent } from "../../lib/activityScore";
 
 // ── AORANE ID Generation (12 chars, alphanumeric uppercase, immutable) ────────
 // Format: [G][YY][CCC][XXXXXXX]
@@ -28,9 +28,8 @@ function generateAoraneId(gender: string | null, dateOfBirth: string | null, cit
 }
 
 // ── Daily Active Percentage Calculation ───────────────────────────────────────
-// Uses scoring.ts scientific engine (WHO 2020 + ICMR 2024)
-async function calculateActivePercent(userId: string, date?: string) {
-  return computeActivePercent(userId, date);
+async function calculateActivePercent(userId: string) {
+  return getCumulativeActivePercent(userId);
 }
 
 const router = Router();
@@ -284,9 +283,7 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
       : null;
 
     const activeData = await calculateActivePercent(uid).catch(() => ({
-      overall: 0, foodPct: 0, waterPct: 0, exercisePct: 0, medicinePct: 0,
-      sleepPct: 50, bmiScore: 50, grade: "—", gradeLabel: "No data yet",
-      breakdown: { food: 0, water: 0, exerciseMetMin: 0, medicine: 0, sleepHours: 0 }
+      pct: 0, todayPct: 0, weekPct: 0, daysTracked: 0, trend: "stable" as const,
     }));
 
     res.json({
@@ -303,10 +300,14 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
       workProfile: profile?.work_profile || null,
       memberSince: user?.created_at,
       qrData: JSON.stringify({ aoraneId, name: profile?.full_name, bloodGroup: profile?.blood_group }),
-      activePercent: activeData,
-      healthScore: activeData.overall,
-      healthGrade: activeData.grade,
-      healthGradeLabel: activeData.gradeLabel,
+      activePercent: {
+        overall: activeData.pct,
+        todayPct: activeData.todayPct,
+        weekPct: activeData.weekPct,
+        daysTracked: activeData.daysTracked,
+        trend: activeData.trend,
+      },
+      healthScore: activeData.pct,
     });
   } catch (e) {
     console.error("[SCORECARD ERROR]", (e as Error).message);
@@ -317,24 +318,16 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
 // ─── Daily Active Percentage ──────────────────────────────────────────────────
 router.get("/users/activity-score", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const clientDate = req.query.date as string | undefined;
-    const nowIST  = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
-    const prevIST = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
-    const date = (clientDate && clientDate !== prevIST) ? clientDate : nowIST;
-    const result = await calculateActivePercent(req.userId!, date);
-
-    // Monthly active percentage: days with any exercise this calendar month
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const daysElapsed = Math.max(1, now.getDate());
-    const monthlyRes = await pool.query(
-      `SELECT logged_at FROM exercise_logs WHERE user_id=$1 AND logged_at >= $2`,
-      [req.userId!, monthStart]
-    ).catch(() => ({ rows: [] as { logged_at: string }[] }));
-    const activeDates = new Set(monthlyRes.rows.map((r: { logged_at: string }) => new Date(r.logged_at).toISOString().slice(0, 10)));
-    const monthlyActivePct = Math.round((activeDates.size / daysElapsed) * 100);
-
-    res.json({ date, ...result, label: getActiveLabel(result.overall), monthlyActivePct });
+    const result = await getCumulativeActivePercent(req.userId!);
+    res.json({
+      overall: result.pct,
+      pct: result.pct,
+      todayPct: result.todayPct,
+      weekPct: result.weekPct,
+      daysTracked: result.daysTracked,
+      trend: result.trend,
+      label: getActiveLabel(result.pct),
+    });
   } catch {
     res.status(500).json({ error: "Failed to calculate activity score" });
   }
@@ -373,7 +366,7 @@ router.get("/users/search", requireAuth, async (req: AuthRequest, res) => {
     }
 
     const results = await Promise.all(profileRows.map(async (p) => {
-      const activeData = await calculateActivePercent(String(p.user_id)).catch(() => ({ overall: 0 }));
+      const activeData = await getCumulativeActivePercent(String(p.user_id)).catch(() => ({ pct: 0, todayPct: 0, weekPct: 0, daysTracked: 0, trend: "stable" as const }));
       const dob = p.date_of_birth as string | null;
       const rawPhone = String(p.phone || "");
       const maskedPhone = rawPhone.length >= 10
@@ -391,7 +384,7 @@ router.get("/users/search", requireAuth, async (req: AuthRequest, res) => {
         bmi: p.bmi,
         plan: p.plan,
         phone: maskedPhone,
-        activePercent: activeData.overall,
+        activePercent: activeData.pct,
       };
     }));
 
