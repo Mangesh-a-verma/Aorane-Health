@@ -12,34 +12,19 @@ declare global {
   interface Window { Razorpay: new (opts: Record<string, unknown>) => { open(): void }; }
 }
 
-const SEAT_PLANS = {
-  max: {
-    label: "Max",
-    pricePerSeat: 199,
-    yearlyPricePerSeat: 169,
-    color: "#0077B6",
-    features: [
-      "Basic aggregate health dashboard",
-      "Enrollment code management",
-      "Employee search",
-      "GST-ready invoice",
-      "Email support",
-    ],
-  },
-  pro: {
-    label: "Pro",
-    pricePerSeat: 249,
-    yearlyPricePerSeat: 211,
-    color: "#7C3AED",
-    features: [
-      "Everything in Max",
-      "Advanced health analytics & charts",
-      "Health risk distribution alerts",
-      "Weekly & monthly team reports",
-      "Priority support",
-      "Custom announcements to employees",
-    ],
-  },
+interface SeatPlanInfo {
+  label: string;
+  pricePerSeat: number;
+  yearlyPricePerSeat: number;
+  color: string;
+  features: string[];
+  discountPercent: number;
+  offerLabel: string | null;
+}
+
+const FALLBACK_SEAT_PLANS: Record<string, SeatPlanInfo> = {
+  max: { label: "Max", pricePerSeat: 199, yearlyPricePerSeat: 169, color: "#0077B6", features: ["Basic aggregate health dashboard", "Enrollment code management", "Employee search", "GST-ready invoice", "Email support"], discountPercent: 0, offerLabel: null },
+  pro: { label: "Pro", pricePerSeat: 249, yearlyPricePerSeat: 211, color: "#7C3AED", features: ["Everything in Max", "Advanced health analytics & charts", "Health risk distribution alerts", "Weekly & monthly team reports", "Priority support", "Custom announcements to employees"], discountPercent: 0, offerLabel: null },
 };
 
 const INDIAN_STATES = [
@@ -100,8 +85,16 @@ export default function Billing() {
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [seatPlans, setSeatPlans] = useState<Record<string, SeatPlanInfo>>(FALLBACK_SEAT_PLANS);
 
   useEffect(() => {
+    api.getSeatPlans()
+      .then((d) => {
+        if (d.plans && Object.keys(d.plans).length > 0) {
+          setSeatPlans(d.plans as Record<string, SeatPlanInfo>);
+        }
+      })
+      .catch(() => {});
     api.getBillingSubscription()
       .then((d) => {
         if (d.payment) {
@@ -119,7 +112,7 @@ export default function Billing() {
       .finally(() => setLoadingSubscription(false));
   }, []);
 
-  const planInfo = SEAT_PLANS[selectedPlan];
+  const planInfo = seatPlans[selectedPlan] ?? FALLBACK_SEAT_PLANS[selectedPlan];
   const pricePerSeat = billing === "yearly" ? planInfo.yearlyPricePerSeat : planInfo.pricePerSeat;
   const months = billing === "yearly" ? 12 : 1;
   const baseAmount = pricePerSeat * Math.max(10, seatCount) * months;
@@ -306,12 +299,18 @@ export default function Billing() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {(["max", "pro"] as const).map((key) => {
-                  const plan = SEAT_PLANS[key];
+                  const plan = seatPlans[key] ?? FALLBACK_SEAT_PLANS[key];
                   const isSelected = selectedPlan === key;
+                  const monthlySave = plan.pricePerSeat > 0 && plan.yearlyPricePerSeat > 0
+                    ? Math.round((1 - plan.yearlyPricePerSeat / plan.pricePerSeat) * 100)
+                    : 0;
                   return (
                     <button key={key} onClick={() => setSelectedPlan(key)}
                       className={`relative text-left p-4 rounded-xl border-2 transition-all ${isSelected ? "border-[#0077B6] bg-[#0077B6]/5" : "border-[#E5E7EB] hover:border-[#0077B6]/40"}`}>
-                      {key === "pro" && (
+                      {plan.offerLabel && (
+                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">{plan.offerLabel}</div>
+                      )}
+                      {!plan.offerLabel && key === "pro" && (
                         <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-[#7C3AED] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Popular</div>
                       )}
                       <div className="font-bold text-[#0D1F33] mb-1">{plan.label}</div>
@@ -319,8 +318,11 @@ export default function Billing() {
                         {formatINR(billing === "yearly" ? plan.yearlyPricePerSeat : plan.pricePerSeat)}
                         <span className="text-xs font-normal text-[#6B7280]">/seat/mo</span>
                       </div>
-                      {billing === "yearly" && (
-                        <div className="text-[10px] text-emerald-600 font-medium mt-0.5">Save 15% yearly</div>
+                      {plan.discountPercent > 0 && (
+                        <div className="text-[10px] text-emerald-600 font-medium mt-0.5">{plan.discountPercent}% off applied</div>
+                      )}
+                      {billing === "yearly" && monthlySave > 0 && (
+                        <div className="text-[10px] text-emerald-600 font-medium mt-0.5">Save {monthlySave}% yearly</div>
                       )}
                       <ul className="mt-3 space-y-1.5">
                         {plan.features.slice(0, 3).map(f => (
@@ -336,9 +338,9 @@ export default function Billing() {
               </div>
               {/* Full features comparison */}
               <div className="mt-3 pt-3 border-t border-[#F3F4F6]">
-                <p className="text-xs font-medium text-[#374151] mb-2">{SEAT_PLANS[selectedPlan].label} plan includes:</p>
+                <p className="text-xs font-medium text-[#374151] mb-2">{planInfo.label} plan includes:</p>
                 <div className="grid grid-cols-2 gap-1">
-                  {SEAT_PLANS[selectedPlan].features.map(f => (
+                  {planInfo.features.map(f => (
                     <div key={f} className="flex items-start gap-1.5 text-xs text-[#6B7280]">
                       <CheckCircle size={11} className="text-emerald-500 mt-0.5 shrink-0" />
                       {f}
@@ -383,7 +385,7 @@ export default function Billing() {
                     {(["monthly", "yearly"] as const).map(b => (
                       <button key={b} onClick={() => setBilling(b)}
                         className={`py-3 rounded-xl text-sm font-semibold border-2 transition-all ${billing === b ? "border-[#0077B6] bg-[#0077B6]/5 text-[#0077B6]" : "border-[#E5E7EB] text-[#6B7280]"}`}>
-                        {b === "monthly" ? "Monthly" : <>Yearly <span className="text-[10px] text-emerald-600 font-bold block">Save 15%</span></>}
+                        {b === "monthly" ? "Monthly" : <>Yearly {seatPlans[selectedPlan]?.yearlyPricePerSeat > 0 && seatPlans[selectedPlan]?.pricePerSeat > 0 ? <span className="text-[10px] text-emerald-600 font-bold block">Save {Math.round((1 - seatPlans[selectedPlan].yearlyPricePerSeat / seatPlans[selectedPlan].pricePerSeat) * 100)}%</span> : ""}</>}
                       </button>
                     ))}
                   </div>

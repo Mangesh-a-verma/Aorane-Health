@@ -4,7 +4,7 @@ import { api, type PlanPricingItem } from "@/lib/api";
 import {
   IndianRupee, Users, Sparkles, Save, X, RotateCcw,
   Plus, Trash2, CheckCircle2, AlertCircle, RefreshCw, Building2,
-  Smartphone, ChevronDown, ChevronUp, Settings2,
+  Smartphone, ChevronDown, ChevronUp, Settings2, Tag,
 } from "lucide-react";
 
 const TYPE_ICONS: Record<string, React.ElementType> = { individual: Smartphone, organization: Building2 };
@@ -22,6 +22,8 @@ type Form = {
   displayName: string; monthlyPrice: string; yearlyPrice: string;
   maxSeats: string; badgeText: string; badgeColor: string;
   features: string[]; isActive: boolean;
+  discountPercent: string; offerLabel: string;
+  offerValidFrom: string; offerValidTo: string;
 };
 
 function formFromPlan(plan: PlanPricingItem): Form {
@@ -34,6 +36,10 @@ function formFromPlan(plan: PlanPricingItem): Form {
     badgeColor: plan.badgeColor ?? "#0077B6",
     features: [...(Array.isArray(plan.features) ? plan.features : [])],
     isActive: plan.isActive,
+    discountPercent: plan.discountPercent?.toString() ?? "",
+    offerLabel: plan.offerLabel ?? "",
+    offerValidFrom: plan.offerValidFrom ? new Date(plan.offerValidFrom).toISOString().split("T")[0] : "",
+    offerValidTo: plan.offerValidTo ? new Date(plan.offerValidTo).toISOString().split("T")[0] : "",
   };
 }
 
@@ -68,6 +74,10 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
         badgeColor: form.badgeColor,
         features: form.features,
         isActive: form.isActive,
+        discountPercent: form.discountPercent || null,
+        offerLabel: form.offerLabel || null,
+        offerValidFrom: form.offerValidFrom || null,
+        offerValidTo: form.offerValidTo || null,
       } as Partial<PlanPricingItem>);
       onSave(result.plan);
     } catch (e) { setErr((e as Error).message || "Save failed"); }
@@ -275,6 +285,50 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
                   className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs font-bold outline-none"
                   style={{ color: "#dee1f7" }} />
               </div>
+
+              {/* Offer / Discount */}
+              <div className="rounded-xl p-3 space-y-2.5" style={{ background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.15)" }}>
+                <div className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#34d399" }}>Offer &amp; Discount</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>Discount %</div>
+                    <input type="number" min="0" max="100" value={form.discountPercent}
+                      onChange={e => setForm(p => ({ ...p, discountPercent: e.target.value }))}
+                      placeholder="0"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs outline-none"
+                      style={{ color: "#34d399" }} />
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>Offer Label</div>
+                    <input value={form.offerLabel}
+                      onChange={e => setForm(p => ({ ...p, offerLabel: e.target.value }))}
+                      placeholder="e.g. Diwali Offer"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs outline-none"
+                      style={{ color: "#dee1f7" }} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>Valid From</div>
+                    <input type="date" value={form.offerValidFrom}
+                      onChange={e => setForm(p => ({ ...p, offerValidFrom: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs outline-none"
+                      style={{ color: "#dee1f7", colorScheme: "dark" }} />
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>Valid To</div>
+                    <input type="date" value={form.offerValidTo}
+                      onChange={e => setForm(p => ({ ...p, offerValidTo: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs outline-none"
+                      style={{ color: "#dee1f7", colorScheme: "dark" }} />
+                  </div>
+                </div>
+                {form.discountPercent && Number(form.discountPercent) > 0 && form.monthlyPrice && (
+                  <div className="text-[10px] font-semibold" style={{ color: "#34d399" }}>
+                    Preview: ₹{Math.round(Number(form.monthlyPrice) * (1 - Number(form.discountPercent) / 100))}/mo (was ₹{form.monthlyPrice})
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -318,9 +372,14 @@ export default function PlanPricing() {
     finally { setResetting(false); }
   };
 
-  const filtered = plans.filter(p => activeType === "all" || p.type === activeType);
+  const filtered = plans.filter(p =>
+    activeType === "all" ||
+    p.type === activeType ||
+    (activeType === "organization" && p.type === "org_seat")
+  );
   const individualPlans = filtered.filter(p => p.type === "individual");
   const orgPlans = filtered.filter(p => p.type === "organization");
+  const orgSeatPlans = filtered.filter(p => p.type === "org_seat");
 
   return (
     <Layout>
@@ -437,11 +496,23 @@ export default function PlanPricing() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Building2 size={14} style={{ color: "#8B5CF6" }} />
-                  <span className="text-sm font-semibold" style={{ color: "#dee1f7" }}>Organization / Business Portal Plans</span>
-                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>— Business portal billing pe dikhega</span>
+                  <span className="text-sm font-semibold" style={{ color: "#dee1f7" }}>Organization Plans</span>
+                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>— Landing page pe dikhega</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {orgPlans.map(p => <PlanCard key={p.planKey} plan={p} onSave={handleSave} />)}
+                </div>
+              </div>
+            )}
+            {orgSeatPlans.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Users size={14} style={{ color: "#10B981" }} />
+                  <span className="text-sm font-semibold" style={{ color: "#dee1f7" }}>Seat-Based Plans</span>
+                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>— Business portal billing page pe dikhega · discount yahan set karo</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {orgSeatPlans.map(p => <PlanCard key={p.planKey} plan={p} onSave={handleSave} />)}
                 </div>
               </div>
             )}

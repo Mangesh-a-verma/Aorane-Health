@@ -1117,10 +1117,61 @@ router.get("/business/health-analytics", requireBusinessAuth, async (req: Busine
 });
 
 // ─── SEAT-BASED BILLING ─────────────────────────────────────────────────────
-const SEAT_PLANS: Record<string, { label: string; pricePerSeat: number; yearlyPricePerSeat: number }> = {
-  max: { label: "Max", pricePerSeat: 199, yearlyPricePerSeat: 169 },
-  pro: { label: "Pro", pricePerSeat: 249, yearlyPricePerSeat: 211 },
-};
+
+interface SeatPlanInfo {
+  label: string;
+  pricePerSeat: number;
+  yearlyPricePerSeat: number;
+  features: string[];
+  color: string;
+  discountPercent: number;
+  offerLabel: string | null;
+}
+
+async function getOrgSeatPlan(planShortKey: string): Promise<SeatPlanInfo | null> {
+  const dbKey = `org_${planShortKey}`;
+  const now = new Date();
+  const [plan] = await db.select().from(planPricingTable).where(eq(planPricingTable.planKey, dbKey));
+  if (!plan) return null;
+
+  const disc = plan.discountPercent ? Number(plan.discountPercent) : 0;
+  const isOfferActive =
+    disc > 0 &&
+    (!plan.offerValidFrom || now >= new Date(plan.offerValidFrom)) &&
+    (!plan.offerValidTo || now <= new Date(plan.offerValidTo));
+
+  const baseMonthly = Number(plan.monthlyPrice);
+  // yearlyPrice in DB is annual total; divide by 12 for per-seat/month equivalent
+  const baseYearlyPerMonth = plan.yearlyPrice ? Number(plan.yearlyPrice) / 12 : Math.round(baseMonthly * 0.85);
+
+  const effectiveMonthly = isOfferActive ? Math.round(baseMonthly * (1 - disc / 100)) : baseMonthly;
+  const effectiveYearly = isOfferActive ? Math.round(baseYearlyPerMonth * (1 - disc / 100)) : Math.round(baseYearlyPerMonth);
+
+  return {
+    label: plan.displayName,
+    pricePerSeat: effectiveMonthly,
+    yearlyPricePerSeat: effectiveYearly,
+    features: Array.isArray(plan.features) ? (plan.features as string[]) : [],
+    color: plan.badgeColor || "#0077B6",
+    discountPercent: isOfferActive ? disc : 0,
+    offerLabel: isOfferActive ? plan.offerLabel : null,
+  };
+}
+
+async function getAllSeatPlans(): Promise<Record<string, SeatPlanInfo>> {
+  const [maxPlan, proPlan] = await Promise.all([
+    getOrgSeatPlan("max"),
+    getOrgSeatPlan("pro"),
+  ]);
+  const result: Record<string, SeatPlanInfo> = {};
+  if (maxPlan) result["max"] = maxPlan;
+  if (proPlan) result["pro"] = proPlan;
+  // Fallback if DB has no data yet
+  if (!result["max"]) result["max"] = { label: "Max", pricePerSeat: 199, yearlyPricePerSeat: 169, features: [], color: "#0077B6", discountPercent: 0, offerLabel: null };
+  if (!result["pro"]) result["pro"] = { label: "Pro", pricePerSeat: 249, yearlyPricePerSeat: 211, features: [], color: "#7C3AED", discountPercent: 0, offerLabel: null };
+  return result;
+}
+
 async function getAoraneGstin(): Promise<string> {
   try {
     const rows = await db.select({ gstin: companySettingsTable.gstin }).from(companySettingsTable).limit(1);
@@ -1131,17 +1182,23 @@ const AORANE_STATE = "UP";
 const GST_RATE = 0.18;
 
 router.get("/business/billing/seat-plans", requireBusinessAuth, async (_req: BusinessRequest, res) => {
-  res.json({ plans: SEAT_PLANS, gstRate: GST_RATE * 100, aoranState: AORANE_STATE });
+  try {
+    const plans = await getAllSeatPlans();
+    res.json({ plans, gstRate: GST_RATE * 100, aoranState: AORANE_STATE });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch seat plans" });
+  }
 });
 
 router.post("/business/billing/seat-order", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
     const { plan, seats, billingCycle, orgGstin, orgState } = req.body as { plan: string; seats: number; billingCycle: "monthly" | "yearly"; orgGstin?: string; orgState?: string };
-    if (!plan || !SEAT_PLANS[plan]) { res.status(400).json({ error: "Invalid plan. Choose 'max' or 'pro'" }); return; }
+    if (!plan || !["max", "pro"].includes(plan)) { res.status(400).json({ error: "Invalid plan. Choose 'max' or 'pro'" }); return; }
     if (!seats || seats < 10) { res.status(400).json({ error: "Minimum 10 seats required" }); return; }
     if (!billingCycle || !["monthly", "yearly"].includes(billingCycle)) { res.status(400).json({ error: "billingCycle must be 'monthly' or 'yearly'" }); return; }
 
-    const planInfo = SEAT_PLANS[plan];
+    const planInfo = await getOrgSeatPlan(plan);
+    if (!planInfo) { res.status(400).json({ error: "Plan not found in database" }); return; }
     const pricePerSeat = billingCycle === "yearly" ? planInfo.yearlyPricePerSeat : planInfo.pricePerSeat;
     const months = billingCycle === "yearly" ? 12 : 1;
     const baseAmount = pricePerSeat * seats * months;
@@ -1262,7 +1319,7 @@ router.post("/business/billing/seat-verify", requireBusinessAuth, async (req: Bu
       const fy = new Date().getMonth() >= 3 ? `${year}-${String(year + 1).slice(2)}` : `${year - 1}-${String(year).slice(2)}`;
       const invoiceSeq = Math.floor(Math.random() * 9000) + 1000;
       const invoiceNumber = `AOR/${fy}/${invoiceSeq}`;
-      const planInfo = SEAT_PLANS[String(plan)] ?? { label: String(plan), pricePerSeat: 0, yearlyPricePerSeat: 0 };
+      const planInfo = await getOrgSeatPlan(String(plan)) ?? { label: String(plan), pricePerSeat: 0, yearlyPricePerSeat: 0, features: [], color: "#0077B6", discountPercent: 0, offerLabel: null };
       const months = billingCycle === "yearly" ? 12 : 1;
       const pricePerSeat = billingCycle === "yearly" ? planInfo.yearlyPricePerSeat : planInfo.pricePerSeat;
       const baseAmt = pricePerSeat * seatCount * months;

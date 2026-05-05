@@ -6,7 +6,7 @@ import type { AdminRequest } from "../../middlewares/admin-auth";
 
 const router = Router();
 
-// ── Default seed data (used if DB is empty) ────────────────────────────────
+// ── Default seed data ────────────────────────────────────────────────────────
 const DEFAULT_PLANS = [
   // Individual plans
   {
@@ -41,7 +41,7 @@ const DEFAULT_PLANS = [
     gradientColors: ["#F59E0B", "#D97706"] as [string, string],
     isActive: true, sortOrder: 3,
   },
-  // Organization plans
+  // Organization plans (landing page display)
   {
     planKey: "starter", displayName: "Starter", type: "organization",
     monthlyPrice: "999", yearlyPrice: "9990", maxSeats: 50,
@@ -66,9 +66,44 @@ const DEFAULT_PLANS = [
     gradientColors: ["#DC2626", "#B91C1C"] as [string, string],
     isActive: true, sortOrder: 12,
   },
+  // Org seat-based plans (Business Portal billing)
+  {
+    planKey: "org_max", displayName: "Max", type: "org_seat",
+    monthlyPrice: "199", yearlyPrice: null, maxSeats: null,
+    features: ["Basic aggregate health dashboard", "Enrollment code management", "Employee search", "GST-ready invoice", "Email support"],
+    badgeText: null, badgeColor: "#0077B6",
+    gradientColors: ["#0077B6", "#023E8A"] as [string, string],
+    isActive: true, sortOrder: 20,
+  },
+  {
+    planKey: "org_pro", displayName: "Pro", type: "org_seat",
+    monthlyPrice: "249", yearlyPrice: null, maxSeats: null,
+    features: ["Everything in Max", "Advanced health analytics & charts", "Health risk distribution alerts", "Weekly & monthly team reports", "Priority support", "Custom announcements to employees"],
+    badgeText: "Popular", badgeColor: "#7C3AED",
+    gradientColors: ["#7C3AED", "#6D28D9"] as [string, string],
+    isActive: true, sortOrder: 21,
+  },
 ];
 
-// ── Seed helper ────────────────────────────────────────────────────────────
+// ── Effective price helper ────────────────────────────────────────────────────
+function computeEffective(p: typeof planPricingTable.$inferSelect) {
+  const disc = p.discountPercent ? Number(p.discountPercent) : 0;
+  if (disc <= 0) {
+    return { effectiveMonthlyPrice: p.monthlyPrice, effectiveYearlyPrice: p.yearlyPrice, isOfferActive: false };
+  }
+  const now = new Date();
+  if (p.offerValidFrom && now < new Date(p.offerValidFrom)) {
+    return { effectiveMonthlyPrice: p.monthlyPrice, effectiveYearlyPrice: p.yearlyPrice, isOfferActive: false };
+  }
+  if (p.offerValidTo && now > new Date(p.offerValidTo)) {
+    return { effectiveMonthlyPrice: p.monthlyPrice, effectiveYearlyPrice: p.yearlyPrice, isOfferActive: false };
+  }
+  const effMonthly = String(Math.round(Number(p.monthlyPrice) * (1 - disc / 100)));
+  const effYearly = p.yearlyPrice ? String(Math.round(Number(p.yearlyPrice) * (1 - disc / 100))) : null;
+  return { effectiveMonthlyPrice: effMonthly, effectiveYearlyPrice: effYearly, isOfferActive: true };
+}
+
+// ── Seed helper ──────────────────────────────────────────────────────────────
 async function seedIfEmpty() {
   const existing = await db.select().from(planPricingTable).limit(1);
   if (existing.length === 0) {
@@ -76,8 +111,9 @@ async function seedIfEmpty() {
   }
 }
 
-// ── PUBLIC: GET /plans ─────────────────────────────────────────────────────
-// ?type=individual  or  ?type=organization  (optional filter)
+// ── PUBLIC: GET /plans ───────────────────────────────────────────────────────
+// ?type=individual | organization | org_seat (optional)
+// Returns effectiveMonthlyPrice / effectiveYearlyPrice based on active discount
 router.get("/plans", async (req, res) => {
   try {
     await seedIfEmpty();
@@ -88,32 +124,36 @@ router.get("/plans", async (req, res) => {
     if (typeFilter) {
       plans = plans.filter(p => p.type === typeFilter);
     }
-    res.json({ plans });
+    const enriched = plans.map(p => ({
+      ...p,
+      ...computeEffective(p),
+    }));
+    res.json({ plans: enriched });
   } catch (e) {
-    console.error(e);
     res.status(500).json({ error: "Failed to fetch plans" });
   }
 });
 
-// ── ADMIN: GET /admin/plan-pricing ────────────────────────────────────────
+// ── ADMIN: GET /admin/plan-pricing ───────────────────────────────────────────
 router.get("/admin/plan-pricing", requireAdmin, async (_req: AdminRequest, res) => {
   try {
     await seedIfEmpty();
     const plans = await db.select().from(planPricingTable).orderBy(planPricingTable.sortOrder);
-    res.json({ plans });
+    const enriched = plans.map(p => ({ ...p, ...computeEffective(p) }));
+    res.json({ plans: enriched });
   } catch (e) {
-    console.error(e);
     res.status(500).json({ error: "Failed to fetch plan pricing" });
   }
 });
 
-// ── ADMIN: PUT /admin/plan-pricing/:planKey ───────────────────────────────
+// ── ADMIN: PUT /admin/plan-pricing/:planKey ──────────────────────────────────
 router.put("/admin/plan-pricing/:planKey", requireAdmin, async (req: AdminRequest, res) => {
   try {
     const { planKey } = req.params as { planKey: string };
     const {
       displayName, monthlyPrice, yearlyPrice, maxSeats,
       features, badgeText, badgeColor, gradientColors, isActive, sortOrder,
+      discountPercent, offerLabel, offerValidFrom, offerValidTo,
     } = req.body as Record<string, unknown>;
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -127,6 +167,10 @@ router.put("/admin/plan-pricing/:planKey", requireAdmin, async (req: AdminReques
     if (gradientColors !== undefined) updates["gradientColors"] = gradientColors;
     if (isActive !== undefined) updates["isActive"] = Boolean(isActive);
     if (sortOrder !== undefined) updates["sortOrder"] = Number(sortOrder);
+    if (discountPercent !== undefined) updates["discountPercent"] = discountPercent !== null && discountPercent !== "" ? String(discountPercent) : null;
+    if (offerLabel !== undefined) updates["offerLabel"] = offerLabel || null;
+    if (offerValidFrom !== undefined) updates["offerValidFrom"] = offerValidFrom ? new Date(String(offerValidFrom)) : null;
+    if (offerValidTo !== undefined) updates["offerValidTo"] = offerValidTo ? new Date(String(offerValidTo)) : null;
 
     const [updated] = await db.update(planPricingTable)
       .set(updates as typeof planPricingTable.$inferInsert)
@@ -137,17 +181,15 @@ router.put("/admin/plan-pricing/:planKey", requireAdmin, async (req: AdminReques
       res.status(404).json({ error: "Plan not found" });
       return;
     }
-    res.json({ success: true, plan: updated });
+    res.json({ success: true, plan: { ...updated, ...computeEffective(updated) } });
   } catch (e) {
-    console.error(e);
     res.status(500).json({ error: "Failed to update plan pricing" });
   }
 });
 
-// ── ADMIN: POST /admin/plan-pricing/reset ────────────────────────────────
+// ── ADMIN: POST /admin/plan-pricing/reset ───────────────────────────────────
 router.post("/admin/plan-pricing/reset", requireAdmin, async (_req: AdminRequest, res) => {
   try {
-    // Reset each plan to defaults
     for (const def of DEFAULT_PLANS) {
       await db.update(planPricingTable)
         .set({
@@ -159,14 +201,18 @@ router.post("/admin/plan-pricing/reset", requireAdmin, async (_req: AdminRequest
           gradientColors: def.gradientColors,
           isActive: def.isActive,
           sortOrder: def.sortOrder,
+          discountPercent: null,
+          offerLabel: null,
+          offerValidFrom: null,
+          offerValidTo: null,
           updatedAt: new Date(),
         })
         .where(eq(planPricingTable.planKey, def.planKey));
     }
     const plans = await db.select().from(planPricingTable).orderBy(planPricingTable.sortOrder);
-    res.json({ success: true, plans });
+    const enriched = plans.map(p => ({ ...p, ...computeEffective(p) }));
+    res.json({ success: true, plans: enriched });
   } catch (e) {
-    console.error(e);
     res.status(500).json({ error: "Failed to reset plans" });
   }
 });

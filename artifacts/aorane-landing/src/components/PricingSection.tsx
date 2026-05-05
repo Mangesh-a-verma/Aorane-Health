@@ -137,7 +137,17 @@ function PlanCard({ plan, isYearly, highlight, onBusinessSignUp, onMobileInstall
             {isYearly && (
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs text-gray-400">₹{price}/year</span>
-                <span className="text-xs font-bold text-[#10B981] bg-[#10B981]/10 px-1.5 py-0.5 rounded-full">Save 10%</span>
+                {(() => {
+                  const monthly = parseFloat(plan.monthlyPrice);
+                  const yearly = parseFloat(plan.yearlyPrice);
+                  const perMonthFromYearly = yearly / 12;
+                  const savePct = monthly > 0 && perMonthFromYearly > 0
+                    ? Math.round((1 - perMonthFromYearly / monthly) * 100)
+                    : 0;
+                  return savePct > 0 ? (
+                    <span className="text-xs font-bold text-[#10B981] bg-[#10B981]/10 px-1.5 py-0.5 rounded-full">Save {savePct}%</span>
+                  ) : null;
+                })()}
               </div>
             )}
           </div>
@@ -275,7 +285,7 @@ export default function PricingSection({ onBusinessSignUp, orgOnly }: { onBusine
                 <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isYearly ? "translate-x-5" : "translate-x-0"}`} />
               </button>
               <span className={`text-sm font-semibold ${isYearly ? "text-[#0747A6]" : "text-gray-400"}`}>
-                Yearly <span className="text-xs text-[#10B981] font-bold">Save 10%</span>
+                Yearly
               </span>
             </div>
           </div>

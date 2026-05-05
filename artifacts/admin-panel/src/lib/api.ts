@@ -319,6 +319,9 @@ export type PlanPricingItem = {
   monthlyPrice: string; yearlyPrice: string | null; maxSeats: number | null;
   features: string[]; badgeText: string | null; badgeColor: string | null;
   gradientColors: [string, string] | null; isActive: boolean; sortOrder: number;
+  discountPercent: string | null; offerLabel: string | null;
+  offerValidFrom: string | null; offerValidTo: string | null;
+  effectiveMonthlyPrice: string; effectiveYearlyPrice: string | null; isOfferActive: boolean;
   createdAt: string; updatedAt: string;
 };
 
