@@ -425,6 +425,16 @@ router.get("/health/score-range", requireAuth, async (req: AuthRequest, res) => 
     );
     const avgPct = Math.round(parseFloat(result.rows[0]?.avg_pct || "0"));
     const days   = parseInt(result.rows[0]?.days || "0");
+
+    // If no historical data, compute today's score as fallback
+    if (!avgPct || avgPct === 0) {
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+      const fresh = await computeScientificScore(req.userId!, today).catch(() => null);
+      const fallback = fresh?.overallScore ?? 0;
+      res.json({ score: fallback, daysTracked: days, startDate, endDate, computed: true });
+      return;
+    }
+
     res.json({ score: avgPct, daysTracked: days, startDate, endDate });
   } catch (e) {
     res.status(500).json({ error: "Failed to fetch score range", detail: (e as Error).message });
