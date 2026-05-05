@@ -209,3 +209,9 @@ id = "_GQnmPanLVGyH5s6_Kx5f"
 uri = "file://screenshots/poster-light-story.jpg"
 type = "image"
 title = "Instagram Story — 1080×1920 (Logo Fixed)"
+
+[[outputs]]
+id = "1pXFA-aOFHWbtUS27TPKz"
+uri = "file://aorane-health-score-guide.pdf"
+type = "pdf"
+title = "Aorane Health Score & Active Percentage Guide"
