@@ -665,7 +665,7 @@ export async function computeActivePercent(userId: string, date?: string): Promi
   personalisation?: DailyHealthScore["personalisation"];
 }> {
   try {
-    const d     = date || new Date().toISOString().slice(0, 10);
+    const d     = date || new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
     const score = await computeScientificScore(userId, d);
     return {
       overall:      score.overallScore,

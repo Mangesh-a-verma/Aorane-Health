@@ -416,7 +416,9 @@ router.get("/health/weekly-activity", requireAuth, async (req: AuthRequest, res)
       [userId]
     );
     const activeDays = parseInt(result.rows[0]?.active_days || "0");
-    res.json({ activeDays, totalDays: 7, percentage: Math.round((activeDays / 7) * 100) });
+    // Cap at 100% — NOW()-7days can span 8 calendar days giving 114% otherwise
+    const percentage = Math.min(100, Math.round((activeDays / 7) * 100));
+    res.json({ activeDays, totalDays: 7, percentage });
   } catch (e) {
     res.status(500).json({ error: "Failed to fetch weekly activity", detail: (e as Error).message });
   }

@@ -606,6 +606,7 @@ export default function DashboardScreen() {
   const [showStressModal, setShowStressModal] = useState(false);
   const [isLoading,   setIsLoading]   = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
+  const [isOffline,   setIsOffline]   = useState(false);
   const [userName,    setUserName]    = useState("");
   const [userGender,  setUserGender]  = useState("");
   const [medicines,   setMedicines]   = useState<Array<{
@@ -621,12 +622,23 @@ export default function DashboardScreen() {
 
   const loadData = useCallback(async () => {
     try {
+      // Detect offline state before loading
+      const online = typeof navigator !== "undefined"
+        ? navigator.onLine
+        : true;
+      setIsOffline(!online);
+
       const date = todayDate();
       const [scoreRes, waterRes, foodRes, exerciseRes, profileRes, medRes, activityRes, stressRes] = await Promise.allSettled([
         api.getHealthScore(date), api.getWaterLog(date), api.getFoodSummary(date),
         api.getExerciseLogs(date), api.getProfile(), api.getMedicineSchedules(),
         api.getWeeklyActivity(), api.getStressToday(),
       ]);
+
+      // If all API calls failed → likely offline
+      const allFailed = [scoreRes, waterRes, foodRes, exerciseRes, profileRes, medRes, activityRes, stressRes]
+        .every((r) => r.status === "rejected");
+      if (allFailed) setIsOffline(true);
       if (scoreRes.status === "fulfilled") {
         const sc = scoreRes.value.score as Record<string, number>;
         setHealthScore(sc.healthScore ?? 0);
@@ -712,6 +724,13 @@ export default function DashboardScreen() {
         colors={["#F5F9FF", "#EAF3FC", "#F5F9FF"]}
         style={StyleSheet.absoluteFill}
       />
+
+      {/* ── OFFLINE BANNER ── */}
+      {isOffline && (
+        <View style={s.offlineBanner}>
+          <Text style={s.offlineTxt}>📶 Internet nahi hai — data load nahi ho sakta. Online hone ke baad refresh karein.</Text>
+        </View>
+      )}
 
       <ScrollView
         ref={scrollRef}
@@ -937,6 +956,13 @@ export default function DashboardScreen() {
 const s = StyleSheet.create({
   root:   { flex: 1 },
   scroll: { gap: 0 },
+  offlineBanner: {
+    backgroundColor: "#FFF3CD", borderBottomWidth: 1, borderBottomColor: "#FBBF24",
+    paddingHorizontal: 14, paddingVertical: 9,
+  },
+  offlineTxt: {
+    fontSize: 12, fontFamily: "Inter_500Medium", color: "#92400E", textAlign: "center",
+  },
 
   body:     { paddingHorizontal: 14, paddingTop: 0, gap: 12 },
 

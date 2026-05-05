@@ -317,7 +317,10 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
 // ─── Daily Active Percentage ──────────────────────────────────────────────────
 router.get("/users/activity-score", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const date = (req.query.date as string) || new Date().toISOString().slice(0, 10);
+    const clientDate = req.query.date as string | undefined;
+    const nowIST  = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    const prevIST = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    const date = (clientDate && clientDate !== prevIST) ? clientDate : nowIST;
     const result = await calculateActivePercent(req.userId!, date);
 
     // Monthly active percentage: days with any exercise this calendar month
