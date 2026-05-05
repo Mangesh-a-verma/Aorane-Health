@@ -1004,6 +1004,20 @@ export async function runStartupMigrations(): Promise<void> {
     // ── food_items: add vitamin_b12_mcg column (was missing — food_logs has it, food_items didn't) ──
     `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS vitamin_b12_mcg NUMERIC(6,2)`,
 
+    // ── plan_pricing: add discount / offer columns (missing from original CREATE TABLE) ──
+    `ALTER TABLE plan_pricing ADD COLUMN IF NOT EXISTS discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0`,
+    `ALTER TABLE plan_pricing ADD COLUMN IF NOT EXISTS offer_label TEXT`,
+    `ALTER TABLE plan_pricing ADD COLUMN IF NOT EXISTS offer_valid_from TIMESTAMPTZ`,
+    `ALTER TABLE plan_pricing ADD COLUMN IF NOT EXISTS offer_valid_to TIMESTAMPTZ`,
+
+    // ── plan_pricing: add org plans (starter, growth, enterprise) if missing ──
+    `INSERT INTO plan_pricing (plan_key, display_name, type, monthly_price, yearly_price, max_seats, features, badge_color, sort_order)
+     VALUES
+       ('starter',    'Starter',    'organization', 199, null, 50,   '["All Pro app features for every member","Real-time team health dashboard","Department-wise analytics","Exportable PDF health reports","GST-ready invoicing","Email support"]', '#0077B6', 10),
+       ('growth',     'Growth',     'organization', 249, null, 250,  '["Everything in Starter","Advanced analytics & health trends","AI burnout & absenteeism prediction","Business CRM — FREE","Priority support"]', '#10B981', 11),
+       ('enterprise', 'Enterprise', 'organization', 0,   null, null, '["Everything in Growth","Dedicated account manager","Custom HRMS / ERP integrations","SLA guarantee","White-label option"]', '#F59E0B', 12)
+     ON CONFLICT (plan_key) DO NOTHING`,
+
     // ── daily_activity_scores: task-based active percentage per day ────────────
     `CREATE TABLE IF NOT EXISTS daily_activity_scores (
       id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
