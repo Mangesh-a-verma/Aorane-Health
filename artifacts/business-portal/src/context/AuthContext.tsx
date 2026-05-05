@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { api, type Admin, type Org } from "@/lib/api";
 
-const INACTIVITY_MS = 15 * 60 * 1000; // 15 minutes
-const WARNING_MS    = 14 * 60 * 1000; // warn 1 min before logout
+const INACTIVITY_MS = 15 * 60 * 1000;
+const WARNING_MS    = 14 * 60 * 1000;
 
 interface AuthState {
   token: string | null;
@@ -26,23 +26,38 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>({ token: null, admin: null, org: null, isLoading: true, subscriptionStatus: null, subscriptionLoading: false });
+  const [state, setState] = useState<AuthState>({
+    token: null, admin: null, org: null, isLoading: true,
+    subscriptionStatus: null, subscriptionLoading: false,
+  });
+  const [inactiveWarning, setInactiveWarning] = useState(false);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const clearSession = useCallback(() => {
+  const clearSession = useCallback((andRedirect = false) => {
     localStorage.removeItem("bp_token");
     localStorage.removeItem("bp_admin");
     localStorage.removeItem("bp_org");
     localStorage.removeItem("bp_last_active");
+    setInactiveWarning(false);
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    if (warningTimer.current)    clearTimeout(warningTimer.current);
     setState({ token: null, admin: null, org: null, isLoading: false, subscriptionStatus: null, subscriptionLoading: false });
+    if (andRedirect) {
+      const base = import.meta.env.BASE_URL?.replace(/\/$/, "") || "/business-portal";
+      window.location.href = base + "/login";
+    }
   }, []);
 
   const resetInactivityTimer = useCallback(() => {
     localStorage.setItem("bp_last_active", Date.now().toString());
+    setInactiveWarning(false);
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    if (warningTimer.current)    clearTimeout(warningTimer.current);
+    warningTimer.current    = setTimeout(() => setInactiveWarning(true), WARNING_MS);
     inactivityTimer.current = setTimeout(() => {
       localStorage.setItem("bp_session_expired", "inactivity");
-      clearSession();
+      clearSession(true);
     }, INACTIVITY_MS);
   }, [clearSession]);
 
@@ -57,21 +72,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("bp_token");
-    const adminStr = localStorage.getItem("bp_admin");
-    const orgStr = localStorage.getItem("bp_org");
+    const token     = localStorage.getItem("bp_token");
+    const adminStr  = localStorage.getItem("bp_admin");
+    const orgStr    = localStorage.getItem("bp_org");
     const lastActive = localStorage.getItem("bp_last_active");
 
-    // Check if session expired due to inactivity
     if (lastActive && Date.now() - parseInt(lastActive) > INACTIVITY_MS) {
-      clearSession();
+      clearSession(true);
       return;
     }
 
     if (token && token !== "undefined" && token !== "null" && adminStr && orgStr) {
       try {
         const admin = JSON.parse(adminStr);
-        const org = JSON.parse(orgStr);
+        const org   = JSON.parse(orgStr);
         if (admin?.id && org?.id) {
           setState({ token, admin, org, isLoading: false, subscriptionStatus: null, subscriptionLoading: true });
           fetchSubscription();
@@ -83,7 +97,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearSession();
   }, []);
 
-  // Attach activity listeners when logged in
   useEffect(() => {
     if (!state.token) return;
     const events = ["mousedown", "mousemove", "keydown", "touchstart", "scroll", "click"];
@@ -93,40 +106,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       events.forEach((e) => window.removeEventListener(e, handler));
       if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      if (warningTimer.current)    clearTimeout(warningTimer.current);
     };
   }, [state.token, resetInactivityTimer]);
 
-  // On tab close / page hide — save last active timestamp so on return we can check
   useEffect(() => {
-    const handleVisibilityChange = () => {
+    const handleVisibility = () => {
       if (document.visibilityState === "hidden" && state.token) {
         localStorage.setItem("bp_last_active", Date.now().toString());
       }
       if (document.visibilityState === "visible" && state.token) {
-        const lastActive = localStorage.getItem("bp_last_active");
-        if (lastActive && Date.now() - parseInt(lastActive) > INACTIVITY_MS) {
-          clearSession();
+        const last = localStorage.getItem("bp_last_active");
+        if (last && Date.now() - parseInt(last) > INACTIVITY_MS) {
+          clearSession(true);
         }
       }
     };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [state.token, clearSession]);
 
   const login = (token: string, admin: Admin, org: Org) => {
-    if (!token || token === "undefined" || !admin?.id || !org?.id) {
-      console.error("AuthContext: invalid login data — token or admin/org missing");
-      return;
-    }
+    if (!token || token === "undefined" || !admin?.id || !org?.id) return;
     localStorage.setItem("bp_token", token);
     localStorage.setItem("bp_admin", JSON.stringify(admin));
     localStorage.setItem("bp_org", JSON.stringify(org));
     localStorage.setItem("bp_last_active", Date.now().toString());
     setState({ token, admin, org, isLoading: false, subscriptionStatus: null, subscriptionLoading: true });
     fetchSubscription();
+    resetInactivityTimer();
   };
 
-  const logout = () => { clearSession(); };
+  const logout = () => { clearSession(true); };
 
   const setOrg = (org: Org) => {
     localStorage.setItem("bp_org", JSON.stringify(org));
@@ -135,7 +146,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isPaidActive = state.subscriptionStatus === "success" || state.subscriptionStatus === "active";
 
-  return <AuthContext.Provider value={{ ...state, login, logout, setOrg, refreshSubscription: fetchSubscription, isPaidActive }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{
+      ...state, login, logout, setOrg,
+      refreshSubscription: fetchSubscription,
+      isPaidActive, inactiveWarning, resetInactivityTimer,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

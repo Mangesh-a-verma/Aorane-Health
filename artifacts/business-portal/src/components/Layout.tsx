@@ -1,11 +1,38 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useRoute } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard, Users, QrCode, Settings, LogOut,
   Menu, X, Bell, ChevronRight,
-  BarChart2, Megaphone, CreditCard, ShieldCheck,
+  BarChart2, Megaphone, CreditCard, ShieldCheck, ShieldAlert,
 } from "lucide-react";
+
+function InactivityBanner({ onStay }: { onStay: () => void }) {
+  const [secs, setSecs] = useState(60);
+  useEffect(() => {
+    setSecs(60);
+    const t = setInterval(() => setSecs(s => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs font-medium shrink-0">
+      <div className="flex items-center gap-2">
+        <ShieldAlert size={14} className="shrink-0" />
+        <span>
+          Aap kuch der se inactive hain. Session{" "}
+          <span className="font-bold tabular-nums">{secs}s</span>{" "}
+          mein expire hoga.
+        </span>
+      </div>
+      <button
+        onClick={onStay}
+        className="shrink-0 px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 transition-colors font-semibold whitespace-nowrap"
+      >
+        Active raho
+      </button>
+    </div>
+  );
+}
 
 const navItems = [
   { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -38,7 +65,7 @@ function NavItem({ path, icon: Icon, label }: { path: string; icon: React.Elemen
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { admin, org, logout, isPaidActive } = useAuth();
+  const { admin, org, logout, isPaidActive, inactiveWarning, resetInactivityTimer } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const orgTypeLabels: Record<string, string> = {
@@ -159,6 +186,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </button>
           </div>
         </header>
+
+        {/* Inactivity warning banner */}
+        {inactiveWarning && <InactivityBanner onStay={resetInactivityTimer} />}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto bg-background">
