@@ -136,7 +136,7 @@ export default function ScorecardScreen() {
   const loadCard = async () => {
     try {
       const d = await api.getScorecard();
-      setCard(d as Scorecard);
+      setCard(d as unknown as Scorecard);
     } catch { }
     setLoading(false);
   };
