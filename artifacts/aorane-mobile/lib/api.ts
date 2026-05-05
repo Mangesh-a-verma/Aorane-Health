@@ -276,6 +276,9 @@ export const api = {
   getActivePercent: () =>
     request<{ pct: number; todayPct: number; weekPct: number; daysTracked: number; trend: string }>("GET", "/health/active-percent"),
 
+  getScoreRange: (startDate: string, endDate: string) =>
+    request<{ score: number; daysTracked: number; startDate: string; endDate: string }>("GET", `/health/score-range?startDate=${startDate}&endDate=${endDate}`),
+
   getWeatherFoodSuggestions: () =>
     request<{
       weatherContext: string;

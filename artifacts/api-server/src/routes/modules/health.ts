@@ -406,6 +406,27 @@ router.get("/health/sleep/:date", requireAuth, async (req: AuthRequest, res) => 
   }
 });
 
+router.get("/health/score-range", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
+    if (!startDate || !endDate) {
+      res.status(400).json({ error: "startDate and endDate required" });
+      return;
+    }
+    const result = await pool.query(
+      `SELECT ROUND(AVG(normalized_pct)) AS avg_pct, COUNT(*) AS days
+       FROM daily_activity_scores
+       WHERE user_id=$1 AND activity_date >= $2 AND activity_date <= $3`,
+      [req.userId!, startDate, endDate]
+    );
+    const avgPct = Math.round(parseFloat(result.rows[0]?.avg_pct || "0"));
+    const days   = parseInt(result.rows[0]?.days || "0");
+    res.json({ score: avgPct, daysTracked: days, startDate, endDate });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch score range", detail: (e as Error).message });
+  }
+});
+
 router.get("/health/active-percent", requireAuth, async (req: AuthRequest, res) => {
   try {
     let data = await getCumulativeActivePercent(req.userId!);

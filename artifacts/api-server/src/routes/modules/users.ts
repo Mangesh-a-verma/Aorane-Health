@@ -307,7 +307,7 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
         daysTracked: activeData.daysTracked,
         trend: activeData.trend,
       },
-      healthScore: activeData.pct,
+      healthScore: activeData.weekPct,
     });
   } catch (e) {
     console.error("[SCORECARD ERROR]", (e as Error).message);

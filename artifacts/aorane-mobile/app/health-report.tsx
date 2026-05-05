@@ -147,11 +147,12 @@ function buildReportHtml(
   dietChart: DietChart | null,
   ai: AISuggestions | null,
   weeklyNutrition: WeeklyNutrition | null,
+  rangeScore: number | null,
 ): string {
   const P  = company.primaryColor || "#0077B6";
   const A  = company.accentColor  || "#00B896";
   const overall     = card?.activePercent?.overall ?? 0;
-  const healthScore = card?.healthScore ?? overall;
+  const healthScore = rangeScore !== null ? rangeScore : (card?.healthScore ?? overall);
   const stressAvg   = stress?.weekAvg ?? 0;
   const heightCm    = profile?.height_cm ? Number(profile.height_cm) : null;
   const weightKg    = profile?.weight_kg ? Number(profile.weight_kg) : null;
@@ -536,13 +537,17 @@ export default function HealthReportScreen() {
   const [weeklyNutrition, setWeeklyNutrition] = useState<WeeklyNutrition | null>(null);
   const [loading, setLoading]       = useState(true);
   const [downloading, setDl]        = useState(false);
+  const [rangeScore, setRangeScore] = useState<number | null>(null);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [reportType]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [scRes, coRes, stRes, prRes, dtRes, aiRes, wnRes] = await Promise.allSettled([
+      const dr = getDateRange(reportType);
+      const startDate = dr.from.toLocaleDateString("en-CA");
+      const endDate   = dr.to.toLocaleDateString("en-CA");
+      const [scRes, coRes, stRes, prRes, dtRes, aiRes, wnRes, srRes] = await Promise.allSettled([
         api.getScorecard(),
         api.getCompanySettings(),
         api.getStressWeekly(),
@@ -550,6 +555,7 @@ export default function HealthReportScreen() {
         api.getWeeklyDietChart(),
         api.getDailySuggestions(),
         api.getWeeklyFoodNutrition(),
+        api.getScoreRange(startDate, endDate),
       ]);
       if (scRes.status === "fulfilled") setCard(scRes.value as Scorecard);
       if (coRes.status === "fulfilled") {
@@ -572,6 +578,9 @@ export default function HealthReportScreen() {
       if (wnRes.status === "fulfilled") {
         setWeeklyNutrition(wnRes.value as WeeklyNutrition);
       }
+      if (srRes.status === "fulfilled") {
+        setRangeScore((srRes.value as { score: number }).score ?? null);
+      }
     } catch { }
     setLoading(false);
   };
@@ -580,7 +589,7 @@ export default function HealthReportScreen() {
   const generatedAt = new Date();
   const P           = company.primaryColor || "#0077B6";
   const overall     = card?.activePercent?.overall ?? 0;
-  const healthScore = card?.healthScore ?? overall;
+  const healthScore = rangeScore !== null ? rangeScore : (card?.healthScore ?? overall);
   const stressAvg   = stressData?.weekAvg ?? 0;
   const heightCm    = profile?.height_cm ? Number(profile.height_cm) : null;
   const weightKg    = profile?.weight_kg ? Number(profile.weight_kg) : null;
@@ -590,7 +599,7 @@ export default function HealthReportScreen() {
 
   const handleDownload = async () => {
     setDl(true);
-    const html = buildReportHtml(card, company, reportType, dateRange, generatedAt, profile, stressData, dietChart, aiSugg, weeklyNutrition);
+    const html = buildReportHtml(card, company, reportType, dateRange, generatedAt, profile, stressData, dietChart, aiSugg, weeklyNutrition, rangeScore);
     await downloadPdfNative(html);
     setDl(false);
   };
