@@ -66,7 +66,11 @@ function HealthCircle({ label, value, color, icon: Icon }: {
 
 export default function Dashboard() {
   const { admin, org, isPaidActive, subscriptionLoading } = useAuth();
-  const greeting = getGreeting();
+  const [greeting, setGreeting] = useState(getGreeting());
+  useEffect(() => {
+    const id = setInterval(() => setGreeting(getGreeting()), 60_000);
+    return () => clearInterval(id);
+  }, []);
   const firstName = admin?.fullName?.split(" ")[0] || "there";
   const [overview, setOverview] = useState<Overview | null>(null);
   const [analytics, setAnalytics] = useState<HealthAnalytics | null>(null);
