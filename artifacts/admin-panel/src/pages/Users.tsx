@@ -280,6 +280,10 @@ export default function Users() {
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tableDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const statsActive  = users.filter(u => u.isActive && !u.isBanned).length;
+  const statsBanned  = users.filter(u => u.isBanned).length;
+  const statsInactive = users.filter(u => !u.isActive && !u.isBanned).length;
+
   const LIMIT = 100;
 
   const fetchUsers = (searchTerm = "") => {

@@ -116,9 +116,10 @@ router.get("/admin/users", requireAdmin, async (req: AdminRequest, res) => {
     const limitNum = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
     const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
 
-    const searchNorm = (search || "").replace(/\s/g, "");
+    const searchNorm = (search || "").replace(/[\s\-_]/g, "");
+    const phoneNorm  = (search || "").replace(/[\s\-\+\(\)]/g, "");
     const whereClause = search ? or(
-      ilike(usersTable.phone, `%${search}%`),
+      ilike(usersTable.phone, `%${phoneNorm}%`),
       ilike(usersTable.email, `%${search}%`),
       sql`${usersTable.id}::text ILIKE ${`%${search}%`}`,
       ilike(userProfilesTable.fullName, `%${search}%`),
