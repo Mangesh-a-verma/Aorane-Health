@@ -52,18 +52,14 @@ function StatCard({ icon, value, suffix, label, started }: {
 }
 
 function PricingCard({
-  plan, perSeatPrice, perSeatYearly = 0, discountPct, minSeats, maxSeats, features, crmFree,
-  highlighted = false, isEnterprise = false, billing,
+  plan, perSeatPrice, minSeats, maxSeats, features, crmFree,
+  highlighted = false, isEnterprise = false,
 }: {
-  plan: string; perSeatPrice: number; perSeatYearly?: number; discountPct: number; minSeats: number;
+  plan: string; perSeatPrice: number; minSeats: number;
   maxSeats?: number; features: string[]; crmFree: boolean;
-  highlighted?: boolean; isEnterprise?: boolean; billing: "monthly" | "annual";
+  highlighted?: boolean; isEnterprise?: boolean;
 }) {
   const [, navigate] = useLocation();
-  const discountedPrice = Math.round(perSeatPrice * (1 - discountPct / 100));
-  const annualPrice = perSeatYearly > 0 ? Math.round(perSeatYearly * (1 - discountPct / 100)) : Math.round(discountedPrice * 0.90);
-  const displayPrice = billing === "annual" ? annualPrice : discountedPrice;
-  const extraAnnualSaving = annualPrice > 0 && discountedPrice > 0 ? Math.round((1 - annualPrice / discountedPrice) * 100) : 10;
 
   return (
     <div style={{
@@ -91,17 +87,10 @@ function PricingCard({
         </div>
       )}
 
-      {/* Plan name + discount badge */}
+      {/* Plan name */}
       <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" as const }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" as const, color: highlighted ? "rgba(255,255,255,0.7)" : TEAL }}>
-            {plan}
-          </div>
-          {discountPct > 0 && (
-            <div style={{ background: highlighted ? "rgba(255,255,255,0.2)" : "rgba(0,107,86,0.1)", color: highlighted ? "white" : TEAL, borderRadius: 99, padding: "2px 10px", fontSize: 11, fontWeight: 800 }}>
-              {discountPct}% Volume Discount
-            </div>
-          )}
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" as const, color: highlighted ? "rgba(255,255,255,0.7)" : TEAL, marginBottom: 8 }}>
+          {plan}
         </div>
 
         {/* Seat range */}
@@ -123,19 +112,9 @@ function PricingCard({
           <div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 6 }}>
               <span style={{ fontSize: "clamp(32px,3vw,44px)", fontWeight: 800, color: highlighted ? "white" : "#181c20", fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1 }}>
-                ₹{displayPrice}
+                ₹{perSeatPrice}
               </span>
               <span style={{ color: highlighted ? "rgba(255,255,255,0.65)" : "#6b7280", fontSize: 13, marginBottom: 7 }}>/seat/month</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 5 }}>
-              <span style={{ fontSize: 12, color: highlighted ? "rgba(255,255,255,0.5)" : "#9ca3af", textDecoration: "line-through" }}>
-                ₹{perSeatPrice}/seat MRP
-              </span>
-              {billing === "annual" && (
-                <span style={{ fontSize: 11, fontWeight: 700, color: highlighted ? "rgba(134,239,172,1)" : TEAL }}>
-                  +{extraAnnualSaving}% annual saving
-                </span>
-              )}
             </div>
           </div>
         )}
@@ -209,7 +188,6 @@ function PricingCard({
 
 export default function Landing() {
   const [, navigate] = useLocation();
-  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
   const [statsStarted, setStatsStarted] = useState(false);
   const statsRef = useRef<HTMLDivElement>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -217,11 +195,6 @@ export default function Landing() {
   const [investorOpen, setInvestorOpen] = useState(false);
   const [expertOpen, setExpertOpen] = useState(false);
   const settings = useSiteSettings();
-  const planPrices: Record<string, { perSeat: number; perSeatYearly: number }> = {
-    starter:    { perSeat: 249, perSeatYearly: 224 },
-    growth:     { perSeat: 249, perSeatYearly: 224 },
-    enterprise: { perSeat: 249, perSeatYearly: 224 },
-  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -277,9 +250,7 @@ export default function Landing() {
   const plans = [
     {
       plan: "Starter",
-      perSeatPrice: planPrices["starter"]?.perSeat ?? 249,
-      perSeatYearly: planPrices["starter"]?.perSeatYearly ?? 0,
-      discountPct: 10,
+      perSeatPrice: 249,
       minSeats: 20,
       maxSeats: 50,
       crmFree: false,
@@ -303,9 +274,7 @@ export default function Landing() {
     },
     {
       plan: "Growth",
-      perSeatPrice: planPrices["growth"]?.perSeat ?? 249,
-      perSeatYearly: planPrices["growth"]?.perSeatYearly ?? 0,
-      discountPct: 15,
+      perSeatPrice: 249,
       minSeats: 51,
       maxSeats: 250,
       crmFree: true,
@@ -327,9 +296,7 @@ export default function Landing() {
     },
     {
       plan: "Enterprise",
-      perSeatPrice: planPrices["enterprise"]?.perSeat ?? 249,
-      perSeatYearly: planPrices["enterprise"]?.perSeatYearly ?? 0,
-      discountPct: 0,
+      perSeatPrice: 249,
       minSeats: 251,
       crmFree: true,
       isEnterprise: true,
@@ -784,33 +751,10 @@ export default function Landing() {
             <h2 style={{ fontSize: "clamp(26px,4vw,48px)", fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#181c20", letterSpacing: "-0.025em", margin: "0 0 16px" }}>
               Per-Seat Pricing. Zero Hidden Costs.
             </h2>
-            <p style={{ fontSize: 18, color: "#6b7280", margin: "0 0 32px" }}>Pay only for your team size. More seats = more savings. Cancel anytime.</p>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 0, background: "white", borderRadius: 99, padding: 4, boxShadow: "0 2px 14px rgba(0,0,0,0.08)", border: "1px solid rgba(191,199,209,0.3)" }}>
-              {(["monthly", "annual"] as const).map(b => (
-                <button
-                  key={b}
-                  onClick={() => setBilling(b)}
-                  style={{
-                    background: billing === b ? `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)` : "transparent",
-                    color: billing === b ? "white" : "#6b7280",
-                    border: "none", borderRadius: 99, padding: "10px 0",
-                    width: 190, textAlign: "center" as const,
-                    fontWeight: 700, fontSize: 14, cursor: "pointer", transition: "all 0.25s",
-                  }}
-                >
-                  {b === "monthly" ? "Monthly" : (() => {
-                    const p = planPrices["growth"] ?? planPrices["starter"];
-                    const savePct = p && p.perSeat > 0 && p.perSeatYearly > 0
-                      ? Math.round((1 - p.perSeatYearly / p.perSeat) * 100)
-                      : 10;
-                    return `Annual  (Save ${savePct}%)`;
-                  })()}
-                </button>
-              ))}
-            </div>
+            <p style={{ fontSize: 18, color: "#6b7280", margin: "0 0 32px" }}>Pay only for your team size. Cancel anytime.</p>
           </div>
           <div className="pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, alignItems: "center" }}>
-            {plans.map((p, i) => <PricingCard key={i} {...p} billing={billing} />)}
+            {plans.map((p, i) => <PricingCard key={i} {...p} />)}
           </div>
           <p style={{ textAlign: "center", color: "#9ca3af", fontSize: 13, marginTop: 24 }}>
             Promo codes accepted at checkout. All prices exclusive of 18% GST.{" "}
