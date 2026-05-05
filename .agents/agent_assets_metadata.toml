@@ -215,3 +215,9 @@ id = "1pXFA-aOFHWbtUS27TPKz"
 uri = "file://aorane-health-score-guide.pdf"
 type = "pdf"
 title = "Aorane Health Score & Active Percentage Guide"
+
+[[outputs]]
+id = "PTi6oktr_3RQ3r7oJKi2F"
+uri = "file://AORANE_Org_Structure.docx"
+type = "word_document"
+title = "AORANE — Org Structure & Staffing Plan"
