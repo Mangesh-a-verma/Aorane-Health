@@ -80,6 +80,25 @@ export type Org = {
   customPriceValidUntil: string | null;
   customPriceAppliedBy: string | null;
   totalRevenue?: number;
+  b2bPlan?: string | null;
+  crmEnabled?: boolean | null;
+  planStatus?: string | null;
+};
+
+export type PlanFeature = {
+  feature_name: string;
+  free_value: string;
+  max_value: string;
+  pro_value: string;
+  family_value: string;
+  description: string | null;
+  updated_at: string;
+};
+
+export type AIUsageItem = {
+  feature: string;
+  used: number;
+  limit: number;
 };
 export type CustomDealOrg = {
   id: string; name: string; orgCode: string; orgType: string;
@@ -268,6 +287,16 @@ export const api = {
     planBreakdown: Array<{ plan: string; users: number; monthlyRate: number; expectedMRR: number; actualRevenue: number; transactions: number }>;
     recentPayments: Array<{ id: string; userId: string | null; plan: string; amount: number; currency: string; status: string; razorpayPaymentId: string | null; gatewayFee: number | null; createdAt: string }>;
   }>("/admin/revenue"),
+
+  planFeatures: () => req<{ features: PlanFeature[] }>("/admin/plan-features"),
+  updatePlanFeature: (featureName: string, data: { freeValue?: string; maxValue?: string; proValue?: string; familyValue?: string; description?: string }) =>
+    req<{ feature: PlanFeature; success: boolean }>(`/admin/plan-features/${featureName}`, { method: "PUT", body: JSON.stringify(data) }),
+
+  getUserAIUsage: (userId: string) => req<{ usage: AIUsageItem[]; date: string; plan: string }>(`/admin/users/${userId}/ai-usage`),
+  resetUserAIUsage: (userId: string) => req<{ success: boolean; rowsReset: number; date: string }>(`/admin/users/${userId}/reset-ai-usage`, { method: "POST" }),
+
+  updateOrgB2b: (id: string, data: { b2bPlan?: string; crmEnabled?: boolean; planStatus?: string; totalSeats?: number }) =>
+    req<{ organization: Org; success: boolean }>(`/admin/organizations/${id}`, { method: "PUT", body: JSON.stringify(data) }),
 
   getAiConfig: () => req<{ configs: AiConfig[] }>("/admin/ai-config"),
   updateAiConfig: (feature: string, data: Partial<AiConfig>) =>

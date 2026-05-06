@@ -1174,6 +1174,13 @@ export async function runStartupMigrations(): Promise<void> {
       DO UPDATE SET usage_count = ai_usage_daily.usage_count + 1;
     END;
     $$ LANGUAGE plpgsql`,
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // ORGANIZATIONS — B2B config columns (admin panel FIX 3)
+    // ══════════════════════════════════════════════════════════════════════════
+    `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS b2b_plan TEXT DEFAULT 'starter'`,
+    `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS crm_enabled BOOLEAN DEFAULT false`,
+    `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS plan_status TEXT DEFAULT 'active'`,
   ];
 
   let ok = 0; let fail = 0;

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import pg from "pg";
-import { db, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, foodScanCacheTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable, planPricingTable, orgPaymentsTable } from "@workspace/db";
+import { db, pool, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, foodScanCacheTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable, planPricingTable, orgPaymentsTable } from "@workspace/db";
 import { eq, desc, ilike, count, or, sql, and, inArray, isNotNull } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import { signAdminToken } from "../../lib/jwt";
@@ -248,10 +248,23 @@ router.patch("/admin/users/:id", requireAdmin, async (req: AdminRequest, res) =>
     if (isBanned !== undefined) updates.isBanned = isBanned;
     const userId = String(req.params.id);
     const [updated] = await db.update(usersTable).set(updates as Partial<typeof usersTable.$inferInsert>).where(eq(usersTable.id, userId)).returning();
+
+    // When plan changes: cancel active subs + grant new sub
+    if (plan !== undefined) {
+      await db.update(subscriptionsTable)
+        .set({ status: "cancelled", cancelledAt: new Date() })
+        .where(and(eq(subscriptionsTable.userId, userId), eq(subscriptionsTable.status, "active")));
+      if (plan !== "free") {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        await db.insert(subscriptionsTable).values({ userId, plan: plan as "free" | "pro" | "max" | "family", status: "active", source: "admin_grant", expiresAt });
+      }
+      invalidatePlanCache(userId);
+    }
     await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "update_user", targetType: "user", targetId: userId, details: updates });
-    if (plan !== undefined) invalidatePlanCache(userId);
     res.json({ user: updated });
-  } catch {
+  } catch (e) {
+    req.log?.error(e);
     res.status(500).json({ error: "Failed to update user" });
   }
 });
@@ -324,19 +337,37 @@ router.put("/admin/organizations/:id", requireAdmin, async (req: AdminRequest, r
     const { id } = req.params as { id: string };
     const body = req.body as Record<string, unknown>;
     const allowed: Record<string, unknown> = {};
-    if (body.name)         allowed.name         = String(body.name).trim();
-    if (body.contactEmail) allowed.contactEmail  = String(body.contactEmail).trim();
-    if (body.city != null) allowed.city          = String(body.city).trim();
-    if (body.state != null) allowed.state        = String(body.state).trim();
-    if (body.totalSeats)   allowed.totalSeats    = Math.max(1, Number(body.totalSeats));
-    if (body.orgType)      allowed.orgType       = String(body.orgType) as typeof organizationsTable.$inferSelect.orgType;
+    if (body.name)              allowed.name         = String(body.name).trim();
+    if (body.contactEmail)      allowed.contactEmail  = String(body.contactEmail).trim();
+    if (body.city != null)      allowed.city          = String(body.city).trim();
+    if (body.state != null)     allowed.state        = String(body.state).trim();
+    if (body.totalSeats)        allowed.totalSeats    = Math.max(1, Number(body.totalSeats));
+    if (body.orgType)           allowed.orgType       = String(body.orgType) as typeof organizationsTable.$inferSelect.orgType;
+    if (body.b2bPlan != null)   allowed.b2bPlan       = String(body.b2bPlan);
+    if (body.crmEnabled != null) allowed.crmEnabled   = Boolean(body.crmEnabled);
+    if (body.planStatus != null) allowed.planStatus   = String(body.planStatus);
     if (Object.keys(allowed).length === 0) { res.status(400).json({ error: "No valid fields to update" }); return; }
-    const [updated] = await db.update(organizationsTable)
-      .set({ ...allowed, updatedAt: new Date() })
-      .where(eq(organizationsTable.id, id))
-      .returning();
-    if (!updated) { res.status(404).json({ error: "Organization not found" }); return; }
-    res.json({ organization: updated, success: true });
+    // Use raw SQL for new columns since they may not be in Drizzle schema yet
+    const setClauses: string[] = ["updated_at = now()"];
+    const values: unknown[] = [];
+    let idx = 1;
+    if (allowed.name)         { setClauses.push(`name = $${idx++}`);          values.push(allowed.name); }
+    if (allowed.contactEmail) { setClauses.push(`contact_email = $${idx++}`); values.push(allowed.contactEmail); }
+    if (allowed.city != null) { setClauses.push(`city = $${idx++}`);          values.push(allowed.city); }
+    if (allowed.state != null){ setClauses.push(`state = $${idx++}`);         values.push(allowed.state); }
+    if (allowed.totalSeats)   { setClauses.push(`total_seats = $${idx++}`);   values.push(allowed.totalSeats); }
+    if (allowed.orgType)      { setClauses.push(`org_type = $${idx++}`);      values.push(allowed.orgType); }
+    if (allowed.b2bPlan != null)   { setClauses.push(`b2b_plan = $${idx++}`);    values.push(allowed.b2bPlan); }
+    if (allowed.crmEnabled != null){ setClauses.push(`crm_enabled = $${idx++}`); values.push(allowed.crmEnabled); }
+    if (allowed.planStatus != null){ setClauses.push(`plan_status = $${idx++}`); values.push(allowed.planStatus); }
+    values.push(id);
+    const { rows } = await pool.query(
+      `UPDATE organizations SET ${setClauses.join(", ")} WHERE id = $${idx} RETURNING *`,
+      values,
+    );
+    if (!rows.length) { res.status(404).json({ error: "Organization not found" }); return; }
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "update_org_b2b", targetType: "organization", targetId: id, details: { b2bPlan: allowed.b2bPlan, crmEnabled: allowed.crmEnabled, planStatus: allowed.planStatus } });
+    res.json({ organization: rows[0], success: true });
   } catch (e) {
     req.log?.error(e);
     res.status(500).json({ error: "Failed to update organization" });
@@ -1089,6 +1120,95 @@ router.get("/admin/org-invoices", requireAdmin, async (_req: AdminRequest, res) 
     .orderBy(desc(orgPaymentsTable.createdAt));
     res.json({ invoices });
   } catch { res.status(500).json({ error: "Failed to fetch org invoices" }); }
+});
+
+// ─── Plan Features (plan_features table — granular per-plan limits) ──────────
+router.get("/admin/plan-features", requireAdmin, async (_req: AdminRequest, res) => {
+  try {
+    const { rows } = await pool.query(`SELECT * FROM plan_features ORDER BY feature_name`);
+    res.json({ features: rows });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch plan features" });
+  }
+});
+
+router.put("/admin/plan-features/:feature_name", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const featureName = String(req.params.feature_name);
+    const { freeValue, maxValue, proValue, familyValue, description } = req.body as Record<string, string>;
+    const setClauses: string[] = ["updated_at = now()"];
+    const values: unknown[] = [];
+    let idx = 1;
+    if (freeValue !== undefined)   { setClauses.push(`free_value = $${idx++}`);   values.push(freeValue); }
+    if (maxValue !== undefined)    { setClauses.push(`max_value = $${idx++}`);    values.push(maxValue); }
+    if (proValue !== undefined)    { setClauses.push(`pro_value = $${idx++}`);    values.push(proValue); }
+    if (familyValue !== undefined) { setClauses.push(`family_value = $${idx++}`); values.push(familyValue); }
+    if (description !== undefined) { setClauses.push(`description = $${idx++}`);  values.push(description); }
+    if (values.length === 0) { res.status(400).json({ error: "No fields to update" }); return; }
+    values.push(featureName);
+    const { rows } = await pool.query(
+      `UPDATE plan_features SET ${setClauses.join(", ")} WHERE feature_name = $${idx} RETURNING *`,
+      values,
+    );
+    if (!rows.length) { res.status(404).json({ error: "Feature not found" }); return; }
+    const { invalidateAILimiterCache } = await import("../../lib/aiLimiter");
+    invalidateAILimiterCache();
+    await db.insert(adminAuditLogsTable).values({
+      adminId: req.adminId!, action: "update_plan_feature",
+      targetType: "plan_feature", targetId: featureName,
+      details: { freeValue, maxValue, proValue, familyValue },
+    });
+    res.json({ feature: rows[0], success: true });
+  } catch (e) {
+    req.log?.error(e);
+    res.status(500).json({ error: "Failed to update plan feature" });
+  }
+});
+
+// ─── User AI Usage (per-user daily usage stats + reset) ──────────────────────
+router.get("/admin/users/:id/ai-usage", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const userId = String(req.params.id);
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const today = new Date(Date.now() + istOffset).toISOString().slice(0, 10);
+    const [userRow] = await db.select({ plan: usersTable.plan }).from(usersTable).where(eq(usersTable.id, userId));
+    const plan = userRow?.plan || "free";
+    const [{ rows: usageRows }, { rows: featureRows }] = await Promise.all([
+      pool.query(`SELECT feature_name, usage_count FROM ai_usage_daily WHERE user_id = $1 AND usage_date = $2`, [userId, today]),
+      pool.query(`SELECT feature_name, free_value, max_value, pro_value, family_value FROM plan_features WHERE feature_name LIKE 'ai_%'`),
+    ]);
+    const usageMap = new Map((usageRows as Array<{ feature_name: string; usage_count: number }>).map(r => [r.feature_name, r.usage_count]));
+    const usage = (featureRows as Array<{ feature_name: string; free_value: string; max_value: string; pro_value: string; family_value: string }>).map(f => {
+      const raw = plan === "max" ? f.max_value : plan === "pro" ? f.pro_value : plan === "family" ? f.family_value : f.free_value;
+      const limit = raw === "true" ? 999 : raw === "false" ? 0 : (parseInt(raw, 10) || 0);
+      return { feature: f.feature_name, used: usageMap.get(f.feature_name) || 0, limit };
+    });
+    res.json({ usage, date: today, plan });
+  } catch (e) {
+    req.log?.error(e);
+    res.status(500).json({ error: "Failed to fetch AI usage" });
+  }
+});
+
+router.post("/admin/users/:id/reset-ai-usage", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const userId = String(req.params.id);
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const today = new Date(Date.now() + istOffset).toISOString().slice(0, 10);
+    const { rowCount } = await pool.query(
+      `DELETE FROM ai_usage_daily WHERE user_id = $1 AND usage_date = $2`,
+      [userId, today],
+    );
+    await db.insert(adminAuditLogsTable).values({
+      adminId: req.adminId!, action: "reset_ai_usage",
+      targetType: "user", targetId: userId,
+      details: { date: today, rowsDeleted: rowCount },
+    });
+    res.json({ success: true, rowsReset: rowCount, date: today });
+  } catch (e) {
+    req.log?.error(e);
+    res.status(500).json({ error: "Failed to reset AI usage" });
+  }
 });
 
 router.post("/admin/change-password", requireAdmin, async (req: AdminRequest, res) => {
