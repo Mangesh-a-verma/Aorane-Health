@@ -17,13 +17,27 @@ export async function sendExpoPushNotifications(tokens: string[], title: string,
   }));
   if (!messages.length) return;
   try {
-    await fetch("https://exp.host/--/api/v2/push/send", {
+    const res = await fetch("https://exp.host/--/api/v2/push/send", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json" },
       body: JSON.stringify(messages),
     });
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      throw new Error(`Expo Push API ${res.status}: ${errBody}`);
+    }
+    const result = await res.json().catch(() => null);
+    if (result?.data) {
+      const failed = (result.data as Array<{ status: string; message?: string }>)
+        .filter(r => r.status === "error");
+      if (failed.length) {
+        // eslint-disable-next-line no-console
+        console.error(`[Push] ${failed.length} token(s) failed:`, failed.map(f => f.message).join(", "));
+      }
+    }
   } catch (e) {
-    console.error("Push notification send error:", e);
+    // eslint-disable-next-line no-console
+    console.error("[Push] sendExpoPushNotifications error:", (e as Error).message);
   }
 }
 

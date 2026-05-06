@@ -404,26 +404,31 @@ router.post("/family/member/:memberId/reminder", requireAuth, async (req: AuthRe
     let pushToken: string | null = null;
     try {
       const deviceTokenRes = await pool.query(
-        `SELECT expo_push_token FROM user_profiles WHERE user_id=$1 AND expo_push_token IS NOT NULL LIMIT 1`,
+        `SELECT token FROM push_tokens WHERE user_id=$1 ORDER BY updated_at DESC LIMIT 1`,
         [memberId]
       );
-      pushToken = deviceTokenRes.rows[0]?.expo_push_token ?? null;
+      pushToken = deviceTokenRes.rows[0]?.token ?? null;
     } catch (pushErr: unknown) {
-      logger.error({ err: pushErr }, "Could not fetch push token — column may not exist yet");
+      logger.error({ err: pushErr }, "Could not fetch push token from push_tokens table");
     }
 
     if (pushToken) {
       try {
-        await fetch("https://exp.host/--/api/v2/push/send", {
+        const pushRes = await fetch("https://exp.host/--/api/v2/push/send", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
           body: JSON.stringify({
             to: pushToken,
             title: `💙 Reminder from ${senderName}`,
             body: message,
+            sound: "default",
             data: { type: "family_reminder", fromUserId: req.userId },
           }),
         });
+        if (!pushRes.ok) {
+          const errBody = await pushRes.text().catch(() => "");
+          logger.warn({ status: pushRes.status, body: errBody }, "Expo push API returned non-OK status");
+        }
       } catch (pushErr: unknown) { logger.error({ err: pushErr }, "Push notification delivery failed"); }
     }
 
