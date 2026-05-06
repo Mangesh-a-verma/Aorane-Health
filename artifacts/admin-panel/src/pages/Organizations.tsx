@@ -570,6 +570,7 @@ export default function Organizations() {
       else if (sortKey === "createdAt") cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       else if (sortKey === "usedSeats") cmp = a.usedSeats - b.usedSeats;
       else if (sortKey === "totalSeats") cmp = a.totalSeats - b.totalSeats;
+      else if (sortKey === "totalRevenue") cmp = (a.totalRevenue ?? 0) - (b.totalRevenue ?? 0);
       return sortDir === "asc" ? cmp : -cmp;
     });
     return result;
@@ -713,6 +714,7 @@ export default function Organizations() {
             <SortButton label="Newest" sortKey="createdAt" current={sortKey} dir={sortDir} onClick={handleSort} />
             <SortButton label="Members" sortKey="usedSeats" current={sortKey} dir={sortDir} onClick={handleSort} />
             <SortButton label="Capacity" sortKey="totalSeats" current={sortKey} dir={sortDir} onClick={handleSort} />
+            <SortButton label="Revenue" sortKey="totalRevenue" current={sortKey} dir={sortDir} onClick={handleSort} />
             <span className="ml-auto text-xs text-muted-foreground">{filtered.length} of {orgs.length}</span>
           </div>
         </div>
