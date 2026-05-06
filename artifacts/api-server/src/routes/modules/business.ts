@@ -1025,11 +1025,11 @@ router.get("/business/health-analytics", requireBusinessAuth, async (req: Busine
       ));
 
     // Latest score per user (for avg, distribution)
-    const latestByUser = new Map<string, { healthScore: number; foodScore: number; waterScore: number; exerciseScore: number; medicineScore: number }>();
+    const latestByUser = new Map<string, { scoreDate: string; healthScore: number; foodScore: number; waterScore: number; exerciseScore: number; medicineScore: number }>();
     for (const s of scores) {
       const existing = latestByUser.get(s.userId);
-      if (!existing || s.scoreDate > (existing as unknown as { date?: string }).date!) {
-        latestByUser.set(s.userId, { healthScore: s.healthScore, foodScore: s.foodScore, waterScore: s.waterScore, exerciseScore: s.exerciseScore, medicineScore: s.medicineScore });
+      if (!existing || s.scoreDate > existing.scoreDate) {
+        latestByUser.set(s.userId, { scoreDate: s.scoreDate, healthScore: s.healthScore, foodScore: s.foodScore, waterScore: s.waterScore, exerciseScore: s.exerciseScore, medicineScore: s.medicineScore });
       }
     }
 
