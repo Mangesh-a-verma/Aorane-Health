@@ -5,7 +5,7 @@ import { eq, and, gte, lte, ilike, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { aiRateLimit, planAiRateLimit } from "../../middlewares/ai-rate-limit";
-import { planLimit } from "../../middlewares/plan-limits";
+import { checkAndUseAILimit } from "../../lib/aiLimiter";
 import { callAI } from "../../lib/ai";
 import { getWeatherContext } from "../../lib/weather";
 import { cache } from "../../lib/redis";
@@ -267,7 +267,7 @@ router.get("/food/favorites", requireAuth, async (req: AuthRequest, res) => {
 
 // ── AI Food Scan — 4-level lookup: History → DB → AI-Cache → Gemini AI ───────
 // This is the core of AI cost reduction: personal history is checked FIRST
-router.post("/food/scan", requireAuth, planLimit("ai_food_scan_text_daily"), planAiRateLimit("food_scan", { free: 5, paid: 50 }), async (req: AuthRequest, res) => {
+router.post("/food/scan", requireAuth, planAiRateLimit("food_scan", { free: 5, paid: 50 }), async (req: AuthRequest, res) => {
   try {
     const { foodName, imageBase64, mimeType } = req.body as { foodName?: string; imageBase64?: string; mimeType?: string };
     const searchTerm = foodName?.toLowerCase().trim();
@@ -379,8 +379,35 @@ router.post("/food/scan", requireAuth, planLimit("ai_food_scan_text_daily"), pla
     // ── Level 4: AI fallback ──────────────────────────────────────────────────
     // Text search → AI LLaMA 3.3 70B (fast, no quota issues)
     // Image scan → Gemini (vision support needed, food images only, no personal data)
-    // IMPORTANT: If AI fails (key missing / server down), return a generic estimate
-    // so the user can still log food rather than seeing a hard error.
+    // Limit check happens ONLY here — Levels 1-3 are free (no AI cost)
+    const userId = req.userId!;
+    const planType = req.userPlan || "free";
+    const aiFeature = imageBase64 ? "ai_food_scan_photo_daily" : "ai_food_scan_text_daily";
+    const limitCheck = await checkAndUseAILimit(userId, aiFeature, planType);
+    if (!limitCheck.allowed) {
+      if (limitCheck.planRequired) {
+        res.status(403).json({
+          error: `This feature is not available on the ${planType.toUpperCase()} plan. Upgrade to ${limitCheck.planRequired.toUpperCase()} to unlock it.`,
+          feature: aiFeature,
+          reason: "plan_not_supported",
+          currentPlan: planType,
+          planRequired: limitCheck.planRequired,
+          upgradeSuggested: true,
+        });
+      } else {
+        res.status(429).json({
+          error: `Aaj ki limit khatam ho gayi! Kal dobara try karein. Limit: ${limitCheck.limit}/day on ${planType.toUpperCase()} plan.`,
+          feature: aiFeature,
+          limitPerDay: limitCheck.limit,
+          usedToday: limitCheck.usedToday,
+          currentPlan: planType,
+          resetsAt: "midnight IST",
+          upgradeSuggested: planType === "free",
+        });
+      }
+      return;
+    }
+
     let result: Record<string, unknown>;
 
     if (searchTerm) {
@@ -499,7 +526,13 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
       }
     }
 
-    res.json({ result, fromCache: false, fromDb: false, fromHistory: false });
+    res.json({
+      result,
+      fromCache: false,
+      fromDb: false,
+      fromHistory: false,
+      aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit },
+    });
   } catch (err) {
     console.error("Food scan error:", err);
     res.status(500).json({ error: "Food scan failed" });

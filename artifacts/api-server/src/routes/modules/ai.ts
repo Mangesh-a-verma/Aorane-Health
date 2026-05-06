@@ -4,15 +4,48 @@ import { eq } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { aiRateLimit, planAiRateLimit } from "../../middlewares/ai-rate-limit";
-import { planLimit } from "../../middlewares/plan-limits";
 import { requireFeature } from "../../middlewares/feature-check";
 import { callAI } from "../../lib/ai";
+import { checkAndUseAILimit } from "../../lib/aiLimiter";
 
 const router = Router();
 
-router.post("/ai/diet-plan", requireAuth, requireFeature("meal_planner"), planLimit("ai_diet_plan_daily"), aiRateLimit("meal_planner", 5), async (req: AuthRequest, res) => {
+// ── Helper: standard "limit blocked" response ────────────────────────────────
+function sendLimitBlocked(res: import("express").Response, feature: string, usedToday: number, limit: number, planType: string, planRequired?: string): void {
+  if (planRequired) {
+    res.status(403).json({
+      error: `This feature is not available on the ${planType.toUpperCase()} plan. Upgrade to ${planRequired.toUpperCase()} to unlock it.`,
+      feature,
+      reason: "plan_not_supported",
+      currentPlan: planType,
+      planRequired,
+      upgradeSuggested: true,
+    });
+  } else {
+    res.status(429).json({
+      error: `Aaj ki limit khatam ho gayi! Kal dobara try karein. Limit: ${limit}/day on ${planType.toUpperCase()} plan.`,
+      feature,
+      limitPerDay: limit,
+      usedToday,
+      currentPlan: planType,
+      resetsAt: "midnight IST",
+      upgradeSuggested: planType === "free",
+    });
+  }
+}
+
+// ── AI Diet Plan ─────────────────────────────────────────────────────────────
+router.post("/ai/diet-plan", requireAuth, requireFeature("meal_planner"), aiRateLimit("meal_planner", 5), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
+    const planType = req.userPlan || "free";
+
+    const limitCheck = await checkAndUseAILimit(userId, "ai_diet_plan_daily", planType);
+    if (!limitCheck.allowed) {
+      sendLimitBlocked(res, "ai_diet_plan_daily", limitCheck.usedToday, limitCheck.limit, planType, limitCheck.planRequired);
+      return;
+    }
+
     const { days = 1, preferences = {} } = req.body as { days?: number; preferences?: Record<string, unknown> };
 
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
@@ -90,15 +123,30 @@ Return ONLY valid JSON (no markdown, no extra text):
 
     const jsonStr = await callAI("meal_planner", [{ role: "user", content: prompt }], { maxTokens: 2000 });
     const plan = JSON.parse(jsonStr);
-    res.json({ plan, generatedAt: new Date().toISOString(), userId });
+    res.json({
+      plan,
+      generatedAt: new Date().toISOString(),
+      userId,
+      aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit },
+    });
   } catch (err) {
     console.error("Diet plan error:", err);
     res.status(500).json({ error: "Failed to generate diet plan" });
   }
 });
 
-router.post("/ai/health-tip", requireAuth, requireFeature("health_suggestions"), planLimit("ai_health_coach_daily"), aiRateLimit("health_tip", 10), async (req: AuthRequest, res) => {
+// ── AI Health Tip ─────────────────────────────────────────────────────────────
+router.post("/ai/health-tip", requireAuth, requireFeature("health_suggestions"), aiRateLimit("health_tip", 10), async (req: AuthRequest, res) => {
   try {
+    const userId = req.userId!;
+    const planType = req.userPlan || "free";
+
+    const limitCheck = await checkAndUseAILimit(userId, "ai_health_coach_daily", planType);
+    if (!limitCheck.allowed) {
+      sendLimitBlocked(res, "ai_health_coach_daily", limitCheck.usedToday, limitCheck.limit, planType, limitCheck.planRequired);
+      return;
+    }
+
     const { context = "" } = req.body as { context?: string };
 
     const prompt = `You are a certified Indian health coach. Give ONE practical, culturally relevant daily health tip for an Indian person${context ? ` who ${context}` : ""}.
@@ -113,14 +161,24 @@ Return ONLY valid JSON:
 
     const jsonStr = await callAI("health_suggestions", [{ role: "user", content: prompt }], { maxTokens: 500 });
     const result = JSON.parse(jsonStr);
-    res.json(result);
+    res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
   } catch {
     res.status(500).json({ error: "Failed to generate health tip" });
   }
 });
 
-router.post("/ai/meal-swap", requireAuth, requireFeature("meal_planner"), planLimit("ai_meal_swap_daily"), aiRateLimit("meal_swap", 20), async (req: AuthRequest, res) => {
+// ── AI Meal Swap ──────────────────────────────────────────────────────────────
+router.post("/ai/meal-swap", requireAuth, requireFeature("meal_planner"), aiRateLimit("meal_swap", 20), async (req: AuthRequest, res) => {
   try {
+    const userId = req.userId!;
+    const planType = req.userPlan || "free";
+
+    const limitCheck = await checkAndUseAILimit(userId, "ai_meal_swap_daily", planType);
+    if (!limitCheck.allowed) {
+      sendLimitBlocked(res, "ai_meal_swap_daily", limitCheck.usedToday, limitCheck.limit, planType, limitCheck.planRequired);
+      return;
+    }
+
     const { mealName, reason, dietaryPref = "vegetarian" } = req.body as { mealName: string; reason?: string; dietaryPref?: string };
     if (!mealName) { res.status(400).json({ error: "mealName required" }); return; }
 
@@ -137,19 +195,28 @@ Return ONLY valid JSON:
 
     const jsonStr = await callAI("meal_planner", [{ role: "user", content: prompt }], { maxTokens: 800 });
     const result = JSON.parse(jsonStr);
-    res.json(result);
+    res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
   } catch {
     res.status(500).json({ error: "Failed to generate meal swaps" });
   }
 });
 
-// smart-scan uses VISION (image analysis) — requires Gemini (via Replit proxy or user key)
-router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), planLimit("ai_food_scan_photo_daily"), aiRateLimit("smart_scan", 10), async (req: AuthRequest, res) => {
+// ── AI Smart Scan (vision — food / medical report / medicine) ─────────────────
+router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), aiRateLimit("smart_scan", 10), async (req: AuthRequest, res) => {
   try {
+    const userId = req.userId!;
+    const planType = req.userPlan || "free";
+
+    // Check photo scan limit before calling AI
+    const limitCheck = await checkAndUseAILimit(userId, "ai_food_scan_photo_daily", planType);
+    if (!limitCheck.allowed) {
+      sendLimitBlocked(res, "ai_food_scan_photo_daily", limitCheck.usedToday, limitCheck.limit, planType, limitCheck.planRequired);
+      return;
+    }
+
     const { imageBase64, mimeType = "image/jpeg" } = req.body as { imageBase64?: string; mimeType?: string };
     if (!imageBase64) { res.status(400).json({ error: "imageBase64 required" }); return; }
 
-    // Use Replit Gemini proxy first (no user key needed), then fall back to user's key
     const proxyBaseUrl = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
     const proxyKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
     const userGeminiKey = process.env.GOOGLE_GEMINI_API_KEY;
@@ -211,8 +278,9 @@ For unknown:
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON in response");
-    const result = JSON.parse(jsonMatch[0]);
-    res.json(result);
+    const result = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+
+    res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
   } catch (err) {
     console.error("smart-scan error:", err);
     res.status(500).json({ error: "Smart scan failed. Please try again with a clearer image." });

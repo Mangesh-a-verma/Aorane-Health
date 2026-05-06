@@ -1158,6 +1158,22 @@ export async function runStartupMigrations(): Promise<void> {
     )`,
 
     `CREATE INDEX IF NOT EXISTS idx_ai_usage_daily ON ai_usage_daily(user_id, feature_name, usage_date)`,
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // INCREMENT_AI_USAGE — atomic upsert stored procedure
+    // ══════════════════════════════════════════════════════════════════════════
+    `CREATE OR REPLACE FUNCTION increment_ai_usage(
+      p_user_id UUID,
+      p_feature  TEXT,
+      p_date     DATE
+    ) RETURNS void AS $$
+    BEGIN
+      INSERT INTO ai_usage_daily (user_id, feature_name, usage_date, usage_count)
+      VALUES (p_user_id, p_feature, p_date, 1)
+      ON CONFLICT (user_id, feature_name, usage_date)
+      DO UPDATE SET usage_count = ai_usage_daily.usage_count + 1;
+    END;
+    $$ LANGUAGE plpgsql`,
   ];
 
   let ok = 0; let fail = 0;
