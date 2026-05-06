@@ -11,8 +11,13 @@ import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect, router } from "expo-router";
 import { api } from "@/lib/api";
+import { APILimitError } from "@/lib/apiErrors";
+import { useAIScanUsage } from "@/lib/useAIScanUsage";
 import { useAuth } from "@/context/AuthContext";
 import { DS } from "@/lib/theme";
+import { UpgradeModal, type UpgradeModalConfig } from "@/components/UpgradeModal";
+import { AIUsageIndicator } from "@/components/AIUsageIndicator";
+import { LimitWarningToast } from "@/components/LimitWarningToast";
 
 const { width: W, height: H } = Dimensions.get("window");
 const PRIMARY = DS.color.primary;
@@ -188,6 +193,10 @@ export default function SmartScanScreen() {
   const slideAnim = useRef(new Animated.Value(60)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const headerFade = useRef(new Animated.Value(0)).current;
+  const [upgradeConfig, setUpgradeConfig] = useState<UpgradeModalConfig | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastRemaining, setToastRemaining] = useState(0);
+  const scanUsage = useAIScanUsage("food_scan", userPlan.toUpperCase());
 
   const ND = Platform.OS !== "web";
   useEffect(() => {
@@ -238,16 +247,24 @@ export default function SmartScanScreen() {
       setResult(data as unknown as ScanResult);
       showResult();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const { remaining } = await scanUsage.increment();
+      if (scanUsage.limit < 999 && remaining <= 2) {
+        setToastRemaining(remaining);
+        setToastVisible(true);
+      }
     } catch (err: unknown) {
       setScanning(false);
+      if (err instanceof APILimitError) {
+        if (err.type === "plan_limit") {
+          setUpgradeConfig({ type: "plan_limit", featureKey: "food_scan", featureLabel: "Food Photo Scan", currentPlan: userPlan.toUpperCase(), requiredPlan: err.requiredPlan || "PRO" });
+        } else {
+          setUpgradeConfig({ type: "daily_limit", featureKey: "food_scan", featureLabel: "Food Photo Scan", used: err.used ?? scanUsage.used, limit: err.limit ?? scanUsage.limit });
+        }
+        return;
+      }
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("503") || msg.includes("Gemini") || msg.includes("service")) {
-        Alert.alert("AI Service Unavailable", "AI Smart Scan needs Google Gemini to be configured. Please contact support or try later.");
-      } else if (msg.includes("403") || msg.includes("Upgrade") || msg.includes("plan")) {
-        Alert.alert("Plan Required", "AI Smart Scan is available on Max and Pro plans. Upgrade to continue.", [
-          { text: "Cancel", style: "cancel" },
-          { text: "Upgrade", onPress: () => {} },
-        ]);
+        Alert.alert("AI Unavailable", "AI Smart Scan se connection fail. Please try again.");
       } else {
         Alert.alert("Scan Failed", "Could not analyse this image. Try with a clearer photo in good lighting.");
       }
@@ -331,6 +348,12 @@ export default function SmartScanScreen() {
                   <Ionicons name="images-outline" size={20} color={PRIMARY} />
                   <Text style={s.galleryText}>Pick from Gallery</Text>
                 </TouchableOpacity>
+                <AIUsageIndicator
+                  used={scanUsage.used}
+                  limit={scanUsage.limit}
+                  label="scans"
+                  iconName="scan-outline"
+                />
               </>
             ) : null}
             {(!isPremium && planGateDismissed) && (
@@ -375,6 +398,13 @@ export default function SmartScanScreen() {
           </Animated.View>
         )}
       </ScrollView>
+      <LimitWarningToast
+        visible={toastVisible}
+        remaining={toastRemaining}
+        featureLabel="scan"
+        onDismiss={() => setToastVisible(false)}
+      />
+      <UpgradeModal config={upgradeConfig} onClose={() => setUpgradeConfig(null)} />
     </View>
   );
 }

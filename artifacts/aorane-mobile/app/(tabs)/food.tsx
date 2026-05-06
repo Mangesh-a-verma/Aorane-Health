@@ -12,7 +12,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { router, useFocusEffect } from "expo-router";
 import { api, cachedGet } from "@/lib/api";
+import { APILimitError } from "@/lib/apiErrors";
+import { useAuth } from "@/context/AuthContext";
+import { useAIScanUsage } from "@/lib/useAIScanUsage";
 import { DS } from "@/lib/theme";
+import { UpgradeModal, type UpgradeModalConfig } from "@/components/UpgradeModal";
+import { AIUsageIndicator } from "@/components/AIUsageIndicator";
+import { LimitWarningToast } from "@/components/LimitWarningToast";
 import { Plus, Utensils, X, Search, Mic, Camera, Image as ImageIcon, Sparkles } from "lucide-react-native";
 import { useOfflineLog } from "@/hooks/useOfflineLog";
 
@@ -127,6 +133,12 @@ export default function FoodScreen() {
   const [favsLoaded,   setFavsLoaded]   = useState(false);
   const [scanResult,   setScanResult]   = useState<ScanResult | null>(null);
   const [scanMeta,     setScanMeta]     = useState<ScanMeta | null>(null);
+  const { user } = useAuth();
+  const userPlan = ((user as Record<string, unknown>)?.plan as string || "FREE").toUpperCase();
+  const [upgradeConfig, setUpgradeConfig] = useState<UpgradeModalConfig | null>(null);
+  const [foodToastVisible, setFoodToastVisible] = useState(false);
+  const [foodToastRemaining, setFoodToastRemaining] = useState(0);
+  const foodScanUsage = useAIScanUsage("food_scan", userPlan);
   const [scanning,     setScanning]     = useState(false);
   const [submitting,   setSubmitting]   = useState(false);
   const [weatherData,  setWeatherData]  = useState<{
@@ -250,7 +262,22 @@ export default function FoodScreen() {
       setScanResult(res.result);
       setScanMeta({ fromHistory: res.fromHistory, fromDb: res.fromDb, fromCache: res.fromCache, historyCount: res.historyCount });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (e: unknown) { Alert.alert("AI Error", (e as Error).message || "Food analysis failed. Please try again."); }
+      const { remaining } = await foodScanUsage.increment();
+      if (foodScanUsage.limit < 999 && remaining <= 2) {
+        setFoodToastRemaining(remaining);
+        setFoodToastVisible(true);
+      }
+    } catch (e: unknown) {
+      if (e instanceof APILimitError) {
+        if (e.type === "plan_limit") {
+          setUpgradeConfig({ type: "plan_limit", featureKey: "food_scan", featureLabel: "Food Photo Scan", currentPlan: userPlan, requiredPlan: e.requiredPlan || "PRO" });
+        } else {
+          setUpgradeConfig({ type: "daily_limit", featureKey: "food_scan", featureLabel: "Food Photo Scan", used: e.used ?? foodScanUsage.used, limit: e.limit ?? foodScanUsage.limit });
+        }
+        return;
+      }
+      Alert.alert("AI Error", (e as Error).message || "Food analysis failed. Please try again.");
+    }
     setScanning(false);
   };
 
@@ -797,6 +824,13 @@ export default function FoodScreen() {
                   <Text style={s.cameraBtnText}>From Gallery</Text>
                 </TouchableOpacity>
               </View>
+              <AIUsageIndicator
+                used={foodScanUsage.used}
+                limit={foodScanUsage.limit}
+                label="scans"
+                iconName="camera-outline"
+                compact
+              />
             </View>
 
             {/* Listening indicator */}
@@ -948,6 +982,13 @@ export default function FoodScreen() {
           </ScrollView>
         </View>
       </Modal>
+      <LimitWarningToast
+        visible={foodToastVisible}
+        remaining={foodToastRemaining}
+        featureLabel="scan"
+        onDismiss={() => setFoodToastVisible(false)}
+      />
+      <UpgradeModal config={upgradeConfig} onClose={() => setUpgradeConfig(null)} />
     </View>
   );
 }

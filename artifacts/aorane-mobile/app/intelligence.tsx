@@ -8,7 +8,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { api } from "@/lib/api";
+import { APILimitError } from "@/lib/apiErrors";
+import { useAuth } from "@/context/AuthContext";
 import { DS } from "@/lib/theme";
+import { UpgradeModal, type UpgradeModalConfig } from "@/components/UpgradeModal";
 
 const PRIMARY = DS.color.primary;
 const ACCENT = DS.color.green;
@@ -197,6 +200,9 @@ function buildShareText(dietChart: DietChart | null, prediction: Prediction | nu
 }
 
 export default function HealthIntelligence() {
+  const { user } = useAuth();
+  const userPlan = ((user as Record<string, unknown>)?.plan as string || "FREE").toUpperCase();
+  const [upgradeConfig, setUpgradeConfig] = useState<UpgradeModalConfig | null>(null);
   const [prediction,    setPrediction]    = useState<Prediction | null>(null);
   const [dietChart,     setDietChart]     = useState<DietChart | null>(null);
   const [predLoading,   setPredLoading]   = useState(false);
@@ -245,7 +251,13 @@ export default function HealthIntelligence() {
           setPrediction(data.prediction as unknown as Prediction);
           setPredCached(false);
         } catch (e: unknown) {
-          Alert.alert("Error", e instanceof Error ? e.message : "Refresh failed");
+          if (e instanceof APILimitError) {
+            if (e.type === "plan_limit") {
+              setUpgradeConfig({ type: "plan_limit", featureKey: "health_coach", featureLabel: "Health Prediction", currentPlan: userPlan, requiredPlan: e.requiredPlan || "PRO" });
+            } else {
+              setUpgradeConfig({ type: "daily_limit", featureKey: "health_coach", featureLabel: "Health Prediction", used: e.used ?? 0, limit: e.limit ?? 1 });
+            }
+          } else { Alert.alert("Error", e instanceof Error ? e.message : "Refresh failed"); }
         } finally { setPredRefreshing(false); }
       }},
     ]);
@@ -261,7 +273,13 @@ export default function HealthIntelligence() {
           setDietChart(data.dietChart as unknown as DietChart);
           setDietCached(false);
         } catch (e: unknown) {
-          Alert.alert("Error", e instanceof Error ? e.message : "Refresh failed");
+          if (e instanceof APILimitError) {
+            if (e.type === "plan_limit") {
+              setUpgradeConfig({ type: "plan_limit", featureKey: "diet_plan", featureLabel: "Diet Plan Generator", currentPlan: userPlan, requiredPlan: e.requiredPlan || "PRO" });
+            } else {
+              setUpgradeConfig({ type: "daily_limit", featureKey: "diet_plan", featureLabel: "Diet Plan Generator", used: e.used ?? 0, limit: e.limit ?? 1 });
+            }
+          } else { Alert.alert("Error", e instanceof Error ? e.message : "Refresh failed"); }
         } finally { setDietRefreshing(false); }
       }},
     ]);
@@ -458,6 +476,7 @@ export default function HealthIntelligence() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      <UpgradeModal config={upgradeConfig} onClose={() => setUpgradeConfig(null)} />
     </SafeAreaView>
   );
 }

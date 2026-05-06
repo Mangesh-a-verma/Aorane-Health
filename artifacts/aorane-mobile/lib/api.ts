@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { setCachedResponse, getCachedResponse, setOnlineState } from "./offlineQueue";
+import { APILimitError } from "./apiErrors";
 
 // On web browser → use EXPO_PUBLIC_API_URL if set (production), else relative /api (local proxy)
 // On native (Expo Go / APK) → use production URL from env or fallback
@@ -146,7 +147,21 @@ export async function rawRequest<T>(
   catch { throw new Error(`Unexpected server response (${res.status})`); }
 
   if (!res.ok) {
-    throw new Error((data as { error?: string }).error || `Request failed (${res.status})`);
+    const errData = data as { error?: string; required?: string; used?: number; limit?: number; feature?: string };
+    if (res.status === 403) {
+      throw new APILimitError("plan_limit", errData.error || "Feature not available in your plan", {
+        requiredPlan: errData.required,
+        feature: errData.feature,
+      });
+    }
+    if (res.status === 429) {
+      throw new APILimitError("daily_limit", errData.error || "Daily limit reached", {
+        used: errData.used,
+        limit: errData.limit,
+        feature: errData.feature,
+      });
+    }
+    throw new Error(errData.error || `Request failed (${res.status})`);
   }
   return data as T;
 }
