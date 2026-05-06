@@ -345,16 +345,41 @@ function CustomPricingModal({ org, onClose, onSaved }: { org: Org; onClose: () =
   );
 }
 
-function OrgCard({ org, onToggleActive, onEdit, onDelete, onCustomPrice }: {
+function OrgCard({ org, onToggleActive, onEdit, onDelete, onCustomPrice, onUpdate }: {
   org: Org; onToggleActive: (id: string) => Promise<void>;
   onEdit: (org: Org) => void; onDelete: (org: Org) => void;
   onCustomPrice: (org: Org) => void;
+  onUpdate: (updated: Org) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [toggling, setToggling] = useState(false);
   const meta = TYPE_META[org.orgType] || TYPE_META.other;
   const seatPct = org.totalSeats > 0 ? Math.round((org.usedSeats / org.totalSeats) * 100) : 0;
   const seatColor = seatPct >= 90 ? "#EF4444" : seatPct >= 70 ? "#F59E0B" : "#10B981";
+
+  // B2B config local state
+  const [b2bPlan, setB2bPlan] = useState(org.b2bPlan ?? "starter");
+  const [seats, setSeats] = useState(String(org.totalSeats ?? 10));
+  const [crmEnabled, setCrmEnabled] = useState(org.crmEnabled ?? false);
+  const [planStatus, setPlanStatus] = useState(org.planStatus ?? "active");
+  const [b2bSaving, setB2bSaving] = useState(false);
+  const [b2bSaved, setB2bSaved] = useState(false);
+  const [b2bError, setB2bError] = useState("");
+
+  const handleB2bSave = async () => {
+    setB2bSaving(true); setB2bError(""); setB2bSaved(false);
+    try {
+      const newSeats = Math.max(1, parseInt(seats, 10) || org.totalSeats);
+      const res = await api.updateOrgB2b(org.id, {
+        b2bPlan, crmEnabled, planStatus, totalSeats: newSeats,
+      });
+      setB2bSaved(true);
+      onUpdate({ ...org, ...res.organization, b2bPlan, crmEnabled, planStatus, totalSeats: newSeats });
+      setTimeout(() => setB2bSaved(false), 2500);
+    } catch (e) {
+      setB2bError((e as Error).message || "Save failed");
+    } finally { setB2bSaving(false); }
+  };
 
   const handleToggle = async () => { setToggling(true); await onToggleActive(org.id); setToggling(false); };
 
@@ -455,6 +480,50 @@ function OrgCard({ org, onToggleActive, onEdit, onDelete, onCustomPrice }: {
               </div>
             </div>
           </div>
+          {/* ── FIX 3: B2B Config Panel ─────────────────────────── */}
+          <div className="mt-3 pt-3 border-t border-border/50">
+            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <span>🏢</span> B2B Plan Config
+            </div>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <div>
+                <label className="text-[10px] text-muted-foreground font-medium block mb-1">B2B Plan</label>
+                <select value={b2bPlan} onChange={e => setB2bPlan(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-primary">
+                  <option value="starter">Starter</option>
+                  <option value="growth">Growth</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground font-medium block mb-1">Total Seats</label>
+                <input type="number" min="1" value={seats} onChange={e => setSeats(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-primary" />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground font-medium block mb-1">Plan Status</label>
+                <select value={planStatus} onChange={e => setPlanStatus(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-primary">
+                  <option value="active">Active</option>
+                  <option value="trial">Trial</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+              <div className="flex flex-col justify-center">
+                <label className="text-[10px] text-muted-foreground font-medium block mb-1">CRM Enabled</label>
+                <button type="button" onClick={() => setCrmEnabled(v => !v)}
+                  className={`relative w-10 h-5 rounded-full transition-all duration-200 ${crmEnabled ? "bg-[#1B998B]" : "bg-muted"}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200 ${crmEnabled ? "left-5" : "left-0.5"}`} />
+                </button>
+              </div>
+            </div>
+            {b2bError && <div className="text-[10px] text-red-500 bg-red-50 dark:bg-red-950/20 rounded px-2 py-1 mb-2">{b2bError}</div>}
+            <button onClick={handleB2bSave} disabled={b2bSaving}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 disabled:opacity-50">
+              {b2bSaving ? <><Loader2 size={11} className="animate-spin" />Saving…</> : b2bSaved ? <><Check size={11} className="text-green-600" /><span className="text-green-600">Saved!</span></> : "Save B2B Config"}
+            </button>
+          </div>
+
           <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between gap-2 flex-wrap">
             {org.contactEmail
               ? <a href={`mailto:${org.contactEmail}`} className="inline-flex items-center gap-2 text-xs text-primary hover:underline font-medium"><Mail size={11} />Send Email</a>
@@ -757,7 +826,7 @@ export default function Organizations() {
         ) : viewMode === "grid" ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((org) => (
-              <OrgCard key={org.id} org={org} onToggleActive={handleToggleActive} onEdit={setEditOrg} onDelete={setDeleteOrg} onCustomPrice={setPricingOrg} />
+              <OrgCard key={org.id} org={org} onToggleActive={handleToggleActive} onEdit={setEditOrg} onDelete={setDeleteOrg} onCustomPrice={setPricingOrg} onUpdate={updated => setOrgs(prev => prev.map(o => o.id === updated.id ? updated : o))} />
             ))}
           </div>
         ) : (
