@@ -12,36 +12,43 @@ type CompRow =
 
 const comparisonRows: CompRow[] = [
   { section: true,  feature: "📊 Basic Features" },
-  { feature: "Food logging (manual)",   free: true,       max: true,        pro: true,        family: true       },
-  { feature: "Water tracker & reminders",free: true,      max: true,        pro: true,        family: true       },
-  { feature: "Exercise logging (MET)",  free: "Basic",    max: true,        pro: true,        family: true       },
-  { feature: "Health score",            free: "Basic",    max: "Advanced",  pro: "Advanced",  family: "Advanced" },
-  { feature: "Health history",          free: "7 days",   max: "Unlimited", pro: "Unlimited", family: "Unlimited"},
-  { feature: "Community forum",         free: true,       max: true,        pro: true,        family: true       },
+  { feature: "Food Logging (manual)",       free: true,        max: true,        pro: true,        family: true        },
+  { feature: "Water Tracker",               free: true,        max: true,        pro: true,        family: true        },
+  { feature: "Exercise Logging",            free: "Basic",     max: true,        pro: true,        family: true        },
+  { feature: "Health Score",                free: "Basic",     max: "Advanced",  pro: "Advanced",  family: "Advanced"  },
+  { feature: "Health History",              free: "7 days",    max: "Unlimited", pro: "Unlimited", family: "Unlimited" },
+  { feature: "Indian Foods Database",       free: "3000+",     max: "3000+",     pro: "3000+",     family: "3000+"     },
+  { feature: "Blood Emergency Network",     free: true,        max: true,        pro: true,        family: true        },
+  { feature: "Offline Logging",             free: true,        max: true,        pro: true,        family: true        },
+  { feature: "Community Support",           free: true,        max: true,        pro: true,        family: true        },
+  { feature: "Ads",                         free: "Shown",     max: "No Ads",    pro: "No Ads",    family: "No Ads"    },
 
   { section: true,  feature: "🤖 AI Features" },
-  { feature: "AI Food Scan (text)",     free: "5/day",    max: "50/day",    pro: "50/day",    family: "50/day"   },
-  { feature: "AI Food Scanner (photo)", free: false,      max: "10/day",    pro: "10/day",    family: "10/day"   },
-  { feature: "Medical Report Scan",     free: false,      max: "5/day",     pro: "5/day",     family: "5/day"    },
-  { feature: "AI Diet Plan",            free: false,      max: "5/day",     pro: "5/day",     family: "5/day"    },
-  { feature: "AI Health Coach & Tips",  free: false,      max: "10/day",    pro: "10/day",    family: "10/day"   },
-  { feature: "AI Meal Swap",            free: false,      max: "20/day",    pro: "20/day",    family: "20/day"   },
+  { feature: "AI Food Scan (text)",         free: "5/day",     max: "10/day",    pro: "10/day",    family: "10/day"    },
+  { feature: "AI Food Scan (photo)",        free: false,       max: "10/day",    pro: "10/day",    family: "10/day"    },
+  { feature: "Medical Report Scan",         free: false,       max: "5/day",     pro: "5/day",     family: "5/day"     },
+  { feature: "AI Diet Plan",                free: false,       max: "5/day",     pro: "5/day",     family: "5/day"     },
+  { feature: "AI Health Coach",             free: false,       max: "10/day",    pro: "10/day",    family: "10/day"    },
+  { feature: "AI Meal Swap",               free: false,       max: "20/day",    pro: "20/day",    family: "20/day"    },
+  { feature: "AI Health Predictions",       free: false,       max: false,       pro: true,        family: true        },
+  { feature: "Stress & Burnout AI",         free: false,       max: false,       pro: true,        family: true        },
 
   { section: true,  feature: "⚕️ Health Tracking" },
-  { feature: "Wearable Sync (Phase 4)", free: false,      max: true,        pro: true,        family: true       },
-  { feature: "Blood sugar & BP",        free: false,      max: true,        pro: true,        family: true       },
-  { feature: "Sleep stage analysis",    free: false,      max: true,        pro: true,        family: true       },
-  { feature: "Period cycle tracker",    free: false,      max: false,       pro: true,        family: true       },
-  { feature: "Stress & burnout AI",     free: false,      max: false,       pro: true,        family: true       },
-  { feature: "AI health predictions",   free: false,      max: false,       pro: true,        family: true       },
-  { feature: "Export data (PDF/CSV)",   free: false,      max: false,       pro: true,        family: true       },
-  { feature: "Support",                 free: "Community",max: "Email",     pro: "24/7",      family: "24/7"     },
+  { feature: "Blood Sugar & BP Tracking",   free: false,       max: true,        pro: true,        family: true        },
+  { feature: "Sleep Stage Analysis",        free: false,       max: true,        pro: true,        family: true        },
+  { feature: "Medicine Schedules",          free: false,       max: true,        pro: true,        family: true        },
+  { feature: "Period Tracker",              free: false,       max: true,        pro: true,        family: true        },
+  { feature: "BMI (India calibrated)",      free: false,       max: true,        pro: true,        family: true        },
+  { feature: "Wearable Sync",              free: false,       max: "Phase 4",   pro: "Phase 4",   family: "Phase 4"   },
+  { feature: "Export Data (PDF & CSV)",     free: false,       max: false,       pro: true,        family: true        },
+  { feature: "Support Level",               free: "Community", max: "Priority Email", pro: "24/7 Priority", family: "24/7 Priority" },
 
-  { section: true,  feature: "👨‍👩‍👧‍👦 Family Plan" },
-  { feature: "Members included",        free: "1",        max: "1",         pro: "1",         family: "4"        },
-  { feature: "Family health dashboard", free: false,      max: false,       pro: false,       family: true       },
-  { feature: "Elderly monitoring",      free: false,      max: false,       pro: false,       family: true       },
-  { feature: "Family challenges",       free: false,      max: false,       pro: false,       family: true       },
+  { section: true,  feature: "👨‍👩‍👧‍👦 Family Features" },
+  { feature: "Member Accounts",             free: "1",         max: "1",         pro: "1",         family: "4"         },
+  { feature: "Family Health Dashboard",     free: false,       max: false,       pro: false,       family: true        },
+  { feature: "Elderly Health Monitoring",   free: false,       max: false,       pro: false,       family: true        },
+  { feature: "Family Wellness Challenges",  free: false,       max: false,       pro: false,       family: true        },
+  { feature: "Single Billing for All",      free: false,       max: false,       pro: false,       family: true        },
 ];
 
 const faqs = [
@@ -82,11 +89,11 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <Helmet>
-        <title>Pricing — Free & Premium Health Plans Starting ₹199/mo | AORANE</title>
-        <meta name="description" content="AORANE pricing plans made for India. Free forever plan + Pro at ₹199/mo, Max at ₹349/mo, Family plan. AI features, AI-powered insights & corporate wellness packages. No hidden fees." />
+        <title>Pricing — Free & Premium Health Plans | AORANE</title>
+        <meta name="description" content="AORANE pricing plans made for India. Free forever plan + Max ₹199/mo + Pro ₹249/mo + Family ₹499/mo. AI food scanner, diet plans, health insights. No hidden fees. GST extra." />
         <link rel="canonical" href="https://aorane.com/pricing" />
         <meta property="og:title" content="AORANE Pricing — Affordable Health Plans for India" />
-        <meta property="og:description" content="Free plan + Pro ₹199/mo + Max ₹349/mo + Family plan. AI food scanner, AI-powered insights & more. Start free, upgrade anytime." />
+        <meta property="og:description" content="Free forever + Max ₹199/mo + Pro ₹249/mo + Family ₹499/mo. AI features, offline logging & more. Start free, upgrade anytime." />
         <meta property="og:url" content="https://aorane.com/pricing" />
       </Helmet>
       <Navbar audience={audience} onAudienceChange={setAudience} />
