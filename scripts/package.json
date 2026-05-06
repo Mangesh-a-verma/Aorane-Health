@@ -9,7 +9,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@workspace/db": "workspace:*"
+    "@workspace/db": "workspace:*",
+    "pdfkit": "^0.18.0",
+    "pdfmake": "^0.3.7"
   },
   "devDependencies": {
     "@types/node": "catalog:",

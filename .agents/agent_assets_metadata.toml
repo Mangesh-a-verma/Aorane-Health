@@ -227,3 +227,9 @@ id = "QI4YC5bCA_xiORPdqmmFA"
 uri = "file://AORANE_AI_Agents.pdf"
 type = "pdf"
 title = "AORANE — AI Agent System: Architecture, Workflow & Cost Analysis"
+
+[[outputs]]
+id = "nRFDD1_X00Gt4KDvIdbK5"
+uri = "file://aorane-plans.pdf"
+type = "pdf"
+title = "AORANE Plans Comparison — Individual + Business"
