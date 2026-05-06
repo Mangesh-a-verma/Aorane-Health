@@ -11,7 +11,7 @@ const b2cFeatures = [
   },
   {
     icon: Brain,
-    title: "NVIDIA Health Intelligence",
+    title: "AI-powered Health Intelligence",
     desc: "Llama 3.3 70B analyses your patterns and provides personalized health predictions and lifestyle recommendations.",
     color: "#7C3AED",
     bg: "#F5F3FF",

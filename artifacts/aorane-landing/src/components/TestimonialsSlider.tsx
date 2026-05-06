@@ -72,7 +72,7 @@ const testimonials = [
     initials: "AN",
     color: "#10B981",
     stars: 5,
-    quote: "The NVIDIA-powered AI insights are surprisingly accurate. It predicted my vitamin D deficiency two weeks before my blood test confirmed it. Truly next-gen health tech.",
+    quote: "The AI-powered health insights are surprisingly accurate. It predicted my vitamin D deficiency two weeks before my blood test confirmed it. Truly next-gen health tech.",
   },
 ];
 

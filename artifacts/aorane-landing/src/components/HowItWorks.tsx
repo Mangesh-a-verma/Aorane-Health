@@ -22,7 +22,7 @@ const steps = [
     num: "03",
     icon: Brain,
     title: "Get AI Insights",
-    desc: "NVIDIA-powered AI analyses your data and delivers personalized health recommendations daily. Early risk detection, pattern recognition, custom advice.",
+    desc: "AI-powered analysis of your data delivers personalized health recommendations daily. Early risk detection, pattern recognition, custom advice.",
     color: "#7C3AED",
     bg: "#F5F3FF",
   },

@@ -22,7 +22,7 @@ const features = [
     icon: Brain,
     color: "#7C3AED",
     bg: "#F5F3FF",
-    badge: "NVIDIA · Llama 3.3 70B",
+    badge: "AI-powered · Llama 3.3 70B",
     title: "Health Intelligence",
     subtitle: "Predictive health AI that gets smarter every day.",
     desc: "Llama 3.3 70B model analyses your 30+ health data points — sleep, food, exercise, vitals, stress — and delivers daily personalized insights, weekly health score trends, and early risk detection alerts tailored to your lifestyle.",
@@ -87,10 +87,10 @@ export default function FeaturesPage() {
     <div className="min-h-screen bg-white">
       <Helmet>
         <title>Features — AI Food Scanner, Stress & Vitals Tracking | AORANE</title>
-        <meta name="description" content="Explore AORANE's powerful features: AI food scanner for Indian dishes, stress monitoring, sleep analysis, exercise tracking with MET, medical report scanning, and NVIDIA health insights." />
+        <meta name="description" content="Explore AORANE's powerful features: AI food scanner for Indian dishes, stress monitoring, sleep analysis, exercise tracking with MET, medical report scanning, and AI-powered health insights." />
         <link rel="canonical" href="https://aorane.com/features" />
         <meta property="og:title" content="AORANE Features — AI-Powered Health Tracking" />
-        <meta property="og:description" content="AI food scanner for Indian dishes, stress monitoring, sleep analysis, exercise tracking & NVIDIA health insights. Everything you need for complete health management." />
+        <meta property="og:description" content="AI food scanner for Indian dishes, stress monitoring, sleep analysis, exercise tracking & AI-powered health insights. Everything you need for complete health management." />
         <meta property="og:url" content="https://aorane.com/features" />
       </Helmet>
       <Navbar audience={audience} onAudienceChange={setAudience} />

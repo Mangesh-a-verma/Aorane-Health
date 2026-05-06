@@ -50,7 +50,7 @@ function PhoneMockup() {
           </div>
 
           <div className="bg-white/5 rounded-xl p-2.5">
-            <p className="text-white/50 text-[9px] mb-1">NVIDIA AI Insight</p>
+            <p className="text-white/50 text-[9px] mb-1">AI-powered Insight</p>
             <p className="text-white/80 text-[9px] leading-relaxed">
               Sleep quality up 12% this week. Consider adding 10min morning walk.
             </p>

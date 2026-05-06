@@ -164,7 +164,7 @@ export default function HeroSection({ audience, onSignUp }: HeroSectionProps) {
   const b2cContent = {
     badge: "Now on Play Store — in.aorane.app",
     headline: "Your Personal\nHealth Intelligence\nPlatform",
-    sub: "Track meals, exercise & vitals with AI. Get personalized health insights powered by NVIDIA. India's most comprehensive health companion.",
+    sub: "Track meals, exercise & vitals with AI. Get personalized AI-powered health insights. India's most comprehensive health companion.",
     cta1: { label: "Download Free App", href: "https://play.google.com/store", icon: Smartphone },
     cta2: { label: "Watch Demo", href: "#dashboard" },
   };

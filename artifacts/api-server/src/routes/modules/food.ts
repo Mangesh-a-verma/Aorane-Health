@@ -376,7 +376,7 @@ router.post("/food/scan", requireAuth, planAiRateLimit("food_scan", { free: 5, p
     }
 
     // ── Level 4: AI fallback ──────────────────────────────────────────────────
-    // Text search → NVIDIA LLaMA 3.3 70B (fast, no quota issues)
+    // Text search → AI LLaMA 3.3 70B (fast, no quota issues)
     // Image scan → Gemini (vision support needed, food images only, no personal data)
     // IMPORTANT: If AI fails (key missing / server down), return a generic estimate
     // so the user can still log food rather than seeing a hard error.
@@ -439,7 +439,7 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
         };
       }
     } else if (imageBase64) {
-      // Image-based food scan — Gemini only (NVIDIA LLaMA does not support vision)
+      // Image-based food scan — Gemini only (LLaMA does not support vision)
       const geminiKey = process.env["GOOGLE_GEMINI_API_KEY"];
       if (!geminiKey) { res.status(503).json({ error: "Image AI service not configured" }); return; }
 

@@ -8,7 +8,7 @@ import {
 
 const PROVIDERS = [
   { value: "google", label: "Google (Gemini)" },
-  { value: "nvidia", label: "NVIDIA (DeepSeek V3)" },
+  { value: "nvidia", label: "AI-powered (DeepSeek V3)" },
   { value: "openai", label: "OpenAI (GPT)" },
   { value: "anthropic", label: "Anthropic (Claude)" },
   { value: "openrouter", label: "OpenRouter" },
@@ -349,7 +349,7 @@ export default function AIConfig() {
                 Used for Food AI, Smart Scan, Medical AI, and daily suggestions.
               </p>
               <p className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">NVIDIA (DeepSeek):</span>{" "}
+                <span className="font-medium text-foreground">AI-powered (DeepSeek):</span>{" "}
                 Set <code className="font-mono bg-muted px-1.5 py-0.5 rounded text-[11px]">NVIDIA_API_KEY</code> in the API server environment.
                 Used for monthly disease risk prediction and weekly diet chart generation.
                 Get your key at <span className="font-mono text-[11px]">build.nvidia.com</span>.

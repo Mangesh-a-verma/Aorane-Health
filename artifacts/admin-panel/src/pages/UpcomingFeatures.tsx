@@ -38,7 +38,7 @@ const upcomingFeatures: FeatureCard[] = [
   {
     icon: HeartPulse,
     title: "AI Agent Health Detection",
-    description: "Proactive health anomaly detection using NVIDIA LLaMA. System auto-detects patterns like irregular BP, missed medicines, poor sleep cycles, and alerts user before problems escalate.",
+    description: "Proactive health anomaly detection using AI-powered LLaMA. System auto-detects patterns like irregular BP, missed medicines, poor sleep cycles, and alerts user before problems escalate.",
     status: "in_development",
     eta: "Q2 2026",
     plan: "Max",

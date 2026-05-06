@@ -11,7 +11,7 @@ const values = [
   { icon: Shield, color: "#0747A6", bg: "#EEF4FF", title: "Privacy by Design", desc: "Your health data is yours. We never sell, share, or monetize personal health information." },
   { icon: Zap, color: "#F59E0B", bg: "#FFFBEB", title: "Made for India", desc: "Indian foods, Indian languages, Indian health conditions — built specifically for Bharat." },
   { icon: Users, color: "#10B981", bg: "#F0FDF9", title: "Inclusive Access", desc: "Core features are free forever. We believe health intelligence should not be a luxury." },
-  { icon: Target, color: "#7C3AED", bg: "#F5F3FF", title: "AI-Powered Accuracy", desc: "NVIDIA and Gemini AI trained on Indian nutrition data for precise, personalized insights." },
+  { icon: Target, color: "#7C3AED", bg: "#F5F3FF", title: "AI-Powered Accuracy", desc: "AI models trained on Indian nutrition data for precise, personalized insights." },
   { icon: Award, color: "#F97316", bg: "#FFF7ED", title: "Trusted Science", desc: "MET-based exercise calculations, WHO nutrition guidelines, and evidence-based health recommendations." },
 ];
 
@@ -19,7 +19,7 @@ const milestones = [
   { year: "Jan 2025", event: "Aorane concept born — identified the gap in Indian health-tech" },
   { year: "Mar 2025", event: "First prototype: AI Food Scanner powered by Gemini Vision" },
   { year: "Jun 2025", event: "Business Portal launched — first version of corporate wellness" },
-  { year: "Sep 2025", event: "NVIDIA health intelligence integration — Llama 3.3 70B" },
+  { year: "Sep 2025", event: "AI health intelligence integration — Llama 3.3 70B" },
   { year: "Dec 2025", event: "Admin Panel + full platform ready" },
   { year: "Apr 2026", event: "Public beta launch — Available on Play Store" },
 ];

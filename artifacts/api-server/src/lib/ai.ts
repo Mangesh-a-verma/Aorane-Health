@@ -4,7 +4,7 @@
  * Admin panel (AI Config page) mein provider/model change karo →
  * yahan se automatically naye provider ko call kiya jaayega.
  *
- * Supported providers: nvidia | google | anthropic | openai | placeholder
+ * Supported providers: nvidia (AI-powered) | google | anthropic | openai | placeholder
  * Cache: 5-minute in-memory (no Redis needed)
  */
 

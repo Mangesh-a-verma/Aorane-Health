@@ -50,7 +50,7 @@ const OPENINGS = [
     responsibilities: [
       "Develop and maintain REST APIs using Node.js + Express + TypeScript",
       "Design efficient PostgreSQL schemas and Drizzle ORM queries",
-      "Integrate AI providers (Gemini, NVIDIA DeepSeek) for health predictions",
+      "Integrate AI providers (Gemini, DeepSeek) for health predictions",
       "Build WhatsApp bot webhook processing and real-time notifications",
       "Ensure security, performance, and HIPAA-inspired data practices",
     ],

@@ -237,7 +237,7 @@ export default function BentoSection() {
           >
             <div className="flex items-center gap-2 mb-1">
               <Brain className="w-5 h-5 opacity-80" />
-              <p className="text-sm font-semibold opacity-80">NVIDIA AI Health Intelligence</p>
+              <p className="text-sm font-semibold opacity-80">AI-powered Health Intelligence</p>
             </div>
             <p className="text-xs opacity-60 mb-3">Powered by Llama 3.3 70B — Real-time analysis</p>
             <div className="bg-white/15 rounded-2xl p-3 text-sm">

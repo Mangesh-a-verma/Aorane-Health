@@ -9,7 +9,7 @@ import {
 
 const FEATURES = [
   { icon: Users,    color: "#0077B6", label: "12K+ Active Users",    sub: "Across India" },
-  { icon: Brain,    color: "#6366F1", label: "NVIDIA AI Powered",    sub: "Health Intelligence" },
+  { icon: Brain,    color: "#6366F1", label: "AI-powered",           sub: "Health Intelligence" },
   { icon: Droplet,  color: "#DC2626", label: "Blood Emergency",      sub: "Real-time alerts" },
   { icon: BarChart3,color: "#1B998B", label: "Revenue Analytics",    sub: "Live dashboard" },
 ];

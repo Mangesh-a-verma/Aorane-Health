@@ -638,7 +638,7 @@ export async function runStartupMigrations(): Promise<void> {
 
     // Seed default feature flags
     `INSERT INTO feature_flags (key, label, description, is_enabled) VALUES
-      ('food_ai_scan',       'AI Food Scan',         'NVIDIA-powered food scanning', true),
+      ('food_ai_scan',       'AI Food Scan',         'AI-powered food scanning', true),
       ('stress_tracking',    'Stress Tracking',      'PPG + mood stress analysis', true),
       ('period_tracker',     'Period Tracker',       'Menstrual cycle tracking', true),
       ('family_health',      'Family Health',        'Family group health dashboard', true),

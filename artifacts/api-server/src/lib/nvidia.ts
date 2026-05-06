@@ -1,5 +1,5 @@
 /**
- * NVIDIA-hosted AI API helper (LLaMA, DeepSeek, Mixtral, etc.)
+ * AI API helper for LLaMA, DeepSeek, Mixtral, etc. (hosted via NVIDIA NIM)
  * Non-streaming JSON output for health intelligence features
  * Now supports configurable model via parameter
  */
@@ -43,7 +43,7 @@ export async function callDeepSeek(
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`NVIDIA API error ${res.status}: ${err}`);
+    throw new Error(`AI API error ${res.status}: ${err}`);
   }
 
   const data = await res.json() as {
@@ -51,12 +51,12 @@ export async function callDeepSeek(
   };
 
   let content = data.choices?.[0]?.message?.content ?? "";
-  if (!content) throw new Error("Empty response from NVIDIA");
+  if (!content) throw new Error("Empty response from AI provider");
 
   content = content.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 
   const jsonMatch = content.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON found in NVIDIA response");
+  if (!jsonMatch) throw new Error("No JSON found in AI response");
 
   return jsonMatch[0];
 }

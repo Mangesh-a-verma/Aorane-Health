@@ -102,7 +102,7 @@ export default function PrivacyPage() {
               <p>We may share your information only in the following circumstances:</p>
               <ul className="list-disc pl-5 space-y-1.5 mt-2">
                 <li><strong className="text-gray-900">With your employer/organisation</strong> — basic health metrics may be shared with your organisation's administrator if enrolled in a corporate wellness programme. Sensitive data is never shared without explicit consent.</li>
-                <li><strong className="text-gray-900">AI Service Providers</strong> — anonymised health data is sent to AI providers (NVIDIA, Google) solely for generating health suggestions.</li>
+                <li><strong className="text-gray-900">AI Service Providers</strong> — anonymised health data is sent to AI providers (Google and AI-powered services) solely for generating health suggestions.</li>
                 <li><strong className="text-gray-900">Payment Processors</strong> — billing information is handled by Razorpay.</li>
                 <li><strong className="text-gray-900">Legal Requirements</strong> — if required by law, court order, or government authority.</li>
               </ul>
