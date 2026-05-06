@@ -496,7 +496,7 @@ export default function Billing() {
                 </div>
                 {billing === "yearly" && (
                   <div className="text-[11px] text-emerald-600 text-center bg-emerald-50 rounded-lg py-1.5">
-                    You save {formatINR((SEAT_PLANS[selectedPlan].pricePerSeat - pricePerSeat) * seatCount * 12 || 0)} per year
+                    You save {formatINR(((seatPlans[selectedPlan]?.pricePerSeat ?? FALLBACK_SEAT_PLANS[selectedPlan]?.pricePerSeat ?? 0) - pricePerSeat) * seatCount * 12 || 0)} per year
                   </div>
                 )}
               </div>

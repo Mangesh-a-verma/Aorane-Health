@@ -347,7 +347,7 @@ router.put("/admin/plan-features/:featureName", requireAdmin, async (req: AdminR
       params
     );
     if (!rows.length) { res.status(404).json({ error: "Feature not found" }); return; }
-    invalidatePlanLimitsCache(featureName);
+    invalidatePlanLimitsCache(Array.isArray(featureName) ? featureName[0] : featureName);
     res.json({ success: true, feature: rows[0] });
   } catch {
     res.status(500).json({ error: "Failed to update plan feature" });
