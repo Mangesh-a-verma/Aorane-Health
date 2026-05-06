@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 export default function PrivacyPage() {
   const [audience] = useState<"b2c" | "b2b">("b2c");
   useEffect(() => { window.scrollTo(0, 0); }, []);
-  const updated = "April 1, 2025";
+  const updated = "April 2026";
 
   return (
     <>
@@ -22,7 +22,7 @@ export default function PrivacyPage() {
         <Navbar audience={audience} onAudienceChange={() => {}} onSignIn={() => {}} onSignUp={() => {}} />
 
         {/* Hero */}
-        <section className="pt-28 pb-10 px-4" style={{ background: "linear-gradient(135deg, #0747A6 0%, #1565C0 100%)" }}>
+        <section className="pt-28 pb-10 px-4" style={{ background: "linear-gradient(135deg, #0D1B2A 0%, #1a2e45 100%)" }}>
           <div className="max-w-3xl mx-auto text-center">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full mb-4 bg-white/20 text-white uppercase tracking-widest">
               <Shield size={12} /> DPDPA 2023 Compliant
@@ -187,15 +187,11 @@ export default function PrivacyPage() {
               <div className="rounded-xl p-5 space-y-3 border border-gray-100 bg-gray-50">
                 <p className="text-gray-900 font-semibold text-sm">Data Protection Officer — Aorane</p>
                 <div className="flex items-center gap-2 text-sm">
-                  <Mail size={13} style={{ color: "#0747A6" }} />
-                  <a href="mailto:privacy@aorane.com" className="hover:underline" style={{ color: "#0747A6" }}>privacy@aorane.com</a>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Mail size={13} style={{ color: "#0747A6" }} />
-                  <a href="mailto:support@aorane.com" className="hover:underline" style={{ color: "#0747A6" }}>support@aorane.com</a>
+                  <Mail size={13} style={{ color: "#00B388" }} />
+                  <a href="mailto:contact@aorane.com" className="hover:underline" style={{ color: "#00B388" }}>contact@aorane.com</a>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Phone size={13} style={{ color: "#10B981" }} />
+                  <Phone size={13} style={{ color: "#00B388" }} />
                   <span>+91 73078 26291</span>
                 </div>
               </div>
