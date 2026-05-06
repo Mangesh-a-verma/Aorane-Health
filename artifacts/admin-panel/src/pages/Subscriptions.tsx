@@ -79,7 +79,7 @@ export default function Subscriptions() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Plan</label>
                   <select value={grantPlan} onChange={e => setGrantPlan(e.target.value)} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
-                    <option value="max">Max (₹199/mo) — AI Features + Google Fit</option>
+                    <option value="max">Max (₹199/mo) — AI Features + Wearable Sync (Phase 4)</option>
                     <option value="pro">Pro (₹249/mo) — Max + Predictions + Period Tracker</option>
                     <option value="family">Family (₹499/mo) — 4 Members, All Max Features</option>
                   </select>

@@ -37,7 +37,7 @@ const defaultIndividual: Plan[] = [
       "Full unlimited health history",
       "Blood sugar & BP tracking",
       "Sleep stage analysis",
-      "Google Fit / Samsung Health sync",
+      "Wearable Sync (Coming Soon — Phase 4)",
       "Priority email support",
     ], badge: "Popular", color: "#0747A6" },
   { planKey: "pro", displayName: "Pro", type: "individual", monthlyPrice: "249", yearlyPrice: "2490",

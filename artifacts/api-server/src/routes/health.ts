@@ -11,10 +11,11 @@ router.get("/healthz", (_req, res) => {
 // Config status — for deployment verification (does NOT expose actual key values)
 router.get("/config-status", (_req, res) => {
   res.json({
-    googleFit: {
-      clientIdSet: Boolean(process.env.GOOGLE_FIT_CLIENT_ID),
-      clientSecretSet: Boolean(process.env.GOOGLE_FIT_CLIENT_SECRET),
-    },
+    // DEPRECATED: Google Fit removed. Will be replaced with Health Connect in Phase 4.
+    // googleFit: {
+    //   clientIdSet: Boolean(process.env.GOOGLE_FIT_CLIENT_ID),
+    //   clientSecretSet: Boolean(process.env.GOOGLE_FIT_CLIENT_SECRET),
+    // },
     razorpay: { keyIdSet: Boolean(process.env.RAZORPAY_KEY_ID) },
     resend: { apiKeySet: Boolean(process.env.RESEND_API_KEY) },
     nvidia: { apiKeySet: Boolean(process.env.NVIDIA_API_KEY) },

@@ -643,7 +643,7 @@ export async function runStartupMigrations(): Promise<void> {
       ('period_tracker',     'Period Tracker',       'Menstrual cycle tracking', true),
       ('family_health',      'Family Health',        'Family group health dashboard', true),
       ('blood_donation',     'Blood Donation',       'Blood donor community', true),
-      ('wearable_sync',      'Wearable Sync',        'Google Fit / Samsung Health', false),
+      ('wearable_sync',      'Wearable Sync',        'Health Connect (Phase 4)', false),
       ('business_portal',    'Business Portal',      'Corporate wellness dashboard', true),
       ('ai_health_coach',    'AI Health Coach',      'Personalized AI recommendations', true),
       ('whatsapp_bot',       'WhatsApp Bot',         'WhatsApp health assistant', false),
@@ -892,7 +892,7 @@ export async function runStartupMigrations(): Promise<void> {
     // ── plan_pricing: update features to accurate, detailed per-plan lists (jsonb) ─
     `UPDATE plan_pricing SET features = '["Food logging (manual) — unlimited","AI Food Scan (text) — 5 scans/day","Water tracker & reminders","Exercise logging (basic)","7-day health history","Basic daily health score","Community forum access"]'::jsonb WHERE plan_key = 'free'`,
 
-    `UPDATE plan_pricing SET features = '["Everything in Free","AI Food Scanner (photo) — 10/day","Medical Report Scan — 5/day","AI Diet Plan — 5 plans/day","AI Health Coach & Tips — 10/day","AI Meal Swap — 20/day","Full unlimited health history","Blood sugar & BP tracking","Sleep stage analysis","Google Fit / Samsung Health sync","Priority email support"]'::jsonb WHERE plan_key = 'max'`,
+    `UPDATE plan_pricing SET features = '["Everything in Free","AI Food Scanner (photo) — 10/day","Medical Report Scan — 5/day","AI Diet Plan — 5 plans/day","AI Health Coach & Tips — 10/day","AI Meal Swap — 20/day","Full unlimited health history","Blood sugar & BP tracking","Sleep stage analysis","Wearable Sync (Phase 4)","Priority email support"]'::jsonb WHERE plan_key = 'max'`,
 
     `UPDATE plan_pricing SET features = '["Everything in Max","Advanced AI health predictions","Period cycle tracker","Stress & burnout AI monitoring","Personalized health goals AI","Export data (PDF & CSV)","24/7 priority support"]'::jsonb WHERE plan_key = 'pro'`,
 

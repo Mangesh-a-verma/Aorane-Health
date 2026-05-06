@@ -28,7 +28,7 @@ const comparisonRows: CompRow[] = [
   { feature: "AI Meal Swap",            free: false,      max: "20/day",    pro: "20/day",    family: "20/day"   },
 
   { section: true,  feature: "⚕️ Health Tracking" },
-  { feature: "Google Fit / Wearable",   free: false,      max: true,        pro: true,        family: true       },
+  { feature: "Wearable Sync (Phase 4)", free: false,      max: true,        pro: true,        family: true       },
   { feature: "Blood sugar & BP",        free: false,      max: true,        pro: true,        family: true       },
   { feature: "Sleep stage analysis",    free: false,      max: true,        pro: true,        family: true       },
   { feature: "Period cycle tracker",    free: false,      max: false,       pro: true,        family: true       },
