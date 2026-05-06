@@ -652,6 +652,7 @@ export default function Organizations() {
     inactive: orgs.filter(o => !o.isActive).length,
     totalSeats: orgs.reduce((s, o) => s + o.totalSeats, 0),
     usedSeats: orgs.reduce((s, o) => s + o.usedSeats, 0),
+    totalRevenue: orgs.reduce((s, o) => s + (Number(o.totalRevenue) || 0), 0),
   }), [orgs]);
 
   const typeCount = useMemo(() => {
