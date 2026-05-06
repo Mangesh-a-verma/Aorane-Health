@@ -205,7 +205,7 @@ router.post("/admin/plan-pricing/reset", requireAdmin, async (_req: AdminRequest
           gradientColors: def.gradientColors,
           isActive: def.isActive,
           sortOrder: def.sortOrder,
-          discountPercent: null,
+          discountPercent: "0",
           offerLabel: null,
           offerValidFrom: null,
           offerValidTo: null,

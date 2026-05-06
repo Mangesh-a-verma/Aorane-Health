@@ -645,8 +645,14 @@ router.get("/admin/audit-logs", requireAdmin, async (req: AdminRequest, res) => 
 // ─── Subscriptions ────────────────────────────────────────────────────────────
 router.get("/admin/subscriptions", requireAdmin, async (req: AdminRequest, res) => {
   try {
-    const subs = await db.select().from(subscriptionsTable).orderBy(desc(subscriptionsTable.createdAt)).limit(100);
-    res.json({ subscriptions: subs });
+    const { limit = "100", offset = "0" } = req.query as Record<string, string>;
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
+    const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
+    const [totalRow, subs] = await Promise.all([
+      db.select({ count: count() }).from(subscriptionsTable).then(r => r[0]),
+      db.select().from(subscriptionsTable).orderBy(desc(subscriptionsTable.createdAt)).limit(limitNum).offset(offsetNum),
+    ]);
+    res.json({ subscriptions: subs, total: Number(totalRow?.count ?? 0), offset: offsetNum, limit: limitNum });
   } catch {
     res.status(500).json({ error: "Failed to fetch subscriptions" });
   }
