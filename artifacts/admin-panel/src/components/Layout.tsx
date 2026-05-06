@@ -127,7 +127,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifEnquiries, setNotifEnquiries] = useState<Enquiry[]>([]);
   const [newCount, setNewCount] = useState(0);
+  const [avatarOpen, setAvatarOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const avatarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -154,10 +156,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setNotifOpen(false);
       }
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setAvatarOpen(false);
+      }
     }
-    if (notifOpen) document.addEventListener("mousedown", handleClick);
+    if (notifOpen || avatarOpen) document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [notifOpen]);
+  }, [notifOpen, avatarOpen]);
 
   function toggleTheme() {
     const next = !dark;
@@ -236,13 +241,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
-          <Link href="/profile">
-            <div className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-95 cursor-pointer mb-2"
-                 style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.65)" }}>
-              <UserCircle size={12} />
-              My Profile
-            </div>
-          </Link>
           <button
             onClick={logout}
             className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-95"
@@ -364,9 +362,38 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               )}
             </div>
 
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
-                 style={{ background: "linear-gradient(135deg,#0077B6,#1B998B)" }}>
-              {initials}
+            <div className="relative" ref={avatarRef}>
+              <button
+                onClick={() => setAvatarOpen(p => !p)}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold hover:opacity-80 transition-opacity"
+                style={{ background: "linear-gradient(135deg,#0077B6,#1B998B)" }}
+                title={admin?.fullName ?? "Admin"}
+              >
+                {initials}
+              </button>
+              {avatarOpen && (
+                <div className="absolute right-0 top-9 w-48 rounded-2xl shadow-2xl z-50 overflow-hidden bg-card border border-border">
+                  <div className="px-4 py-3 border-b border-border">
+                    <div className="text-xs font-semibold text-foreground truncate">{admin?.fullName ?? "Admin"}</div>
+                    <div className="text-[10px] text-muted-foreground truncate mt-0.5">{admin?.role ?? "Super Admin"}</div>
+                  </div>
+                  <Link href="/profile" onClick={() => setAvatarOpen(false)}>
+                    <a className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-foreground hover:bg-muted/50 transition-colors cursor-pointer">
+                      <UserCircle size={13} className="text-primary" />
+                      My Profile
+                    </a>
+                  </Link>
+                  <div className="border-t border-border">
+                    <button
+                      onClick={() => { setAvatarOpen(false); logout(); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                    >
+                      <LogOut size={13} />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>
