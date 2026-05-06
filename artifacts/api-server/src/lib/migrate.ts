@@ -494,6 +494,14 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS pincode TEXT`,
     `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'India'`,
     `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS registered_address TEXT`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS social_twitter TEXT`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS social_linkedin TEXT`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS social_instagram TEXT`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS social_youtube TEXT`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS social_facebook TEXT`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS investor_deck_url TEXT`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS android_play_store_url TEXT DEFAULT 'https://play.google.com/store/apps/details?id=in.aorane.app'`,
+    `ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS ios_app_store_url TEXT`,
 
     // ══════════════════════════════════════════════════════
     // BUSINESS / CORPORATE TABLES

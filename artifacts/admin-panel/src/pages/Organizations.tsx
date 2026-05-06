@@ -608,6 +608,11 @@ export default function Organizations() {
     } finally { setTogglingId(null); }
   };
 
+  const scrollToTop = () => {
+    document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleOrgCreated = (org: Org) => { setOrgs(prev => [org, ...prev]); setShowCreate(false); };
   const handleOrgUpdated = (updated: Org) => { setOrgs(prev => prev.map(o => o.id === updated.id ? updated : o)); setEditOrg(null); };
   const handlePricingUpdated = (updated: Org) => { setOrgs(prev => prev.map(o => o.id === updated.id ? updated : o)); setPricingOrg(null); };
@@ -617,6 +622,11 @@ export default function Organizations() {
     setOrgs(prev => prev.filter(o => o.id !== deleteOrg.id));
     setDeleteOrg(null);
   };
+
+  const openDelete = (org: Org) => { setDeleteOrg(org); scrollToTop(); };
+  const openEdit = (org: Org) => { setEditOrg(org); scrollToTop(); };
+  const openPricing = (org: Org) => { setPricingOrg(org); scrollToTop(); };
+  const openCreate = () => { setShowCreate(true); scrollToTop(); };
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -674,7 +684,7 @@ export default function Organizations() {
             <p className="text-muted-foreground text-sm">{orgs.length} registered businesses on Aorane</p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowCreate(true)}
+            <button onClick={openCreate}
               className="flex items-center gap-1.5 text-sm font-semibold text-white bg-primary hover:bg-primary/90 px-3 py-1.5 rounded-lg transition-all">
               <Plus size={14} /> New Organization
             </button>
@@ -827,7 +837,7 @@ export default function Organizations() {
         ) : viewMode === "grid" ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((org) => (
-              <OrgCard key={org.id} org={org} onToggleActive={handleToggleActive} onEdit={setEditOrg} onDelete={setDeleteOrg} onCustomPrice={setPricingOrg} onUpdate={updated => setOrgs(prev => prev.map(o => o.id === updated.id ? updated : o))} />
+              <OrgCard key={org.id} org={org} onToggleActive={handleToggleActive} onEdit={openEdit} onDelete={openDelete} onCustomPrice={openPricing} onUpdate={updated => setOrgs(prev => prev.map(o => o.id === updated.id ? updated : o))} />
             ))}
           </div>
         ) : (
@@ -906,12 +916,12 @@ export default function Organizations() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
-                            <button onClick={() => setPricingOrg(org)}
+                            <button onClick={() => openPricing(org)}
                               className={`p-1.5 rounded-lg text-xs transition-all ${org.customPricePerSeat ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" : "text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10"}`}
                               title={org.customPricePerSeat ? `Custom: ₹${Number(org.customPricePerSeat)}/seat` : "Set Custom Price"}>
                               <IndianRupee size={12} />
                             </button>
-                            <button onClick={() => setEditOrg(org)}
+                            <button onClick={() => openEdit(org)}
                               className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" title="Edit">
                               <Pencil size={12} />
                             </button>
@@ -921,7 +931,7 @@ export default function Organizations() {
                               title={org.isActive ? "Deactivate" : "Activate"}>
                               {isToggling ? <Loader2 size={12} className="animate-spin" /> : org.isActive ? <ToggleRight size={12} /> : <ToggleLeft size={12} />}
                             </button>
-                            <button onClick={() => setDeleteOrg(org)}
+                            <button onClick={() => openDelete(org)}
                               className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all" title="Delete">
                               <Trash2 size={12} />
                             </button>
