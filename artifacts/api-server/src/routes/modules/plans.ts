@@ -3,6 +3,10 @@ import { db, planPricingTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import type { AdminRequest } from "../../middlewares/admin-auth";
+import { pool } from "@workspace/db";
+import { requireAuth } from "../../middlewares/user-auth";
+import type { AuthRequest } from "../../middlewares/user-auth";
+import { getUserUsageSummary, invalidatePlanLimitsCache } from "../../middlewares/plan-limits";
 
 const router = Router();
 
@@ -214,6 +218,205 @@ router.post("/admin/plan-pricing/reset", requireAdmin, async (_req: AdminRequest
     res.json({ success: true, plans: enriched });
   } catch (e) {
     res.status(500).json({ error: "Failed to reset plans" });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PLAN FEATURES — public + authenticated endpoints
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── PUBLIC: GET /plan-features ───────────────────────────────────────────────
+// Returns all feature rows (full matrix). Used by landing page plan comparison.
+router.get("/plan-features", async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT feature_name, free_value, max_value, pro_value, family_value, description
+         FROM plan_features ORDER BY feature_name`
+    );
+    res.json({ features: rows });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch plan features" });
+  }
+});
+
+// ── PUBLIC: GET /plan-features/:plan ─────────────────────────────────────────
+// Returns limits for a specific plan. Used by mobile app to gate features.
+// ?plan=free|max|pro|family
+router.get("/plan-features/:plan", async (req, res) => {
+  const plan = (req.params["plan"] ?? "free").toLowerCase();
+  const validPlans = ["free", "max", "pro", "family"];
+  if (!validPlans.includes(plan)) {
+    res.status(400).json({ error: "Invalid plan. Must be one of: free, max, pro, family" });
+    return;
+  }
+  const col = plan === "max" ? "max_value" : plan === "pro" ? "pro_value" : plan === "family" ? "family_value" : "free_value";
+  try {
+    const { rows } = await pool.query(
+      `SELECT feature_name, ${col} AS value, description FROM plan_features ORDER BY feature_name`
+    );
+    const limits: Record<string, string> = {};
+    for (const r of rows) limits[r.feature_name as string] = r.value as string;
+    res.json({ plan, limits });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch plan features" });
+  }
+});
+
+// ── AUTH: GET /my/ai-usage ───────────────────────────────────────────────────
+// Returns current user's daily AI usage vs limits.
+router.get("/my/ai-usage", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.userId!;
+    const plan = (req.userPlan || "free").toLowerCase();
+    const summary = await getUserUsageSummary(userId);
+    // Filter to only features relevant to their plan
+    res.json({ plan, date: new Date().toISOString().slice(0, 10), usage: summary });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch AI usage" });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SUBSCRIPTION PLANS — canonical catalogue (new table)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── PUBLIC: GET /subscription-plans ─────────────────────────────────────────
+// ?type=individual|business (optional filter)
+router.get("/subscription-plans", async (req, res) => {
+  try {
+    const type = req.query["type"] as string | undefined;
+    let query = `SELECT * FROM subscription_plans WHERE is_active = true ORDER BY display_order`;
+    const params: string[] = [];
+    if (type) {
+      query = `SELECT * FROM subscription_plans WHERE is_active = true AND plan_type = $1 ORDER BY display_order`;
+      params.push(type);
+    }
+    const { rows } = await pool.query(query, params);
+
+    // Attach b2b_plan_config for business plans
+    const b2bRes = await pool.query(`SELECT * FROM b2b_plan_config`);
+    const b2bMap = new Map<string, Record<string, unknown>>();
+    for (const r of b2bRes.rows) b2bMap.set(r.plan_id as string, r as Record<string, unknown>);
+
+    const enriched = rows.map(r => ({
+      ...r,
+      b2bConfig: b2bMap.get(r.plan_id as string) ?? null,
+    }));
+
+    res.json({ plans: enriched });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch subscription plans" });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ADMIN: Plan Features management
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── ADMIN: GET /admin/plan-features ─────────────────────────────────────────
+router.get("/admin/plan-features", requireAdmin, async (_req: AdminRequest, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT feature_name, free_value, max_value, pro_value, family_value, description, updated_at
+         FROM plan_features ORDER BY feature_name`
+    );
+    res.json({ features: rows });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch plan features" });
+  }
+});
+
+// ── ADMIN: PUT /admin/plan-features/:featureName ─────────────────────────────
+router.put("/admin/plan-features/:featureName", requireAdmin, async (req: AdminRequest, res) => {
+  const featureName = req.params["featureName"];
+  const { freeValue, maxValue, proValue, familyValue, description } = req.body as {
+    freeValue?: string; maxValue?: string; proValue?: string; familyValue?: string; description?: string;
+  };
+  try {
+    const setParts: string[] = ["updated_at = now()"];
+    const params: unknown[] = [featureName];
+    let idx = 2;
+    if (freeValue !== undefined)  { setParts.push(`free_value = $${idx++}`);   params.push(freeValue); }
+    if (maxValue !== undefined)   { setParts.push(`max_value = $${idx++}`);    params.push(maxValue); }
+    if (proValue !== undefined)   { setParts.push(`pro_value = $${idx++}`);    params.push(proValue); }
+    if (familyValue !== undefined){ setParts.push(`family_value = $${idx++}`); params.push(familyValue); }
+    if (description !== undefined){ setParts.push(`description = $${idx++}`);  params.push(description); }
+
+    const { rows } = await pool.query(
+      `UPDATE plan_features SET ${setParts.join(", ")} WHERE feature_name = $1 RETURNING *`,
+      params
+    );
+    if (!rows.length) { res.status(404).json({ error: "Feature not found" }); return; }
+    invalidatePlanLimitsCache(featureName);
+    res.json({ success: true, feature: rows[0] });
+  } catch {
+    res.status(500).json({ error: "Failed to update plan feature" });
+  }
+});
+
+// ── ADMIN: GET /admin/subscription-plans ─────────────────────────────────────
+router.get("/admin/subscription-plans", requireAdmin, async (_req: AdminRequest, res) => {
+  try {
+    const [plansRes, b2bRes] = await Promise.all([
+      pool.query(`SELECT * FROM subscription_plans ORDER BY display_order`),
+      pool.query(`SELECT * FROM b2b_plan_config ORDER BY plan_id`),
+    ]);
+    const b2bMap = new Map<string, Record<string, unknown>>();
+    for (const r of b2bRes.rows) b2bMap.set(r.plan_id as string, r as Record<string, unknown>);
+    const enriched = plansRes.rows.map(r => ({ ...r, b2bConfig: b2bMap.get(r.plan_id as string) ?? null }));
+    res.json({ plans: enriched });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch subscription plans" });
+  }
+});
+
+// ── ADMIN: PUT /admin/subscription-plans/:planId ──────────────────────────────
+router.put("/admin/subscription-plans/:planId", requireAdmin, async (req: AdminRequest, res) => {
+  const planId = req.params["planId"];
+  const { planName, priceMonthly, priceYearly, currency, isActive, displayOrder } = req.body as {
+    planName?: string; priceMonthly?: number; priceYearly?: number;
+    currency?: string; isActive?: boolean; displayOrder?: number;
+  };
+  try {
+    const setParts: string[] = ["updated_at = now()"];
+    const params: unknown[] = [planId];
+    let idx = 2;
+    if (planName !== undefined)      { setParts.push(`plan_name = $${idx++}`);      params.push(planName); }
+    if (priceMonthly !== undefined)  { setParts.push(`price_monthly = $${idx++}`);  params.push(priceMonthly); }
+    if (priceYearly !== undefined)   { setParts.push(`price_yearly = $${idx++}`);   params.push(priceYearly); }
+    if (currency !== undefined)      { setParts.push(`currency = $${idx++}`);       params.push(currency); }
+    if (isActive !== undefined)      { setParts.push(`is_active = $${idx++}`);      params.push(isActive); }
+    if (displayOrder !== undefined)  { setParts.push(`display_order = $${idx++}`);  params.push(displayOrder); }
+
+    const { rows } = await pool.query(
+      `UPDATE subscription_plans SET ${setParts.join(", ")} WHERE plan_id = $1 RETURNING *`,
+      params
+    );
+    if (!rows.length) { res.status(404).json({ error: "Plan not found" }); return; }
+    res.json({ success: true, plan: rows[0] });
+  } catch {
+    res.status(500).json({ error: "Failed to update subscription plan" });
+  }
+});
+
+// ── ADMIN: GET /admin/ai-usage-stats ─────────────────────────────────────────
+// Aggregate AI usage by feature for today
+router.get("/admin/ai-usage-stats", requireAdmin, async (_req: AdminRequest, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT
+        feature_name,
+        SUM(usage_count) AS total_calls,
+        COUNT(DISTINCT user_id) AS unique_users,
+        usage_date
+      FROM ai_usage_daily
+      WHERE usage_date >= CURRENT_DATE - INTERVAL '7 days'
+      GROUP BY feature_name, usage_date
+      ORDER BY usage_date DESC, total_calls DESC
+    `);
+    res.json({ stats: rows });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch AI usage stats" });
   }
 });
 

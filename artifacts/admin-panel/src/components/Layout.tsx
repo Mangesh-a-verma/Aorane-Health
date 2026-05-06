@@ -87,21 +87,23 @@ function NavLink({ path, icon: Icon, label, color }: NavItem) {
   );
 }
 
-function InactivityBanner({ onStay }: { onStay: () => void }) {
+function InactivityBanner({ onStay, onLogout }: { onStay: () => void; onLogout: () => void }) {
   const [secs, setSecs] = useState(60);
   useEffect(() => {
     setSecs(60);
-    const t = setInterval(() => setSecs(s => Math.max(0, s - 1)), 1000);
+    const t = setInterval(() => setSecs(s => {
+      if (s <= 1) { clearInterval(t); onLogout(); return 0; }
+      return s - 1;
+    }), 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [onLogout]);
   return (
     <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-medium">
       <div className="flex items-center gap-2">
         <ShieldAlert size={14} className="shrink-0" />
         <span>
-          You've been inactive for a while. You'll be signed out in{" "}
-          <span className="font-bold tabular-nums">{secs}s</span>{" "}
-          to protect your session.
+          You've been inactive for a while. Auto sign-out in{" "}
+          <span className="font-bold tabular-nums">{secs}s</span>
         </span>
       </div>
       <button
@@ -369,8 +371,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        {/* Inactivity warning banner with countdown */}
-        {inactiveWarning && <InactivityBanner onStay={resetInactivityTimer} />}
+        {/* Inactivity warning banner with countdown — auto-logout when timer hits 0 */}
+        {inactiveWarning && <InactivityBanner onStay={resetInactivityTimer} onLogout={logout} />}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto page-enter bg-background">

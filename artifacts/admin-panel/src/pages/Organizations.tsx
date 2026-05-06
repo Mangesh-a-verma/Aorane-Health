@@ -534,8 +534,9 @@ export default function Organizations() {
     try {
       const res = await api.toggleOrgActive(id);
       setOrgs(prev => prev.map(o => o.id === id ? { ...o, isActive: res.organization.isActive } : o));
-    } catch { /* ignore */ }
-    finally { setTogglingId(null); }
+    } catch {
+      setError("Failed to update organization status. Please retry.");
+    } finally { setTogglingId(null); }
   };
 
   const handleOrgCreated = (org: Org) => { setOrgs(prev => [org, ...prev]); setShowCreate(false); };
@@ -766,7 +767,7 @@ export default function Organizations() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    {["Organization", "Type", "Code", "Location", "Members", "Status", "Joined", "Actions"].map(h => (
+                    {["Organization", "Type", "Code", "Location", "Members", "Revenue", "Status", "Joined", "Actions"].map(h => (
                       <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -814,6 +815,14 @@ export default function Organizations() {
                               <div className="h-full rounded-full" style={{ width: `${Math.min(seatPct, 100)}%`, background: sc }} />
                             </div>
                           </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {org.totalRevenue ? (
+                            <div className="flex items-center gap-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                              <IndianRupee size={10} />
+                              {Number(org.totalRevenue).toLocaleString("en-IN")}
+                            </div>
+                          ) : <span className="text-xs text-muted-foreground">—</span>}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${

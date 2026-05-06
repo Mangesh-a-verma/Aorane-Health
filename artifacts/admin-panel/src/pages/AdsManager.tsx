@@ -507,7 +507,22 @@ export default function AdsManager() {
 
         {/* Ads grid */}
         {loading ? (
-          <div className="text-center py-20 text-muted-foreground text-sm">Loading ads...</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="bg-card border border-border rounded-xl overflow-hidden animate-pulse">
+                <div className="h-36 bg-muted/60" />
+                <div className="p-3 space-y-2">
+                  <div className="h-4 bg-muted rounded w-3/4" />
+                  <div className="h-3 bg-muted rounded w-1/2" />
+                  <div className="flex gap-3">
+                    <div className="h-3 bg-muted rounded w-12" />
+                    <div className="h-3 bg-muted rounded w-12" />
+                  </div>
+                  <div className="h-8 bg-muted rounded mt-2" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : ads.length === 0 ? (
           <div className="text-center py-20">
             <ImageIcon size={40} className="mx-auto text-muted-foreground mb-3" />

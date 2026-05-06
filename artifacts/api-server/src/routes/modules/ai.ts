@@ -4,12 +4,13 @@ import { eq } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { aiRateLimit, planAiRateLimit } from "../../middlewares/ai-rate-limit";
+import { planLimit } from "../../middlewares/plan-limits";
 import { requireFeature } from "../../middlewares/feature-check";
 import { callAI } from "../../lib/ai";
 
 const router = Router();
 
-router.post("/ai/diet-plan", requireAuth, requireFeature("meal_planner"), aiRateLimit("meal_planner", 5), async (req: AuthRequest, res) => {
+router.post("/ai/diet-plan", requireAuth, requireFeature("meal_planner"), planLimit("ai_diet_plan_daily"), aiRateLimit("meal_planner", 5), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const { days = 1, preferences = {} } = req.body as { days?: number; preferences?: Record<string, unknown> };
@@ -96,7 +97,7 @@ Return ONLY valid JSON (no markdown, no extra text):
   }
 });
 
-router.post("/ai/health-tip", requireAuth, requireFeature("health_suggestions"), aiRateLimit("health_tip", 10), async (req: AuthRequest, res) => {
+router.post("/ai/health-tip", requireAuth, requireFeature("health_suggestions"), planLimit("ai_health_coach_daily"), aiRateLimit("health_tip", 10), async (req: AuthRequest, res) => {
   try {
     const { context = "" } = req.body as { context?: string };
 
@@ -118,7 +119,7 @@ Return ONLY valid JSON:
   }
 });
 
-router.post("/ai/meal-swap", requireAuth, requireFeature("meal_planner"), aiRateLimit("meal_swap", 20), async (req: AuthRequest, res) => {
+router.post("/ai/meal-swap", requireAuth, requireFeature("meal_planner"), planLimit("ai_meal_swap_daily"), aiRateLimit("meal_swap", 20), async (req: AuthRequest, res) => {
   try {
     const { mealName, reason, dietaryPref = "vegetarian" } = req.body as { mealName: string; reason?: string; dietaryPref?: string };
     if (!mealName) { res.status(400).json({ error: "mealName required" }); return; }
@@ -143,7 +144,7 @@ Return ONLY valid JSON:
 });
 
 // smart-scan uses VISION (image analysis) — requires Gemini (via Replit proxy or user key)
-router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), aiRateLimit("smart_scan", 10), async (req: AuthRequest, res) => {
+router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), planLimit("ai_food_scan_photo_daily"), aiRateLimit("smart_scan", 10), async (req: AuthRequest, res) => {
   try {
     const { imageBase64, mimeType = "image/jpeg" } = req.body as { imageBase64?: string; mimeType?: string };
     if (!imageBase64) { res.status(400).json({ error: "imageBase64 required" }); return; }

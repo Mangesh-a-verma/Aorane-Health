@@ -1047,6 +1047,117 @@ export async function runStartupMigrations(): Promise<void> {
       UNIQUE(user_id, activity_date)
     )`,
     `CREATE INDEX IF NOT EXISTS idx_daily_activity_user_date ON daily_activity_scores(user_id, activity_date DESC)`,
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // PLAN FEATURES — granular per-plan limits (20 rows)
+    // ══════════════════════════════════════════════════════════════════════════
+    `CREATE TABLE IF NOT EXISTS plan_features (
+      feature_name  TEXT PRIMARY KEY,
+      free_value    TEXT NOT NULL DEFAULT 'false',
+      max_value     TEXT NOT NULL DEFAULT 'false',
+      pro_value     TEXT NOT NULL DEFAULT 'false',
+      family_value  TEXT NOT NULL DEFAULT 'false',
+      description   TEXT,
+      created_at    TIMESTAMPTZ DEFAULT now(),
+      updated_at    TIMESTAMPTZ DEFAULT now()
+    )`,
+
+    // Seed / upsert all 20 feature rows
+    `INSERT INTO plan_features (feature_name, free_value, max_value, pro_value, family_value, description) VALUES
+      ('ai_food_scan_photo_daily', '0',         '10',             '10',            '10',             'AI photo food scan per day'),
+      ('ai_food_scan_text_daily',  '5',         '10',             '10',            '10',             'AI text food scan per day'),
+      ('ai_medical_scan_daily',    '0',         '5',              '5',             '5',              'Medical report AI scan per day'),
+      ('ai_diet_plan_daily',       '0',         '5',              '5',             '5',              'AI diet plan generations per day'),
+      ('ai_health_coach_daily',    '0',         '10',             '10',            '10',             'AI health coach messages per day'),
+      ('ai_meal_swap_daily',       '0',         '20',             '20',            '20',             'AI meal swap suggestions per day'),
+      ('ai_predictions_enabled',   'false',     'false',          'true',          'true',           'Advanced AI health predictions'),
+      ('ai_stress_monitoring',     'false',     'false',          'true',          'true',           'Stress & Burnout AI monitoring'),
+      ('health_history_days',      '7',         '-1',             '-1',            '-1',             'Health history days, -1 = unlimited'),
+      ('blood_sugar_bp_tracking',  'false',     'true',           'true',          'true',           'Blood sugar and BP tracking'),
+      ('sleep_stage_analysis',     'false',     'true',           'true',          'true',           'Sleep stage analysis'),
+      ('period_tracker',           'false',     'true',           'true',          'true',           'Period cycle tracker'),
+      ('wearable_sync',            'false',     'phase4',         'phase4',        'phase4',         'Wearable sync - Phase 4'),
+      ('member_accounts',          '1',         '1',              '1',             '4',              'Number of member accounts'),
+      ('family_dashboard',         'false',     'false',          'false',         'true',           'Family health dashboard'),
+      ('elderly_monitoring',       'false',     'false',          'false',         'true',           'Elderly health monitoring'),
+      ('offline_logging',          'true',      'true',           'true',          'true',           'Offline data logging'),
+      ('export_data',              'false',     'false',          'true',          'true',           'Export data PDF and CSV'),
+      ('support_level',            'community', 'priority_email', '24x7_priority', 'priority_email', 'Support level'),
+      ('ads_shown',                'true',      'false',          'false',         'false',          'Show ads to user')
+    ON CONFLICT (feature_name) DO UPDATE SET
+      free_value   = EXCLUDED.free_value,
+      max_value    = EXCLUDED.max_value,
+      pro_value    = EXCLUDED.pro_value,
+      family_value = EXCLUDED.family_value,
+      description  = EXCLUDED.description,
+      updated_at   = now()`,
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // SUBSCRIPTION_PLANS — canonical plan catalogue (6 plans)
+    // ══════════════════════════════════════════════════════════════════════════
+    `CREATE TABLE IF NOT EXISTS subscription_plans (
+      plan_id       TEXT PRIMARY KEY,
+      plan_name     TEXT NOT NULL,
+      plan_type     TEXT NOT NULL DEFAULT 'individual',
+      price_monthly INTEGER NOT NULL DEFAULT 0,
+      price_yearly  INTEGER NOT NULL DEFAULT 0,
+      currency      TEXT NOT NULL DEFAULT 'INR',
+      is_active     BOOLEAN NOT NULL DEFAULT true,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at    TIMESTAMPTZ DEFAULT now(),
+      updated_at    TIMESTAMPTZ DEFAULT now()
+    )`,
+
+    `INSERT INTO subscription_plans (plan_id, plan_name, plan_type, price_monthly, price_yearly, currency, is_active, display_order) VALUES
+      ('free',        'Free',    'individual', 0,   0,    'INR', true, 1),
+      ('max',         'Max',     'individual', 199, 1990, 'INR', true, 2),
+      ('pro',         'Pro',     'individual', 249, 2490, 'INR', true, 3),
+      ('family',      'Family',  'individual', 499, 4990, 'INR', true, 4),
+      ('b2b_starter', 'Starter', 'business',   199, 0,    'INR', true, 5),
+      ('b2b_growth',  'Growth',  'business',   249, 0,    'INR', true, 6)
+    ON CONFLICT (plan_id) DO UPDATE SET
+      plan_name     = EXCLUDED.plan_name,
+      price_monthly = EXCLUDED.price_monthly,
+      price_yearly  = EXCLUDED.price_yearly,
+      is_active     = EXCLUDED.is_active,
+      updated_at    = now()`,
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // B2B_PLAN_CONFIG — business plan seat rules
+    // ══════════════════════════════════════════════════════════════════════════
+    `CREATE TABLE IF NOT EXISTS b2b_plan_config (
+      plan_id            TEXT PRIMARY KEY,
+      min_seats          INTEGER NOT NULL,
+      max_seats          INTEGER,
+      crm_included       BOOLEAN DEFAULT false,
+      crm_monthly_charge INTEGER DEFAULT 0,
+      base_features      TEXT,
+      created_at         TIMESTAMPTZ DEFAULT now()
+    )`,
+
+    `INSERT INTO b2b_plan_config (plan_id, min_seats, max_seats, crm_included, crm_monthly_charge, base_features) VALUES
+      ('b2b_starter', 10, 50,  false, 499, 'max'),
+      ('b2b_growth',  20, 250, true,  0,   'pro')
+    ON CONFLICT (plan_id) DO UPDATE SET
+      min_seats          = EXCLUDED.min_seats,
+      max_seats          = EXCLUDED.max_seats,
+      crm_included       = EXCLUDED.crm_included,
+      crm_monthly_charge = EXCLUDED.crm_monthly_charge,
+      base_features      = EXCLUDED.base_features`,
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // AI_USAGE_DAILY — per-user per-feature daily usage counter + RLS
+    // ══════════════════════════════════════════════════════════════════════════
+    `CREATE TABLE IF NOT EXISTS ai_usage_daily (
+      id           BIGSERIAL PRIMARY KEY,
+      user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      feature_name TEXT NOT NULL,
+      usage_date   DATE NOT NULL DEFAULT CURRENT_DATE,
+      usage_count  INTEGER NOT NULL DEFAULT 1,
+      UNIQUE(user_id, feature_name, usage_date)
+    )`,
+
+    `CREATE INDEX IF NOT EXISTS idx_ai_usage_daily ON ai_usage_daily(user_id, feature_name, usage_date)`,
   ];
 
   let ok = 0; let fail = 0;
