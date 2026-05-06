@@ -70,7 +70,7 @@ export function requireFeature(featureName: string) {
       }
 
       if (flag.enabledForPlans.length > 0 && req.userPlan) {
-        if (!flag.enabledForPlans.includes(req.userPlan)) {
+        if (!flag.enabledForPlans.map(p => p.toLowerCase()).includes(req.userPlan.toLowerCase())) {
           res.status(403).json({
             error: "Upgrade your plan to access this feature",
             feature: featureName,
