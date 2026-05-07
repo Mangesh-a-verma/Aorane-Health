@@ -444,6 +444,12 @@ export const api = {
   registerBloodDonor: (data: { bloodGroup: string; city: string; state: string; phone?: string; lat?: number; lng?: number }) =>
     request<{ success: boolean; requiresOtp: boolean; message: string }>("POST", "/blood/donor/register", data),
 
+  getMyDonorStatus: () =>
+    request<{ registered: boolean; isAvailable?: boolean; otpVerified?: boolean; isOnCooldown?: boolean; daysLeft?: number; inactiveUntil?: string | null; bloodGroup?: string; city?: string; state?: string; donationCount?: number }>("GET", "/blood/donor/me"),
+
+  toggleDonorAvailability: (available: boolean) =>
+    request<{ success: boolean; isAvailable: boolean }>("PATCH", "/blood/donor/availability", { available }),
+
   getBloodDonors: (bloodGroup: string, city?: string, coords?: { lat: number; lng: number; radiusKm?: number }) => {
     const params = new URLSearchParams({ bloodGroup });
     if (city) params.set("city", city);
