@@ -36,6 +36,17 @@ router.post("/blood/donor/register", requireAuth, async (req: AuthRequest, res) 
     if (phone) await sendSmsOtp(phone, otp);
     const existing = await db.select().from(bloodDonorsTable).where(eq(bloodDonorsTable.userId, req.userId!));
     if (existing.length) {
+      const donor = existing[0];
+      const cooldownExpired = !donor.donorInactiveUntil || donor.donorInactiveUntil < new Date();
+      if (cooldownExpired && !donor.isAvailable) {
+        await db.update(bloodDonorsTable).set({
+          isAvailable: true,
+          bloodGroup: bloodGroup as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-",
+          city, state,
+          lat: lat ?? donor.lat,
+          lng: lng ?? donor.lng,
+        }).where(eq(bloodDonorsTable.userId, req.userId!));
+      }
       res.json({ success: true, requiresOtp: true, message: "OTP sent for verification" });
       return;
     }
@@ -47,6 +58,60 @@ router.post("/blood/donor/register", requireAuth, async (req: AuthRequest, res) 
     res.json({ success: true, requiresOtp: true, message: "OTP sent for verification" });
   } catch {
     res.status(500).json({ error: "Failed to register donor" });
+  }
+});
+
+// ── My Donor Status ───────────────────────────────────────────────────────────
+router.get("/blood/donor/me", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const [donor] = await db.select().from(bloodDonorsTable)
+      .where(eq(bloodDonorsTable.userId, req.userId!)).limit(1);
+    if (!donor) { res.json({ registered: false }); return; }
+    const now = new Date();
+    const isOnCooldown = !!(donor.donorInactiveUntil && donor.donorInactiveUntil > now);
+    const daysLeft = isOnCooldown
+      ? Math.ceil((donor.donorInactiveUntil!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
+    res.json({
+      registered: true,
+      isAvailable: donor.isAvailable,
+      otpVerified: donor.otpVerified,
+      isOnCooldown,
+      daysLeft,
+      inactiveUntil: donor.donorInactiveUntil ?? null,
+      bloodGroup: donor.bloodGroup,
+      city: donor.city,
+      state: donor.state,
+      donationCount: donor.donationCount ?? 0,
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to get donor status" });
+  }
+});
+
+// ── Toggle Availability ───────────────────────────────────────────────────────
+router.patch("/blood/donor/availability", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { available } = req.body as { available: boolean };
+    if (typeof available !== "boolean") {
+      res.status(400).json({ error: "available must be true or false" });
+      return;
+    }
+    const [donor] = await db.select().from(bloodDonorsTable)
+      .where(eq(bloodDonorsTable.userId, req.userId!)).limit(1);
+    if (!donor) { res.status(404).json({ error: "You are not registered as a donor" }); return; }
+    if (!donor.otpVerified) { res.status(403).json({ error: "Complete OTP verification first" }); return; }
+    if (available && donor.donorInactiveUntil && donor.donorInactiveUntil > new Date()) {
+      const daysLeft = Math.ceil((donor.donorInactiveUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      res.status(409).json({ error: `90-day cooldown active — ${daysLeft} days remaining`, daysLeft });
+      return;
+    }
+    await db.update(bloodDonorsTable)
+      .set({ isAvailable: available })
+      .where(eq(bloodDonorsTable.userId, req.userId!));
+    res.json({ success: true, isAvailable: available });
+  } catch {
+    res.status(500).json({ error: "Failed to update availability" });
   }
 });
 
