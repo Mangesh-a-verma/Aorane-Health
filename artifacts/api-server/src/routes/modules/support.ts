@@ -6,7 +6,16 @@ import type { AuthRequest } from "../../middlewares/user-auth";
 import { logger } from "../../lib/logger";
 
 // ── Push Notification Helpers (no SDK needed — uses Expo HTTP API) ────────────
-export async function sendExpoPushNotifications(tokens: string[], title: string, body: string, data?: Record<string, unknown>): Promise<void> {
+// ttlSeconds: how long FCM should hold the notification for offline devices
+//   blood emergencies → 3600 (1 hour) — stale alerts useless after that
+//   general          → 86400 (24 hours, Expo default)
+export async function sendExpoPushNotifications(
+  tokens: string[],
+  title: string,
+  body: string,
+  data?: Record<string, unknown>,
+  ttlSeconds = 86400,
+): Promise<void> {
   if (!tokens.length) return;
   const messages = tokens.filter(t => t.startsWith("ExponentPushToken[")).map(token => ({
     to: token,
@@ -15,14 +24,22 @@ export async function sendExpoPushNotifications(tokens: string[], title: string,
     data: data || {},
     sound: "default",
     priority: "high",
+    ttl: ttlSeconds,
   }));
   if (!messages.length) return;
+
+  // 30-second hard timeout — prevents fire-and-forget from hanging indefinitely
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
   try {
     const res = await fetch("https://exp.host/--/api/v2/push/send", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json" },
       body: JSON.stringify(messages),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
       throw new Error(`Expo Push API ${res.status}: ${errBody}`);
@@ -32,13 +49,16 @@ export async function sendExpoPushNotifications(tokens: string[], title: string,
       const failed = (result.data as Array<{ status: string; message?: string }>)
         .filter(r => r.status === "error");
       if (failed.length) {
-        // eslint-disable-next-line no-console
         logger.warn({ count: failed.length, messages: failed.map(f => f.message).join(", ") }, "Push tokens failed");
       }
     }
   } catch (e) {
-    // eslint-disable-next-line no-console
-    logger.error({ err: e }, "sendExpoPushNotifications error");
+    clearTimeout(timeoutId);
+    if ((e as Error)?.name === "AbortError") {
+      logger.error({ tokens: tokens.length }, "sendExpoPushNotifications: 30s timeout exceeded");
+    } else {
+      logger.error({ err: e }, "sendExpoPushNotifications error");
+    }
   }
 }
 
