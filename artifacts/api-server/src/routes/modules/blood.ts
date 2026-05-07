@@ -272,7 +272,10 @@ router.get("/blood/requests/active", async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT * FROM blood_emergency_requests
-       WHERE status = 'active' AND otp_verified = TRUE AND is_flagged = FALSE
+       WHERE status = 'active'
+         AND otp_verified = TRUE
+         AND is_flagged = FALSE
+         AND (expires_at IS NULL OR expires_at > NOW())
        ORDER BY created_at DESC
        LIMIT 100`
     );
