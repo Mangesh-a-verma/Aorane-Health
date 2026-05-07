@@ -164,21 +164,34 @@ router.get("/blood/donors", async (req, res) => {
 
     const donors = await db.select().from(bloodDonorsTable).where(and(...conditions)).limit(200);
 
-    // If GPS provided — filter by radius and sort by distance
+    // If GPS provided — filter by radius and sort by distance; auto-expand if <3 donors
     if (gpsSearch) {
       const userLat = parseFloat(lat);
       const userLng = parseFloat(lng);
-      const radius = parseFloat(radiusKm);
-      const withDist = donors
-        .map(d => ({
-          ...d,
-          distanceKm: haversineKm(userLat, userLng, parseFloat(d.lat!), parseFloat(d.lng!)),
-        }))
-        // FIXED: was (=== null || <=radius) — was incorrectly including donors without coordinates
-        .filter(d => d.distanceKm <= radius)
-        .sort((a, b) => a.distanceKm - b.distanceKm)
-        .slice(0, 20);
-      res.json({ donors: withDist, nearbySearch: true });
+      const baseRadius = parseFloat(radiusKm);
+      const withDist = donors.map(d => ({
+        ...d,
+        distanceKm: haversineKm(userLat, userLng, parseFloat(d.lat!), parseFloat(d.lng!)),
+      }));
+
+      let filtered = withDist.filter(d => d.distanceKm <= baseRadius).sort((a, b) => a.distanceKm - b.distanceKm);
+      let searchedRadius = baseRadius;
+
+      if (filtered.length < 3) {
+        const at100 = withDist.filter(d => d.distanceKm <= 100).sort((a, b) => a.distanceKm - b.distanceKm);
+        if (at100.length > filtered.length) { filtered = at100; searchedRadius = 100; }
+      }
+      if (filtered.length < 3 && searchedRadius === 100) {
+        const at200 = withDist.filter(d => d.distanceKm <= 200).sort((a, b) => a.distanceKm - b.distanceKm);
+        if (at200.length > filtered.length) { filtered = at200; searchedRadius = 200; }
+      }
+
+      res.json({
+        donors: filtered.slice(0, 20),
+        nearbySearch: true,
+        searchedRadiusKm: searchedRadius,
+        expanded: searchedRadius !== baseRadius,
+      });
       return;
     }
 
@@ -648,6 +661,38 @@ router.post("/blood/donate/confirm", requireAuth, async (req: AuthRequest, res) 
   } catch (err) {
     req.log.error({ err }, "Blood donation confirm error");
     res.status(500).json({ error: "Failed to confirm donation" });
+  }
+});
+
+// ── My Emergency Requests (as requester) ─────────────────────────────────────
+router.get("/blood/requests/mine", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM blood_emergency_requests
+       WHERE requester_id = $1
+       ORDER BY created_at DESC
+       LIMIT 20`,
+      [req.userId]
+    );
+    const requests = result.rows.map((r) => ({
+      id: r.id,
+      patientName: r.patient_name,
+      bloodGroupNeeded: r.blood_group_needed,
+      unitsNeeded: r.units_needed,
+      urgency: r.urgency,
+      hospitalName: r.hospital_name,
+      hospitalCity: r.hospital_city,
+      hospitalState: r.hospital_state,
+      status: r.status,
+      expiresAt: r.expires_at,
+      fulfilledAt: r.fulfilled_at,
+      createdAt: r.created_at,
+      donorsNotified: r.donors_notified,
+      donorsResponded: r.donors_responded,
+    }));
+    res.json({ requests });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch your requests" });
   }
 });
 
