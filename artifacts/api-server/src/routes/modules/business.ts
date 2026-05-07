@@ -460,7 +460,8 @@ router.post("/business/enroll", requireAuth, async (req, res) => {
     await db.update(organizationsTable).set({ usedSeats: org.usedSeats + 1 }).where(eq(organizationsTable.id, org.id));
 
     // Upgrade user plan to org's plan (the whole point of org enrollment!)
-    const orgPlan = (org.plan === "max" ? "max" : "pro") as "pro" | "max";
+    // org.plan can be "max", "pro", or legacy "basic" (old starter) — basic maps to max
+    const orgPlan = (org.plan === "pro" ? "pro" : "max") as "pro" | "max";
     const expiresAt = new Date();
     expiresAt.setFullYear(expiresAt.getFullYear() + 1); // 1-year access via org
     await db.update(usersTable).set({ plan: orgPlan }).where(eq(usersTable.id, userId));
@@ -1213,7 +1214,8 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
   try {
     const { plan, seats, billingCycle, orgGstin, orgState } = req.body as { plan: string; seats: number; billingCycle: "monthly" | "yearly"; orgGstin?: string; orgState?: string };
     if (!plan || !["max", "pro"].includes(plan)) { res.status(400).json({ error: "Invalid plan. Choose 'max' or 'pro'" }); return; }
-    if (!seats || seats < 10) { res.status(400).json({ error: "Minimum 10 seats required" }); return; }
+    const minSeats = plan === "pro" ? 20 : 10;
+    if (!seats || seats < minSeats) { res.status(400).json({ error: `Minimum ${minSeats} seats required for ${plan === "pro" ? "Pro" : "Max"} plan` }); return; }
     if (!billingCycle || !["monthly", "yearly"].includes(billingCycle)) { res.status(400).json({ error: "billingCycle must be 'monthly' or 'yearly'" }); return; }
 
     const planInfo = await getOrgSeatPlan(plan);

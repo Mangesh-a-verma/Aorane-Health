@@ -113,9 +113,14 @@ export default function Billing() {
   }, []);
 
   const planInfo = seatPlans[selectedPlan] ?? FALLBACK_SEAT_PLANS[selectedPlan];
+  const minSeats = selectedPlan === "pro" ? 20 : 10;
+
+  useEffect(() => {
+    setSeatCount(c => Math.max(minSeats, c));
+  }, [selectedPlan, minSeats]);
   const pricePerSeat = billing === "yearly" ? planInfo.yearlyPricePerSeat : planInfo.pricePerSeat;
   const months = billing === "yearly" ? 12 : 1;
-  const baseAmount = pricePerSeat * Math.max(10, seatCount) * months;
+  const baseAmount = pricePerSeat * Math.max(minSeats, seatCount) * months;
   const gst = calcGST(baseAmount, orgState || "Delhi");
   const yearlyFY = (() => {
     const now = new Date();
@@ -134,7 +139,7 @@ export default function Billing() {
     });
 
   const handlePay = async () => {
-    if (seatCount < 10) { setError("Minimum 10 seats required"); return; }
+    if (seatCount < minSeats) { setError(`Minimum ${minSeats} seats required for ${selectedPlan === "pro" ? "Pro" : "Max"} plan`); return; }
     setPaying(true);
     setError("");
     setSuccess("");
@@ -359,17 +364,17 @@ export default function Billing() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[#374151] mb-1.5">
-                    Number of Seats <span className="text-[#9CA3AF] font-normal">(min 10)</span>
+                    Number of Seats <span className="text-[#9CA3AF] font-normal">(min {minSeats})</span>
                   </label>
                   <div className="flex items-center border border-[#E5E7EB] rounded-xl overflow-hidden bg-white">
-                    <button onClick={() => setSeatCount(c => Math.max(10, c - 10))}
+                    <button onClick={() => setSeatCount(c => Math.max(minSeats, c - 10))}
                       className="px-4 py-3 text-[#0077B6] font-bold text-lg hover:bg-[#F3F4F6] transition-colors">−</button>
                     <input
                       type="number"
                       value={seatCount}
-                      min={10}
+                      min={minSeats}
                       step={5}
-                      onChange={e => setSeatCount(Math.max(10, parseInt(e.target.value) || 10))}
+                      onChange={e => setSeatCount(Math.max(minSeats, parseInt(e.target.value) || minSeats))}
                       className="flex-1 text-center py-3 font-bold text-[#0D1F33] focus:outline-none text-lg"
                     />
                     <button onClick={() => setSeatCount(c => c + 10)}

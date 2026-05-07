@@ -1189,6 +1189,12 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS b2b_plan TEXT DEFAULT 'starter'`,
     `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS crm_enabled BOOLEAN DEFAULT false`,
     `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS plan_status TEXT DEFAULT 'active'`,
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // ORG SEAT PLANS — Set yearly prices (₹169/seat/month × 12 = ₹2028, ₹211/seat/month × 12 = ₹2532)
+    // ══════════════════════════════════════════════════════════════════════════
+    `UPDATE plan_pricing SET yearly_price = '2028' WHERE plan_key = 'org_max' AND (yearly_price IS NULL OR yearly_price = '')`,
+    `UPDATE plan_pricing SET yearly_price = '2532' WHERE plan_key = 'org_pro' AND (yearly_price IS NULL OR yearly_price = '')`,
   ];
 
   let ok = 0; let fail = 0;

@@ -23,6 +23,7 @@ interface BusinessPlan {
   planKey: string;
   displayName: string;
   pricePerSeat: number;
+  yearlyPricePerSeat: number;
   minSeats: number;
   crmPrice: number | "free";
   badge: string;
@@ -131,11 +132,12 @@ const individualPlans: IndividualPlan[] = [
 // ── Business Plans ────────────────────────────────────────────────────────────
 const businessPlans: BusinessPlan[] = [
   {
-    planKey: "b2b_starter",
-    displayName: "Starter",
+    planKey: "org_max",
+    displayName: "Max",
     pricePerSeat: 199,
+    yearlyPricePerSeat: 169,
     minSeats: 10,
-    crmPrice: 499,
+    crmPrice: "free",
     badge: "",
     badgeColor: "",
     color: "#0747A6",
@@ -150,9 +152,10 @@ const businessPlans: BusinessPlan[] = [
     ],
   },
   {
-    planKey: "b2b_growth",
-    displayName: "Growth",
+    planKey: "org_pro",
+    displayName: "Pro",
     pricePerSeat: 249,
+    yearlyPricePerSeat: 211,
     minSeats: 20,
     crmPrice: "free",
     badge: "RECOMMENDED",
@@ -160,7 +163,7 @@ const businessPlans: BusinessPlan[] = [
     color: "#0747A6",
     employeeBase: "All PRO plan features per employee",
     features: [
-      "Everything in Starter PLUS",
+      "Everything in Max PLUS",
       "Advanced Workforce Analytics",
       "Stress Risk Monitoring",
       "Insurance API Access",
@@ -177,8 +180,8 @@ const planIcons: Record<string, React.ComponentType<{ className?: string; color?
   max: Crown,
   pro: Zap,
   family: Users,
-  b2b_starter: Building2,
-  b2b_growth: Star,
+  org_max: Building2,
+  org_pro: Star,
 };
 
 // ── Individual Plan Card ──────────────────────────────────────────────────────
@@ -326,9 +329,13 @@ function IndividualCard({
 }
 
 // ── Business Plan Card ────────────────────────────────────────────────────────
-function BusinessCard({ plan, highlight }: { plan: BusinessPlan; highlight: boolean }) {
+function BusinessCard({ plan, highlight, isYearly }: { plan: BusinessPlan; highlight: boolean; isYearly: boolean }) {
   const Icon = planIcons[plan.planKey] || Building2;
-  const minMonthly = plan.pricePerSeat * plan.minSeats;
+  const effectivePerSeat = isYearly ? plan.yearlyPricePerSeat : plan.pricePerSeat;
+  const minMonthly = effectivePerSeat * plan.minSeats;
+  const yearlyTotal = plan.yearlyPricePerSeat * plan.minSeats * 12;
+  const monthlyTotal = plan.pricePerSeat * plan.minSeats * 12;
+  const yearlySavings = monthlyTotal - yearlyTotal;
 
   return (
     <motion.div
@@ -366,23 +373,27 @@ function BusinessCard({ plan, highlight }: { plan: BusinessPlan; highlight: bool
       <div className="mb-4">
         <div className="flex items-baseline gap-1">
           <span className="text-sm text-gray-400">₹</span>
-          <span className="text-3xl font-extrabold text-gray-900">{plan.pricePerSeat}</span>
+          <span className="text-3xl font-extrabold text-gray-900">{effectivePerSeat}</span>
           <span className="text-sm text-gray-400">/seat/month</span>
         </div>
         <p className="text-xs text-gray-500 mt-1">
           Min {plan.minSeats} seats = <span className="font-bold text-gray-700">₹{minMonthly.toLocaleString("en-IN")}/month minimum</span>
         </p>
+        {isYearly && (
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-xs text-gray-400">Billed ₹{yearlyTotal.toLocaleString("en-IN")}/year</span>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ background: plan.color }}>
+              Save ₹{yearlySavings.toLocaleString("en-IN")}
+            </span>
+          </div>
+        )}
 
         {/* CRM Line */}
-        <div className={`mt-2 flex items-center gap-2 rounded-xl px-3 py-2 ${plan.crmPrice === "free" ? "bg-emerald-50 border border-emerald-100" : "bg-gray-50 border border-gray-100"}`}>
+        <div className="mt-2 flex items-center gap-2 rounded-xl px-3 py-2 bg-emerald-50 border border-emerald-100">
           <span className="text-xs text-gray-600 font-medium">CRM Platform:</span>
-          {plan.crmPrice === "free" ? (
-            <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-              <Check className="w-3 h-3" /> FREE INCLUDED
-            </span>
-          ) : (
-            <span className="text-xs font-semibold text-gray-700">₹{plan.crmPrice}/month extra</span>
-          )}
+          <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+            <Check className="w-3 h-3" /> FREE INCLUDED
+          </span>
         </div>
       </div>
 
@@ -484,26 +495,24 @@ export default function PricingSection({
               </div>
             )}
 
-            {/* Monthly/Yearly toggle — only for individual */}
-            {tab === "individual" && (
-              <div className="flex items-center gap-3 bg-white rounded-2xl px-4 py-2 border border-gray-200 shadow-sm">
-                <span className={`text-sm font-semibold ${!isYearly ? "text-[#0747A6]" : "text-gray-400"}`}>Monthly</span>
-                <button
-                  onClick={() => setIsYearly(!isYearly)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${isYearly ? "bg-[#0747A6]" : "bg-gray-200"}`}
-                >
-                  <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isYearly ? "translate-x-5" : "translate-x-0"}`} />
-                </button>
-                <span className={`text-sm font-semibold ${isYearly ? "text-[#0747A6]" : "text-gray-400"}`}>
-                  Yearly
+            {/* Monthly/Yearly toggle — for both individual and business */}
+            <div className="flex items-center gap-3 bg-white rounded-2xl px-4 py-2 border border-gray-200 shadow-sm">
+              <span className={`text-sm font-semibold ${!isYearly ? "text-[#0747A6]" : "text-gray-400"}`}>Monthly</span>
+              <button
+                onClick={() => setIsYearly(!isYearly)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${isYearly ? "bg-[#0747A6]" : "bg-gray-200"}`}
+              >
+                <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isYearly ? "translate-x-5" : "translate-x-0"}`} />
+              </button>
+              <span className={`text-sm font-semibold ${isYearly ? "text-[#0747A6]" : "text-gray-400"}`}>
+                Yearly
+              </span>
+              {isYearly && (
+                <span className="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                  Save up to 15%
                 </span>
-                {isYearly && (
-                  <span className="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
-                    Save up to 17%
-                  </span>
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </motion.div>
 
@@ -567,7 +576,8 @@ export default function PricingSection({
                   <BusinessCard
                     key={plan.planKey}
                     plan={plan}
-                    highlight={plan.planKey === "b2b_growth"}
+                    highlight={plan.planKey === "org_pro"}
+                    isYearly={isYearly}
                   />
                 ))}
               </div>

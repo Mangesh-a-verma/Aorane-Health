@@ -95,7 +95,7 @@ function PricingCard({
 
         {/* Seat range */}
         <div style={{ fontSize: 13, fontWeight: 600, color: highlighted ? "rgba(255,255,255,0.65)" : "#6b7280", marginBottom: 14 }}>
-          {isEnterprise ? `${minSeats}+ seats minimum` : `${minSeats}–${maxSeats} seats`}
+          {isEnterprise ? `${minSeats}+ seats` : `Min ${minSeats} seats`}
         </div>
 
         {/* Price display */}
@@ -249,13 +249,13 @@ export default function Landing() {
 
   const plans = [
     {
-      plan: "Starter",
+      plan: "Max",
       perSeatPrice: 199,
-      minSeats: 20,
-      maxSeats: 50,
-      crmFree: false,
+      minSeats: 10,
+      maxSeats: 999,
+      crmFree: true,
       features: [
-        "All Pro app features for every member",
+        "All Max app features for every member",
         "Daily Health Score — 100-point scale",
         "Nutrition: Calories, Protein, Carbs, Fiber",
         "Micronutrients: Calcium, Iron, B12, Vit C & D (ICMR RDA 2024)",
@@ -269,24 +269,25 @@ export default function Landing() {
         "Department-wise analytics",
         "Exportable PDF health reports",
         "GST-ready invoicing",
+        "Business CRM — FREE",
         "Email support",
       ],
     },
     {
-      plan: "Growth",
+      plan: "Pro",
       perSeatPrice: 249,
-      minSeats: 51,
-      maxSeats: 250,
+      minSeats: 20,
+      maxSeats: 999,
       crmFree: true,
       highlighted: true,
       features: [
-        "Everything in Starter",
+        "Everything in Max",
+        "All Pro app features for every member",
         "Advanced analytics & health trends",
         "AI burnout & absenteeism prediction",
         "Health risk alerts — early warning system",
         "Custom wellness programs",
         "Weekly & monthly automated reports",
-        "Personalized goals via Harris-Benedict BMR",
         "5-Pillar stress assessment",
         "Blood group & emergency health profiles",
         "Member bulk management",
@@ -301,7 +302,7 @@ export default function Landing() {
       crmFree: true,
       isEnterprise: true,
       features: [
-        "Everything in Growth",
+        "Everything in Pro",
         "Dedicated account manager",
         "Custom HRMS / ERP integrations",
         "SLA guarantee — 99.9% uptime",

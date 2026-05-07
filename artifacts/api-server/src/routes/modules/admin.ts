@@ -278,7 +278,7 @@ router.get("/admin/organizations", requireAdmin, async (req: AdminRequest, res) 
         total: sql<string>`COALESCE(SUM(CAST(${orgPaymentsTable.amount} AS NUMERIC)), 0)`,
       })
       .from(orgPaymentsTable)
-      .where(sql`${orgPaymentsTable.status} = 'paid'`)
+      .where(eq(orgPaymentsTable.status, "success"))
       .groupBy(orgPaymentsTable.orgId);
     const revenueMap = new Map(revenues.map(r => [r.orgId, Math.round(parseFloat(r.total))]));
     const result = orgs.map(o => ({ ...o, totalRevenue: revenueMap.get(o.id) ?? 0 }));

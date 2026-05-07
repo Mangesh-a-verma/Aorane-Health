@@ -73,7 +73,7 @@ const DEFAULT_PLANS = [
   // Org seat-based plans (Business Portal billing)
   {
     planKey: "org_max", displayName: "Max", type: "org_seat",
-    monthlyPrice: "199", yearlyPrice: null, maxSeats: null,
+    monthlyPrice: "199", yearlyPrice: "2028", maxSeats: null,
     features: ["Basic aggregate health dashboard", "Enrollment code management", "Employee search", "GST-ready invoice", "Email support"],
     badgeText: null, badgeColor: "#0077B6",
     gradientColors: ["#0077B6", "#023E8A"] as [string, string],
@@ -81,7 +81,7 @@ const DEFAULT_PLANS = [
   },
   {
     planKey: "org_pro", displayName: "Pro", type: "org_seat",
-    monthlyPrice: "249", yearlyPrice: null, maxSeats: null,
+    monthlyPrice: "249", yearlyPrice: "2532", maxSeats: null,
     features: ["Everything in Max", "Advanced health analytics & charts", "Health risk distribution alerts", "Weekly & monthly team reports", "Priority support", "Custom announcements to employees"],
     badgeText: "Popular", badgeColor: "#7C3AED",
     gradientColors: ["#7C3AED", "#6D28D9"] as [string, string],

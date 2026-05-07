@@ -490,8 +490,8 @@ function OrgCard({ org, onToggleActive, onEdit, onDelete, onCustomPrice, onUpdat
                 <label className="text-[10px] text-muted-foreground font-medium block mb-1">B2B Plan</label>
                 <select value={b2bPlan} onChange={e => setB2bPlan(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-primary">
-                  <option value="starter">Starter</option>
-                  <option value="growth">Growth</option>
+                  <option value="max">Max</option>
+                  <option value="pro">Pro</option>
                   <option value="enterprise">Enterprise</option>
                 </select>
               </div>
