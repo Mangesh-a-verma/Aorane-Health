@@ -1203,6 +1203,8 @@ export async function runStartupMigrations(): Promise<void> {
     // ══════════════════════════════════════════════════════════════════════════
     `CREATE UNIQUE INDEX IF NOT EXISTS uq_organizations_contact_email ON organizations (contact_email)`,
     `CREATE UNIQUE INDEX IF NOT EXISTS uq_org_admins_email ON org_admins (email)`,
+    // BUG-7: UNIQUE on otp_store.phone prevents multiple OTP entries per phone/email key
+    `CREATE UNIQUE INDEX IF NOT EXISTS uq_otp_store_phone ON otp_store (phone)`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_logout_at TIMESTAMPTZ`,
     `ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS last_logout_at TIMESTAMPTZ`,
     `ALTER TABLE org_admins ADD COLUMN IF NOT EXISTS last_logout_at TIMESTAMPTZ`,

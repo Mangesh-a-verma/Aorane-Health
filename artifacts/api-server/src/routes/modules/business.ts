@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { logger } from "../../lib/logger";
-import { db, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable, subscriptionsTable, companySettingsTable, stressLogsTable, userPrivacySettingsTable } from "@workspace/db";
+import { db, pool, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable, subscriptionsTable, companySettingsTable, stressLogsTable, userPrivacySettingsTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte, desc, ilike, sql } from "drizzle-orm";
 import { requireBusinessAuth } from "../../middlewares/business-auth";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -78,13 +78,25 @@ router.post("/business/register", async (req, res) => {
     }).returning();
 
     const passwordHash = await bcrypt.hash(adminPassword as string, 12);
-    const [admin] = await db.insert(orgAdminsTable).values({
-      orgId: org.id,
-      fullName: adminName as string,
-      email: normalizedEmail,
-      passwordHash,
-      role: "owner",
-    }).returning();
+    // BUG-3: Wrap admin insert separately so we can clean up the org if admin insert fails
+    let admin!: typeof orgAdminsTable.$inferSelect;
+    try {
+      [admin] = await db.insert(orgAdminsTable).values({
+        orgId: org.id,
+        fullName: adminName as string,
+        email: normalizedEmail,
+        passwordHash,
+        role: "owner",
+      }).returning();
+    } catch (adminErr) {
+      // Rollback the org we just created to avoid orphaned org records
+      await db.delete(organizationsTable).where(eq(organizationsTable.id, org.id)).catch(() => {});
+      if ((adminErr as any)?.code === "23505" || String(adminErr).includes("unique")) {
+        res.status(409).json({ error: "An account with this email already exists. Please log in instead." });
+        return;
+      }
+      throw adminErr;
+    }
 
     const token = signBusinessToken({ orgAdminId: admin.id, orgId: org.id, role: admin.role });
     // W3: Send email verification OTP (fire & forget)
@@ -100,11 +112,6 @@ router.post("/business/register", async (req, res) => {
     }).catch(() => {});
     res.status(201).json({ success: true, org, admin: { id: admin.id, fullName: admin.fullName, role: admin.role, isEmailVerified: false }, token, orgCode });
   } catch (err) {
-    // Handle DB unique constraint violation (race condition fallback)
-    if ((err as any)?.code === "23505" || String(err).includes("unique")) {
-      res.status(409).json({ error: "An account with this email already exists. Please log in instead." });
-      return;
-    }
     res.status(500).json({ error: "Failed to register organization" });
   }
 });
@@ -242,7 +249,8 @@ router.post("/business/login/verify-otp", async (req, res) => {
     }
     cache.deleteOtp(`biz_login_otp:${email.toLowerCase()}`);
 
-    const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.email, email));
+    // BUG-5: Normalize email to lowercase before DB lookup to prevent case mismatch
+    const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.email, email.toLowerCase().trim()));
     if (!admin || !admin.isActive) {
       res.status(401).json({ error: "Account not found" });
       return;
@@ -264,7 +272,8 @@ router.post("/business/send-reg-otp", async (req, res) => {
       res.status(400).json({ error: "Valid email required" });
       return;
     }
-    const [existing] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.email, email));
+    // BUG-4: Normalize email before lookup to prevent case-sensitivity bypass
+    const [existing] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.email, email.toLowerCase().trim()));
     if (existing) {
       res.status(409).json({ error: "An account with this email already exists. Please log in instead." });
       return;
@@ -318,7 +327,8 @@ router.post("/business/login/send-email-otp", async (req, res) => {
       res.status(400).json({ error: "Valid email required" });
       return;
     }
-    const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.email, email));
+    // BUG-5: Normalize email to lowercase before DB lookup to prevent case mismatch
+    const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.email, email.toLowerCase().trim()));
     if (!admin || !admin.isActive) {
       res.status(200).json({ success: true, message: "If this email is registered, an OTP will be sent.", sent: false });
       return;
@@ -513,13 +523,20 @@ router.post("/business/enroll", requireAuth, async (req, res) => {
     const [org] = await db.select().from(organizationsTable).where(and(eq(organizationsTable.orgCode, orgCode), eq(organizationsTable.isActive, true)));
     if (!org) { res.status(404).json({ error: "Organization not found or inactive" }); return; }
 
-    if (org.usedSeats >= org.totalSeats) { res.status(400).json({ error: "Organization has no available seats" }); return; }
-
     const existing = await db.select().from(orgMembersTable).where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, userId)));
     if (existing.length) { res.status(409).json({ error: "Already enrolled in this organization" }); return; }
 
     await db.insert(orgMembersTable).values({ orgId: org.id, userId, enrolledViaCode: orgCode });
-    await db.update(organizationsTable).set({ usedSeats: org.usedSeats + 1 }).where(eq(organizationsTable.id, org.id));
+    // BUG-9: Atomic compare-and-increment — prevents over-enrollment under concurrent requests
+    const seatUpdate = await pool.query(
+      `UPDATE organizations SET used_seats = used_seats + 1 WHERE id = $1 AND used_seats < total_seats RETURNING id`,
+      [org.id]
+    );
+    if (!seatUpdate.rowCount) {
+      // Seats were taken between check and insert — undo the member enrollment
+      await db.delete(orgMembersTable).where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, userId))).catch(() => {});
+      res.status(400).json({ error: "Organization has no available seats" }); return;
+    }
 
     // Upgrade user plan to org's plan (the whole point of org enrollment!)
     // org.plan can be "max", "pro", or legacy "basic" (old starter) — basic maps to max
@@ -975,14 +992,15 @@ router.get("/business/members/:userId/detail", requireBusinessAuth, async (req: 
       .where(eq(dailyHealthScoresTable.userId, userId))
       .orderBy(desc(dailyHealthScoresTable.scoreDate)).limit(7);
 
-    // Strip fields the user has opted out of sharing
+    // BUG-8: Respect shareBasicProfile — if false, hide all identity fields
+    const shareBasic = privacy?.shareBasicProfile !== false;
     const safeProfile = profile ? {
-      fullName: profile.fullName,
-      gender: profile.gender,
-      city: profile.city,
-      state: profile.state,
+      fullName: shareBasic ? profile.fullName : null,
+      gender: shareBasic ? profile.gender : null,
+      city: shareBasic ? profile.city : null,
+      state: shareBasic ? profile.state : null,
       bmi: privacy?.shareBmi !== false ? profile.bmi : null,
-      bloodGroup: profile.bloodGroup,
+      bloodGroup: shareBasic ? profile.bloodGroup : null,
     } : null;
 
     res.json({ member, profile: safeProfile, user: { plan: user?.plan, aoraneId: profile?.aoraneId }, recentScores });
@@ -1006,7 +1024,7 @@ router.patch("/business/admin/password", requireBusinessAuth, async (req: Busine
   try {
     const { currentPassword, newPassword } = req.body as { currentPassword: string; newPassword: string };
     if (!currentPassword || !newPassword) { res.status(400).json({ error: "Current and new password required" }); return; }
-    if (newPassword.length < 6) { res.status(400).json({ error: "New password must be at least 6 characters" }); return; }
+    if (newPassword.length < 8) { res.status(400).json({ error: "New password must be at least 8 characters" }); return; }
     const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.id, req.orgAdminId!));
     if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
     const valid = await verifyAndMigratePassword(currentPassword, admin.passwordHash, async (h) => {

@@ -89,7 +89,11 @@ router.post("/auth/send-otp-whatsapp", async (req, res) => {
     }
     const otp = generateOtp(6);
     const hashed = hashOtp(otp);
-    cache.setOtp(phone, hashed);
+    // BUG-2: Persist to DB for multi-instance/restart resilience (same as SMS OTP)
+    try {
+      await db.delete(otpStoreTable).where(eq(otpStoreTable.phone, phone));
+      await db.insert(otpStoreTable).values({ phone, hashedOtp: hashed, expiresAt: new Date(Date.now() + 15 * 60 * 1000) });
+    } catch { cache.setOtp(phone, hashed); }
     const result = await sendWhatsappOtp(phone, otp);
     const isDevWa = process.env.NODE_ENV !== "production";
     if (isDevWa) {

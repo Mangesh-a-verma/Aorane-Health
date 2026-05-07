@@ -65,7 +65,7 @@ export const orgAdminsTable = pgTable("org_admins", {
   id: uuid("id").primaryKey().defaultRandom(),
   orgId: uuid("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
   fullName: text("full_name").notNull(),
-  email: text("email").notNull(),
+  email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   role: orgRoleEnum("role").notNull().default("admin"),
   isActive: boolean("is_active").notNull().default(true),

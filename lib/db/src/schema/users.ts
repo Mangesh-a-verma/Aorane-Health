@@ -146,7 +146,7 @@ export const userPrivacySettingsTable = pgTable("user_privacy_settings", {
 
 export const otpStoreTable = pgTable("otp_store", {
   id: uuid("id").primaryKey().defaultRandom(),
-  phone: text("phone").notNull(),
+  phone: text("phone").notNull().unique(),
   hashedOtp: text("hashed_otp").notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
