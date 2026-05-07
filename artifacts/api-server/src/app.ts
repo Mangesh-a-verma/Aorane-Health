@@ -5,6 +5,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { runStartupMigrations } from "./lib/migrate";
+import { pool } from "@workspace/db";
 
 // Run DB migrations at startup (adds missing columns safely)
 runStartupMigrations().catch((e) => logger.error({ err: e }, "Startup migration failed"));
@@ -146,6 +147,24 @@ if (RENDER_URL) {
   }, 10 * 60 * 1000);
   logger.info({ url: RENDER_URL }, "Keep-alive ping scheduled (every 10 min)");
 }
+
+// Blood request expiry cleanup — every hour
+// Marks status = 'expired' for all active requests past their expires_at
+setInterval(async () => {
+  try {
+    const result = await pool.query(
+      `UPDATE blood_emergency_requests
+       SET status = 'expired', updated_at = NOW()
+       WHERE status = 'active' AND expires_at IS NOT NULL AND expires_at < NOW()`
+    );
+    if (result.rowCount && result.rowCount > 0) {
+      logger.info({ count: result.rowCount }, "Blood requests auto-expired");
+    }
+  } catch (err) {
+    logger.error({ err }, "Blood request expiry cleanup failed");
+  }
+}, 60 * 60 * 1000);
+logger.info("Blood request expiry cleanup scheduled (every 1 hr)");
 
 // 404 handler
 app.use((_req, res) => {
