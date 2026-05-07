@@ -269,6 +269,41 @@ router.post("/blood/request/:id/respond", requireAuth, async (req: AuthRequest, 
       );
     }
     res.json({ success: true });
+
+    // ── Fire-and-forget: notify requester when a donor accepts ────────────────
+    if (response === "accepted") {
+      (async () => {
+        try {
+          const reqRow = await pool.query(
+            `SELECT requester_id, blood_group_needed, hospital_name, hospital_city
+             FROM blood_emergency_requests WHERE id = $1 LIMIT 1`,
+            [requestId]
+          );
+          if (!reqRow.rows.length) return;
+          const { requester_id, blood_group_needed, hospital_name, hospital_city } = reqRow.rows[0];
+
+          const donorRow = await pool.query(
+            `SELECT blood_group FROM blood_donors WHERE user_id = $1 LIMIT 1`,
+            [req.userId]
+          );
+          const donorBg = donorRow.rows[0]?.blood_group || blood_group_needed;
+
+          const tokens = await getTokensForUsers([requester_id]);
+          if (!tokens.length) return;
+
+          await sendExpoPushNotifications(
+            tokens,
+            "🩸 Donor is Coming!",
+            `A ${donorBg} donor has accepted your request for ${hospital_name || hospital_city}. They will contact the hospital directly.`,
+            { screen: "blood", requestId },
+            3600,
+          );
+          logger.info({ requestId, donorId: req.userId }, "[BloodEmergency] Requester notified — donor accepted");
+        } catch (notifErr) {
+          logger.warn({ err: (notifErr as Error).message }, "[BloodEmergency] Donor-accept notification failed");
+        }
+      })().catch(() => {});
+    }
   } catch (err) {
     logger.error({ err: (err as Error).message }, "Blood respond failed");
     res.status(500).json({ error: "Failed to submit response" });
@@ -412,14 +447,33 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
         }
 
         const uids: string[] = donorRows.map(r => r.userId);
-        if (!uids.length) return;
+
+        // No donors found anywhere — notify requester so they can share manually
+        if (!uids.length) {
+          const requesterTokens = await getTokensForUsers([req.userId!]);
+          if (requesterTokens.length) {
+            await sendExpoPushNotifications(
+              requesterTokens,
+              "⚠️ No Donors Found Nearby",
+              `No ${bloodGroup} donors found in ${String(hospitalCity || "your area")} right now. Please share the request on WhatsApp/social media for faster help.`,
+              { screen: "blood", requestId: request?.id || "" },
+              3600,
+            );
+          }
+          logger.warn({ bloodGroup, hospitalCity }, "[BloodEmergency] No donors found — requester notified");
+          return;
+        }
+
         const tokens = await getTokensForUsers(uids);
         if (!tokens.length) return;
+
+        // TTL = 3600s (1 hour) — blood emergency notifications are useless after that
         await sendExpoPushNotifications(
           tokens,
           "🩸 Blood Needed Urgently Nearby!",
           `${bloodGroup} blood needed at ${String(hospitalName || "a hospital")} in ${String(hospitalCity || "your city")}. Please help!`,
-          { screen: "blood", requestId: request?.id || "" }
+          { screen: "blood", requestId: request?.id || "" },
+          3600,
         );
         logger.info({ tokens: tokens.length, bloodGroup, hospitalCity }, "[BloodEmergency] Push notifications sent");
       } catch (notifErr) {
