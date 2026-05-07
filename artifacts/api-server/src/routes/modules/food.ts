@@ -471,16 +471,74 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
       const geminiKey = process.env["GOOGLE_GEMINI_API_KEY"];
       if (!geminiKey) { res.status(503).json({ error: "Image AI service not configured" }); return; }
 
-      const promptText = `You are a certified Indian dietitian. Identify this food from the image and provide complete nutrition data. Return ONLY valid JSON with: foodNameEn, calories (per 100g), proteinG, carbsG, fatG, fiberG, sodiumMg, sugarG, servingSizeG, servingDescription, category, dietaryTags (array), vitamins (object with vitaminA_mcg, vitaminC_mg, vitaminD_mcg, vitaminB12_mcg, iron_mg, calcium_mg, potassium_mg, zinc_mg), glycemicIndex, healthTip.`;
-      const geminiBody = { contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: mimeType || "image/jpeg", data: imageBase64 } }] }] };
-      const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(geminiBody) }
-      );
+      const promptText = `You are a certified Indian dietitian and nutrition expert. Carefully look at this food image and identify what food or meal is shown.
+
+Return ONLY a valid JSON object (no markdown, no explanation, no extra text) with exactly these fields:
+{
+  "foodNameEn": "English name of the food (e.g. Grilled Sandwich, Dal Makhani, Poha)",
+  "calories": 280,
+  "proteinG": 9,
+  "carbsG": 33,
+  "fatG": 12,
+  "fiberG": 2,
+  "sodiumMg": 420,
+  "sugarG": 3,
+  "servingSizeG": 150,
+  "servingDescription": "1 sandwich (150g)",
+  "category": "snack",
+  "dietaryTags": ["vegetarian"],
+  "vitamins": {
+    "vitaminA_mcg": 20,
+    "vitaminC_mg": 1,
+    "vitaminD_mcg": 0,
+    "vitaminB12_mcg": 0.1,
+    "iron_mg": 1.5,
+    "calcium_mg": 80,
+    "potassium_mg": 120,
+    "zinc_mg": 0.8
+  },
+  "glycemicIndex": 55,
+  "healthTip": "One sentence practical health tip about this food."
+}
+
+All numeric values must be numbers (not strings). dietaryTags must be an array. If unsure about a value, provide a reasonable estimate — never return null or omit a field.`;
+
+      const geminiBody = {
+        contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: mimeType || "image/jpeg", data: imageBase64 } }] }],
+        generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
+      };
+
+      let geminiRes: globalThis.Response | null = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(geminiBody) }
+        );
+        if (geminiRes.status === 429 && attempt < 3) {
+          await new Promise((r) => setTimeout(r, attempt * 2000));
+          continue;
+        }
+        break;
+      }
+
+      if (!geminiRes || !geminiRes.ok) {
+        const errText = await geminiRes?.text().catch(() => "");
+        req.log.error({ status: geminiRes?.status, body: errText?.slice(0, 300) }, "Gemini food scan error");
+        res.status(502).json({ error: "Food image analysis failed. Please try again." }); return;
+      }
+
       const geminiData = await geminiRes.json() as { candidates?: Array<{ content: { parts: Array<{ text: string }> } }> };
       const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      if (!text) {
+        req.log.warn({ geminiData }, "Gemini food scan: empty response");
+        res.status(502).json({ error: "Could not identify food in image. Please try with a clearer photo." }); return;
+      }
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      result = jsonMatch ? JSON.parse(jsonMatch[0]) : { foodNameEn: "Unknown Food", calories: 100, proteinG: 0, carbsG: 25, fatG: 2, fiberG: 0, servingSizeG: 100, servingDescription: "100g", category: "food", dietaryTags: [], vitamins: {} };
+      if (!jsonMatch) {
+        req.log.warn({ text: text.slice(0, 300) }, "Gemini food scan: no JSON in response");
+        res.status(502).json({ error: "Could not identify food in image. Please try with a clearer photo." }); return;
+      }
+      result = JSON.parse(jsonMatch[0]);
     } else {
       res.status(400).json({ error: "searchTerm or imageBase64 required" }); return;
     }
