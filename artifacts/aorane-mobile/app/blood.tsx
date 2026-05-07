@@ -128,6 +128,17 @@ export default function BloodEmergencyScreen() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [toggleLoading, setToggleLoading] = useState(false);
 
+  // My requests (as requester)
+  type MyRequest = { id: string; patientName: string; bloodGroupNeeded: string; unitsNeeded: number; urgency: string; hospitalName: string; hospitalCity: string; hospitalState: string; status: string; expiresAt?: string; fulfilledAt?: string; createdAt: string; donorsNotified?: number; donorsResponded?: number };
+  const [myRequests, setMyRequests] = useState<MyRequest[]>([]);
+  const [myReqLoading, setMyReqLoading] = useState(false);
+  const [reqView, setReqView] = useState<"all" | "mine">("all");
+  const [fulfilling, setFulfilling] = useState<string | null>(null);
+
+  // GPS search radius info
+  const [searchedRadius, setSearchedRadius] = useState(50);
+  const [radiusExpanded, setRadiusExpanded] = useState(false);
+
   // Emergency request modal
   const [showModal, setShowModal] = useState(false);
   // Required fields
@@ -157,7 +168,8 @@ export default function BloodEmergencyScreen() {
 
   useEffect(() => {
     if (tab === "donate") loadDonorStatus();
-  }, [tab]);
+    if (tab === "requests" && reqView === "mine") loadMyRequests();
+  }, [tab, reqView]);
 
   const loadDonorStatus = useCallback(async () => {
     setStatusLoading(true);
@@ -197,6 +209,27 @@ export default function BloodEmergencyScreen() {
       setEmergencies(res.requests as EmergencyRequest[]);
     } catch { }
     setLoading(false);
+  }, []);
+
+  const loadMyRequests = useCallback(async () => {
+    setMyReqLoading(true);
+    try {
+      const res = await api.getMyBloodRequests();
+      setMyRequests(res.requests);
+    } catch { }
+    setMyReqLoading(false);
+  }, []);
+
+  const handleMarkFulfilled = useCallback(async (id: string) => {
+    setFulfilling(id);
+    try {
+      await api.markBloodFulfilled(id);
+      setMyRequests(prev => prev.map(r => r.id === id ? { ...r, status: "fulfilled", fulfilledAt: new Date().toISOString() } : r));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } catch {
+      Alert.alert("Error", "Could not mark as fulfilled");
+    }
+    setFulfilling(null);
   }, []);
 
   // ── GPS helpers ──────────────────────────────────────────────────────────────
@@ -240,14 +273,18 @@ export default function BloodEmergencyScreen() {
   const searchNearbyDonors = async () => {
     setSearching(true);
     setNearbySearch(true);
+    setRadiusExpanded(false);
+    setSearchedRadius(50);
     const coords = await getGPSCoords();
     if (!coords) { setSearching(false); setNearbySearch(false); return; }
     setUserCoords(coords);
     try {
       const res = await api.getBloodDonors(searchBloodGroup, undefined, { lat: coords.lat, lng: coords.lng, radiusKm: 50 });
       setDonors(res.donors);
+      setSearchedRadius(res.searchedRadiusKm ?? 50);
+      setRadiusExpanded(res.expanded ?? false);
       if (!res.donors.length) {
-        Alert.alert("No donors found", `No ${searchBloodGroup} donors found within 50km.\n\nTry a wider radius or search by city.`);
+        Alert.alert("No donors found", `No ${searchBloodGroup} donors found within 200km.\n\nTry searching by city name instead.`);
       }
     } catch { Alert.alert("Error", "Could not find nearby donors"); }
     setSearching(false);
@@ -417,7 +454,77 @@ export default function BloodEmergencyScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            {loading ? (
+            {/* Sub-filter: Sab / Meri */}
+            <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", borderRadius: 12, padding: 3 }}>
+              {([["all", "📋 Sab Requests"], ["mine", "🙋 Meri Requests"]] as const).map(([v, label]) => (
+                <TouchableOpacity key={v} onPress={() => setReqView(v)} style={{ flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: "center", backgroundColor: reqView === v ? "#FFF" : "transparent" }} activeOpacity={0.85}>
+                  <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: reqView === v ? C.primary : C.muted }}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* ── Meri Requests list ── */}
+            {reqView === "mine" && (
+              myReqLoading ? (
+                <View style={{ alignItems: "center", paddingVertical: 30 }}><ActivityIndicator color={C.primary} size="large" /></View>
+              ) : myRequests.length === 0 ? (
+                <View style={{ alignItems: "center", paddingVertical: 40, gap: 10 }}>
+                  <Ionicons name="document-outline" size={48} color={C.muted} />
+                  <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 16 }}>Koi request nahi</Text>
+                  <Text style={{ color: C.muted, fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" }}>Aapne abhi tak koi blood request nahi daali</Text>
+                </View>
+              ) : myRequests.map((r) => {
+                const STATUS_CONFIG = {
+                  active:    { color: C.green,   bg: "rgba(16,185,129,0.1)",   label: "Active" },
+                  fulfilled: { color: C.blue,    bg: "rgba(0,119,182,0.1)",    label: "Fulfilled ✓" },
+                  expired:   { color: "#9CA3AF", bg: "rgba(156,163,175,0.1)", label: "Expired" },
+                };
+                const sc = STATUS_CONFIG[r.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.expired;
+                const urgConf = URGENCY_CONFIG[(r.urgency as keyof typeof URGENCY_CONFIG)] || URGENCY_CONFIG.urgent;
+                return (
+                  <Card key={r.id}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                      <LinearGradient colors={["#DC2626", "#B91C1C"]} style={styles.bloodBadge}>
+                        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>{r.bloodGroupNeeded}</Text>
+                      </LinearGradient>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 14 }} numberOfLines={1}>{r.hospitalName}</Text>
+                        <Text style={{ color: C.muted, fontSize: 12, fontFamily: "Inter_400Regular" }}>{r.hospitalCity}, {r.hospitalState}</Text>
+                      </View>
+                      <View style={{ backgroundColor: sc.bg, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Text style={{ color: sc.color, fontSize: 10, fontFamily: "Inter_700Bold" }}>{sc.label}</Text>
+                      </View>
+                    </View>
+                    <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                      <View style={[styles.urgBadge, { backgroundColor: urgConf.bg }]}>
+                        <Ionicons name={urgConf.icon} size={10} color={urgConf.color} />
+                        <Text style={{ color: urgConf.color, fontSize: 9, fontFamily: "Inter_700Bold" }}>{r.urgency.toUpperCase()}</Text>
+                      </View>
+                      <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>{r.unitsNeeded} units • Patient: {r.patientName}</Text>
+                    </View>
+                    {(r.donorsNotified ?? 0) > 0 && (
+                      <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 6 }}>
+                        📢 {r.donorsNotified} notified · {r.donorsResponded ?? 0} responded
+                      </Text>
+                    )}
+                    <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_400Regular", marginBottom: r.status === "active" ? 8 : 0 }}>
+                      {new Date(r.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      {r.fulfilledAt ? ` · Fulfilled ${new Date(r.fulfilledAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}
+                    </Text>
+                    {r.status === "active" && (
+                      <TouchableOpacity onPress={() => handleMarkFulfilled(r.id)} disabled={fulfilling === r.id} activeOpacity={0.85}
+                        style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "rgba(16,185,129,0.1)", borderRadius: 10, paddingVertical: 9, borderWidth: 1, borderColor: "rgba(16,185,129,0.3)" }}>
+                        {fulfilling === r.id ? <ActivityIndicator size="small" color={C.green} /> : <Ionicons name="checkmark-circle" size={15} color={C.green} />}
+                        <Text style={{ color: C.green, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Blood Mil Gaya — Mark Fulfilled</Text>
+                      </TouchableOpacity>
+                    )}
+                  </Card>
+                );
+              })
+            )}
+
+            {/* ── All requests list ── */}
+            {reqView === "all" && (loading ? (
               <View style={{ alignItems: "center", paddingVertical: 40 }}>
                 <ActivityIndicator color={C.primary} size="large" />
               </View>
@@ -548,7 +655,7 @@ export default function BloodEmergencyScreen() {
                   </View>
                 </Card>
               );
-            })}
+            }))}
           </View>
         )}
 
@@ -587,11 +694,18 @@ export default function BloodEmergencyScreen() {
             </Card>
 
             {nearbySearch && userCoords && donors.length > 0 && (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(220,38,38,0.08)", borderRadius: 12, padding: 10 }}>
-                <Ionicons name="navigate-circle" size={18} color={C.primary} />
-                <Text style={{ color: C.primary, fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>
-                  {donors.length} donor{donors.length > 1 ? "s" : ""} within 50km — sorted by distance
-                </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: radiusExpanded ? "rgba(245,158,11,0.1)" : "rgba(220,38,38,0.08)", borderRadius: 12, padding: 10 }}>
+                <Ionicons name="navigate-circle" size={18} color={radiusExpanded ? C.amber : C.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: radiusExpanded ? C.amber : C.primary, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>
+                    {donors.length} donor{donors.length > 1 ? "s" : ""} within {searchedRadius}km — sorted by distance
+                  </Text>
+                  {radiusExpanded && (
+                    <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 }}>
+                      50km mein kam donors mile — auto-expand hokar {searchedRadius}km tak search hua
+                    </Text>
+                  )}
+                </View>
               </View>
             )}
 
