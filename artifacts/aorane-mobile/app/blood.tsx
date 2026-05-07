@@ -226,13 +226,33 @@ export default function BloodEmergencyScreen() {
 
   const registerDonor = async () => {
     if (!donorCity.trim() || !donorState.trim()) { Alert.alert("Required", "City aur State bharo"); return; }
+
+    // Warn if no GPS — donor won't appear in "Near Me" searches
+    if (!donorLat || !donorLng) {
+      await new Promise<void>((resolve) =>
+        Alert.alert(
+          "📍 GPS Recommended",
+          "Aapne GPS button use nahi kiya.\n\nBina GPS ke aap sirf city search mein dikhenge — 'Donors Near Me' search mein nahi aayenge.\n\nAbhi GPS add karna chahte hain?",
+          [
+            { text: "GPS Add Karo", style: "default", onPress: async () => { resolve(); await autofillFromGPS(); } },
+            { text: "City Search Kaafi Hai", style: "cancel", onPress: () => resolve() },
+          ]
+        )
+      );
+      if (!donorLat || !donorLng) {
+        // User chose to continue without GPS — proceed
+      }
+    }
+
     setDonorSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     try {
       await api.registerBloodDonor({ bloodGroup: donorBloodGroup, city: donorCity.trim(), state: donorState.trim(), phone: donorPhone.trim(), lat: donorLat, lng: donorLng });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      Alert.alert("✅ Registered!", "You are now registered as a blood donor!\n\nOTP verification will be sent to your phone. Thank you! 🙏\n\nOne donation saves 3 lives ❤️");
+      const gpsNote = donorLat ? "\n\nAap GPS Near Me search mein bhi dikhenge. ✅" : "\n\nTip: GPS add karo taaki Near Me search mein aao.";
+      Alert.alert("✅ Registered!", `You are now registered as a blood donor!${gpsNote}\n\nThank you! 🙏 One donation saves 3 lives ❤️`);
       setDonorCity(""); setDonorState(""); setDonorPhone("");
+      setDonorLat(undefined); setDonorLng(undefined);
     } catch (e) { Alert.alert("Error", (e as Error).message || "Registration failed"); }
     setDonorSubmitting(false);
   };
