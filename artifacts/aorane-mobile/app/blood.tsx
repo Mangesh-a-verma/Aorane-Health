@@ -122,6 +122,12 @@ export default function BloodEmergencyScreen() {
   const [donorLng, setDonorLng] = useState<number | undefined>();
   const [donorSubmitting, setDonorSubmitting] = useState(false);
 
+  // My donor status
+  type DonorStatus = { registered: boolean; isAvailable?: boolean; otpVerified?: boolean; isOnCooldown?: boolean; daysLeft?: number; bloodGroup?: string; city?: string; state?: string; donationCount?: number } | null;
+  const [donorStatus, setDonorStatus] = useState<DonorStatus>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [toggleLoading, setToggleLoading] = useState(false);
+
   // Emergency request modal
   const [showModal, setShowModal] = useState(false);
   // Required fields
@@ -148,6 +154,41 @@ export default function BloodEmergencyScreen() {
   const [formStep, setFormStep] = useState<"form" | "disclaimer">("form");
 
   useEffect(() => { loadEmergencies(); }, []);
+
+  useEffect(() => {
+    if (tab === "donate") loadDonorStatus();
+  }, [tab]);
+
+  const loadDonorStatus = useCallback(async () => {
+    setStatusLoading(true);
+    try {
+      const res = await api.getMyDonorStatus();
+      setDonorStatus(res);
+      if (res.bloodGroup) setDonorBloodGroup(res.bloodGroup as BloodGroup);
+      if (res.city) setDonorCity(res.city);
+      if (res.state) setDonorState(res.state);
+    } catch { }
+    setStatusLoading(false);
+  }, []);
+
+  const handleToggleAvailability = useCallback(async (available: boolean) => {
+    setToggleLoading(true);
+    try {
+      const res = await api.toggleDonorAvailability(available);
+      setDonorStatus(prev => prev ? { ...prev, isAvailable: res.isAvailable } : prev);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Alert.alert(
+        res.isAvailable ? "✅ Ab Aap Available Ho" : "⏸ Availability Paused",
+        res.isAvailable
+          ? "Blood requests mein aapka naam dikhega. Agar koi zaroorat ho toh remove kar sakte ho."
+          : "Aap temporarily unavailable ho. Jab ready ho tab wapas ON kar dena.",
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update";
+      Alert.alert("Error", msg);
+    }
+    setToggleLoading(false);
+  }, []);
 
   const loadEmergencies = useCallback(async () => {
     setLoading(true);
@@ -595,43 +636,120 @@ export default function BloodEmergencyScreen() {
               </View>
             </LinearGradient>
 
-            <Card>
-              <Text style={styles.cardTitle}>Apna Blood Group</Text>
-              <BloodGroupGrid selected={donorBloodGroup} onSelect={setDonorBloodGroup} />
-
-              {/* GPS auto-fill */}
-              <TouchableOpacity onPress={autofillFromGPS} disabled={gpsLoading} activeOpacity={0.85}
-                style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: donorLat ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.06)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: donorLat ? C.green : C.border }}>
-                {gpsLoading ? <ActivityIndicator size="small" color={C.primary} /> : <Ionicons name={donorLat ? "navigate-circle" : "navigate-circle-outline"} size={22} color={donorLat ? C.green : C.primary} />}
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: donorLat ? C.green : C.primary, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
-                    {gpsLoading ? "Getting location..." : donorLat ? "✅ Location saved" : "📍 Auto-fill via GPS"}
-                  </Text>
-                  <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>
-                    {donorLat ? `${donorLat.toFixed(4)}, ${donorLng?.toFixed(4)} — nearby donors will appear first` : "City/State will auto-fill + proximity search will be enabled"}
-                  </Text>
+            {/* ── My Donor Status Card ─────────────────────────────── */}
+            {statusLoading ? (
+              <Card><ActivityIndicator color={C.primary} style={{ marginVertical: 8 }} /></Card>
+            ) : donorStatus?.registered ? (
+              <Card>
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  <Text style={styles.cardTitle}>Mera Donor Status</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: donorStatus.isAvailable ? C.green : "#9CA3AF" }} />
+                    <Text style={{ color: donorStatus.isAvailable ? C.green : "#9CA3AF", fontFamily: "Inter_600SemiBold", fontSize: 12 }}>
+                      {donorStatus.isAvailable ? "Available" : "Unavailable"}
+                    </Text>
+                  </View>
                 </View>
-                {donorLat && <TouchableOpacity onPress={() => { setDonorLat(undefined); setDonorLng(undefined); }} style={{ padding: 4 }}>
-                  <Ionicons name="close-circle" size={18} color={C.muted} />
-                </TouchableOpacity>}
-              </TouchableOpacity>
 
-              <InputField value={donorCity} onChangeText={setDonorCity} placeholder="Your city * (e.g. Delhi, Mumbai)" />
-              <InputField value={donorState} onChangeText={setDonorState} placeholder="State * (e.g. Maharashtra, UP)" />
-              <InputField value={donorPhone} onChangeText={setDonorPhone} placeholder="Mobile number (for OTP verification)" keyboard="phone-pad" />
-              <TouchableOpacity onPress={registerDonor} disabled={donorSubmitting} activeOpacity={0.85}>
-                <LinearGradient colors={["#DC2626", "#B91C1C"]} style={styles.actionBtn}>
-                  {donorSubmitting ? <ActivityIndicator color="#FFF" size="small" /> : <Ionicons name="heart" size={18} color="#FFF" />}
-                  <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 15 }}>{donorSubmitting ? "Registering..." : "Register as Donor"}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+                {/* Info row */}
+                <View style={{ flexDirection: "row", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+                  <View style={{ backgroundColor: "rgba(220,38,38,0.08)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+                    <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 14 }}>{donorStatus.bloodGroup}</Text>
+                  </View>
+                  <View style={{ backgroundColor: "#F3F4F6", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+                    <Text style={{ color: C.text, fontFamily: "Inter_500Medium", fontSize: 13 }}>{donorStatus.city}, {donorStatus.state}</Text>
+                  </View>
+                  {(donorStatus.donationCount ?? 0) > 0 && (
+                    <View style={{ backgroundColor: "rgba(16,185,129,0.1)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+                      <Text style={{ color: C.green, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>🩸 {donorStatus.donationCount} donations</Text>
+                    </View>
+                  )}
+                </View>
 
-              {/* OTP note */}
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(16,185,129,0.08)", borderRadius: 10, padding: 10 }}>
-                <Ionicons name="shield-checkmark" size={16} color={C.green} />
-                <Text style={{ color: C.green, fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>OTP verification keeps your identity secure</Text>
-              </View>
-            </Card>
+                {/* Cooldown warning */}
+                {donorStatus.isOnCooldown ? (
+                  <View style={{ backgroundColor: "rgba(245,158,11,0.1)", borderRadius: 10, padding: 12, marginBottom: 10, flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
+                    <Ionicons name="time" size={18} color={C.amber} style={{ marginTop: 1 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: C.amber, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>90-Day Cooldown Active</Text>
+                      <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
+                        Aap {donorStatus.daysLeft} din baad wapas donate kar sakte ho. Tab tak availability ON nahi hogi.
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                {/* Toggle */}
+                {!donorStatus.isOnCooldown && (
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F9FAFB", borderRadius: 12, padding: 14 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Availability Toggle</Text>
+                      <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
+                        {donorStatus.isAvailable ? "Donors list mein visible ho — requests aa sakti hain" : "Ab koi blood request nahi aayegi aapko"}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleToggleAvailability(!donorStatus.isAvailable)}
+                      disabled={toggleLoading}
+                      activeOpacity={0.85}
+                      style={{ width: 52, height: 28, borderRadius: 14, backgroundColor: donorStatus.isAvailable ? C.green : "#D1D5DB", justifyContent: "center", paddingHorizontal: 3, marginLeft: 12 }}>
+                      {toggleLoading
+                        ? <ActivityIndicator size="small" color="#FFF" />
+                        : <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: "#FFF", alignSelf: donorStatus.isAvailable ? "flex-end" : "flex-start", shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 2, elevation: 2 }} />
+                      }
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* OTP not verified warning */}
+                {!donorStatus.otpVerified && (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(220,38,38,0.08)", borderRadius: 10, padding: 10, marginTop: 10 }}>
+                    <Ionicons name="warning" size={16} color={C.primary} />
+                    <Text style={{ color: C.primary, fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>OTP verify nahi hua — neeche se register dobara karein aur OTP complete karein</Text>
+                  </View>
+                )}
+              </Card>
+            ) : null}
+
+            {/* ── Registration Form — show only if not yet registered ── */}
+            {!statusLoading && (!donorStatus?.registered) && (
+              <Card>
+                <Text style={styles.cardTitle}>Donor Register Karo</Text>
+                <BloodGroupGrid selected={donorBloodGroup} onSelect={setDonorBloodGroup} />
+
+                {/* GPS auto-fill */}
+                <TouchableOpacity onPress={autofillFromGPS} disabled={gpsLoading} activeOpacity={0.85}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: donorLat ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.06)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: donorLat ? C.green : C.border }}>
+                  {gpsLoading ? <ActivityIndicator size="small" color={C.primary} /> : <Ionicons name={donorLat ? "navigate-circle" : "navigate-circle-outline"} size={22} color={donorLat ? C.green : C.primary} />}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: donorLat ? C.green : C.primary, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                      {gpsLoading ? "Getting location..." : donorLat ? "✅ Location saved" : "📍 Auto-fill via GPS"}
+                    </Text>
+                    <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>
+                      {donorLat ? `${donorLat.toFixed(4)}, ${donorLng?.toFixed(4)} — nearby donors will appear first` : "City/State will auto-fill + proximity search will be enabled"}
+                    </Text>
+                  </View>
+                  {donorLat && <TouchableOpacity onPress={() => { setDonorLat(undefined); setDonorLng(undefined); }} style={{ padding: 4 }}>
+                    <Ionicons name="close-circle" size={18} color={C.muted} />
+                  </TouchableOpacity>}
+                </TouchableOpacity>
+
+                <InputField value={donorCity} onChangeText={setDonorCity} placeholder="Your city * (e.g. Delhi, Mumbai)" />
+                <InputField value={donorState} onChangeText={setDonorState} placeholder="State * (e.g. Maharashtra, UP)" />
+                <InputField value={donorPhone} onChangeText={setDonorPhone} placeholder="Mobile number (for OTP verification)" keyboard="phone-pad" />
+                <TouchableOpacity onPress={registerDonor} disabled={donorSubmitting} activeOpacity={0.85}>
+                  <LinearGradient colors={["#DC2626", "#B91C1C"]} style={styles.actionBtn}>
+                    {donorSubmitting ? <ActivityIndicator color="#FFF" size="small" /> : <Ionicons name="heart" size={18} color="#FFF" />}
+                    <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 15 }}>{donorSubmitting ? "Registering..." : "Register as Donor"}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(16,185,129,0.08)", borderRadius: 10, padding: 10 }}>
+                  <Ionicons name="shield-checkmark" size={16} color={C.green} />
+                  <Text style={{ color: C.green, fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>OTP verification keeps your identity secure</Text>
+                </View>
+              </Card>
+            )}
 
             {/* Eligibility */}
             <Card>
