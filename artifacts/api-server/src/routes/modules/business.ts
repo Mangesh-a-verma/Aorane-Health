@@ -26,12 +26,26 @@ router.post("/business/register", async (req, res) => {
       return;
     }
 
+    // Normalize email to lowercase
+    const normalizedEmail = (contactEmail as string).toLowerCase().trim();
+
+    // Pre-registration duplicate check — block if email already registered as org admin
+    const [existingAdmin] = await db
+      .select({ id: orgAdminsTable.id })
+      .from(orgAdminsTable)
+      .where(eq(orgAdminsTable.email, normalizedEmail))
+      .limit(1);
+    if (existingAdmin) {
+      res.status(409).json({ error: "An account with this email already exists. Please log in instead." });
+      return;
+    }
+
     const orgCode = generateOrgCode();
     const [org] = await db.insert(organizationsTable).values({
       orgType: orgType as "corporate" | "hospital" | "gym" | "insurance" | "ngo" | "yoga" | "school" | "other",
       name: name as string,
       orgCode,
-      contactEmail: contactEmail as string,
+      contactEmail: normalizedEmail,
       contactPhone: contactPhone as string,
       city: city as string,
       state: state as string,
@@ -52,7 +66,7 @@ router.post("/business/register", async (req, res) => {
     const [admin] = await db.insert(orgAdminsTable).values({
       orgId: org.id,
       fullName: adminName as string,
-      email: contactEmail as string,
+      email: normalizedEmail,
       passwordHash,
       role: "owner",
     }).returning();
@@ -60,13 +74,18 @@ router.post("/business/register", async (req, res) => {
     const token = signBusinessToken({ orgAdminId: admin.id, orgId: org.id, role: admin.role });
     // Send business welcome email (fire & forget)
     sendBusinessWelcomeEmail({
-      toEmail: contactEmail as string,
+      toEmail: normalizedEmail,
       adminName: adminName as string,
       orgName: name as string,
       orgCode,
     }).catch(() => {});
     res.status(201).json({ success: true, org, admin: { id: admin.id, fullName: admin.fullName, role: admin.role }, token, orgCode });
   } catch (err) {
+    // Handle DB unique constraint violation (race condition fallback)
+    if ((err as any)?.code === "23505" || String(err).includes("unique")) {
+      res.status(409).json({ error: "An account with this email already exists. Please log in instead." });
+      return;
+    }
     res.status(500).json({ error: "Failed to register organization" });
   }
 });
