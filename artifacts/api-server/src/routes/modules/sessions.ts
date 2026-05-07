@@ -43,7 +43,7 @@ router.post("/sessions/start", requireAuth, async (req: AuthRequest, res) => {
 
     res.status(201).json({ sessionId: session.sessionId, session });
   } catch (err) {
-    console.error("Session start error:", err);
+    req.log.error({ err }, "Session start error");
     res.status(500).json({ error: "Failed to start session" });
   }
 });

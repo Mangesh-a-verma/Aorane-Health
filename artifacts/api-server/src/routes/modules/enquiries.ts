@@ -3,6 +3,7 @@ import { db, enquiriesTable, companySettingsTable } from "@workspace/db";
 import { desc, eq, sql } from "drizzle-orm";
 import { Resend } from "resend";
 import { requireAdmin, type AdminRequest } from "../../middlewares/admin-auth";
+import { logger } from "../../lib/logger";
 
 const router: IRouter = Router();
 
@@ -34,7 +35,7 @@ async function sendEnquiryEmail(e: {
   accountType?: string | null; companyName?: string | null; message?: string | null; source?: string | null;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) { console.warn("[enquiries] RESEND_API_KEY missing — skip email"); return; }
+  if (!apiKey) { logger.warn({}, "enquiries RESEND_API_KEY missing — skip email"); return; }
   try {
     const resend = new Resend(apiKey);
     const to = await getSupportEmail();
@@ -80,7 +81,7 @@ async function sendEnquiryEmail(e: {
       html,
     });
   } catch (err) {
-    console.error("[enquiries] email send failed:", err);
+    logger.error({ err }, "enquiries email send failed");
   }
 }
 
@@ -108,7 +109,7 @@ router.post("/leads/send-otp", async (req, res) => {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
       // Dev mode: log OTP
-      console.log(`[enquiries] DEV OTP for ${email}: ${otp}`);
+      req.log.info({ email }, "enquiries DEV OTP generated");
       res.json({ success: true, devOtp: process.env.NODE_ENV !== "production" ? otp : undefined });
       return;
     }
@@ -133,7 +134,7 @@ router.post("/leads/send-otp", async (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error("[enquiries] send-otp failed:", err);
+    req.log.error({ err }, "enquiries send-otp failed");
     res.status(500).json({ error: "Failed to send OTP — please try again" });
   }
 });
@@ -182,7 +183,7 @@ router.post("/enquiries", async (req, res) => {
     }
     res.json({ success: true, id: created.id, downloadUrl });
   } catch (e) {
-    console.error("[enquiries] submit failed:", e);
+    req.log.error({ err: e }, "enquiries submit failed");
     res.status(500).json({ error: "Failed to submit enquiry" });
   }
 });
@@ -206,7 +207,7 @@ router.get("/admin/enquiries", requireAdmin, async (req: AdminRequest, res) => {
 
     res.json({ enquiries: rows, stats: totals[0] });
   } catch (e) {
-    console.error("[enquiries] list failed:", e);
+    req.log.error({ err: e }, "enquiries list failed");
     res.status(500).json({ error: "Failed to fetch enquiries" });
   }
 });
@@ -239,7 +240,7 @@ router.delete("/admin/enquiries/:id", requireAdmin, async (req: AdminRequest, re
     await db.delete(enquiriesTable).where(eq(enquiriesTable.id, String(id)));
     res.json({ success: true });
   } catch (e) {
-    console.error("[enquiries] delete failed:", e);
+    req.log.error({ err: e }, "enquiries delete failed");
     res.status(500).json({ error: "Failed to delete enquiry" });
   }
 });

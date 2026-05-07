@@ -11,6 +11,7 @@
 import { Router } from "express";
 import { db, usersTable, userProfilesTable, userPreferencesTable, userMedicalConditionsTable, foodLogsTable, waterLogsTable, exerciseLogsTable, stressLogsTable, healthPredictionsTable, weeklyDietChartsTable } from "@workspace/db";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { logger } from "../../lib/logger";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { aiRateLimit } from "../../middlewares/ai-rate-limit";
@@ -138,7 +139,7 @@ router.get("/health/intelligence/predict", requireAuth, aiRateLimit("health_pred
 
     await generatePrediction(userId, month, res, false);
   } catch (err) {
-    console.error("prediction error:", err);
+    req.log.error({ err }, "prediction error");
     res.status(500).json({ error: "Health prediction failed. Please try again." });
   }
 });
@@ -151,7 +152,7 @@ router.post("/health/intelligence/predict/refresh", requireAuth, aiRateLimit("he
       .where(and(eq(healthPredictionsTable.userId, userId), eq(healthPredictionsTable.month, month)));
     await generatePrediction(userId, month, res, true);
   } catch (err) {
-    console.error("prediction refresh error:", err);
+    req.log.error({ err }, "prediction refresh error");
     res.status(500).json({ error: "Health prediction refresh failed." });
   }
 });
@@ -267,7 +268,7 @@ Return ONLY valid JSON (no markdown, no extra text):
     ], { maxTokens: 3000, temperature: 0.5 });
     prediction = JSON.parse(jsonStr);
   } catch (aiErr) {
-    console.warn("[Health Prediction] AI call failed, using static fallback:", (aiErr as Error).message);
+    logger.warn({ err: aiErr }, "Health Prediction AI call failed, using static fallback");
     prediction = getStaticPrediction(month, data, ctx);
   }
 
@@ -302,7 +303,7 @@ router.get("/health/intelligence/diet-chart", requireAuth, aiRateLimit("diet_cha
 
     await generateDietChart(userId, weekStart, res, false);
   } catch (err) {
-    console.error("diet chart error:", err);
+    req.log.error({ err }, "diet chart error");
     res.status(500).json({ error: "Diet chart generation failed." });
   }
 });
@@ -315,7 +316,7 @@ router.post("/health/intelligence/diet-chart/refresh", requireAuth, aiRateLimit(
       .where(and(eq(weeklyDietChartsTable.userId, userId), eq(weeklyDietChartsTable.weekStart, weekStart)));
     await generateDietChart(userId, weekStart, res, true);
   } catch (err) {
-    console.error("diet chart refresh error:", err);
+    req.log.error({ err }, "diet chart refresh error");
     res.status(500).json({ error: "Diet chart refresh failed." });
   }
 });
@@ -386,7 +387,7 @@ Return ONLY valid JSON (no markdown):
     ], { maxTokens: 6000, temperature: 0.7 });
     dietChart = JSON.parse(jsonStr);
   } catch (aiErr) {
-    console.warn("[Diet Chart] AI call failed, using static fallback:", (aiErr as Error).message);
+    logger.warn({ err: aiErr }, "Diet Chart AI call failed, using static fallback");
     const isVeg = ctx.dietaryPref !== "non-veg";
     dietChart = {
       weekStart,
@@ -447,7 +448,7 @@ router.post("/health/intelligence/exercise/calories", requireAuth, async (req: A
 
     res.json({ exerciseType, durationMinutes, weightKg: weight, met, caloriesBurned: calories });
   } catch (err) {
-    console.error("MET calc error:", err);
+    req.log.error({ err }, "MET calc error");
     res.status(500).json({ error: "Calorie calculation failed" });
   }
 });

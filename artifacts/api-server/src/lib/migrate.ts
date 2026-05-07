@@ -1195,6 +1195,20 @@ export async function runStartupMigrations(): Promise<void> {
     // ══════════════════════════════════════════════════════════════════════════
     `UPDATE plan_pricing SET yearly_price = '2028' WHERE plan_key = 'org_max' AND (yearly_price IS NULL OR yearly_price = '')`,
     `UPDATE plan_pricing SET yearly_price = '2532' WHERE plan_key = 'org_pro' AND (yearly_price IS NULL OR yearly_price = '')`,
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // SECURITY FIX C4: organizations.contact_email unique constraint
+    // SECURITY FIX C5: org_admins.email unique constraint (also fixes E6 race condition)
+    // SECURITY FIX A5: last_logout_at columns for token revocation
+    // ══════════════════════════════════════════════════════════════════════════
+    `CREATE UNIQUE INDEX IF NOT EXISTS uq_organizations_contact_email ON organizations (contact_email)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS uq_org_admins_email ON org_admins (email)`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_logout_at TIMESTAMPTZ`,
+    `ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS last_logout_at TIMESTAMPTZ`,
+    `ALTER TABLE org_admins ADD COLUMN IF NOT EXISTS last_logout_at TIMESTAMPTZ`,
+    // W3: Email verification columns for org_admins
+    `ALTER TABLE org_admins ADD COLUMN IF NOT EXISTS is_email_verified BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE org_admins ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ`,
   ];
 
   let ok = 0; let fail = 0;

@@ -3,6 +3,7 @@ import { pool } from "@workspace/db";
 import { requireAuth } from "../../middlewares/user-auth";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { logger } from "../../lib/logger";
 
 // ── Push Notification Helpers (no SDK needed — uses Expo HTTP API) ────────────
 export async function sendExpoPushNotifications(tokens: string[], title: string, body: string, data?: Record<string, unknown>): Promise<void> {
@@ -32,12 +33,12 @@ export async function sendExpoPushNotifications(tokens: string[], title: string,
         .filter(r => r.status === "error");
       if (failed.length) {
         // eslint-disable-next-line no-console
-        console.error(`[Push] ${failed.length} token(s) failed:`, failed.map(f => f.message).join(", "));
+        logger.warn({ count: failed.length, messages: failed.map(f => f.message).join(", ") }, "Push tokens failed");
       }
     }
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.error("[Push] sendExpoPushNotifications error:", (e as Error).message);
+    logger.error({ err: e }, "sendExpoPushNotifications error");
   }
 }
 
@@ -67,7 +68,7 @@ router.post("/users/push-token", requireAuth, async (req: AuthRequest, res) => {
     );
     res.json({ success: true });
   } catch (e) {
-    console.error("push token error:", e);
+    req.log.error({ err: e }, "push token error");
     res.status(500).json({ error: "Failed to save push token" });
   }
 });
@@ -114,7 +115,7 @@ router.post("/support/ticket", requireAuth, async (req: AuthRequest, res) => {
       message: "Your complaint has been submitted. Our team will respond within 24 hours.",
     });
   } catch (e) {
-    console.error("support ticket error:", e);
+    req.log.error({ err: e }, "support ticket error");
     res.status(500).json({ error: "Failed to submit ticket" });
   }
 });

@@ -136,7 +136,7 @@ router.post("/admin/ads", requireAdmin, async (req: AdminRequest, res) => {
 
     res.status(201).json({ ad });
   } catch (e) {
-    console.error(e);
+    req.log.error({ err: e }, "Failed to create ad");
     res.status(500).json({ error: "Failed to create ad" });
   }
 });
@@ -174,7 +174,7 @@ router.put("/admin/ads/:id", requireAdmin, async (req: AdminRequest, res) => {
 
     res.json({ ad });
   } catch (e) {
-    console.error(e);
+    req.log.error({ err: e }, "Failed to update ad");
     res.status(500).json({ error: "Failed to update ad" });
   }
 });

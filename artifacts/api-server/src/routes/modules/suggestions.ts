@@ -349,7 +349,7 @@ router.get("/suggestions/daily", requireAuth, aiRateLimit("daily_suggestions", 3
 
     res.json({ suggestions, fromCache: false, generatedAt, date: today });
   } catch (err) {
-    console.error("Suggestions error:", err);
+    req.log.error({ err }, "Suggestions error");
     res.status(500).json({ error: "Failed to generate suggestions" });
   }
 });

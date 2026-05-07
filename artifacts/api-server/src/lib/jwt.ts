@@ -1,9 +1,20 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "aorane_dev_secret_change_in_prod";
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "aorane_refresh_dev_secret";
-const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || "aorane_admin_dev_secret";
-const BUSINESS_JWT_SECRET = process.env.BUSINESS_JWT_SECRET || "aorane_business_dev_secret";
+function requireSecret(name: string): string {
+  const val = process.env[name];
+  if (!val) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(`FATAL: Environment variable ${name} is not set. Refusing to start.`);
+    }
+    return `${name}_dev_fallback_not_for_prod`;
+  }
+  return val;
+}
+
+const JWT_SECRET          = requireSecret("JWT_SECRET");
+const JWT_REFRESH_SECRET  = requireSecret("JWT_REFRESH_SECRET");
+const ADMIN_JWT_SECRET    = requireSecret("ADMIN_JWT_SECRET");
+const BUSINESS_JWT_SECRET = requireSecret("BUSINESS_JWT_SECRET");
 
 export type UserTokenPayload = {
   userId: string;

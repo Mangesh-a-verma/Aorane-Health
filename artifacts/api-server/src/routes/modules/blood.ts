@@ -497,7 +497,7 @@ router.post("/blood/donate/confirm", requireAuth, async (req: AuthRequest, res) 
       daysInactive: 90,
     });
   } catch (err) {
-    console.error("Blood donation confirm error:", err);
+    req.log.error({ err }, "Blood donation confirm error");
     res.status(500).json({ error: "Failed to confirm donation" });
   }
 });

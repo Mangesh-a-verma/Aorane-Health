@@ -69,7 +69,7 @@ router.post("/auth/send-otp", async (req, res) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const cause = (err as any)?.cause?.message || (err as any)?.cause || "";
-    console.error("[OTP ERROR]", msg, cause);
+    req.log.error({ msg, cause }, "OTP ERROR");
     res.status(500).json({ error: "Failed to send OTP", detail: msg, cause: String(cause) });
   }
 });
@@ -436,7 +436,7 @@ router.post("/auth/send-email-otp", async (req, res) => {
 
     const sent = await sendEmailOtp(email, otp);
     const isDev = process.env.NODE_ENV !== "production";
-    if (isDev) console.log(`[Dev] Email OTP for ${email}: ${otp}`);
+    if (isDev) req.log.info({ email }, "Dev Email OTP generated");
     const testEmails = (process.env.TEST_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
     const isTestEmail = testEmails.includes(email.toLowerCase());
     // Always return devOtp in non-production so testers don't need email inbox access
@@ -525,6 +525,18 @@ router.post("/auth/verify-email-otp", async (req, res) => {
 });
 
 // ─── PIN Login ───────────────────────────────────────────────────────────────
+// A5: Logout — revoke token by recording logout timestamp in cache (30d TTL matches token expiry)
+router.post("/auth/logout", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const nowSec = Math.floor(Date.now() / 1000);
+    cache.set(`logout:user:${req.userId}`, String(nowSec), 30 * 24 * 3600);
+    await pool.query(`UPDATE users SET last_logout_at = NOW() WHERE id = $1`, [req.userId]).catch(() => {});
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Logout failed" });
+  }
+});
+
 router.post("/auth/pin/set", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { pin } = req.body as { pin: string };

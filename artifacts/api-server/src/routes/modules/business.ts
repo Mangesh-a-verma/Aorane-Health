@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { db, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable, subscriptionsTable, companySettingsTable, stressLogsTable } from "@workspace/db";
+import { logger } from "../../lib/logger";
+import { db, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable, subscriptionsTable, companySettingsTable, stressLogsTable, userPrivacySettingsTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte, desc, ilike, sql } from "drizzle-orm";
 import { requireBusinessAuth } from "../../middlewares/business-auth";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -19,10 +20,24 @@ const router = Router();
 
 router.post("/business/register", async (req, res) => {
   try {
+    // C6: Rate limiting — max 5 registration attempts per IP per hour
+    const { cache } = await import("../../lib/redis");
+    const ip = (req.headers["x-forwarded-for"] as string || req.socket.remoteAddress || "unknown").split(",")[0].trim();
+    const rlKey = `biz_register:${ip}`;
+    const attempts = cache.incrementRateLimitFixed(rlKey, 3600);
+    if (attempts > 5) {
+      res.status(429).json({ error: "Too many registration attempts. Please try again after 1 hour." });
+      return;
+    }
+
     const { orgType, name, contactEmail, contactPhone, city, state, countryCode = "IN", gstin, industry, companySize, hospitalType, bedCount, nabhAccredited, gymType, memberCount, irdaiLicense, totalSeats = 10, adminName, adminPassword } = req.body as Record<string, unknown>;
 
     if (!orgType || !name || !contactEmail || !adminName || !adminPassword) {
       res.status(400).json({ error: "Organization type, name, email, admin name and password required" });
+      return;
+    }
+    if (typeof adminPassword !== "string" || adminPassword.length < 8) {
+      res.status(400).json({ error: "Password must be at least 8 characters" });
       return;
     }
 
@@ -72,6 +87,10 @@ router.post("/business/register", async (req, res) => {
     }).returning();
 
     const token = signBusinessToken({ orgAdminId: admin.id, orgId: org.id, role: admin.role });
+    // W3: Send email verification OTP (fire & forget)
+    const verifyOtp = generateOtp(6);
+    cache.setOtp(`biz_email_verify:${admin.id}`, hashOtp(verifyOtp));
+    sendEmailOtp(normalizedEmail, verifyOtp).catch(() => {});
     // Send business welcome email (fire & forget)
     sendBusinessWelcomeEmail({
       toEmail: normalizedEmail,
@@ -79,7 +98,7 @@ router.post("/business/register", async (req, res) => {
       orgName: name as string,
       orgCode,
     }).catch(() => {});
-    res.status(201).json({ success: true, org, admin: { id: admin.id, fullName: admin.fullName, role: admin.role }, token, orgCode });
+    res.status(201).json({ success: true, org, admin: { id: admin.id, fullName: admin.fullName, role: admin.role, isEmailVerified: false }, token, orgCode });
   } catch (err) {
     // Handle DB unique constraint violation (race condition fallback)
     if ((err as any)?.code === "23505" || String(err).includes("unique")) {
@@ -124,10 +143,41 @@ router.post("/business/login", async (req, res) => {
     await db.update(orgAdminsTable).set({ lastLoginAt: new Date() }).where(eq(orgAdminsTable.id, admin.id));
     const token = signBusinessToken({ orgAdminId: admin.id, orgId: admin.orgId, role: admin.role });
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, admin.orgId));
-    res.json({ token, admin: { id: admin.id, fullName: admin.fullName, role: admin.role }, org });
+    res.json({ token, admin: { id: admin.id, fullName: admin.fullName, role: admin.role, isEmailVerified: admin.isEmailVerified }, org });
   } catch {
     res.status(500).json({ error: "Login failed" });
   }
+});
+
+// W3: Verify registration email OTP
+router.post("/business/verify-registration-email", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const { otp } = req.body as { otp: string };
+    if (!otp) { res.status(400).json({ error: "OTP required" }); return; }
+    const { cache } = await import("../../lib/redis");
+    const storedHash = cache.getOtp(`biz_email_verify:${req.orgAdminId}`);
+    if (!storedHash) { res.status(400).json({ error: "Verification code expired. Request a new one." }); return; }
+    if (!verifyOtpHash(otp, storedHash)) { res.status(400).json({ error: "Invalid verification code" }); return; }
+    cache.deleteOtp(`biz_email_verify:${req.orgAdminId}`);
+    await db.update(orgAdminsTable).set({ isEmailVerified: true, emailVerifiedAt: new Date() }).where(eq(orgAdminsTable.id, req.orgAdminId!));
+    res.json({ success: true, message: "Email verified successfully" });
+  } catch { res.status(500).json({ error: "Email verification failed" }); }
+});
+
+// W3: Resend email verification OTP
+router.post("/business/resend-verification-email", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const [admin] = await db.select({ email: orgAdminsTable.email, isEmailVerified: orgAdminsTable.isEmailVerified })
+      .from(orgAdminsTable).where(eq(orgAdminsTable.id, req.orgAdminId!)).limit(1);
+    if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
+    if (admin.isEmailVerified) { res.json({ success: true, message: "Email already verified" }); return; }
+    const { cache } = await import("../../lib/redis");
+    const verifyOtp = generateOtp(6);
+    cache.setOtp(`biz_email_verify:${req.orgAdminId}`, hashOtp(verifyOtp));
+    const sent = await sendEmailOtp(admin.email, verifyOtp);
+    const isDev = process.env.NODE_ENV !== "production";
+    res.json({ success: true, sent, ...(!sent && isDev ? { devOtp: verifyOtp } : {}) });
+  } catch { res.status(500).json({ error: "Failed to resend verification code" }); }
 });
 
 // ─── FORGOT PASSWORD ─────────────────────────────────────────────────────────
@@ -147,7 +197,8 @@ router.post("/business/forgot-password", async (req, res) => {
     cache.setOtp(`biz_forgot_otp:${email.toLowerCase()}`, hashed);
     const sent = await sendEmailOtp(email, otp);
     const isDev = process.env.NODE_ENV !== "production";
-    res.json({ sent, message: "Reset code sent to your email.", ...(isDev ? { devOtp: otp } : {}) });
+    // B1: Only expose devOtp when email actually failed in dev — never in prod
+    res.json({ sent, message: "Reset code sent to your email.", ...(!sent && isDev ? { devOtp: otp } : {}) });
   } catch {
     res.status(500).json({ error: "Failed to send reset code" });
   }
@@ -157,7 +208,7 @@ router.post("/business/forgot-password/verify", async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body as { email: string; otp: string; newPassword: string };
     if (!email || !otp || !newPassword) { res.status(400).json({ error: "Email, OTP and new password required" }); return; }
-    if (newPassword.length < 6) { res.status(400).json({ error: "Password must be at least 6 characters" }); return; }
+    if (newPassword.length < 8) { res.status(400).json({ error: "Password must be at least 8 characters" }); return; }
     const { cache } = await import("../../lib/redis");
     const storedHash = cache.getOtp(`biz_forgot_otp:${email.toLowerCase()}`);
     if (!storedHash) { res.status(400).json({ error: "Reset code expired or invalid. Request a new one." }); return; }
@@ -224,10 +275,11 @@ router.post("/business/send-reg-otp", async (req, res) => {
     cache.setOtp(`biz_reg_otp:${email.toLowerCase()}`, hashed);
     const sent = await sendEmailOtp(email, otp);
     const isDev = process.env.NODE_ENV !== "production";
+    // B1: Only expose devOtp when email actually failed in dev — never in prod
     res.json({
       success: true,
       message: sent ? "Verification code sent to your email" : (isDev ? "Dev mode — code below" : "Email service unavailable"),
-      ...(isDev ? { devOtp: otp } : {}),
+      ...(!sent && isDev ? { devOtp: otp } : {}),
       sent,
     });
   } catch {
@@ -374,7 +426,7 @@ router.get("/business/members/search", requireBusinessAuth, async (req: Business
     }));
     res.json({ results, count: results.length });
   } catch (err) {
-    console.error("Business search error:", err);
+    req.log.error({ err }, "Business search error");
     res.status(500).json({ error: "Search failed" });
   }
 });
@@ -395,6 +447,16 @@ router.get("/business/members/:userId/stress", requireBusinessAuth, async (req: 
       .limit(1);
 
     if (!member) { res.status(404).json({ error: "Member not found in organization" }); return; }
+
+    // C4: Check user's privacy setting — if share_stress_level is OFF, deny access
+    const [privacy] = await db.select({ shareStressLevel: userPrivacySettingsTable.shareStressLevel })
+      .from(userPrivacySettingsTable)
+      .where(eq(userPrivacySettingsTable.userId, userId))
+      .limit(1);
+    if (privacy && privacy.shareStressLevel === false) {
+      res.status(403).json({ error: "Member has disabled stress data sharing", privacyBlocked: true });
+      return;
+    }
 
     // Profile name
     const [profile] = await db.select({ fullName: userProfilesTable.fullName })
@@ -437,7 +499,7 @@ router.get("/business/members/:userId/stress", requireBusinessAuth, async (req: 
 
     res.json({ userId, name: profile?.fullName ?? null, latestScore, avgScore, logsCount: logs.length, burnoutRisk, level, trend });
   } catch (err) {
-    console.error("Member stress fetch error:", err);
+    req.log.error({ err }, "Member stress fetch error");
     res.status(500).json({ error: "Failed to fetch member stress data" });
   }
 });
@@ -867,7 +929,7 @@ router.get("/business/analytics", requireBusinessAuth, async (req: BusinessReque
       joinTrend: joinTrendArr,
     });
   } catch (err) {
-    console.error("Analytics error:", err);
+    req.log.error({ err }, "Analytics error");
     res.status(500).json({ error: "Failed to fetch analytics" });
   }
 });
@@ -902,12 +964,28 @@ router.get("/business/members/:userId/detail", requireBusinessAuth, async (req: 
     const [member] = await db.select().from(orgMembersTable)
       .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId)));
     if (!member) { res.status(404).json({ error: "Member not in organization" }); return; }
+
+    // C5: Fetch privacy settings and filter sensitive fields accordingly
+    const [privacy] = await db.select().from(userPrivacySettingsTable)
+      .where(eq(userPrivacySettingsTable.userId, userId)).limit(1);
+
     const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, userId));
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
     const recentScores = await db.select().from(dailyHealthScoresTable)
       .where(eq(dailyHealthScoresTable.userId, userId))
       .orderBy(desc(dailyHealthScoresTable.scoreDate)).limit(7);
-    res.json({ member, profile, user: { plan: user?.plan, aoraneId: profile?.aoraneId }, recentScores });
+
+    // Strip fields the user has opted out of sharing
+    const safeProfile = profile ? {
+      fullName: profile.fullName,
+      gender: profile.gender,
+      city: profile.city,
+      state: profile.state,
+      bmi: privacy?.shareBmi !== false ? profile.bmi : null,
+      bloodGroup: profile.bloodGroup,
+    } : null;
+
+    res.json({ member, profile: safeProfile, user: { plan: user?.plan, aoraneId: profile?.aoraneId }, recentScores });
   } catch { res.status(500).json({ error: "Failed to fetch member detail" }); }
 });
 
@@ -1131,7 +1209,7 @@ router.get("/business/health-analytics", requireBusinessAuth, async (req: Busine
       stressTrackedCount,
     });
   } catch (e) {
-    console.error("[health-analytics]", e);
+    req.log.error({ err: e }, "health-analytics error");
     res.status(500).json({ error: "Failed to fetch health analytics" });
   }
 });
@@ -1285,7 +1363,7 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
       isTestMode: testModeActive && !liveMode,
     });
   } catch (e) {
-    console.error("[seat-order]", e);
+    req.log.error({ err: e }, "seat-order error");
     const msg = e instanceof Error && e.message ? e.message : "Failed to create seat order";
     res.status(500).json({ error: `Payment setup failed: ${msg}` });
   }
@@ -1373,7 +1451,7 @@ router.post("/business/billing/seat-verify", requireBusinessAuth, async (req: Bu
           isSameState,
           razorpayPaymentId: String(razorpayPaymentId || ""),
         },
-      }).catch((err) => console.warn("[Invoice Email] fire-and-forget error:", err));
+      }).catch((err) => logger.warn({ err }, "Invoice Email fire-and-forget error"));
       // Also send corporate payment welcome email with Enrollment Code
       db.select({ fullName: orgAdminsTable.fullName }).from(orgAdminsTable)
         .where(and(eq(orgAdminsTable.orgId, req.orgId!), eq(orgAdminsTable.role, "owner"))).limit(1)
@@ -1393,7 +1471,7 @@ router.post("/business/billing/seat-verify", requireBusinessAuth, async (req: Bu
 
     res.json({ success: true, message: `${seatCount} seats activated! Your enrollment code is ready.`, org, expiresAt });
   } catch (e) {
-    console.error("[seat-verify]", e);
+    req.log.error({ err: e }, "seat-verify error");
     res.status(500).json({ error: "Failed to verify payment" });
   }
 });
@@ -1423,7 +1501,7 @@ router.post("/business/members/:userId/cancel-subscription", requireBusinessAuth
 
     res.json({ success: true, message: "Member subscription cancelled. Their plan downgraded to free." });
   } catch (e) {
-    console.error("[cancel-member-sub]", e);
+    req.log.error({ err: e }, "cancel-member-sub error");
     res.status(500).json({ error: "Failed to cancel member subscription" });
   }
 });

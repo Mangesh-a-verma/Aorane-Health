@@ -62,7 +62,7 @@ router.get("/users/profile", requireAuth, async (req: AuthRequest, res) => {
   } catch (err) {
     const msg = (err as Error).message || String(err);
     const cause = (err as any)?.cause?.message || "";
-    console.error("[PROFILE ERROR]", msg, cause);
+    req.log.error({ msg, cause }, "PROFILE ERROR");
     res.status(500).json({ error: "Failed to fetch profile", detail: msg });
   }
 });
@@ -335,7 +335,7 @@ router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
       healthScore: monthlyHealthScore,
     });
   } catch (e) {
-    console.error("[SCORECARD ERROR]", (e as Error).message);
+    req.log.error({ err: e }, "SCORECARD ERROR");
     res.status(500).json({ error: "Failed to fetch scorecard" });
   }
 });
@@ -415,7 +415,7 @@ router.get("/users/search", requireAuth, async (req: AuthRequest, res) => {
 
     res.json({ results, count: results.length, query: q });
   } catch (err) {
-    console.error("Search error:", err);
+    req.log.error({ err }, "Search error");
     res.status(500).json({ error: "Search failed" });
   }
 });

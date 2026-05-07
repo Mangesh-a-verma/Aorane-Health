@@ -39,7 +39,7 @@ router.post("/medicine/schedule", requireAuth, async (req: AuthRequest, res) => 
     }).returning();
     res.status(201).json({ schedule });
   } catch (err) {
-    console.error("[medicine] create error:", err);
+    req.log.error({ err }, "medicine create error");
     res.status(500).json({ error: "Failed to create medicine schedule" });
   }
 });
@@ -128,7 +128,7 @@ router.get("/medicine/today", requireAuth, async (req: AuthRequest, res) => {
     const pending = result.filter(s => s.todayStatus === "pending").length;
     res.json({ schedules: result, summary: { total: result.length, taken, pending, adherencePercent: result.length ? Math.round((taken / result.length) * 100) : 100 } });
   } catch (err) {
-    console.error("[medicine/today] error:", err);
+    req.log.error({ err }, "medicine/today error");
     res.status(500).json({ error: "Failed to fetch today's medicines" });
   }
 });

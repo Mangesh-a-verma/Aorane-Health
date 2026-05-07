@@ -130,7 +130,7 @@ Return ONLY valid JSON (no markdown, no extra text):
       aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit },
     });
   } catch (err) {
-    console.error("Diet plan error:", err);
+    req.log.error({ err }, "Diet plan error");
     res.status(500).json({ error: "Failed to generate diet plan" });
   }
 });
@@ -282,7 +282,7 @@ For unknown:
 
     res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
   } catch (err) {
-    console.error("smart-scan error:", err);
+    req.log.error({ err }, "smart-scan error");
     res.status(500).json({ error: "Smart scan failed. Please try again with a clearer image." });
   }
 });

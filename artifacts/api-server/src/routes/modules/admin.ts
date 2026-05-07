@@ -3,6 +3,7 @@ import pg from "pg";
 import { db, pool, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, foodScanCacheTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable, planPricingTable, orgPaymentsTable } from "@workspace/db";
 import { eq, desc, ilike, count, or, sql, and, inArray, isNotNull } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
+import { logger } from "../../lib/logger";
 import { signAdminToken } from "../../lib/jwt";
 import { invalidatePlanCache } from "../../middlewares/plan-check";
 import type { AdminRequest } from "../../middlewares/admin-auth";
@@ -106,7 +107,7 @@ router.get("/admin/overview", requireAdmin, async (_req: AdminRequest, res) => {
       },
     });
   } catch (e) {
-    console.error("Admin overview error:", e);
+    logger.error({ err: e }, "Admin overview error");
     res.status(500).json({ error: "Failed to fetch overview" });
   }
 });
@@ -234,7 +235,7 @@ router.get("/admin/users/search", requireAdmin, async (req: AdminRequest, res) =
 
     res.json({ results, count: results.length });
   } catch (err) {
-    console.error("Admin search error:", err);
+    req.log.error({ err }, "Admin search error");
     res.status(500).json({ error: "Search failed" });
   }
 });
@@ -760,13 +761,13 @@ router.put("/admin/settings/company", requireAdmin, async (req: AdminRequest, re
     }
     res.json({ settings: result, success: true });
   } catch (e) {
-    console.error(e);
+    req.log.error({ err: e }, "Failed to update company settings");
     res.status(500).json({ error: "Failed to update company settings" });
   }
 });
 
 // Public endpoint — used by mobile app scorecard & report
-router.get("/settings/company", async (req, res) => {
+router.get("/settings/company", requireAdmin, async (req, res) => {
   try {
     const rows = await db.select().from(companySettingsTable).limit(1);
     if (rows.length === 0) {
@@ -838,7 +839,7 @@ router.get("/admin/revenue", requireAdmin, async (req: AdminRequest, res) => {
       })),
     });
   } catch (e) {
-    console.error("Revenue error:", e);
+    req.log.error({ err: e }, "Revenue error");
     res.status(500).json({ error: "Failed to fetch revenue data" });
   }
 });
@@ -1039,7 +1040,7 @@ router.post("/admin/food-cache/:id/promote", requireAdmin, async (req: AdminRequ
 
     res.json({ success: true, foodItem: newItem });
   } catch (err) {
-    console.error("Promote food error:", err);
+    req.log.error({ err }, "Promote food error");
     res.status(500).json({ error: "Failed to promote food" });
   }
 });

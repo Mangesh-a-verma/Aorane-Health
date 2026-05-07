@@ -534,7 +534,7 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
       aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit },
     });
   } catch (err) {
-    console.error("Food scan error:", err);
+    req.log.error({ err }, "Food scan error");
     res.status(500).json({ error: "Food scan failed" });
   }
 });
@@ -790,7 +790,7 @@ Return ONLY valid JSON:
       });
     }
   } catch (err) {
-    console.error("Weather suggestions error:", err);
+    req.log.error({ err }, "Weather suggestions error");
     res.status(500).json({ error: "Failed to get weather suggestions" });
   }
 });
