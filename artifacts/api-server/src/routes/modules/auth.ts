@@ -11,9 +11,13 @@ import { logger } from "../../lib/logger";
 
 const router = Router();
 
-/** OBS-1: Normalize +91 prefix, spaces, and leading country code before 10-digit validation */
+/** OBS-1: Normalize +91 prefix, leading 91, leading 0 (STD), and spaces before 10-digit validation */
 function normalizePhone(raw: string): string {
-  return (raw || "").trim().replace(/\s+/g, "").replace(/^\+91/, "").replace(/^91(?=\d{10}$)/, "");
+  return (raw || "").trim()
+    .replace(/\s+/g, "")
+    .replace(/^\+91/, "")
+    .replace(/^91(?=\d{10}$)/, "")
+    .replace(/^0(?=\d{10}$)/, "");  // Strip STD leading-0 (e.g. 09876543210 → 9876543210)
 }
 
 router.post("/auth/send-otp", async (req, res) => {

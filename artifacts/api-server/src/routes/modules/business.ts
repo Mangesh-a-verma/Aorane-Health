@@ -112,6 +112,15 @@ router.post("/business/register", async (req, res) => {
     }).catch(() => {});
     res.status(201).json({ success: true, org, admin: { id: admin.id, fullName: admin.fullName, role: admin.role, isEmailVerified: false }, token, orgCode });
   } catch (err) {
+    // Safety net: any 23505 that escapes the inner catch (e.g. Drizzle wrapping) → 409 not 500
+    const isUnique = (err as any)?.code === "23505"
+      || (err as any)?.cause?.code === "23505"
+      || String(err).toLowerCase().includes("unique")
+      || String(err).toLowerCase().includes("duplicate");
+    if (isUnique) {
+      res.status(409).json({ error: "An account with this email already exists. Please log in instead." });
+      return;
+    }
     res.status(500).json({ error: "Failed to register organization" });
   }
 });
