@@ -6,6 +6,8 @@ function requireSecret(name: string): string {
     if (process.env.NODE_ENV === "production") {
       throw new Error(`FATAL: Environment variable ${name} is not set. Refusing to start.`);
     }
+    // OBS-5: Warn loudly in dev so the insecure fallback is never silently used
+    console.warn(`[JWT] WARNING: ${name} is not set — using insecure dev fallback. NEVER deploy to production without this secret.`);
     return `${name}_dev_fallback_not_for_prod`;
   }
   return val;

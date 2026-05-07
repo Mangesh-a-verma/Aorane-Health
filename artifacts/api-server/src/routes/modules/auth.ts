@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, pool, usersTable, userPreferencesTable, userPrivacySettingsTable, userProfilesTable, otpStoreTable } from "@workspace/db";
+import { db, pool, usersTable, userPreferencesTable, userPrivacySettingsTable, userProfilesTable, otpStoreTable, userAuthProvidersTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { generateOtp, hashOtp, verifyOtpHash, sendSmsOtp, sendWhatsappOtp, sendEmailOtp } from "../../lib/otp";
 import { sendWelcomeEmail } from "../../lib/welcome-email";
@@ -11,9 +11,15 @@ import { logger } from "../../lib/logger";
 
 const router = Router();
 
+/** OBS-1: Normalize +91 prefix, spaces, and leading country code before 10-digit validation */
+function normalizePhone(raw: string): string {
+  return (raw || "").trim().replace(/\s+/g, "").replace(/^\+91/, "").replace(/^91(?=\d{10}$)/, "");
+}
+
 router.post("/auth/send-otp", async (req, res) => {
   try {
-    const { phone, countryCode = "IN" } = req.body as { phone: string; countryCode?: string };
+    const { phone: rawPhone, countryCode = "IN" } = req.body as { phone: string; countryCode?: string };
+    const phone = normalizePhone(rawPhone);
     if (!phone || !/^\d{10}$/.test(phone)) {
       res.status(400).json({ error: "Valid 10-digit phone number required" });
       return;
@@ -76,7 +82,8 @@ router.post("/auth/send-otp", async (req, res) => {
 
 router.post("/auth/send-otp-whatsapp", async (req, res) => {
   try {
-    const { phone } = req.body as { phone: string };
+    const { phone: rawPhoneWa } = req.body as { phone: string };
+    const phone = normalizePhone(rawPhoneWa);
     if (!phone || !/^\d{10}$/.test(phone)) {
       res.status(400).json({ error: "Valid 10-digit phone number required" });
       return;
@@ -114,9 +121,10 @@ router.post("/auth/send-otp-whatsapp", async (req, res) => {
 
 router.post("/auth/verify-otp", async (req, res) => {
   try {
-    const { phone, otp, countryCode = "IN", languageCode = "hi" } = req.body as {
+    const { phone: rawPhoneVerify, otp, countryCode = "IN", languageCode = "hi" } = req.body as {
       phone: string; otp: string; countryCode?: string; languageCode?: string;
     };
+    const phone = normalizePhone(rawPhoneVerify);
     if (!phone || !otp) {
       res.status(400).json({ error: "Phone and OTP required" });
       return;
@@ -179,6 +187,13 @@ router.post("/auth/verify-otp", async (req, res) => {
     await pool.query(`INSERT INTO user_privacy_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
     await pool.query(`INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
     await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]).catch(() => {});
+    // OBS-4: Record auth provider linkage so user_auth_providers is populated
+    await pool.query(
+      `INSERT INTO user_auth_providers (user_id, provider, provider_user_id, is_primary)
+       VALUES ($1, 'mobile', $2, true)
+       ON CONFLICT (user_id, provider) DO NOTHING`,
+      [user.id, phone]
+    ).catch(() => {});
 
     // Fetch onboarding_step from DB — client uses this to skip onboarding for returning users
     const profileRow = await pool.query(`SELECT onboarding_step FROM user_profiles WHERE user_id=$1`, [user.id]).catch(() => null);
@@ -274,6 +289,13 @@ router.post("/auth/firebase-login", async (req, res) => {
     await pool.query(`INSERT INTO user_privacy_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
     await pool.query(`INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
     await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]).catch(() => {});
+    // OBS-4: Record Firebase phone auth linkage (provider='mobile' since Firebase verifies phone)
+    await pool.query(
+      `INSERT INTO user_auth_providers (user_id, provider, provider_user_id, is_primary)
+       VALUES ($1, 'mobile', $2, true)
+       ON CONFLICT (user_id, provider) DO NOTHING`,
+      [user.id, firebaseUser.localId]
+    ).catch(() => {});
 
     const fbProfileRow = await pool.query(`SELECT onboarding_step FROM user_profiles WHERE user_id=$1`, [user.id]).catch(() => null);
     const fbOnboardingStep: number = fbProfileRow?.rows?.[0]?.onboarding_step ?? 0;
@@ -405,6 +427,13 @@ router.post("/auth/google", async (req, res) => {
     }
 
     await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
+    // OBS-4: Record Google auth provider linkage
+    await pool.query(
+      `INSERT INTO user_auth_providers (user_id, provider, provider_user_id, email, is_primary)
+       VALUES ($1, 'google', $2, $3, true)
+       ON CONFLICT (user_id, provider) DO NOTHING`,
+      [user.id, googleData.sub || googleData.email, googleData.email]
+    ).catch(() => {});
 
     const gProfileRow = await pool.query(`SELECT onboarding_step FROM user_profiles WHERE user_id=$1`, [user.id]).catch(() => null);
     const gOnboardingStep: number = gProfileRow?.rows?.[0]?.onboarding_step ?? 0;

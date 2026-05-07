@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { Resend } from "resend";
+import { logger } from "./logger";
 
 export function generateOtp(length = 6): string {
   const digits = "0123456789";
@@ -45,13 +46,14 @@ async function sendViaTwilio(phone: string, otp: string): Promise<boolean> {
     );
     const data = await res.json() as { sid?: string; status?: string; error_message?: string };
     if (data.sid) {
-      console.log("Twilio SMS sent:", data.sid, "status:", data.status);
+      // OBS-2: Use pino logger instead of console.*
+      logger.info({ sid: data.sid, status: data.status }, "Twilio SMS sent");
       return true;
     }
-    console.warn("Twilio error:", data.error_message);
+    logger.warn({ error: data.error_message }, "Twilio error");
     return false;
   } catch (err) {
-    console.error("Twilio fetch error:", err);
+    logger.error({ err }, "Twilio fetch error");
     return false;
   }
 }
@@ -65,7 +67,7 @@ async function sendViaFast2Sms(phone: string, otp: string): Promise<boolean> {
     const data = await res.json() as { return: boolean };
     return data.return === true;
   } catch {
-    console.error("Fast2SMS error sending to", phone);
+    logger.warn({ phone }, "Fast2SMS error sending OTP");
     return false;
   }
 }
@@ -77,7 +79,7 @@ export async function sendSmsOtp(phone: string, otp: string): Promise<boolean> {
   const fast2Ok = await sendViaFast2Sms(phone, otp);
   if (fast2Ok) return true;
 
-  console.warn("All SMS providers failed — devOtp:", otp);
+  logger.warn({}, "All SMS providers failed");
   return false;
 }
 
@@ -85,7 +87,7 @@ export async function sendEmailOtp(email: string, otp: string): Promise<boolean>
   const apiKey = process.env.RESEND_API_KEY;
   const fromEmail = process.env.RESEND_FROM_EMAIL || "support@aorane.com";
   if (!apiKey) {
-    console.warn("[Email OTP] RESEND_API_KEY not set — skipping email send");
+    logger.warn({}, "[Email OTP] RESEND_API_KEY not set — skipping email send");
     return false;
   }
   try {
@@ -114,12 +116,12 @@ export async function sendEmailOtp(email: string, otp: string): Promise<boolean>
       `,
     });
     if (error) {
-      console.warn("[Email OTP] Resend error:", error.message);
+      logger.warn({ error: error.message }, "[Email OTP] Resend error");
       return false;
     }
     return true;
   } catch (err) {
-    console.error("[Email OTP] Failed:", err);
+    logger.error({ err }, "[Email OTP] Failed");
     return false;
   }
 }
@@ -136,11 +138,11 @@ export async function sendWhatsappOtp(phone: string, otp: string): Promise<{ suc
     const res     = await fetch(url);
     const data    = await res.json() as { return: boolean; message?: string[] };
     if (data.return === true) return { success: true };
-    console.warn("Fast2SMS WhatsApp failed, trying SMS fallback:", data.message);
+    logger.warn({ message: data.message }, "Fast2SMS WhatsApp failed, trying SMS fallback");
     const smsSent = await sendSmsOtp(phone, otp);
     return { success: smsSent, fallback: true };
   } catch {
-    console.error("WhatsApp OTP error, falling back to SMS for", phone);
+    logger.warn({ phone }, "WhatsApp OTP error, falling back to SMS");
     const smsSent = await sendSmsOtp(phone, otp);
     return { success: smsSent, fallback: true };
   }
