@@ -1213,6 +1213,15 @@ export async function runStartupMigrations(): Promise<void> {
     // W3: Email verification columns for org_admins
     `ALTER TABLE org_admins ADD COLUMN IF NOT EXISTS is_email_verified BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE org_admins ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ`,
+
+    // ── blood_request_flags: one-flag-per-user enforcement ────────────────────
+    `CREATE TABLE IF NOT EXISTS blood_request_flags (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      request_id UUID NOT NULL REFERENCES blood_emergency_requests(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS uq_blood_request_flags_user_request ON blood_request_flags (request_id, user_id)`,
   ];
 
   let ok = 0; let fail = 0;
