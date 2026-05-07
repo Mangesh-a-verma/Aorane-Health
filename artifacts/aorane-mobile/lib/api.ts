@@ -458,7 +458,7 @@ export const api = {
       params.set("lng", String(coords.lng));
       params.set("radiusKm", String(coords.radiusKm ?? 50));
     }
-    return request<{ donors: Array<{ id: string; bloodGroup: string; city: string; state: string; isAvailable: boolean; distanceKm?: number | null }>; nearbySearch: boolean }>(
+    return request<{ donors: Array<{ id: string; bloodGroup: string; city: string; state: string; isAvailable: boolean; distanceKm?: number | null }>; nearbySearch: boolean; searchedRadiusKm?: number; expanded?: boolean }>(
       "GET", `/blood/donors?${params.toString()}`
     );
   },
@@ -484,6 +484,9 @@ export const api = {
 
   getBloodEmergencies: () =>
     request<{ requests: Array<Record<string, unknown>> }>("GET", "/blood/requests/active"),
+
+  getMyBloodRequests: () =>
+    request<{ requests: Array<{ id: string; patientName: string; bloodGroupNeeded: string; unitsNeeded: number; urgency: string; hospitalName: string; hospitalCity: string; hospitalState: string; status: string; expiresAt?: string; fulfilledAt?: string; createdAt: string; donorsNotified?: number; donorsResponded?: number }> }>("GET", "/blood/requests/mine"),
 
   respondToBloodEmergency: (requestId: string, response: "can_help" | "later" | "unavailable") =>
     request<{ success: boolean }>("POST", `/blood/request/${requestId}/respond`, { response }),
