@@ -181,7 +181,7 @@ router.get("/blood/donors", async (req, res) => {
         const at100 = withDist.filter(d => d.distanceKm <= 100).sort((a, b) => a.distanceKm - b.distanceKm);
         if (at100.length > filtered.length) { filtered = at100; searchedRadius = 100; }
       }
-      if (filtered.length < 3 && searchedRadius === 100) {
+      if (filtered.length < 3) {
         const at200 = withDist.filter(d => d.distanceKm <= 200).sort((a, b) => a.distanceKm - b.distanceKm);
         if (at200.length > filtered.length) { filtered = at200; searchedRadius = 200; }
       }
@@ -355,8 +355,14 @@ router.post("/blood/request/:id/respond", requireAuth, async (req: AuthRequest, 
     }
     res.json({ success: true });
 
+    // ── Increment donors_responded counter ────────────────────────────────────
+    pool.query(
+      `UPDATE blood_emergency_requests SET donors_responded = donors_responded + 1, updated_at = NOW() WHERE id = $1`,
+      [requestId]
+    ).catch((e: Error) => logger.warn({ err: e.message }, "[BloodEmergency] donors_responded increment failed"));
+
     // ── Fire-and-forget: notify requester when a donor accepts ────────────────
-    if (response === "accepted") {
+    if (response === "can_help") {
       (async () => {
         try {
           const reqRow = await pool.query(
@@ -513,8 +519,6 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
       expiresAt,
     }).returning();
 
-    cache.incrementRateLimit(monthKey, 31 * 24 * 3600);
-
     res.status(201).json({ success: true, request });
 
     // ── Fire-and-forget: notify compatible donors (city first, then state fallback) ─
@@ -580,6 +584,13 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
           { screen: "blood", requestId: request?.id || "" },
           3600,
         );
+        // Update donors_notified count now that we know how many tokens were sent
+        if (request?.id && tokens.length > 0) {
+          pool.query(
+            `UPDATE blood_emergency_requests SET donors_notified = $1, updated_at = NOW() WHERE id = $2`,
+            [tokens.length, request.id]
+          ).catch((e: Error) => logger.warn({ err: e.message }, "[BloodEmergency] donors_notified update failed"));
+        }
         logger.info({ tokens: tokens.length, bloodGroup, hospitalCity }, "[BloodEmergency] Push notifications sent");
       } catch (notifErr) {
         logger.warn({ err: (notifErr as Error).message }, "[BloodEmergency] Push notification failed (non-fatal)");
@@ -699,14 +710,17 @@ router.get("/blood/requests/mine", requireAuth, async (req: AuthRequest, res) =>
 // ── My Donation History ───────────────────────────────────────────────────────
 router.get("/blood/donate/history", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const donations = await db.select().from(bloodDonationsTable)
-      .where(eq(bloodDonationsTable.donorId, req.userId!))
-      .orderBy(sql`${bloodDonationsTable.donatedAt} DESC`)
-      .limit(20);
+    const [donations, countResult, donorResult] = await Promise.all([
+      db.select().from(bloodDonationsTable)
+        .where(eq(bloodDonationsTable.donorId, req.userId!))
+        .orderBy(sql`${bloodDonationsTable.donatedAt} DESC`)
+        .limit(20),
+      pool.query(`SELECT COUNT(*) FROM blood_donations WHERE donor_id = $1`, [req.userId]),
+      db.select().from(bloodDonorsTable)
+        .where(eq(bloodDonorsTable.userId, req.userId!)).limit(1),
+    ]);
 
-    const [donor] = await db.select().from(bloodDonorsTable)
-      .where(eq(bloodDonorsTable.userId, req.userId!)).limit(1);
-
+    const donor = donorResult[0];
     const isOnCooldown = !!(donor?.donorInactiveUntil && donor.donorInactiveUntil > new Date());
     const daysUntilEligible = isOnCooldown
       ? Math.ceil((donor!.donorInactiveUntil!.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
@@ -714,7 +728,7 @@ router.get("/blood/donate/history", requireAuth, async (req: AuthRequest, res) =
 
     res.json({
       donations,
-      totalDonations: donations.length,
+      totalDonations: parseInt(countResult.rows[0].count),
       isOnCooldown,
       daysUntilEligible,
       inactiveUntil: donor?.donorInactiveUntil ?? null,
