@@ -151,14 +151,23 @@ router.post("/auth/verify-otp", async (req, res) => {
     let isNewUser = false;
 
     if (!user) {
-      const [newUser] = await db.insert(usersTable).values({
-        phone,
-        countryCode,
-        languageCode,
-        referralCode: generateReferralCode(),
-      }).returning();
-      user = newUser;
-      isNewUser = true;
+      try {
+        const [newUser] = await db.insert(usersTable).values({
+          phone,
+          countryCode,
+          languageCode,
+          referralCode: generateReferralCode(),
+        }).returning();
+        user = newUser;
+        isNewUser = true;
+      } catch (insertErr) {
+        // CRIT-2: Race condition — another concurrent request created this user first
+        if ((insertErr as any)?.code === "23505" || String(insertErr).includes("unique")) {
+          const [existing] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+          if (existing) { user = existing; isNewUser = false; }
+          else throw insertErr;
+        } else { throw insertErr; }
+      }
     }
 
     // Ensure supporting rows exist using raw SQL (bypasses Drizzle for pooler compat)
@@ -238,14 +247,23 @@ router.post("/auth/firebase-login", async (req, res) => {
     let isNewUser = false;
 
     if (!user) {
-      const [newUser] = await db.insert(usersTable).values({
-        phone,
-        countryCode,
-        languageCode,
-        referralCode: generateReferralCode(),
-      }).returning();
-      user = newUser;
-      isNewUser = true;
+      try {
+        const [newUser] = await db.insert(usersTable).values({
+          phone,
+          countryCode,
+          languageCode,
+          referralCode: generateReferralCode(),
+        }).returning();
+        user = newUser;
+        isNewUser = true;
+      } catch (insertErr) {
+        // CRIT-2: Race condition — another concurrent request created this user first
+        if ((insertErr as any)?.code === "23505" || String(insertErr).includes("unique")) {
+          const [existing] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+          if (existing) { user = existing; isNewUser = false; }
+          else throw insertErr;
+        } else { throw insertErr; }
+      }
     }
 
     await pool.query(`INSERT INTO user_preferences (user_id, language_code) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [user.id, languageCode]).catch(() => {});
@@ -354,23 +372,32 @@ router.post("/auth/google", async (req, res) => {
     let isNewUser = false;
 
     if (!user) {
-      const [newUser] = await db.insert(usersTable).values({
-        email: googleData.email,
-        countryCode,
-        languageCode,
-        referralCode: generateReferralCode(),
-      }).returning();
-      user = newUser;
-      isNewUser = true;
-      await db.insert(userPreferencesTable).values({ userId: user.id, languageCode });
-      await db.insert(userPrivacySettingsTable).values({ userId: user.id });
-      await db.insert(userProfilesTable).values({
-        userId: user.id,
-        fullName: googleData.name,
-        profilePhotoUrl: googleData.picture,
-      });
-      // Send welcome email to new Google-auth users (fire & forget)
-      sendWelcomeEmail({ toEmail: googleData.email, name: googleData.name }).catch(() => {});
+      try {
+        const [newUser] = await db.insert(usersTable).values({
+          email: googleData.email,
+          countryCode,
+          languageCode,
+          referralCode: generateReferralCode(),
+        }).returning();
+        user = newUser;
+        isNewUser = true;
+        await db.insert(userPreferencesTable).values({ userId: user.id, languageCode });
+        await db.insert(userPrivacySettingsTable).values({ userId: user.id });
+        await db.insert(userProfilesTable).values({
+          userId: user.id,
+          fullName: googleData.name,
+          profilePhotoUrl: googleData.picture,
+        });
+        // Send welcome email to new Google-auth users (fire & forget)
+        sendWelcomeEmail({ toEmail: googleData.email, name: googleData.name }).catch(() => {});
+      } catch (insertErr) {
+        // CRIT-2: Race condition — another concurrent request created this user first
+        if ((insertErr as any)?.code === "23505" || String(insertErr).includes("unique")) {
+          const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, googleData.email));
+          if (existing) { user = existing; isNewUser = false; }
+          else throw insertErr;
+        } else { throw insertErr; }
+      }
     }
 
     await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
@@ -386,10 +413,6 @@ router.post("/auth/google", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: "Google authentication failed" });
   }
-});
-
-router.post("/auth/logout", requireAuth, async (req: AuthRequest, res) => {
-  res.json({ success: true });
 });
 
 router.get("/auth/me", requireAuth, async (req: AuthRequest, res) => {
@@ -439,8 +462,8 @@ router.post("/auth/send-email-otp", async (req, res) => {
     if (isDev) req.log.info({ email }, "Dev Email OTP generated");
     const testEmails = (process.env.TEST_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
     const isTestEmail = testEmails.includes(email.toLowerCase());
-    // Always return devOtp in non-production so testers don't need email inbox access
-    const returnDevOtp = isDev || isTestEmail;
+    // Only expose devOtp when email actually failed — same secure pattern as SMS OTP
+    const returnDevOtp = !sent && (isDev || isTestEmail);
 
     res.json({
       success: true,
@@ -492,16 +515,25 @@ router.post("/auth/verify-email-otp", async (req, res) => {
     let [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase()));
     let isNewUser = false;
     if (!user) {
-      const [newUser] = await db.insert(usersTable).values({
-        email: email.toLowerCase(),
-        countryCode,
-        languageCode,
-        referralCode: generateReferralCode(),
-      }).returning();
-      user = newUser;
-      isNewUser = true;
-      // Send welcome email to new email-OTP users (fire & forget)
-      sendWelcomeEmail({ toEmail: email.toLowerCase() }).catch(() => {});
+      try {
+        const [newUser] = await db.insert(usersTable).values({
+          email: email.toLowerCase(),
+          countryCode,
+          languageCode,
+          referralCode: generateReferralCode(),
+        }).returning();
+        user = newUser;
+        isNewUser = true;
+        // Send welcome email to new email-OTP users (fire & forget)
+        sendWelcomeEmail({ toEmail: email.toLowerCase() }).catch(() => {});
+      } catch (insertErr) {
+        // CRIT-2: Race condition — another concurrent request created this user first
+        if ((insertErr as any)?.code === "23505" || String(insertErr).includes("unique")) {
+          const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase()));
+          if (existing) { user = existing; isNewUser = false; }
+          else throw insertErr;
+        } else { throw insertErr; }
+      }
     }
     await pool.query(`INSERT INTO user_preferences (user_id, language_code) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [user.id, languageCode]).catch(() => {});
     await pool.query(`INSERT INTO user_privacy_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
@@ -574,6 +606,76 @@ router.post("/auth/pin/login", async (req, res) => {
     res.json({ accessToken, refreshToken, user: { id: user.id, phone: user.phone, plan: user.plan } });
   } catch {
     res.status(500).json({ error: "PIN login failed" });
+  }
+});
+
+// ─── CRIT-3: Account Linking — merge a phone-only account into an email/Google account ─
+// Use case: user registered via phone OTP, later signs in with Google → two separate accounts
+// Fix: verify phone OTP, then merge all health data from phone account into current account
+router.post("/auth/link-phone", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { phone, otp } = req.body as { phone: string; otp: string };
+    if (!phone || !otp || !/^\d{10}$/.test(phone)) {
+      res.status(400).json({ error: "Valid 10-digit phone and OTP required" }); return;
+    }
+
+    // Verify OTP for this phone (DB first, then memory cache fallback)
+    let storedHash: string | null = null;
+    let fromDb = false;
+    try {
+      const [otpRecord] = await db.select().from(otpStoreTable)
+        .where(and(eq(otpStoreTable.phone, phone), gt(otpStoreTable.expiresAt, new Date()))).limit(1);
+      if (otpRecord) { storedHash = otpRecord.hashedOtp; fromDb = true; }
+    } catch { storedHash = cache.getOtp(phone); }
+
+    if (!storedHash) { res.status(400).json({ error: "OTP expired or not found. Request a new one." }); return; }
+    if (!verifyOtpHash(otp, storedHash)) { res.status(400).json({ error: "Invalid OTP." }); return; }
+    if (fromDb) await db.delete(otpStoreTable).where(eq(otpStoreTable.phone, phone)).catch(() => {});
+    else cache.deleteOtp(phone);
+
+    const [phoneUser] = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
+    const [currentUser] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!));
+    if (!currentUser) { res.status(404).json({ error: "Current account not found" }); return; }
+
+    if (!phoneUser) {
+      // No separate account exists — simply attach phone to current account
+      await db.update(usersTable).set({ phone }).where(eq(usersTable.id, req.userId!));
+      res.json({ success: true, merged: false, message: "Phone number linked to your account." });
+      return;
+    }
+    if (phoneUser.id === currentUser.id) {
+      res.json({ success: true, merged: false, message: "Phone already linked to this account." });
+      return;
+    }
+
+    // Merge: transfer all health data from the phone-only account into current account
+    const phoneUserId = phoneUser.id;
+    const currentUserId = currentUser.id;
+    const transferTables = [
+      "food_logs", "water_logs", "exercise_logs", "stress_logs",
+      "medicine_schedules", "medicine_logs", "daily_health_scores",
+      "user_health_goals", "user_medical_conditions", "blood_donors",
+      "subscriptions", "push_tokens", "period_logs", "medical_reports",
+    ];
+    for (const table of transferTables) {
+      await pool.query(`UPDATE ${table} SET user_id=$1 WHERE user_id=$2`, [currentUserId, phoneUserId]).catch(() => {});
+    }
+
+    // Attach phone to current account and upgrade plan if phone account had higher tier
+    await db.update(usersTable).set({ phone }).where(eq(usersTable.id, currentUserId));
+    const planOrder: string[] = ["free", "pro", "max", "family"];
+    if (planOrder.indexOf(phoneUser.plan) > planOrder.indexOf(currentUser.plan)) {
+      await db.update(usersTable).set({ plan: phoneUser.plan }).where(eq(usersTable.id, currentUserId));
+    }
+
+    // Deactivate the now-empty phone account (soft delete — preserves audit trail)
+    await pool.query(`UPDATE users SET is_active=false, phone=null WHERE id=$1`, [phoneUserId]).catch(() => {});
+
+    req.log.info({ currentUserId, phoneUserId }, "Accounts merged via link-phone");
+    res.json({ success: true, merged: true, message: "Accounts merged. Your phone health data has been moved to this account." });
+  } catch (err) {
+    req.log.error({ err }, "Account link-phone error");
+    res.status(500).json({ error: "Failed to link accounts" });
   }
 });
 
