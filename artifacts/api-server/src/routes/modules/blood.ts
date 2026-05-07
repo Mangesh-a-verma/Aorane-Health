@@ -1,7 +1,7 @@
 // Blood Emergency Module — pool.query fix applied
 import { Router } from "express";
 import { db, pool, bloodDonorsTable, bloodDonationsTable, bloodEmergencyRequestsTable } from "@workspace/db";
-import { eq, and, or, ilike, isNull, lt, sql, inArray, ne } from "drizzle-orm";
+import { eq, and, or, ilike, isNull, isNotNull, lt, sql, inArray, ne } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import { cache } from "../../lib/redis";
 import { logger } from "../../lib/logger";
@@ -93,22 +93,25 @@ router.get("/blood/donors", async (req, res) => {
     }
     if (city) conditions.push(ilike(bloodDonorsTable.city, `%${city}%`));
 
-    const donors = await db.select().from(bloodDonorsTable).where(and(...conditions)).limit(50);
+    // GPS search: only fetch donors who have coordinates stored (scalability fix)
+    const gpsSearch = !!(lat && lng);
+    if (gpsSearch) conditions.push(isNotNull(bloodDonorsTable.lat), isNotNull(bloodDonorsTable.lng));
+
+    const donors = await db.select().from(bloodDonorsTable).where(and(...conditions)).limit(200);
 
     // If GPS provided — filter by radius and sort by distance
-    if (lat && lng) {
+    if (gpsSearch) {
       const userLat = parseFloat(lat);
       const userLng = parseFloat(lng);
       const radius = parseFloat(radiusKm);
       const withDist = donors
         .map(d => ({
           ...d,
-          distanceKm: d.lat && d.lng
-            ? haversineKm(userLat, userLng, parseFloat(d.lat), parseFloat(d.lng))
-            : null,
+          distanceKm: haversineKm(userLat, userLng, parseFloat(d.lat!), parseFloat(d.lng!)),
         }))
-        .filter(d => d.distanceKm === null || d.distanceKm <= radius)
-        .sort((a, b) => (a.distanceKm ?? 9999) - (b.distanceKm ?? 9999))
+        // FIXED: was (=== null || <=radius) — was incorrectly including donors without coordinates
+        .filter(d => d.distanceKm <= radius)
+        .sort((a, b) => a.distanceKm - b.distanceKm)
         .slice(0, 20);
       res.json({ donors: withDist, nearbySearch: true });
       return;
