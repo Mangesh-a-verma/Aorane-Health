@@ -191,9 +191,13 @@ router.get("/blood/donors", async (req, res) => {
 // ── Emergency Request (OTP-based — for web portal) ────────────────────────────
 router.post("/blood/request", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const monthKey = `blood_req:${req.userId}:${new Date().toISOString().slice(0, 7)}`;
-    const monthCount = cache.getRateLimit(monthKey);
-    if (monthCount >= 3) {
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(*) FROM blood_emergency_requests
+       WHERE requester_id = $1
+         AND DATE_TRUNC('month', created_at AT TIME ZONE 'UTC') = DATE_TRUNC('month', NOW() AT TIME ZONE 'UTC')`,
+      [req.userId]
+    );
+    if (parseInt(countRows[0].count) >= 3) {
       res.status(429).json({ error: "Maximum 3 blood requests per month allowed" });
       return;
     }
@@ -378,19 +382,35 @@ router.post("/blood/request/:id/respond", requireAuth, async (req: AuthRequest, 
   }
 });
 
-// ── Flag Request ──────────────────────────────────────────────────────────────
+// ── Flag Request (one flag per user — duplicate ignored) ─────────────────────
 router.post("/blood/request/:id/flag", requireAuth, async (req: AuthRequest, res) => {
   try {
     const flagId = String(req.params.id);
-    const existing = await pool.query(
-      `SELECT id, flag_count FROM blood_emergency_requests WHERE id = $1`,
+    const reqRow = await pool.query(
+      `SELECT id FROM blood_emergency_requests WHERE id = $1`,
       [flagId]
     );
-    if (!existing.rows.length) { res.status(404).json({ error: "Request not found" }); return; }
-    const newCount = (existing.rows[0].flag_count || 0) + 1;
+    if (!reqRow.rows.length) { res.status(404).json({ error: "Request not found" }); return; }
+
+    const dupCheck = await pool.query(
+      `SELECT id FROM blood_request_flags WHERE request_id = $1 AND user_id = $2`,
+      [flagId, req.userId]
+    );
+    if (dupCheck.rows.length) {
+      res.json({ success: true, alreadyFlagged: true });
+      return;
+    }
+
     await pool.query(
-      `UPDATE blood_emergency_requests SET flag_count = $1, is_flagged = $2 WHERE id = $3`,
-      [newCount, newCount >= 3, flagId]
+      `INSERT INTO blood_request_flags (request_id, user_id) VALUES ($1, $2)`,
+      [flagId, req.userId]
+    );
+    await pool.query(
+      `UPDATE blood_emergency_requests
+       SET flag_count = flag_count + 1,
+           is_flagged = (flag_count + 1 >= 3)
+       WHERE id = $1`,
+      [flagId]
     );
     res.json({ success: true });
   } catch (err) {
@@ -444,10 +464,14 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
       return;
     }
 
-    // Rate limit: max 3 per month
-    const monthKey = `blood_direct:${req.userId as string}:${new Date().toISOString().slice(0, 7)}`;
-    const monthCount = cache.getRateLimit(monthKey);
-    if (monthCount >= 3) {
+    // Rate limit: max 3 per month — DB-backed (survives server restarts)
+    const { rows: rlRows } = await pool.query(
+      `SELECT COUNT(*) FROM blood_emergency_requests
+       WHERE requester_id = $1
+         AND DATE_TRUNC('month', created_at AT TIME ZONE 'UTC') = DATE_TRUNC('month', NOW() AT TIME ZONE 'UTC')`,
+      [req.userId]
+    );
+    if (parseInt(rlRows[0].count) >= 3) {
       res.status(429).json({ error: "Maximum 3 blood requests are allowed per month." });
       return;
     }
