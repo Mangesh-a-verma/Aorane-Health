@@ -385,9 +385,14 @@ export default function FoodScreen() {
           : <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.96)" }]} />
         }
         <View style={s.headerRow}>
-          <View>
-            <Text style={s.title}>Food Log 🍽️</Text>
-            <Text style={s.subtitle}>{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <TouchableOpacity onPress={() => router.back()} activeOpacity={0.8} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: DS.color.primarySoft, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="arrow-back" size={19} color={P} />
+            </TouchableOpacity>
+            <View>
+              <Text style={s.title}>Food Log 🍽️</Text>
+              <Text style={s.subtitle}>{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}</Text>
+            </View>
           </View>
           <TouchableOpacity onPress={() => openModal("breakfast")} activeOpacity={0.85} style={s.addBtn}>
             <Plus size={22} color="#FFF" strokeWidth={2.5} />

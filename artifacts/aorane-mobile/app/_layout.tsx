@@ -69,6 +69,7 @@ function RootLayoutNav() {
       <Stack.Screen name="blood" />
       <Stack.Screen name="suggestions" />
       <Stack.Screen name="notification-settings" />
+      <Stack.Screen name="sleep" />
     </Stack>
   );
 }

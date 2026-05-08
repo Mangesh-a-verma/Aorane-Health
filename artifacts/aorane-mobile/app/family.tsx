@@ -565,18 +565,30 @@ export default function FamilyScreen() {
   ]);
 
   if (loading) return (
-    <View style={{ flex: 1, backgroundColor: bg, alignItems: "center", justifyContent: "center" }}>
-      <ActivityIndicator size="large" color="#0077B6" />
-      <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.35)", marginTop: 12, fontFamily: "Inter_400Regular" }}>Loading family...</Text>
+    <View style={{ flex: 1, backgroundColor: bg }}>
+      <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 12 }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="arrow-back" size={20} color="#0077B6" />
+        </TouchableOpacity>
+      </View>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator size="large" color="#0077B6" />
+        <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.35)", marginTop: 12, fontFamily: "Inter_400Regular" }}>Loading family...</Text>
+      </View>
     </View>
   );
 
   if (needsUpgrade) return (
     <View style={{ flex: 1, backgroundColor: bg }}>
       <LinearGradient colors={isDark ? ["#0077B620","transparent"] : ["#BAE6FD60","transparent"]} style={{ position: "absolute", top: 0, left: 0, right: 0, height: 200 }} />
-      <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 12 }}>
-        <Text style={{ color: isDark ? "#fff" : "#0F172A", fontSize: 24, fontFamily: "Inter_700Bold" }}>👨‍👩‍👧‍👦 Family</Text>
-        <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Family health in one place</Text>
+      <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 12, flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="arrow-back" size={20} color="#0077B6" />
+        </TouchableOpacity>
+        <View>
+          <Text style={{ color: isDark ? "#fff" : "#0F172A", fontSize: 24, fontFamily: "Inter_700Bold" }}>👨‍👩‍👧‍👦 Family</Text>
+          <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Family health in one place</Text>
+        </View>
       </View>
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 28 }}>
         <GlassCard style={{ width: "100%" }}>
@@ -615,9 +627,14 @@ export default function FamilyScreen() {
       <LinearGradient colors={isDark ? ["#0077B620","transparent"] : ["#BAE6FD60","transparent"]} style={{ position: "absolute", top: 0, left: 0, right: 0, height: 200 }} />
 
       <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <View>
-          <Text style={{ color: isDark ? "#fff" : "#0F172A", fontSize: 24, fontFamily: "Inter_700Bold" }}>👨‍👩‍👧‍👦 Family</Text>
-          <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Family health in one place</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="arrow-back" size={20} color="#0077B6" />
+          </TouchableOpacity>
+          <View>
+            <Text style={{ color: isDark ? "#fff" : "#0F172A", fontSize: 24, fontFamily: "Inter_700Bold" }}>👨‍👩‍👧‍👦 Family</Text>
+            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Family health in one place</Text>
+          </View>
         </View>
         {group && !isOwner && (
           <TouchableOpacity onPress={() => setShowPermission(true)} style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.1)", borderRadius: 10, padding: 10 }}>
