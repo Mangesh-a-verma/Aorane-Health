@@ -3,12 +3,12 @@ import { Platform } from "react-native";
 import { setCachedResponse, getCachedResponse, setOnlineState } from "./offlineQueue";
 import { APILimitError } from "./apiErrors";
 
-// On web browser → use EXPO_PUBLIC_API_URL if set (production), else relative /api (local proxy)
-// On native (Expo Go / APK) → use production URL from env or fallback
+// On web browser → always use relative /api (routed by Replit proxy → local api-server)
+// On native (Expo Go / APK) → use EXPO_PUBLIC_API_URL env var or production fallback
 const API_BASE =
   Platform.OS === "web"
-    ? (process.env.EXPO_PUBLIC_API_URL || "/api")
-    : (process.env.EXPO_PUBLIC_API_URL || "http://localhost:8080/api");
+    ? "/api"
+    : (process.env.EXPO_PUBLIC_API_URL || "https://aorane.onrender.com/api");
 
 let _onUnauthorized: (() => void) | null = null;
 let _isRefreshing = false;
@@ -24,6 +24,7 @@ async function getToken(): Promise<string | null> {
 const AUTH_KEYS = ["auth_token", "refresh_token", "user_data", "onboarding_done", "pin_set", "app_pin"];
 
 async function clearAuthAndNotify() {
+  console.warn("[API] clearAuthAndNotify — session cleared, logging out user");
   await AsyncStorage.multiRemove(AUTH_KEYS);
   _onUnauthorized?.();
 }
