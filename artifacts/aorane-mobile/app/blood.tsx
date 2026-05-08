@@ -414,32 +414,36 @@ export default function BloodEmergencyScreen() {
   const submitEmergency = async () => {
     setReqSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+    const payload = {
+      patientName: reqPatientName.trim(),
+      bloodGroup: reqBloodGroup,
+      unitsNeeded: parseInt(reqUnits) || 2,
+      hospitalName: reqHospitalName.trim(),
+      hospitalAddress: reqHospitalAddress.trim(),
+      hospitalCity: reqHospitalCity.trim(),
+      hospitalState: reqHospitalState.trim(),
+      hospitalPincode: reqHospitalPincode.trim() || undefined,
+      hospitalPhone: reqHospitalPhone.trim(),
+      hospitalLat: reqHospitalLat,
+      hospitalLng: reqHospitalLng,
+      doctorName: reqDoctorName.trim() || undefined,
+      doctorPhone: reqDoctorPhone.trim() || undefined,
+      contactPhone: reqContactPhone.trim(),
+      contactName: reqContactName.trim() || undefined,
+      urgency: reqUrgency,
+      notes: reqNotes.trim() || undefined,
+    };
+    console.log("[BloodEmergency] submitEmergency called, payload:", JSON.stringify(payload));
     try {
-      await api.createBloodEmergency({
-        patientName: reqPatientName.trim(),
-        bloodGroup: reqBloodGroup,
-        unitsNeeded: parseInt(reqUnits) || 2,
-        hospitalName: reqHospitalName.trim(),
-        hospitalAddress: reqHospitalAddress.trim(),
-        hospitalCity: reqHospitalCity.trim(),
-        hospitalState: reqHospitalState.trim(),
-        hospitalPincode: reqHospitalPincode.trim() || undefined,
-        hospitalPhone: reqHospitalPhone.trim(),
-        hospitalLat: reqHospitalLat,
-        hospitalLng: reqHospitalLng,
-        doctorName: reqDoctorName.trim() || undefined,
-        doctorPhone: reqDoctorPhone.trim() || undefined,
-        contactPhone: reqContactPhone.trim(),
-        contactName: reqContactName.trim() || undefined,
-        urgency: reqUrgency,
-        notes: reqNotes.trim() || undefined,
-      });
+      const result = await api.createBloodEmergency(payload);
+      console.log("[BloodEmergency] SUCCESS:", JSON.stringify(result));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setShowModal(false);
       resetModal();
       Alert.alert("🆘 Emergency Posted!", "Blood emergency request sent to all donors.\n\nDonors will contact the hospital directly.");
       await loadEmergencies();
     } catch (e: unknown) {
+      console.error("[BloodEmergency] ERROR:", (e as Error).message, e);
       Alert.alert("Error", (e as Error).message || "Could not post request");
     }
     setReqSubmitting(false);
