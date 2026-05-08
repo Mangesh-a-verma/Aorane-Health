@@ -44,9 +44,9 @@ export async function sendExpoPushNotifications(
       const errBody = await res.text().catch(() => "");
       throw new Error(`Expo Push API ${res.status}: ${errBody}`);
     }
-    const result = await res.json().catch(() => null);
+    const result = await res.json().catch(() => null) as { data?: Array<{ status: string; message?: string }> } | null;
     if (result?.data) {
-      const failed = (result.data as Array<{ status: string; message?: string }>)
+      const failed = result.data
         .filter(r => r.status === "error");
       if (failed.length) {
         logger.warn({ count: failed.length, messages: failed.map(f => f.message).join(", ") }, "Push tokens failed");
