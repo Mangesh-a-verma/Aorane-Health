@@ -267,7 +267,7 @@ router.get("/food/favorites", requireAuth, async (req: AuthRequest, res) => {
 
 // ── AI Food Scan — 4-level lookup: History → DB → AI-Cache → Gemini AI ───────
 // This is the core of AI cost reduction: personal history is checked FIRST
-router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
+router.post("/food/scan", requireAuth, aiRateLimit("food_scan", 20), async (req: AuthRequest, res) => {
   try {
     const { foodName, imageBase64, mimeType } = req.body as { foodName?: string; imageBase64?: string; mimeType?: string };
     const searchTerm = foodName?.toLowerCase().trim();

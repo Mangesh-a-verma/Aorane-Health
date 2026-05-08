@@ -679,7 +679,6 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
       err: e.message,
       stack: e.stack?.split("\n").slice(0, 4).join(" | "),
       userId: req.userId,
-      body: req.body,
     }, "Blood emergency create failed");
     res.status(500).json({ error: "Failed to create blood emergency. Please try again in a moment." });
   }
