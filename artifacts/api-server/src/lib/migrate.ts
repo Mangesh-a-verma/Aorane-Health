@@ -1222,6 +1222,16 @@ export async function runStartupMigrations(): Promise<void> {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
     `CREATE UNIQUE INDEX IF NOT EXISTS uq_blood_request_flags_user_request ON blood_request_flags (request_id, user_id)`,
+
+    // ── blood_emergency_requests: hospital GPS + cancel support ───────────────
+    `ALTER TABLE blood_emergency_requests ADD COLUMN IF NOT EXISTS hospital_lat TEXT`,
+    `ALTER TABLE blood_emergency_requests ADD COLUMN IF NOT EXISTS hospital_lng TEXT`,
+    `ALTER TABLE blood_emergency_requests ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ`,
+
+    // ── blood_donors: otp_verified + verified_at + donor_inactive_until ───────
+    `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS otp_verified BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
+    `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS donor_inactive_until TIMESTAMPTZ`,
   ];
 
   let ok = 0; let fail = 0;
