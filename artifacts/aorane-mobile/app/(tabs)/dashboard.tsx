@@ -846,11 +846,9 @@ export default function DashboardScreen() {
                 { emoji: "💊", label: "Medicine",    sub: "Reminders",      route: "/(tabs)/medicine",   iconBg: "#DBEAFE" },
                 { emoji: "📊", label: "Reports",     sub: "Health report",  route: "/health-report",     iconBg: "#F1F5F9" },
               ],
-              [
-                userGender === "female"
-                  ? { emoji: "🌸", label: "Period",  sub: "Cycle tracker",  route: "/period",            iconBg: "#FCE7F3" }
-                  : { emoji: "🔥", label: "Calories", sub: "Nutrition",     route: "/(tabs)/food",       iconBg: "#FEE2E2" },
-              ],
+              ...(userGender === "female" ? [[
+                { emoji: "🌸", label: "Period", sub: "Cycle tracker", route: "/period", iconBg: "#FCE7F3" },
+              ]] : []),
             ].map((row, ri) => (
               <View key={ri} style={[s.toolGrid, ri > 0 && { marginTop: 8 }]}>
                 {row.map((t) => (

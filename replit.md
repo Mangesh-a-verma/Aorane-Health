@@ -40,7 +40,7 @@ AORANE's architecture is composed of a mobile app (Expo/React Native), a Busines
 - **AI Provider Abstraction Layer:** `lib/ai.ts` routes features to correct AI provider (NVIDIA or Gemini), with `requireFeature()` middleware and in-memory cache.
 - **Weather-Based Food Suggestions:** AI-powered seasonal Indian food recommendations.
 - **App Sessions / DAU Tracking:** Tracks user sessions; DAU/MAU stats in Admin Panel.
-- **Google Fit Integration:** `openAuthSessionAsync` on Android for OAuth flow. Callback via `APP_URL_BASE`.
+- **Wearable Integration:** Health Connect (Android) — native SDK, no OAuth needed. Google Fit is discontinued (shut down March 2024) and will NOT be used.
 
 ## Demo Users (6 seeded for testing)
 | Name | Email | Plan | Focus |
