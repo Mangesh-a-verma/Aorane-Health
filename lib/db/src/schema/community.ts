@@ -90,8 +90,11 @@ export const bloodEmergencyRequestsTable = pgTable("blood_emergency_requests", {
   flagCount: integer("flag_count").notNull().default(0),
   isFlagged: boolean("is_flagged").notNull().default(false),
   notes: text("notes"),
+  hospitalLat: text("hospital_lat"),
+  hospitalLng: text("hospital_lng"),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   fulfilledAt: timestamp("fulfilled_at", { withTimezone: true }),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
