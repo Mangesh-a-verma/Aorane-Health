@@ -46,6 +46,7 @@ export const bloodDonorsTable = pgTable("blood_donors", {
   countryCode: text("country_code").notNull().default("IN"),
   lat: text("lat"),
   lng: text("lng"),
+  phone: text("phone"),
   isAvailable: boolean("is_available").notNull().default(true),
   lastDonatedAt: text("last_donated_at"),
   nextEligibleAt: text("next_eligible_at"),
@@ -175,7 +176,7 @@ export const bloodDonationsTable = pgTable("blood_donations", {
   donorId: uuid("donor_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   requestId: uuid("request_id").references(() => bloodEmergencyRequestsTable.id, { onDelete: "set null" }),
   bloodGroup: bloodGroupEnum("blood_group").notNull(),
-  unitsDoanted: integer("units_donated").notNull().default(1),
+  unitsDonated: integer("units_donated").notNull().default(1),
   hospitalName: text("hospital_name"),
   hospitalCity: text("hospital_city"),
   donatedAt: timestamp("donated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -185,7 +186,15 @@ export const bloodDonationsTable = pgTable("blood_donations", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const bloodRequestFlagsTable = pgTable("blood_request_flags", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  requestId: uuid("request_id").notNull().references(() => bloodEmergencyRequestsTable.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type BloodDonor = typeof bloodDonorsTable.$inferSelect;
 export type BloodEmergencyRequest = typeof bloodEmergencyRequestsTable.$inferSelect;
 export type BloodDonation = typeof bloodDonationsTable.$inferSelect;
+export type BloodRequestFlag = typeof bloodRequestFlagsTable.$inferSelect;
 export type FamilyGroup = typeof familyGroupsTable.$inferSelect;

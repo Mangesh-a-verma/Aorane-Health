@@ -30,32 +30,26 @@ router.post("/blood/donor/register", requireAuth, async (req: AuthRequest, res) 
       res.status(400).json({ error: "Blood group, city, state required" });
       return;
     }
-    const otp = generateOtp(6);
-    const hashed = hashOtp(otp);
-    cache.setOtp(`blood_donor:${req.userId}`, hashed);
-    if (phone) await sendSmsOtp(phone, otp);
     const existing = await db.select().from(bloodDonorsTable).where(eq(bloodDonorsTable.userId, req.userId!));
     if (existing.length) {
-      const donor = existing[0];
-      const cooldownExpired = !donor.donorInactiveUntil || donor.donorInactiveUntil < new Date();
-      if (cooldownExpired && !donor.isAvailable) {
-        await db.update(bloodDonorsTable).set({
-          isAvailable: true,
-          bloodGroup: bloodGroup as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-",
-          city, state,
-          lat: lat ?? donor.lat,
-          lng: lng ?? donor.lng,
-        }).where(eq(bloodDonorsTable.userId, req.userId!));
-      }
-      res.json({ success: true, requiresOtp: true, message: "OTP sent for verification" });
+      // Always update all fields on re-registration (city/state/blood group/phone/GPS)
+      await db.update(bloodDonorsTable).set({
+        bloodGroup: bloodGroup as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-",
+        city, state,
+        lat: lat ?? existing[0].lat,
+        lng: lng ?? existing[0].lng,
+        ...(phone ? { phone } : {}),
+        otpVerified: true,
+      }).where(eq(bloodDonorsTable.userId, req.userId!));
+      res.json({ success: true, message: "Donor profile updated!" });
       return;
     }
     await db.insert(bloodDonorsTable).values({
       userId: req.userId!,
       bloodGroup: bloodGroup as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-",
-      city, state, countryCode, lat, lng,
+      city, state, countryCode, lat, lng, phone, otpVerified: true,
     });
-    res.json({ success: true, requiresOtp: true, message: "OTP sent for verification" });
+    res.json({ success: true, message: "Registered as blood donor!" });
   } catch {
     res.status(500).json({ error: "Failed to register donor" });
   }
@@ -115,19 +109,13 @@ router.patch("/blood/donor/availability", requireAuth, async (req: AuthRequest, 
   }
 });
 
+// OTP verification removed — donors are auto-verified on registration
 router.post("/blood/donor/verify-otp", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { otp } = req.body as { otp: string };
-    const stored = cache.getOtp(`blood_donor:${req.userId}`);
-    if (!stored || !verifyOtpHash(otp, stored)) {
-      res.status(400).json({ error: "Invalid or expired OTP" });
-      return;
-    }
-    cache.deleteOtp(`blood_donor:${req.userId}`);
     await db.update(bloodDonorsTable).set({ otpVerified: true, verifiedAt: new Date() }).where(eq(bloodDonorsTable.userId, req.userId!));
     res.json({ success: true, message: "Donor verified successfully" });
   } catch {
-    res.status(500).json({ error: "OTP verification failed" });
+    res.status(500).json({ error: "Verification failed" });
   }
 });
 
@@ -252,7 +240,7 @@ router.post("/blood/request/verify-otp", requireAuth, async (req: AuthRequest, r
     cache.delete(`blood_req_pending:${req.userId}`);
 
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 48);
+    expiresAt.setHours(expiresAt.getHours() + 72);
 
     const [request] = await db.insert(bloodEmergencyRequestsTable).values({
       requesterId: req.userId as string,
@@ -274,9 +262,6 @@ router.post("/blood/request/verify-otp", requireAuth, async (req: AuthRequest, r
       otpVerified: true,
       expiresAt,
     }).returning();
-
-    const monthKey = `blood_req:${req.userId}:${new Date().toISOString().slice(0, 7)}`;
-    cache.incrementRateLimit(monthKey, 31 * 24 * 3600);
 
     res.status(201).json({ success: true, request });
   } catch {
@@ -687,10 +672,10 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
 router.post("/blood/donate/confirm", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
-    const { requestId, bloodGroup, unitsDoanted = 1, hospitalName, hospitalCity, notes } = req.body as {
+    const { requestId, bloodGroup, unitsDonated = 1, hospitalName, hospitalCity, notes } = req.body as {
       requestId?: string;
       bloodGroup: string;
-      unitsDoanted?: number;
+      unitsDonated?: number;
       hospitalName?: string;
       hospitalCity?: string;
       notes?: string;
@@ -721,7 +706,7 @@ router.post("/blood/donate/confirm", requireAuth, async (req: AuthRequest, res) 
       donorId: userId,
       requestId: requestId || null,
       bloodGroup: bloodGroup as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-",
-      unitsDoanted: Number(unitsDoanted) || 1,
+      unitsDonated: Number(unitsDonated) || 1,
       hospitalName,
       hospitalCity,
       donatedAt,

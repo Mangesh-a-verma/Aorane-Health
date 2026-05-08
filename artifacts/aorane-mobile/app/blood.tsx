@@ -168,6 +168,7 @@ export default function BloodEmergencyScreen() {
   const [formStep, setFormStep] = useState<"form" | "disclaimer">("form");
   const [urgencyFilter, setUrgencyFilter] = useState<"all" | "critical" | "urgent" | "routine">("all");
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
 
   useEffect(() => { loadEmergencies(); }, []);
 
@@ -333,7 +334,7 @@ export default function BloodEmergencyScreen() {
       await api.registerBloodDonor({ bloodGroup: donorBloodGroup, city: donorCity.trim(), state: donorState.trim(), phone: donorPhone.trim(), lat: donorLat, lng: donorLng });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       const gpsNote = donorLat ? "\n\nAap GPS Near Me search mein bhi dikhenge. ✅" : "\n\nTip: GPS add karo taaki Near Me search mein aao.";
-      Alert.alert("✅ Registered!", `You are now registered as a blood donor!${gpsNote}\n\nThank you! 🙏 One donation saves 3 lives ❤️`);
+      Alert.alert("✅ Registered!", `You are now a blood donor!${gpsNote}\n\nThank you! 🙏 Ek donation se 3 lives bachti hain ❤️`);
       setDonorCity(""); setDonorState(""); setDonorPhone("");
       setDonorLat(undefined); setDonorLng(undefined);
     } catch (e) { Alert.alert("Error", (e as Error).message || "Registration failed"); }
@@ -394,6 +395,21 @@ export default function BloodEmergencyScreen() {
         }},
       ]
     );
+  }, []);
+
+  const handleRespond = useCallback(async (id: string) => {
+    setRespondingId(id);
+    try {
+      await api.respondToBloodEmergency(id, "can_help");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Alert.alert(
+        "✅ Response Registered!",
+        "Aapka response save ho gaya.\n\nHospital ko directly contact karo. Requester ko notification bhi mil gayi hai. 🙏",
+      );
+    } catch {
+      Alert.alert("Error", "Response submit nahi ho saka. Dobara try karo.");
+    }
+    setRespondingId(null);
   }, []);
 
   const goToDisclaimer = () => {
@@ -723,18 +739,28 @@ export default function BloodEmergencyScreen() {
                     </View>
                   )}
 
-                  {/* Call CTA — always visible */}
+                  {/* Action buttons — always visible */}
                   <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
+                    <TouchableOpacity
+                      onPress={() => handleRespond(req.id)}
+                      disabled={respondingId === req.id}
+                      activeOpacity={0.85}
+                      style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, backgroundColor: "rgba(16,185,129,0.12)", borderRadius: 10, height: 40, borderWidth: 1, borderColor: "rgba(16,185,129,0.35)" }}>
+                      {respondingId === req.id
+                        ? <ActivityIndicator size="small" color={C.green} />
+                        : <Ionicons name="heart" size={14} color={C.green} />}
+                      <Text style={{ color: C.green, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>I Can Help</Text>
+                    </TouchableOpacity>
                     {req.hospitalPhone && (
-                      <TouchableOpacity onPress={() => callPhone(req.hospitalPhone)} activeOpacity={0.85} style={{ flex: 1 }}>
-                        <LinearGradient colors={["#DC2626", "#B91C1C"]} style={[styles.actionBtn, { height: 40, borderRadius: 10 }]}>
-                          <Ionicons name="call" size={15} color="#FFF" />
-                          <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Hospital Call</Text>
+                      <TouchableOpacity onPress={() => callPhone(req.hospitalPhone)} activeOpacity={0.85}>
+                        <LinearGradient colors={["#DC2626", "#B91C1C"]} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, height: 40, borderRadius: 10, paddingHorizontal: 14 }}>
+                          <Ionicons name="call" size={14} color="#FFF" />
+                          <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 12 }}>Hospital</Text>
                         </LinearGradient>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity onPress={() => setExpandedId(isExpanded ? null : req.id)}
-                      style={{ backgroundColor: C.border, borderRadius: 10, paddingHorizontal: 14, alignItems: "center", justifyContent: "center", height: 40 }}>
+                      style={{ backgroundColor: C.border, borderRadius: 10, paddingHorizontal: 12, alignItems: "center", justifyContent: "center", height: 40 }}>
                       <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={18} color={C.muted} />
                     </TouchableOpacity>
                   </View>
@@ -900,13 +926,6 @@ export default function BloodEmergencyScreen() {
                   </View>
                 )}
 
-                {/* OTP not verified warning */}
-                {!donorStatus.otpVerified && (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(220,38,38,0.08)", borderRadius: 10, padding: 10, marginTop: 10 }}>
-                    <Ionicons name="warning" size={16} color={C.primary} />
-                    <Text style={{ color: C.primary, fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>OTP verify nahi hua — neeche se register dobara karein aur OTP complete karein</Text>
-                  </View>
-                )}
               </Card>
             ) : null}
 

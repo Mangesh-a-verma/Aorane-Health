@@ -1232,6 +1232,10 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS otp_verified BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
     `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS donor_inactive_until TIMESTAMPTZ`,
+
+    // ── blood_donors: phone column + auto-verify all existing donors (OTP flow removed) ─
+    `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS phone TEXT`,
+    `UPDATE blood_donors SET otp_verified = TRUE WHERE otp_verified = FALSE`,
   ];
 
   let ok = 0; let fail = 0;
