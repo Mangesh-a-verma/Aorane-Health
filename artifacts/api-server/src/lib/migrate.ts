@@ -1192,16 +1192,33 @@ export async function runStartupMigrations(): Promise<void> {
 
     // ══════════════════════════════════════════════════════════════════════════
     // ORG SEAT PLANS — Set yearly prices (₹169/seat/month × 12 = ₹2028, ₹211/seat/month × 12 = ₹2532)
+    // Fix: yearly_price is NUMERIC — cannot compare to '' (empty string), only IS NULL
     // ══════════════════════════════════════════════════════════════════════════
-    `UPDATE plan_pricing SET yearly_price = '2028' WHERE plan_key = 'org_max' AND (yearly_price IS NULL OR yearly_price = '')`,
-    `UPDATE plan_pricing SET yearly_price = '2532' WHERE plan_key = 'org_pro' AND (yearly_price IS NULL OR yearly_price = '')`,
+    `UPDATE plan_pricing SET yearly_price = '2028' WHERE plan_key = 'org_max' AND yearly_price IS NULL`,
+    `UPDATE plan_pricing SET yearly_price = '2532' WHERE plan_key = 'org_pro' AND yearly_price IS NULL`,
 
     // ══════════════════════════════════════════════════════════════════════════
     // SECURITY FIX C4: organizations.contact_email unique constraint
     // SECURITY FIX C5: org_admins.email unique constraint (also fixes E6 race condition)
+    // Dedup first (keep newest row per email) so the unique index can be created
+    // even if production already has duplicate emails from before this fix.
     // SECURITY FIX A5: last_logout_at columns for token revocation
     // ══════════════════════════════════════════════════════════════════════════
+    `DELETE FROM organizations o
+     WHERE o.id IN (
+       SELECT id FROM (
+         SELECT id, ROW_NUMBER() OVER (PARTITION BY contact_email ORDER BY created_at DESC) AS rn
+         FROM organizations WHERE contact_email IS NOT NULL
+       ) ranked WHERE rn > 1
+     )`,
     `CREATE UNIQUE INDEX IF NOT EXISTS uq_organizations_contact_email ON organizations (contact_email)`,
+    `DELETE FROM org_admins a
+     WHERE a.id IN (
+       SELECT id FROM (
+         SELECT id, ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC) AS rn
+         FROM org_admins WHERE email IS NOT NULL
+       ) ranked WHERE rn > 1
+     )`,
     `CREATE UNIQUE INDEX IF NOT EXISTS uq_org_admins_email ON org_admins (email)`,
     // BUG-7: UNIQUE on otp_store.phone prevents multiple OTP entries per phone/email key
     `CREATE UNIQUE INDEX IF NOT EXISTS uq_otp_store_phone ON otp_store (phone)`,
