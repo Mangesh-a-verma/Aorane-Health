@@ -479,7 +479,7 @@ router.patch("/blood/request/:id/cancel", requireAuth, async (req: AuthRequest, 
 router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res) => {
   try {
     const {
-      patientName, bloodGroup, unitsNeeded,
+      patientName, bloodGroup, bloodGroupNeeded, unitsNeeded,
       hospitalName, hospitalAddress, hospitalCity, hospitalState, hospitalPincode, hospitalPhone,
       hospitalLat, hospitalLng,
       doctorName, doctorPhone,
@@ -487,10 +487,12 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
       urgency, notes,
     } = req.body as Record<string, unknown>;
 
+    const resolvedBloodGroup = (bloodGroup || bloodGroupNeeded) as string;
+
     // ── Validation — compulsory fields ────────────────────────────────────────
     const missing: string[] = [];
     if (!patientName) missing.push("Patient name");
-    if (!bloodGroup) missing.push("Blood group");
+    if (!resolvedBloodGroup) missing.push("Blood group");
     if (!hospitalName) missing.push("Hospital name");
     if (!hospitalAddress) missing.push("Hospital address");
     if (!hospitalCity) missing.push("Hospital city");
@@ -523,7 +525,7 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
     const [request] = await db.insert(bloodEmergencyRequestsTable).values({
       requesterId: req.userId as string,
       patientName: String(patientName),
-      bloodGroupNeeded: String(bloodGroup) as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-",
+      bloodGroupNeeded: String(resolvedBloodGroup) as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-",
       unitsNeeded: Number(unitsNeeded) || 1,
       hospitalName: String(hospitalName),
       hospitalAddress: hospitalAddress ? String(hospitalAddress) : undefined,
@@ -548,7 +550,7 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
     // ── Fire-and-forget: notify compatible donors (GPS-based if lat/lng given, else city/state) ─
     (async () => {
       try {
-        const compatible = COMPATIBLE_DONORS[String(bloodGroup)] || [];
+        const compatible = COMPATIBLE_DONORS[String(resolvedBloodGroup)] || [];
         if (!compatible.length) return;
         const bgs = compatible as ("A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-")[];
 
@@ -585,7 +587,7 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
             if (at200.length > gpsDonors.length) { gpsDonors = at200; radius = 200; }
           }
           donorRows = gpsDonors.slice(0, 100);
-          logger.info({ count: donorRows.length, radius, bloodGroup, hospitalCity }, "[BloodEmergency] GPS-based donor search");
+          logger.info({ count: donorRows.length, radius, bloodGroup: resolvedBloodGroup, hospitalCity }, "[BloodEmergency] GPS-based donor search");
 
           // Also include city donors without GPS coords as a supplement
           if (donorRows.length < 10) {
@@ -630,7 +632,7 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
             const extra = stateRows.filter(r => !existingIds.has(r.userId));
             donorRows = [...donorRows, ...extra].slice(0, 100);
           }
-          logger.info({ count: donorRows.length, bloodGroup, hospitalCity }, "[BloodEmergency] City/state string donor search (no GPS)");
+          logger.info({ count: donorRows.length, bloodGroup: resolvedBloodGroup, hospitalCity }, "[BloodEmergency] City/state string donor search (no GPS)");
         }
 
         const uids: string[] = donorRows.map(r => r.userId);
@@ -642,12 +644,12 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
             await sendExpoPushNotifications(
               requesterTokens,
               "⚠️ No Donors Found Nearby",
-              `No ${bloodGroup} donors found in ${String(hospitalCity || "your area")} right now. Please share the request on WhatsApp/social media for faster help.`,
+              `No ${resolvedBloodGroup} donors found in ${String(hospitalCity || "your area")} right now. Please share the request on WhatsApp/social media for faster help.`,
               { screen: "blood", requestId: request?.id || "" },
               3600,
             );
           }
-          logger.warn({ bloodGroup, hospitalCity }, "[BloodEmergency] No donors found — requester notified");
+          logger.warn({ bloodGroup: resolvedBloodGroup, hospitalCity }, "[BloodEmergency] No donors found — requester notified");
           return;
         }
 
@@ -658,7 +660,7 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
         await sendExpoPushNotifications(
           tokens,
           "🩸 Blood Needed Urgently Nearby!",
-          `${bloodGroup} blood needed at ${String(hospitalName || "a hospital")} in ${String(hospitalCity || "your city")}. Please help!`,
+          `${resolvedBloodGroup} blood needed at ${String(hospitalName || "a hospital")} in ${String(hospitalCity || "your city")}. Please help!`,
           { screen: "blood", requestId: request?.id || "" },
           3600,
         );
@@ -669,7 +671,7 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
             [tokens.length, request.id]
           ).catch((e: Error) => logger.warn({ err: e.message }, "[BloodEmergency] donors_notified update failed"));
         }
-        logger.info({ tokens: tokens.length, bloodGroup, hospitalCity }, "[BloodEmergency] Push notifications sent");
+        logger.info({ tokens: tokens.length, bloodGroup: resolvedBloodGroup, hospitalCity }, "[BloodEmergency] Push notifications sent");
       } catch (notifErr) {
         logger.warn({ err: (notifErr as Error).message }, "[BloodEmergency] Push notification failed (non-fatal)");
       }
