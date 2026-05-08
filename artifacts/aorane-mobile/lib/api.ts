@@ -473,6 +473,8 @@ export const api = {
     hospitalState: string;
     hospitalPincode?: string;
     hospitalPhone: string;
+    hospitalLat?: number;
+    hospitalLng?: number;
     doctorName?: string;
     doctorPhone?: string;
     contactPhone: string;
@@ -481,6 +483,9 @@ export const api = {
     notes?: string;
   }) =>
     request<{ success: boolean; request: Record<string, unknown> }>("POST", "/blood/emergency/direct", data as Record<string, unknown>),
+
+  cancelBloodRequest: (requestId: string) =>
+    request<{ success: boolean }>("PATCH", `/blood/request/${requestId}/cancel`, {}),
 
   getBloodEmergencies: () =>
     request<{ requests: Array<Record<string, unknown>> }>("GET", "/blood/requests/active"),
