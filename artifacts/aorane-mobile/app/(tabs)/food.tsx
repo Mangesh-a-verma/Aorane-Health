@@ -234,6 +234,10 @@ export default function FoodScreen() {
   const handleTextChange = (t: string) => { setText(t); triggerSearch(t); };
 
   const pickPhoto = async () => {
+    if (userPlan === "FREE") {
+      setUpgradeConfig({ type: "plan_limit", featureKey: "food_scan", featureLabel: "Food Photo Scan", currentPlan: userPlan, requiredPlan: "PRO" });
+      return;
+    }
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) { Alert.alert("Permission", "Gallery access is required"); return; }
@@ -245,6 +249,10 @@ export default function FoodScreen() {
   };
 
   const takePhoto = async () => {
+    if (userPlan === "FREE") {
+      setUpgradeConfig({ type: "plan_limit", featureKey: "food_scan", featureLabel: "Food Photo Scan", currentPlan: userPlan, requiredPlan: "PRO" });
+      return;
+    }
     try {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) { Alert.alert("Permission", "Camera access is required"); return; }
