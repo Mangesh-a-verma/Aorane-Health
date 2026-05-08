@@ -1019,11 +1019,17 @@ router.get("/business/members/:userId/detail", requireBusinessAuth, async (req: 
 
 router.patch("/business/settings", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
-    const allowed = ["name", "contactEmail", "contactPhone", "city", "state", "gstin", "industry", "companySize"];
+    // Use literal property access (no bracket notation with variable keys) to avoid prototype injection
+    const b = req.body as Record<string, unknown>;
     const updates: Record<string, unknown> = {};
-    for (const field of allowed) {
-      if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field];
-    }
+    if (b.name          !== undefined) updates.name          = b.name;
+    if (b.contactEmail  !== undefined) updates.contactEmail  = b.contactEmail;
+    if (b.contactPhone  !== undefined) updates.contactPhone  = b.contactPhone;
+    if (b.city          !== undefined) updates.city          = b.city;
+    if (b.state         !== undefined) updates.state         = b.state;
+    if (b.gstin         !== undefined) updates.gstin         = b.gstin;
+    if (b.industry      !== undefined) updates.industry      = b.industry;
+    if (b.companySize   !== undefined) updates.companySize   = b.companySize;
     if (Object.keys(updates).length === 0) { res.status(400).json({ error: "No valid fields to update" }); return; }
     const [updated] = await db.update(organizationsTable).set(updates).where(eq(organizationsTable.id, req.orgId!)).returning();
     res.json({ org: updated });
