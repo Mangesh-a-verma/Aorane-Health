@@ -148,17 +148,17 @@ export async function rawRequest<T>(
   catch { throw new Error(`Unexpected server response (${res.status})`); }
 
   if (!res.ok) {
-    const errData = data as { error?: string; required?: string; used?: number; limit?: number; feature?: string };
+    const errData = data as { error?: string; required?: string; planRequired?: string; used?: number; usedToday?: number; limit?: number; limitPerDay?: number; feature?: string };
     if (res.status === 403) {
       throw new APILimitError("plan_limit", errData.error || "Feature not available in your plan", {
-        requiredPlan: errData.required,
+        requiredPlan: errData.planRequired || errData.required,
         feature: errData.feature,
       });
     }
     if (res.status === 429) {
       throw new APILimitError("daily_limit", errData.error || "Daily limit reached", {
-        used: errData.used,
-        limit: errData.limit,
+        used: errData.usedToday ?? errData.used,
+        limit: errData.limitPerDay ?? errData.limit,
         feature: errData.feature,
       });
     }
