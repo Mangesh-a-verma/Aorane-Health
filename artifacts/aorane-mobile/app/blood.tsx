@@ -603,19 +603,19 @@ export default function BloodEmergencyScreen() {
                 </View>
               </>
             )}
-            {reqView === "all" && (loading ? (
+            {reqView === "all" && loading && (
               <View style={{ alignItems: "center", paddingVertical: 40 }}>
                 <ActivityIndicator color={C.primary} size="large" />
               </View>
-            ) : (() => {
-              const filtered = urgencyFilter === "all" ? emergencies : emergencies.filter(e => (e.urgency || "urgent") === urgencyFilter);
-              return filtered.length === 0 ? (
+            )}
+            {reqView === "all" && !loading && (urgencyFilter === "all" ? emergencies : emergencies.filter(e => (e.urgency || "urgent") === urgencyFilter)).length === 0 && (
               <View style={{ alignItems: "center", paddingVertical: 40, gap: 10 }}>
                 <Ionicons name="checkmark-circle" size={52} color={C.green} />
                 <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 17 }}>{urgencyFilter === "all" ? "No active emergencies" : `No ${urgencyFilter} requests`}</Text>
                 <Text style={{ color: C.muted, fontSize: 14, fontFamily: "Inter_400Regular" }}>{urgencyFilter === "all" ? "There are no blood requests right now" : "Try a different filter"}</Text>
               </View>
-            ) : filtered.map((req) => {
+            )}
+            {reqView === "all" && !loading && (urgencyFilter === "all" ? emergencies : emergencies.filter(e => (e.urgency || "urgent") === urgencyFilter)).map((req) => {
               const urgConf = URGENCY_CONFIG[(req.urgency as keyof typeof URGENCY_CONFIG)] || URGENCY_CONFIG.urgent;
               const displayBlood = req.bloodGroupNeeded || req.bloodGroup || "?";
               const displayCity = req.hospitalCity || req.city || "";
@@ -736,7 +736,7 @@ export default function BloodEmergencyScreen() {
                   </View>
                 </Card>
               );
-            }))}
+            })}
           </View>
         )}
 
