@@ -161,8 +161,13 @@ export default function BloodEmergencyScreen() {
   const [reqContactPhone, setReqContactPhone] = useState("");
   // Notes
   const [reqNotes, setReqNotes] = useState("");
+  const [reqHospitalLat, setReqHospitalLat] = useState<number | undefined>();
+  const [reqHospitalLng, setReqHospitalLng] = useState<number | undefined>();
+  const [hospitalGpsLoading, setHospitalGpsLoading] = useState(false);
   const [reqSubmitting, setReqSubmitting] = useState(false);
   const [formStep, setFormStep] = useState<"form" | "disclaimer">("form");
+  const [urgencyFilter, setUrgencyFilter] = useState<"all" | "critical" | "urgent" | "routine">("all");
+  const [cancelling, setCancelling] = useState<string | null>(null);
 
   useEffect(() => { loadEmergencies(); }, []);
 
@@ -344,10 +349,52 @@ export default function BloodEmergencyScreen() {
     setReqPatientName(""); setReqUnits("2"); setReqUrgency("urgent");
     setReqHospitalName(""); setReqHospitalAddress(""); setReqHospitalCity(""); setReqHospitalState("");
     setReqHospitalPincode(""); setReqHospitalPhone("");
+    setReqHospitalLat(undefined); setReqHospitalLng(undefined);
     setReqDoctorName(""); setReqDoctorPhone("");
     setReqContactName(""); setReqContactPhone(""); setReqNotes("");
     setFormStep("form");
   };
+
+  const detectHospitalGPS = async () => {
+    setHospitalGpsLoading(true);
+    const coords = await getGPSCoords();
+    if (!coords) { setHospitalGpsLoading(false); return; }
+    try {
+      const [place] = await Location.reverseGeocodeAsync({ latitude: coords.lat, longitude: coords.lng });
+      if (place) {
+        if (!reqHospitalCity.trim()) setReqHospitalCity(place.city || place.district || place.subregion || "");
+        if (!reqHospitalState.trim()) setReqHospitalState(place.region || place.subregion || "");
+      }
+      setReqHospitalLat(coords.lat);
+      setReqHospitalLng(coords.lng);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Alert.alert("📍 Hospital Location Saved!", `GPS coordinates saved — donors will be found by proximity, not just city name.\n\nCity: ${place?.city || "—"}\nState: ${place?.region || "—"}`);
+    } catch {
+      Alert.alert("GPS Error", "Could not detect hospital location. Please fill city and state manually.");
+    }
+    setHospitalGpsLoading(false);
+  };
+
+  const handleCancelRequest = useCallback(async (id: string) => {
+    Alert.alert(
+      "Request Cancel Karo?",
+      "Yeh request permanently cancel ho jaayegi. Donors ko aur notification nahi jayegi.",
+      [
+        { text: "Nahi, Rehne Do", style: "cancel" },
+        { text: "Haan, Cancel Karo", style: "destructive", onPress: async () => {
+          setCancelling(id);
+          try {
+            await api.cancelBloodRequest(id);
+            setMyRequests(prev => prev.map(r => r.id === id ? { ...r, status: "cancelled" } : r));
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          } catch {
+            Alert.alert("Error", "Request cancel nahi ho saka. Dobara try karo.");
+          }
+          setCancelling(null);
+        }},
+      ]
+    );
+  }, []);
 
   const goToDisclaimer = () => {
     const missing: string[] = [];
@@ -378,6 +425,8 @@ export default function BloodEmergencyScreen() {
         hospitalState: reqHospitalState.trim(),
         hospitalPincode: reqHospitalPincode.trim() || undefined,
         hospitalPhone: reqHospitalPhone.trim(),
+        hospitalLat: reqHospitalLat,
+        hospitalLng: reqHospitalLng,
         doctorName: reqDoctorName.trim() || undefined,
         doctorPhone: reqDoctorPhone.trim() || undefined,
         contactPhone: reqContactPhone.trim(),
@@ -478,6 +527,7 @@ export default function BloodEmergencyScreen() {
                   active:    { color: C.green,   bg: "rgba(16,185,129,0.1)",   label: "Active" },
                   fulfilled: { color: C.blue,    bg: "rgba(0,119,182,0.1)",    label: "Fulfilled ✓" },
                   expired:   { color: "#9CA3AF", bg: "rgba(156,163,175,0.1)", label: "Expired" },
+                  cancelled: { color: "#9CA3AF", bg: "rgba(156,163,175,0.1)", label: "Cancelled" },
                 };
                 const sc = STATUS_CONFIG[r.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.expired;
                 const urgConf = URGENCY_CONFIG[(r.urgency as keyof typeof URGENCY_CONFIG)] || URGENCY_CONFIG.urgent;
@@ -512,11 +562,18 @@ export default function BloodEmergencyScreen() {
                       {r.fulfilledAt ? ` · Fulfilled ${new Date(r.fulfilledAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}
                     </Text>
                     {r.status === "active" && (
-                      <TouchableOpacity onPress={() => handleMarkFulfilled(r.id)} disabled={fulfilling === r.id} activeOpacity={0.85}
-                        style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "rgba(16,185,129,0.1)", borderRadius: 10, paddingVertical: 9, borderWidth: 1, borderColor: "rgba(16,185,129,0.3)" }}>
-                        {fulfilling === r.id ? <ActivityIndicator size="small" color={C.green} /> : <Ionicons name="checkmark-circle" size={15} color={C.green} />}
-                        <Text style={{ color: C.green, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Blood Mil Gaya — Mark Fulfilled</Text>
-                      </TouchableOpacity>
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        <TouchableOpacity onPress={() => handleMarkFulfilled(r.id)} disabled={fulfilling === r.id || cancelling === r.id} activeOpacity={0.85}
+                          style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "rgba(16,185,129,0.1)", borderRadius: 10, paddingVertical: 9, borderWidth: 1, borderColor: "rgba(16,185,129,0.3)" }}>
+                          {fulfilling === r.id ? <ActivityIndicator size="small" color={C.green} /> : <Ionicons name="checkmark-circle" size={15} color={C.green} />}
+                          <Text style={{ color: C.green, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>Blood Mil Gaya</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleCancelRequest(r.id)} disabled={fulfilling === r.id || cancelling === r.id} activeOpacity={0.85}
+                          style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, backgroundColor: "rgba(220,38,38,0.08)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, borderWidth: 1, borderColor: "rgba(220,38,38,0.2)" }}>
+                          {cancelling === r.id ? <ActivityIndicator size="small" color={C.primary} /> : <Ionicons name="close-circle-outline" size={15} color={C.primary} />}
+                          <Text style={{ color: C.primary, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>Cancel</Text>
+                        </TouchableOpacity>
+                      </View>
                     )}
                   </Card>
                 );
@@ -524,17 +581,41 @@ export default function BloodEmergencyScreen() {
             )}
 
             {/* ── All requests list ── */}
+            {reqView === "all" && (
+              <>
+                {/* Urgency filter tabs */}
+                <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+                  {([
+                    ["all", "🩸 Sab"],
+                    ["critical", "⚡ Critical"],
+                    ["urgent", "⏱ Urgent"],
+                    ["routine", "📅 Routine"],
+                  ] as const).map(([f, label]) => {
+                    const isActive = urgencyFilter === f;
+                    const col = f === "all" ? C.primary : URGENCY_CONFIG[f as keyof typeof URGENCY_CONFIG]?.color || C.primary;
+                    return (
+                      <TouchableOpacity key={f} onPress={() => setUrgencyFilter(f)} activeOpacity={0.85}
+                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, backgroundColor: isActive ? col : "#FFF", borderColor: isActive ? col : C.border }}>
+                        <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: isActive ? "#FFF" : C.muted }}>{label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </>
+            )}
             {reqView === "all" && (loading ? (
               <View style={{ alignItems: "center", paddingVertical: 40 }}>
                 <ActivityIndicator color={C.primary} size="large" />
               </View>
-            ) : emergencies.length === 0 ? (
+            ) : (() => {
+              const filtered = urgencyFilter === "all" ? emergencies : emergencies.filter(e => (e.urgency || "urgent") === urgencyFilter);
+              return filtered.length === 0 ? (
               <View style={{ alignItems: "center", paddingVertical: 40, gap: 10 }}>
                 <Ionicons name="checkmark-circle" size={52} color={C.green} />
-                <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 17 }}>No active emergencies</Text>
-                <Text style={{ color: C.muted, fontSize: 14, fontFamily: "Inter_400Regular" }}>There are no blood requests right now</Text>
+                <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 17 }}>{urgencyFilter === "all" ? "No active emergencies" : `No ${urgencyFilter} requests`}</Text>
+                <Text style={{ color: C.muted, fontSize: 14, fontFamily: "Inter_400Regular" }}>{urgencyFilter === "all" ? "There are no blood requests right now" : "Try a different filter"}</Text>
               </View>
-            ) : emergencies.map((req) => {
+            ) : filtered.map((req) => {
               const urgConf = URGENCY_CONFIG[(req.urgency as keyof typeof URGENCY_CONFIG)] || URGENCY_CONFIG.urgent;
               const displayBlood = req.bloodGroupNeeded || req.bloodGroup || "?";
               const displayCity = req.hospitalCity || req.city || "";
@@ -932,6 +1013,26 @@ export default function BloodEmergencyScreen() {
                   ⚠️ Donors will go directly to the hospital. Please fill in complete and accurate information so donors reach the right location.
                 </Text>
               </View>
+
+              {/* Hospital GPS — pin current location for accurate donor matching */}
+              <TouchableOpacity onPress={detectHospitalGPS} disabled={hospitalGpsLoading} activeOpacity={0.85}
+                style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: reqHospitalLat ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.06)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: reqHospitalLat ? C.green : C.border, marginBottom: 10 }}>
+                {hospitalGpsLoading ? <ActivityIndicator size="small" color={C.primary} /> : <Ionicons name={reqHospitalLat ? "navigate-circle" : "navigate-circle-outline"} size={22} color={reqHospitalLat ? C.green : C.primary} />}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: reqHospitalLat ? C.green : C.primary, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                    {hospitalGpsLoading ? "Getting location..." : reqHospitalLat ? "✅ Hospital GPS Saved" : "📍 Pin Hospital Location (Recommended)"}
+                  </Text>
+                  <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 }}>
+                    {reqHospitalLat ? `${reqHospitalLat.toFixed(4)}, ${reqHospitalLng?.toFixed(4)} — donors will be matched by distance` : "GPS se nearby donors dhundhe jaayenge — city name se zyada accurate"}
+                  </Text>
+                </View>
+                {reqHospitalLat && (
+                  <TouchableOpacity onPress={() => { setReqHospitalLat(undefined); setReqHospitalLng(undefined); }} style={{ padding: 4 }}>
+                    <Ionicons name="close-circle" size={18} color={C.muted} />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+
               <InputField value={reqHospitalName} onChangeText={setReqHospitalName} placeholder="Hospital name * (e.g. AIIMS Delhi)" />
               <InputField value={reqHospitalAddress} onChangeText={setReqHospitalAddress} placeholder="Full address * (include ward/floor/building)" multiline />
               <View style={{ flexDirection: "row", gap: 8 }}>
