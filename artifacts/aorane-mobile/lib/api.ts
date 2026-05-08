@@ -443,7 +443,7 @@ export const api = {
 
   // ── Blood Emergency ──────────────────────────────────────
   registerBloodDonor: (data: { bloodGroup: string; city: string; state: string; phone?: string; lat?: number; lng?: number }) =>
-    request<{ success: boolean; requiresOtp: boolean; message: string }>("POST", "/blood/donor/register", data),
+    request<{ success: boolean; donor: Record<string, unknown>; message: string }>("POST", "/blood/donor/register", data),
 
   getMyDonorStatus: () =>
     request<{ registered: boolean; isAvailable?: boolean; otpVerified?: boolean; isOnCooldown?: boolean; daysLeft?: number; inactiveUntil?: string | null; bloodGroup?: string; city?: string; state?: string; donationCount?: number }>("GET", "/blood/donor/me"),

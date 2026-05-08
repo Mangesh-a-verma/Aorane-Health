@@ -449,10 +449,8 @@ export default function BloodEmergencyScreen() {
       urgency: reqUrgency,
       notes: reqNotes.trim() || undefined,
     };
-    console.log("[BloodEmergency] submitEmergency called, payload:", JSON.stringify(payload));
     try {
       const result = await api.createBloodEmergency(payload);
-      console.log("[BloodEmergency] SUCCESS:", JSON.stringify(result));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setShowModal(false);
       resetModal();
