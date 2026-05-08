@@ -507,28 +507,40 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 72);
 
-    const [request] = await db.insert(bloodEmergencyRequestsTable).values({
-      requesterId: req.userId as string,
-      patientName: String(patientName),
-      bloodGroupNeeded: String(resolvedBloodGroup) as "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-",
-      unitsNeeded: Number(unitsNeeded) || 1,
-      hospitalName: String(hospitalName),
-      hospitalAddress: hospitalAddress ? String(hospitalAddress) : undefined,
-      hospitalCity: String(hospitalCity),
-      hospitalState: String(hospitalState || ""),
-      hospitalPincode: hospitalPincode ? String(hospitalPincode) : undefined,
-      hospitalPhone: String(hospitalPhone),
-      doctorName: doctorName ? String(doctorName) : undefined,
-      doctorPhone: doctorPhone ? String(doctorPhone) : undefined,
-      contactPhone: String(contactPhone),
-      contactName: contactName ? String(contactName) : undefined,
-      urgency: String(urgency || "urgent"),
-      notes: notes ? String(notes) : undefined,
-      hospitalLat: hospitalLat ? String(hospitalLat) : undefined,
-      hospitalLng: hospitalLng ? String(hospitalLng) : undefined,
-      otpVerified: true,
-      expiresAt,
-    }).returning();
+    // Use raw pool.query (bypasses Drizzle for Supabase pooler compat — same pattern as auth.ts)
+    // Drizzle db.insert() with enum columns fails on Render's Supabase connection pooler
+    const { rows: insertRows } = await pool.query(
+      `INSERT INTO blood_emergency_requests
+         (requester_id, patient_name, blood_group_needed, units_needed,
+          hospital_name, hospital_address, hospital_city, hospital_state, hospital_pincode,
+          hospital_phone, doctor_name, doctor_phone, contact_phone, contact_name,
+          urgency, notes, hospital_lat, hospital_lng, otp_verified, expires_at)
+       VALUES ($1,$2,$3::blood_group,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+       RETURNING *`,
+      [
+        req.userId,
+        String(patientName),
+        String(resolvedBloodGroup),
+        Number(unitsNeeded) || 1,
+        String(hospitalName),
+        hospitalAddress ? String(hospitalAddress) : null,
+        String(hospitalCity),
+        String(hospitalState || ""),
+        hospitalPincode ? String(hospitalPincode) : null,
+        String(hospitalPhone),
+        doctorName ? String(doctorName) : null,
+        doctorPhone ? String(doctorPhone) : null,
+        String(contactPhone),
+        contactName ? String(contactName) : null,
+        String(urgency || "urgent"),
+        notes ? String(notes) : null,
+        hospitalLat ? String(hospitalLat) : null,
+        hospitalLng ? String(hospitalLng) : null,
+        true,
+        expiresAt,
+      ]
+    );
+    const request = insertRows[0];
 
     res.status(201).json({ success: true, request });
 
