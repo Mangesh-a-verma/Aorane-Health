@@ -442,7 +442,7 @@ router.post("/blood/request/:id/flag", requireAuth, async (req: AuthRequest, res
 router.patch("/blood/request/:id/fulfil", requireAuth, async (req: AuthRequest, res) => {
   try {
     await pool.query(
-      `UPDATE blood_emergency_requests SET status = 'fulfilled', fulfilled_at = NOW()
+      `UPDATE blood_emergency_requests SET status = 'fulfilled', fulfilled_at = NOW(), updated_at = NOW()
        WHERE id = $1 AND requester_id = $2`,
       [String(req.params.id), req.userId]
     );
@@ -453,6 +453,27 @@ router.patch("/blood/request/:id/fulfil", requireAuth, async (req: AuthRequest, 
   }
 });
 
+// ── Cancel Request (requester only — active requests only) ───────────────────
+router.patch("/blood/request/:id/cancel", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const result = await pool.query(
+      `UPDATE blood_emergency_requests
+       SET status = 'cancelled', cancelled_at = NOW(), updated_at = NOW()
+       WHERE id = $1 AND requester_id = $2 AND status = 'active'
+       RETURNING id`,
+      [String(req.params.id), req.userId]
+    );
+    if (!result.rows.length) {
+      res.status(404).json({ error: "Request not found, or already cancelled/fulfilled" });
+      return;
+    }
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err: (err as Error).message }, "Blood cancel failed");
+    res.status(500).json({ error: "Failed to cancel request" });
+  }
+});
+
 // ── Direct Emergency (Mobile — OTP-less but verified session token) ───────────
 // All hospital fields are validated here; this is the mobile app's primary path
 router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res) => {
@@ -460,6 +481,7 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
     const {
       patientName, bloodGroup, unitsNeeded,
       hospitalName, hospitalAddress, hospitalCity, hospitalState, hospitalPincode, hospitalPhone,
+      hospitalLat, hospitalLng,
       doctorName, doctorPhone,
       contactPhone, contactName,
       urgency, notes,
@@ -515,44 +537,100 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
       contactName: contactName ? String(contactName) : undefined,
       urgency: String(urgency || "urgent"),
       notes: notes ? String(notes) : undefined,
+      hospitalLat: hospitalLat ? String(hospitalLat) : undefined,
+      hospitalLng: hospitalLng ? String(hospitalLng) : undefined,
       otpVerified: true,
       expiresAt,
     }).returning();
 
     res.status(201).json({ success: true, request });
 
-    // ── Fire-and-forget: notify compatible donors (city first, then state fallback) ─
+    // ── Fire-and-forget: notify compatible donors (GPS-based if lat/lng given, else city/state) ─
     (async () => {
       try {
         const compatible = COMPATIBLE_DONORS[String(bloodGroup)] || [];
         if (!compatible.length) return;
         const bgs = compatible as ("A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-")[];
 
-        // 1. City-level donors
-        let donorRows = await db.select({ userId: bloodDonorsTable.userId })
-          .from(bloodDonorsTable)
-          .where(and(
-            inArray(bloodDonorsTable.bloodGroup, bgs),
-            sql`LOWER(${bloodDonorsTable.city}) = LOWER(${String(hospitalCity || "")})`,
-            eq(bloodDonorsTable.isAvailable, true),
-            ne(bloodDonorsTable.userId, req.userId!)
-          ))
-          .limit(100);
+        let donorRows: Array<{ userId: string }>;
+        const hLat = hospitalLat ? parseFloat(String(hospitalLat)) : null;
+        const hLng = hospitalLng ? parseFloat(String(hospitalLng)) : null;
 
-        // 2. State-level fallback if city donors < 5
-        if (donorRows.length < 5 && hospitalState) {
-          const stateRows = await db.select({ userId: bloodDonorsTable.userId })
+        if (hLat && hLng) {
+          // GPS-based: haversine 50km → 100km → 200km (same logic as donor search endpoint)
+          const allWithCoords = await db.select({ userId: bloodDonorsTable.userId, lat: bloodDonorsTable.lat, lng: bloodDonorsTable.lng })
             .from(bloodDonorsTable)
             .where(and(
               inArray(bloodDonorsTable.bloodGroup, bgs),
-              sql`LOWER(${bloodDonorsTable.state}) = LOWER(${String(hospitalState)})`,
+              eq(bloodDonorsTable.isAvailable, true),
+              ne(bloodDonorsTable.userId, req.userId!),
+              isNotNull(bloodDonorsTable.lat),
+              isNotNull(bloodDonorsTable.lng),
+            ))
+            .limit(500);
+
+          const withDist = allWithCoords.map(d => ({
+            userId: d.userId,
+            dist: haversineKm(hLat, hLng, parseFloat(d.lat!), parseFloat(d.lng!)),
+          }));
+
+          let radius = 50;
+          let gpsDonors = withDist.filter(d => d.dist <= radius).sort((a, b) => a.dist - b.dist);
+          if (gpsDonors.length < 5) {
+            const at100 = withDist.filter(d => d.dist <= 100).sort((a, b) => a.dist - b.dist);
+            if (at100.length > gpsDonors.length) { gpsDonors = at100; radius = 100; }
+          }
+          if (gpsDonors.length < 5) {
+            const at200 = withDist.filter(d => d.dist <= 200).sort((a, b) => a.dist - b.dist);
+            if (at200.length > gpsDonors.length) { gpsDonors = at200; radius = 200; }
+          }
+          donorRows = gpsDonors.slice(0, 100);
+          logger.info({ count: donorRows.length, radius, bloodGroup, hospitalCity }, "[BloodEmergency] GPS-based donor search");
+
+          // Also include city donors without GPS coords as a supplement
+          if (donorRows.length < 10) {
+            const cityRows = await db.select({ userId: bloodDonorsTable.userId })
+              .from(bloodDonorsTable)
+              .where(and(
+                inArray(bloodDonorsTable.bloodGroup, bgs),
+                sql`LOWER(${bloodDonorsTable.city}) = LOWER(${String(hospitalCity || "")})`,
+                eq(bloodDonorsTable.isAvailable, true),
+                ne(bloodDonorsTable.userId, req.userId!),
+                isNull(bloodDonorsTable.lat),
+              ))
+              .limit(50);
+            const existingIds = new Set(donorRows.map(r => r.userId));
+            const extra = cityRows.filter(r => !existingIds.has(r.userId));
+            donorRows = [...donorRows, ...extra].slice(0, 100);
+            if (extra.length) logger.info({ extra: extra.length }, "[BloodEmergency] City string donors added as supplement");
+          }
+        } else {
+          // Fallback: city/state string match (when no hospital GPS provided)
+          donorRows = await db.select({ userId: bloodDonorsTable.userId })
+            .from(bloodDonorsTable)
+            .where(and(
+              inArray(bloodDonorsTable.bloodGroup, bgs),
+              sql`LOWER(${bloodDonorsTable.city}) = LOWER(${String(hospitalCity || "")})`,
               eq(bloodDonorsTable.isAvailable, true),
               ne(bloodDonorsTable.userId, req.userId!)
             ))
             .limit(100);
-          const existingIds = new Set(donorRows.map(r => r.userId));
-          const extra = stateRows.filter(r => !existingIds.has(r.userId));
-          donorRows = [...donorRows, ...extra].slice(0, 100);
+
+          if (donorRows.length < 5 && hospitalState) {
+            const stateRows = await db.select({ userId: bloodDonorsTable.userId })
+              .from(bloodDonorsTable)
+              .where(and(
+                inArray(bloodDonorsTable.bloodGroup, bgs),
+                sql`LOWER(${bloodDonorsTable.state}) = LOWER(${String(hospitalState)})`,
+                eq(bloodDonorsTable.isAvailable, true),
+                ne(bloodDonorsTable.userId, req.userId!)
+              ))
+              .limit(100);
+            const existingIds = new Set(donorRows.map(r => r.userId));
+            const extra = stateRows.filter(r => !existingIds.has(r.userId));
+            donorRows = [...donorRows, ...extra].slice(0, 100);
+          }
+          logger.info({ count: donorRows.length, bloodGroup, hospitalCity }, "[BloodEmergency] City/state string donor search (no GPS)");
         }
 
         const uids: string[] = donorRows.map(r => r.userId);
