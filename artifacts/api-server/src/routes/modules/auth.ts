@@ -487,12 +487,12 @@ router.post("/auth/send-email-otp", async (req, res) => {
     cache.setOtp(emailKey, hashed);
 
     // Also persist in DB so OTP survives server restarts & multiple instances
-    await db.delete(otpStoreTable).where(eq(otpStoreTable.phone, emailKey)).catch(() => {});
-    await db.insert(otpStoreTable).values({
-      phone: emailKey,
-      hashedOtp: hashed,
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-    }).catch(() => {});
+    // Use raw pool.query (bypasses Drizzle for Supabase pooler compat — same pattern as auth.ts line 190)
+    await pool.query(`DELETE FROM otp_store WHERE phone = $1`, [emailKey]).catch(() => {});
+    await pool.query(
+      `INSERT INTO otp_store (phone, hashed_otp, expires_at) VALUES ($1, $2, $3) ON CONFLICT (phone) DO UPDATE SET hashed_otp=$2, expires_at=$3`,
+      [emailKey, hashed, new Date(Date.now() + 5 * 60 * 1000)]
+    ).catch(() => {});
 
     const sent = await sendEmailOtp(email, otp);
     const isDev = process.env.NODE_ENV !== "production";
@@ -528,13 +528,13 @@ router.post("/auth/verify-email-otp", async (req, res) => {
     // Check memory cache first (fast path)
     let storedHash: string | null = (cache.getOtp(emailKey) as string | null) ?? null;
 
-    // Fallback to DB — survives server restarts and multiple Render instances
+    // Fallback to DB — use raw pool.query (bypasses Drizzle for Supabase pooler compat)
     if (!storedHash) {
-      const [dbRecord] = await db
-        .select()
-        .from(otpStoreTable)
-        .where(and(eq(otpStoreTable.phone, emailKey), gt(otpStoreTable.expiresAt, new Date())));
-      if (dbRecord) storedHash = dbRecord.hashedOtp;
+      const { rows: dbRows } = await pool.query(
+        `SELECT hashed_otp FROM otp_store WHERE phone = $1 AND expires_at > NOW() LIMIT 1`,
+        [emailKey]
+      ).catch(() => ({ rows: [] as { hashed_otp: string }[] }));
+      if (dbRows[0]) storedHash = dbRows[0].hashed_otp;
     }
 
     if (!storedHash) {
@@ -545,9 +545,9 @@ router.post("/auth/verify-email-otp", async (req, res) => {
       res.status(400).json({ error: "Incorrect OTP. Please try again." });
       return;
     }
-    // Clean up from both cache and DB
+    // Clean up from both cache and DB (pool.query for pooler compat)
     cache.deleteOtp(emailKey);
-    await db.delete(otpStoreTable).where(eq(otpStoreTable.phone, emailKey)).catch(() => {});
+    await pool.query(`DELETE FROM otp_store WHERE phone = $1`, [emailKey]).catch(() => {});
 
     let [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase()));
     let isNewUser = false;
