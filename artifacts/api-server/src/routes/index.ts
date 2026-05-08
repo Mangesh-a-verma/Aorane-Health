@@ -25,6 +25,7 @@ import whatsappRouter from "./modules/whatsapp";
 import sessionsRouter from "./modules/sessions";
 import supportRouter from "./modules/support";
 import enquiriesRouter from "./modules/enquiries";
+import devLoginRouter from "./modules/dev-login";
 
 const router: IRouter = Router();
 
@@ -54,5 +55,6 @@ router.use(whatsappRouter);
 router.use(sessionsRouter);
 router.use(supportRouter);
 router.use(enquiriesRouter);
+router.use(devLoginRouter);
 
 export default router;
