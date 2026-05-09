@@ -1250,6 +1250,16 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE blood_emergency_requests ADD COLUMN IF NOT EXISTS hospital_lng TEXT`,
     `ALTER TABLE blood_emergency_requests ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ`,
 
+    // ── blood_emergency_requests: columns missing from original Drizzle-created schema ──
+    // Drizzle created the table without these columns; startup CREATE TABLE IF NOT EXISTS
+    // was a no-op so these were never added. Debug confirmed 6 columns missing on Supabase.
+    `ALTER TABLE blood_emergency_requests ADD COLUMN IF NOT EXISTS hospital_address TEXT`,
+    `ALTER TABLE blood_emergency_requests ADD COLUMN IF NOT EXISTS hospital_pincode TEXT`,
+    `ALTER TABLE blood_emergency_requests ADD COLUMN IF NOT EXISTS hospital_phone TEXT`,
+    `ALTER TABLE blood_emergency_requests ADD COLUMN IF NOT EXISTS doctor_name TEXT`,
+    `ALTER TABLE blood_emergency_requests ADD COLUMN IF NOT EXISTS doctor_phone TEXT`,
+    `ALTER TABLE blood_emergency_requests ADD COLUMN IF NOT EXISTS urgency TEXT NOT NULL DEFAULT 'urgent'`,
+
     // ── blood_donors: otp_verified + verified_at + donor_inactive_until ───────
     `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS otp_verified BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
