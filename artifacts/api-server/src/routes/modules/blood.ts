@@ -683,7 +683,34 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
       stack: e.stack?.split("\n").slice(0, 4).join(" | "),
       userId: req.userId,
     }, "Blood emergency create failed");
-    res.status(500).json({ error: "Failed to create blood emergency. Please try again in a moment." });
+    res.status(500).json({
+      error: "Failed to create blood emergency. Please try again in a moment.",
+      _debug: process.env.NODE_ENV !== "production" ? e.message : undefined,
+    });
+  }
+});
+
+// ── Diagnostic: table + column check (no auth needed — remove after debugging) ─
+router.get("/blood/debug/schema", async (_req, res) => {
+  try {
+    const tableCheck = await pool.query(
+      `SELECT column_name, data_type, udt_name
+       FROM information_schema.columns
+       WHERE table_name = 'blood_emergency_requests'
+       ORDER BY ordinal_position`
+    );
+    const enumCheck = await pool.query(
+      `SELECT typname FROM pg_type WHERE typname IN ('blood_group','blood_request_status','donor_response')`
+    );
+    const countCheck = await pool.query(`SELECT COUNT(*) FROM blood_emergency_requests`);
+    res.json({
+      table_exists: tableCheck.rows.length > 0,
+      columns: tableCheck.rows,
+      enums: enumCheck.rows,
+      row_count: countCheck.rows[0].count,
+    });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
