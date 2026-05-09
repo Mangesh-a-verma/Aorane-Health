@@ -1282,6 +1282,23 @@ export async function runStartupMigrations(): Promise<void> {
     )`,
     `CREATE INDEX IF NOT EXISTS idx_admin_notif_created ON admin_notifications(created_at DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_admin_notif_is_read ON admin_notifications(is_read)`,
+
+    // ── sleep_quality enum + sleep_logs table (safety net — Drizzle may not have run) ─
+    `DO $$ BEGIN CREATE TYPE sleep_quality AS ENUM ('poor','fair','good','excellent'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
+    `CREATE TABLE IF NOT EXISTS sleep_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      sleep_date TEXT NOT NULL,
+      bedtime TEXT,
+      wake_time TEXT,
+      sleep_hours NUMERIC(3,1) NOT NULL,
+      quality sleep_quality,
+      notes TEXT,
+      is_offline_entry BOOLEAN NOT NULL DEFAULT FALSE,
+      synced_at TIMESTAMPTZ,
+      logged_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
   ];
 
   let ok = 0; let fail = 0;
