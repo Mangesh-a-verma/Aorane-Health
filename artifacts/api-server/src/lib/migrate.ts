@@ -906,6 +906,11 @@ export async function runStartupMigrations(): Promise<void> {
 
     `UPDATE plan_pricing SET features = '["4 individual member accounts","All Max features per member","Family health dashboard","Elderly health monitoring","Cross-family health comparisons","Family wellness challenges","Single billing for all members"]'::jsonb WHERE plan_key = 'family'`,
 
+    // ── blood group enums (safe create — no-op if already exist) ─────────────────
+    `DO $$ BEGIN CREATE TYPE blood_group AS ENUM ('A+','A-','B+','B-','O+','O-','AB+','AB-'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
+    `DO $$ BEGIN CREATE TYPE blood_request_status AS ENUM ('active','fulfilled','cancelled'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
+    `DO $$ BEGIN CREATE TYPE donor_response AS ENUM ('will_donate','cannot_donate','contacted','no_response'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
+
     // ── blood_emergency_requests: core blood emergency table (was missing from migrations) ──
     `CREATE TABLE IF NOT EXISTS blood_emergency_requests (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

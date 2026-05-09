@@ -509,13 +509,16 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
 
     // Use raw pool.query (bypasses Drizzle for Supabase pooler compat — same pattern as auth.ts)
     // Drizzle db.insert() with enum columns fails on Render's Supabase connection pooler
+    // NOTE: blood_group_needed is TEXT in the startup migration, NOT a pg enum.
+    // Using $3 directly (no ::blood_group cast) avoids "type blood_group does not exist" error
+    // on Supabase DBs where the pg enum was never created by Drizzle.
     const { rows: insertRows } = await pool.query(
       `INSERT INTO blood_emergency_requests
          (requester_id, patient_name, blood_group_needed, units_needed,
           hospital_name, hospital_address, hospital_city, hospital_state, hospital_pincode,
           hospital_phone, doctor_name, doctor_phone, contact_phone, contact_name,
           urgency, notes, hospital_lat, hospital_lng, otp_verified, expires_at)
-       VALUES ($1,$2,$3::blood_group,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
        RETURNING *`,
       [
         req.userId,
