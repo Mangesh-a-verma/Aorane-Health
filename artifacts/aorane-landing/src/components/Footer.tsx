@@ -1,4 +1,4 @@
-import { Mail, Phone, MapPin, Linkedin, Instagram, Youtube, Facebook } from "lucide-react";
+import { Mail, Phone, MapPin, Twitter, Facebook } from "lucide-react";
 import { Link } from "wouter";
 import { useSiteSettings } from "@/lib/useSiteSettings";
 
@@ -7,11 +7,10 @@ export default function Footer() {
   const s = useSiteSettings();
 
   const socials = [
-    { url: s.socialLinkedin,  Icon: Linkedin,  label: "LinkedIn" },
-    { url: s.socialInstagram, Icon: Instagram, label: "Instagram" },
-    { url: s.socialYoutube,   Icon: Youtube,   label: "YouTube" },
-    { url: s.socialFacebook,  Icon: Facebook,  label: "Facebook" },
-  ].filter((x) => x.url && x.url.trim().length > 0);
+    { url: "https://www.facebook.com/aoraneofficial", Icon: Facebook, label: "Facebook" },
+    { url: "https://x.com/aoraneofficial",            Icon: Twitter,  label: "Twitter / X" },
+    { url: "mailto:info@aorane.com",                  Icon: Mail,     label: "Email" },
+  ];
 
   const cols = [
     {
