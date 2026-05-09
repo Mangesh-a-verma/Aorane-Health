@@ -28,6 +28,7 @@ export interface DailyHealthScore {
   waterScore:     number;
   medicineScore:  number;
   sleepScore:     number;
+  stressScore:    number;
   bmiScore:       number;
 
   // Sub-components (for display)
@@ -47,6 +48,8 @@ export interface DailyHealthScore {
     fatG:           number;
     fiberG:         number;
     fiberGoalG:     number;      // condition-adjusted
+    sugarG:         number;      // WHO: <25g free sugar/day
+    sodiumMg:       number;      // WHO: <2000mg/day
     meals:          number;
     mealGoal:       number;
     micronutrients: {
@@ -74,6 +77,11 @@ export interface DailyHealthScore {
     quality:     string | null;  // self-reported quality label
     isLogged:    boolean;        // whether a sleep log exists today
   };
+  stress: {
+    stressScore: number | null;  // raw 0–100 stress level (higher = more stressed)
+    mood:        string | null;  // happy/neutral/stressed/sad
+    isLogged:    boolean;        // whether stress was checked today
+  };
   bmi: {
     value:    number | null;
     category: string;
@@ -97,6 +105,7 @@ export interface DailyHealthScore {
     waterBasis:      string;
     medicineBasis:   string;
     sleepBasis:      string;
+    stressBasis:     string;
     compositeBasis:  string;
   };
 }
@@ -296,11 +305,13 @@ function calcExerciseScore(
 // ─── Food Score (ICMR + personalised targets) ────────────────────────────────
 // Without micronutrient data: Calorie 40% | Protein 35% | Meals 15% | Fiber 10%
 // With micronutrient data:    Calorie 30% | Protein 25% | Meals 10% | Fiber 15% | Micronutrients 20%
+// Sugar/sodium penalty applied after composite (max -20 pts, only when data present)
 function calcFoodScore(
   totalCalories: number, calorieGoal: number,
   proteinG: number, proteinGoalG: number,
   fiberG: number, fiberGoalG: number,
   mealCount: number, carbsG: number, fatG: number,
+  sugarG: number, sodiumMg: number,
   micronutrients: DailyHealthScore["food"]["micronutrients"],
 ): { score: number; data: DailyHealthScore["food"] } {
   // 1. Calorie adequacy — penalise both under and over-eating
@@ -348,6 +359,23 @@ function calcFoodScore(
     );
   }
 
+  // 6. Sugar penalty (WHO: <25g free sugar/day) — only when logged data present
+  //    25-50g: -3 | 50-75g: -7 | >75g: -12
+  const hasSugarData = sugarG > 0;
+  const sugarPenalty = hasSugarData
+    ? (sugarG > 75 ? 12 : sugarG > 50 ? 7 : sugarG > 25 ? 3 : 0)
+    : 0;
+
+  // 7. Sodium penalty (WHO: <2000mg/day) — only when logged data present
+  //    2000-2500mg: -3 | 2500-3500mg: -7 | >3500mg: -12
+  const hasSodiumData = sodiumMg > 0;
+  const sodiumPenalty = hasSodiumData
+    ? (sodiumMg > 3500 ? 12 : sodiumMg > 2500 ? 7 : sodiumMg > 2000 ? 3 : 0)
+    : 0;
+
+  // Combined penalty capped at 20 pts
+  score = Math.max(0, score - Math.min(20, sugarPenalty + sodiumPenalty));
+
   return {
     score,
     data: {
@@ -356,6 +384,8 @@ function calcFoodScore(
       carbsG:   Math.round(carbsG * 10) / 10,
       fatG:     Math.round(fatG * 10) / 10,
       fiberG:   Math.round(fiberG * 10) / 10, fiberGoalG,
+      sugarG:   Math.round(sugarG * 10) / 10,
+      sodiumMg: Math.round(sodiumMg),
       meals: mealCount, mealGoal: 3,
       micronutrients,
     },
@@ -363,13 +393,21 @@ function calcFoodScore(
 }
 
 // ─── Water Score (WHO/ICMR Hydration Guidelines) ─────────────────────────────
+// If user has set a custom preference goal (glasses), that overrides WHO formula
 function calcWaterScore(
   mlConsumed: number, glasses: number, gender: string, activityLevel: string,
+  preferenceGoalGlasses: number | null,
 ): { score: number; mlGoal: number; data: DailyHealthScore["water"] } {
-  let mlGoal = gender === "female" ? 2000 : 2500;
-  if (activityLevel === "very" || activityLevel === "very_active" || activityLevel === "athlete") mlGoal += 500;
-  else if (activityLevel === "moderate" || activityLevel === "moderately_active") mlGoal += 250;
-  else if (activityLevel === "light" || activityLevel === "lightly_active") mlGoal += 150;
+  // User preference goal takes priority; convert glasses → ml (1 glass = 250ml)
+  let mlGoal: number;
+  if (preferenceGoalGlasses && preferenceGoalGlasses > 0) {
+    mlGoal = preferenceGoalGlasses * 250;
+  } else {
+    mlGoal = gender === "female" ? 2000 : 2500;
+    if (activityLevel === "very" || activityLevel === "very_active" || activityLevel === "athlete") mlGoal += 500;
+    else if (activityLevel === "moderate" || activityLevel === "moderately_active") mlGoal += 250;
+    else if (activityLevel === "light" || activityLevel === "lightly_active") mlGoal += 150;
+  }
   const actual = mlConsumed > 0 ? mlConsumed : glasses * 250;
   const score  = Math.min(100, Math.round((actual / mlGoal) * 100));
   return { score, mlGoal, data: { mlConsumed: Math.round(actual), mlGoal, glasses } };
@@ -386,14 +424,31 @@ function calcMedicineScore(
 }
 
 // ─── Sleep Score (CDC/WHO Sleep Guidelines) ───────────────────────────────────
-function calcSleepScore(sleepHours: number | null): { score: number; isOptimal: boolean } {
+// Quality adjustment: excellent +5, good 0, fair -8, poor -15 (capped 0–100)
+function calcSleepScore(
+  sleepHours: number | null,
+  quality: string | null,
+): { score: number; isOptimal: boolean } {
   if (!sleepHours || sleepHours <= 0) return { score: 50, isOptimal: false };
-  if (sleepHours >= 7 && sleepHours <= 9)   return { score: 100, isOptimal: true };
-  if (sleepHours >= 6 && sleepHours <  7)   return { score: 75,  isOptimal: false };
-  if (sleepHours >  9 && sleepHours <= 10)  return { score: 80,  isOptimal: true };
-  if (sleepHours >= 5 && sleepHours <  6)   return { score: 45,  isOptimal: false };
-  if (sleepHours >  10)                     return { score: 60,  isOptimal: false };
-  return { score: 20, isOptimal: false }; // <5h — critical
+
+  let base: number;
+  let optimal = false;
+  if      (sleepHours >= 7 && sleepHours <= 9)  { base = 100; optimal = true; }
+  else if (sleepHours >  9 && sleepHours <= 10) { base = 80;  optimal = true; }
+  else if (sleepHours >= 6 && sleepHours <  7)  { base = 75;  }
+  else if (sleepHours >= 5 && sleepHours <  6)  { base = 45;  }
+  else if (sleepHours >  10)                    { base = 60;  }
+  else                                           { base = 20;  } // <5h critical
+
+  // Apply sleep quality adjustment
+  const qualityAdj: Record<string, number> = {
+    excellent: +5,
+    good:       0,
+    fair:      -8,
+    poor:     -15,
+  };
+  const adj = quality ? (qualityAdj[quality.toLowerCase()] ?? 0) : 0;
+  return { score: Math.min(100, Math.max(0, base + adj)), isOptimal: optimal };
 }
 
 // ─── BMI Score (WHO Asia-Pacific Guidelines) ─────────────────────────────────
@@ -416,17 +471,43 @@ function calcBmiScore(
   return { score, category, value: Math.round(bmi * 10) / 10 };
 }
 
+// ─── Stress Score ─────────────────────────────────────────────────────────────
+// stress_score in DB: 0–100 (higher = more stressed)
+// Health score = inverse: low stress = high score
+// Mood adjustment: happy +5, neutral 0, stressed/sad -10
+// Not logged today → neutral 60 (we don't punish for not checking in)
+function calcStressScore(
+  stressScore: number | null,
+  mood: string | null,
+): { score: number; isLogged: boolean } {
+  if (stressScore === null) return { score: 60, isLogged: false };
+
+  let base: number;
+  if      (stressScore <= 20) base = 100;  // Very relaxed
+  else if (stressScore <= 40) base = 82;   // Mild stress
+  else if (stressScore <= 60) base = 62;   // Moderate stress
+  else if (stressScore <= 80) base = 38;   // High stress
+  else                         base = 18;   // Severe stress
+
+  const moodAdj: Record<string, number> = { happy: +5, neutral: 0, stressed: -10, sad: -10 };
+  const adj = mood ? (moodAdj[mood.toLowerCase()] ?? 0) : 0;
+  return { score: Math.min(100, Math.max(0, base + adj)), isLogged: true };
+}
+
 // ─── Data Confidence ──────────────────────────────────────────────────────────
+// Tracks how complete today's data is across all 6 health pillars
 function calcDataConfidence(
   hasFoodData: boolean, hasExerciseData: boolean,
-  hasWaterData: boolean, hasMedData: boolean, hasProfileData: boolean,
+  hasWaterData: boolean, hasMedData: boolean,
+  hasSleepData: boolean, hasStressData: boolean,
 ): number {
   const weights = [
-    hasFoodData     ? 30 : 0,
-    hasExerciseData ? 25 : 0,
+    hasFoodData     ? 25 : 0,
+    hasExerciseData ? 20 : 0,
     hasWaterData    ? 20 : 0,
     hasMedData      ? 15 : 0,
-    hasProfileData  ? 10 : 0,
+    hasSleepData    ? 12 : 0,
+    hasStressData   ?  8 : 0,
   ];
   return Math.min(100, weights.reduce((a, b) => a + b, 0));
 }
@@ -440,8 +521,8 @@ export async function computeScientificScore(userId: string, date: string): Prom
 
   // ── Step 1: Fetch all data — every query has .catch() so a missing table/column
   //           never causes the entire function to throw (which returns healthScore:0)
-  const [foodBasicR, exBasicR, waterR, medSchedR, medTakenR, prefsR, profileBasicR, goalsR, conditionsR, sleepR] = await Promise.all([
-    // Food — basic macros
+  const [foodBasicR, exBasicR, waterR, medSchedR, medTakenR, prefsR, profileBasicR, goalsR, conditionsR, sleepR, stressR] = await Promise.all([
+    // Food — basic macros + sugar + sodium
     pool.query(
       `SELECT
         COALESCE(SUM(calories::numeric),0)   AS total_cal,
@@ -449,10 +530,12 @@ export async function computeScientificScore(userId: string, date: string): Prom
         COALESCE(SUM(carbs_g::numeric),0)    AS total_carbs,
         COALESCE(SUM(fat_g::numeric),0)      AS total_fat,
         COALESCE(SUM(fiber_g::numeric),0)    AS total_fiber,
+        COALESCE(SUM(sugar_g::numeric),0)    AS total_sugar,
+        COALESCE(SUM(sodium_mg::numeric),0)  AS total_sodium,
         COUNT(*)                             AS meal_count
        FROM food_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`,
       [userId, dayStart, dayEnd],
-    ).catch(() => ({ rows: [{ total_cal: "0", total_protein: "0", total_carbs: "0", total_fat: "0", total_fiber: "0", meal_count: "0" }] })),
+    ).catch(() => ({ rows: [{ total_cal: "0", total_protein: "0", total_carbs: "0", total_fat: "0", total_fiber: "0", total_sugar: "0", total_sodium: "0", meal_count: "0" }] })),
     // Exercise — basic columns
     pool.query(
       `SELECT
@@ -475,9 +558,9 @@ export async function computeScientificScore(userId: string, date: string): Prom
       `SELECT COUNT(*) FROM medicine_schedules WHERE user_id=$1 AND is_active=true`,
       [userId],
     ).catch(() => ({ rows: [{ count: "0" }] })),
-    // Medicine taken today
+    // Medicine taken today — use scheduled_at for date filter (taken_at can be NULL)
     pool.query(
-      `SELECT COUNT(*) FROM medicine_logs WHERE user_id=$1 AND status='taken' AND taken_at>=$2 AND taken_at<=$3`,
+      `SELECT COUNT(*) FROM medicine_logs WHERE user_id=$1 AND status='taken' AND scheduled_at>=$2 AND scheduled_at<=$3`,
       [userId, dayStart, dayEnd],
     ).catch(() => ({ rows: [{ count: "0" }] })),
     // User preferences
@@ -504,6 +587,11 @@ export async function computeScientificScore(userId: string, date: string): Prom
     pool.query(
       `SELECT sleep_hours, quality, bedtime, wake_time FROM sleep_logs WHERE user_id=$1 AND sleep_date=$2 ORDER BY logged_at DESC LIMIT 1`,
       [userId, date],
+    ).catch(() => ({ rows: [] })),
+    // Stress log — most recent entry for today
+    pool.query(
+      `SELECT stress_score, mood FROM stress_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3 ORDER BY logged_at DESC LIMIT 1`,
+      [userId, dayStart, dayEnd],
     ).catch(() => ({ rows: [] })),
   ]);
 
@@ -548,6 +636,8 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const totalCarbs     = parseFloat(foodR.rows[0]?.total_carbs    || "0");
   const totalFat       = parseFloat(foodR.rows[0]?.total_fat      || "0");
   const totalFiber     = parseFloat(foodR.rows[0]?.total_fiber    || "0");
+  const totalSugar     = parseFloat(foodR.rows[0]?.total_sugar    || "0");
+  const totalSodium    = parseFloat(foodR.rows[0]?.total_sodium   || "0");
   const totalCalcium   = parseFloat(foodR.rows[0]?.total_calcium  || "0");
   const totalIron      = parseFloat(foodR.rows[0]?.total_iron     || "0");
   const totalVitC      = parseFloat(foodR.rows[0]?.total_vitamin_c || "0");
@@ -568,7 +658,8 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const medScheduled = parseInt(medSchedR.rows[0]?.count || "0");
   const medTaken     = parseInt(medTakenR.rows[0]?.count  || "0");
 
-  const prefCalorieGoal = parseInt(prefsR.rows[0]?.calorie_goal || "2000");
+  const prefCalorieGoal      = parseInt(prefsR.rows[0]?.calorie_goal      || "2000");
+  const prefWaterGoalGlasses = parseInt(prefsR.rows[0]?.water_goal_glasses || "0") || null;
 
   const profile      = profileR.rows[0];
   const weightKg     = parseFloat(profile?.weight_kg     || "60");
@@ -591,6 +682,12 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const sleepIsLogged = !!dailySleepLog;
   const dateOfBirth  = profile?.date_of_birth  || null;
 
+  // Stress data
+  const dailyStressLog  = stressR.rows[0] ?? null;
+  const rawStressScore  = dailyStressLog ? parseInt(dailyStressLog.stress_score || "0") : null;
+  const stressMood      = dailyStressLog?.mood || null;
+  const stressIsLogged  = !!dailyStressLog;
+
   const primaryGoal  = goalsR.rows[0]?.primary_goal || "general_wellness";
   const conditions: string[] = (conditionsR.rows || []).map((r: Record<string, unknown>) => String(r.condition || ""));
 
@@ -606,47 +703,62 @@ export async function computeScientificScore(userId: string, date: string): Prom
 
   // ── Component Scores ────────────────────────────────────────────────────────
   const microScore  = calcMicronutrientScore(totalCalcium, totalIron, totalVitC, totalB12, totalVitD, hasMicroData, microTargets);
-  const food        = calcFoodScore(totalCalories, calorieGoal, totalProtein, proteinGoalG, totalFiber, fiberGoalG, mealCount, totalCarbs, totalFat, microScore);
+  const food        = calcFoodScore(totalCalories, calorieGoal, totalProtein, proteinGoalG, totalFiber, fiberGoalG, mealCount, totalCarbs, totalFat, totalSugar, totalSodium, microScore);
   const ex          = calcExerciseScore(metMinutes, exDuration, exCalories, exSessions);
-  const water       = calcWaterScore(totalMl, totalGlasses, gender, activityLevel);
+  const water       = calcWaterScore(totalMl, totalGlasses, gender, activityLevel, prefWaterGoalGlasses);
   const med         = calcMedicineScore(medTaken, medScheduled);
-  const sleep       = calcSleepScore(sleepHours > 0 ? sleepHours : null);
+  const sleep       = calcSleepScore(sleepHours > 0 ? sleepHours : null, sleepQuality);
+  const stressCalc  = calcStressScore(rawStressScore, stressMood);
   const bmi         = calcBmiScore(bmiValue > 0 ? bmiValue : null);
 
   // ── Composite Score (WHO/ICMR Weighted) ─────────────────────────────────────
-  // Food 30% | Exercise 25% | Water 15% | Medicine 15% | Sleep 10% | BMI 5%
+  // Food 28% | Exercise 22% | Water 13% | Medicine 12% | Sleep 10% | Stress 10% | BMI 5%
   const overallScore = Math.round(
-    food.score  * 0.30 +
-    ex.score    * 0.25 +
-    water.score * 0.15 +
-    med.score   * 0.15 +
-    sleep.score * 0.10 +
-    bmi.score   * 0.05,
+    food.score        * 0.28 +
+    ex.score          * 0.22 +
+    water.score       * 0.13 +
+    med.score         * 0.12 +
+    sleep.score       * 0.10 +
+    stressCalc.score  * 0.10 +
+    bmi.score         * 0.05,
   );
+
+  const fieldsLogged = [
+    mealCount > 0,
+    exSessions > 0,
+    totalGlasses > 0,
+    sleepIsLogged,
+    medScheduled > 0,
+    stressIsLogged,
+  ].filter(Boolean).length;
 
   const dataConfidence = calcDataConfidence(
     mealCount > 0, exSessions > 0,
     totalGlasses > 0, medScheduled > 0,
-    bmiValue > 0 || sleepHours > 0,
+    sleepIsLogged, stressIsLogged,
   );
 
   const { grade, gradeLabel } = gradeFromScore(overallScore);
 
   // ── Save to DB ───────────────────────────────────────────────────────────────
+  // Columns in daily_health_scores: sleep_score ✓, stress_score ✓ (nullable), bmi_score ✗ (not in schema)
   await pool.query(
     `INSERT INTO daily_health_scores
       (user_id, score_date, health_score, data_confidence_pct,
        food_score, exercise_score, water_score, medicine_score,
+       sleep_score, stress_score,
        total_calories_in, water_glasses, exercise_minutes, fields_logged, total_possible_fields)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
      ON CONFLICT (user_id, score_date) DO UPDATE SET
        health_score=$3, data_confidence_pct=$4,
        food_score=$5, exercise_score=$6, water_score=$7, medicine_score=$8,
-       total_calories_in=$9, water_glasses=$10, exercise_minutes=$11, fields_logged=$12`,
+       sleep_score=$9, stress_score=$10,
+       total_calories_in=$11, water_glasses=$12, exercise_minutes=$13, fields_logged=$14`,
     [userId, date, overallScore, String(dataConfidence),
      food.score, ex.score, water.score, med.score,
+     sleep.score, stressCalc.score,
      String(Math.round(totalCalories)), totalGlasses, exDuration,
-     [mealCount > 0, exSessions > 0, totalGlasses > 0].filter(Boolean).length, 3],
+     fieldsLogged, 6],
   ).catch(() => {});
 
   return {
@@ -656,12 +768,14 @@ export async function computeScientificScore(userId: string, date: string): Prom
     waterScore:    water.score,
     medicineScore: med.score,
     sleepScore:    sleep.score,
+    stressScore:   stressCalc.score,
     bmiScore:      bmi.score,
     exercise: ex.data,
     food:     food.data,
     water:    water.data,
     medicine: med.data,
     sleep:    { hoursLogged: sleepHours, isOptimal: sleep.isOptimal, quality: sleepQuality, isLogged: sleepIsLogged },
+    stress:   { stressScore: rawStressScore, mood: stressMood, isLogged: stressIsLogged },
     bmi:      { value: bmi.value, category: bmi.category },
     personalisation: {
       ageYears:          age,
@@ -675,12 +789,15 @@ export async function computeScientificScore(userId: string, date: string): Prom
     methodology: {
       exerciseBasis:   "WHO Physical Activity Guidelines 2020: ≥600 MET-min/week (85.7/day); scored via actual MET values per exercise type and intensity",
       foodBasis:       hasMicroData
-        ? `ICMR 2024 personalised: Calories 30% (goal-adjusted via ${goalSource === "calculated" ? "Harris-Benedict BMR" : "user preference"}), Protein 25% (${proteinBasis}), Fiber 15% (${fiberGoalG}g target), Micronutrients 20% (ICMR RDA 2020), Meal regularity 10%`
-        : `ICMR 2024 personalised: Calories 40% (goal-adjusted via ${goalSource === "calculated" ? "Harris-Benedict BMR" : "user preference"}), Protein 35% (${proteinBasis}), Meal regularity 15%, Fiber 10%; micronutrient data not yet logged`,
-      waterBasis:      `WHO/ICMR Hydration: ${gender === "female" ? "2000ml" : "2500ml"}/day base; adjusted for activity level`,
-      medicineBasis:   "WHO Adherence to Long-term Therapies (2003): adherence = doses taken ÷ doses prescribed",
-      sleepBasis:      "CDC/WHO Sleep Guidelines: 7–9 hours optimal for adults; <6h associated with metabolic risk (ICMR India data)",
-      compositeBasis:  "AORANE v2 Weighted Score: Nutrition 30% + Exercise 25% + Hydration 15% + Medicine Adherence 15% + Sleep 10% + BMI 5%",
+        ? `ICMR 2024 personalised: Calories 28% (goal-adjusted via ${goalSource === "calculated" ? "Harris-Benedict BMR" : "user preference"}), Protein 22% (${proteinBasis}), Fiber 15% (${fiberGoalG}g target), Micronutrients 20% (ICMR RDA 2020), Meals 10%; sugar/sodium penalty applied (WHO)`
+        : `ICMR 2024 personalised: Calories 40% (goal-adjusted via ${goalSource === "calculated" ? "Harris-Benedict BMR" : "user preference"}), Protein 35% (${proteinBasis}), Meal regularity 15%, Fiber 10%; sugar/sodium penalty applied (WHO); micronutrient data not yet logged`,
+      waterBasis:      prefWaterGoalGlasses
+        ? `User-defined goal: ${prefWaterGoalGlasses} glasses (${prefWaterGoalGlasses * 250}ml)/day`
+        : `WHO/ICMR Hydration: ${gender === "female" ? "2000ml" : "2500ml"}/day base; adjusted for activity level`,
+      medicineBasis:   "WHO Adherence to Long-term Therapies (2003): adherence = doses taken ÷ doses prescribed; date-matched via scheduled_at",
+      sleepBasis:      "CDC/WHO Sleep Guidelines: 7–9 hours optimal for adults; quality-adjusted (excellent +5, fair -8, poor -15 pts); <6h associated with metabolic risk",
+      stressBasis:     "AORANE Stress Engine: stress_score 0–100 inverted (lower stress = higher health score); mood-adjusted (happy +5, stressed/sad -10); not logged = neutral 60",
+      compositeBasis:  "AORANE v3 Weighted Score: Nutrition 28% + Exercise 22% + Hydration 13% + Medicine 12% + Sleep 10% + Stress 10% + BMI 5%",
     },
   };
 }
@@ -688,8 +805,8 @@ export async function computeScientificScore(userId: string, date: string): Prom
 // ─── Quick Active Percentage (for scorecard summary) ─────────────────────────
 export async function computeActivePercent(userId: string, date?: string): Promise<{
   overall: number; foodPct: number; waterPct: number; exercisePct: number; medicinePct: number;
-  sleepPct: number; bmiScore: number; grade: string; gradeLabel: string;
-  breakdown: { food: number; water: number; exerciseMetMin: number; medicine: number; sleepHours: number };
+  sleepPct: number; stressPct: number; bmiScore: number; grade: string; gradeLabel: string;
+  breakdown: { food: number; water: number; exerciseMetMin: number; medicine: number; sleepHours: number; stressScore: number | null };
   personalisation?: DailyHealthScore["personalisation"];
 }> {
   try {
@@ -702,6 +819,7 @@ export async function computeActivePercent(userId: string, date?: string): Promi
       exercisePct:  score.exerciseScore,
       medicinePct:  score.medicineScore,
       sleepPct:     score.sleepScore,
+      stressPct:    score.stressScore,
       bmiScore:     score.bmiScore,
       grade:        score.grade,
       gradeLabel:   score.gradeLabel,
@@ -711,14 +829,15 @@ export async function computeActivePercent(userId: string, date?: string): Promi
         exerciseMetMin: score.exercise.metMinutesToday,
         medicine:       score.medicine.taken,
         sleepHours:     score.sleep.hoursLogged,
+        stressScore:    score.stress.stressScore,
       },
       personalisation: score.personalisation,
     };
   } catch {
     return {
       overall: 0, foodPct: 0, waterPct: 0, exercisePct: 0, medicinePct: 0,
-      sleepPct: 50, bmiScore: 50, grade: "—", gradeLabel: "No data yet",
-      breakdown: { food: 0, water: 0, exerciseMetMin: 0, medicine: 0, sleepHours: 0 },
+      sleepPct: 50, stressPct: 60, bmiScore: 50, grade: "—", gradeLabel: "No data yet",
+      breakdown: { food: 0, water: 0, exerciseMetMin: 0, medicine: 0, sleepHours: 0, stressScore: null },
     };
   }
 }
