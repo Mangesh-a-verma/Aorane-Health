@@ -8,7 +8,8 @@ import {
   FileText, Download, Mail, TrendingUp, TrendingDown,
   Activity, Utensils, Droplets, Moon, Brain, Pill,
   Users, BarChart3, Sparkles, ChevronLeft, ChevronRight,
-  CheckCircle, AlertCircle, Loader2,
+  CheckCircle, AlertCircle, Loader2, UserPlus, Copy, Share2,
+  ClipboardList, QrCode,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -108,6 +109,136 @@ function AIInsights({ text }: { text: string }) {
   );
 }
 
+// ─── Empty State — No Members ─────────────────────────────────────────────────
+
+function NoMembersState({ orgCode, orgName }: { orgCode: string; orgName: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(orgCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
+
+  const steps = [
+    {
+      icon: Share2,
+      title: "Share Enrollment Code",
+      desc: "Send this code to your employees via email or WhatsApp. They'll enter it in the AORANE mobile app.",
+    },
+    {
+      icon: UserPlus,
+      title: "Employees Join",
+      desc: "Employees download the AORANE app, go to Profile → Join Organisation, and enter the code.",
+    },
+    {
+      icon: ClipboardList,
+      title: "They Log Health Data",
+      desc: "Members log food, water, exercise, sleep, and medicines daily in the app.",
+    },
+    {
+      icon: BarChart3,
+      title: "Report Generates",
+      desc: "Once members have logged data, this report page will automatically populate with aggregated analytics.",
+    },
+  ];
+
+  return (
+    <div className="flex flex-col items-center py-10 px-4 max-w-2xl mx-auto">
+      {/* Illustration area */}
+      <div className="w-20 h-20 rounded-2xl bg-primary/8 border border-primary/15 flex items-center justify-center mb-5">
+        <Users size={36} className="text-primary/60" />
+      </div>
+
+      <h2 className="text-xl font-bold text-foreground text-center">No members enrolled yet</h2>
+      <p className="text-sm text-muted-foreground text-center mt-2 max-w-md leading-relaxed">
+        Health reports will appear once employees join <strong>{orgName}</strong> and start logging their health data. Here's how to get started:
+      </p>
+
+      {/* Enrollment Code Card */}
+      <div className="w-full mt-8 rounded-2xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <QrCode size={15} className="text-primary" />
+          <span className="text-xs font-semibold text-primary uppercase tracking-wider">Your Enrollment Code</span>
+        </div>
+        <div className="flex items-center gap-3 mt-2">
+          <div className="flex-1 font-mono text-3xl font-black text-foreground tracking-widest bg-white rounded-xl px-5 py-3 border border-primary/20 text-center">
+            {orgCode}
+          </div>
+          <button
+            onClick={handleCopy}
+            className="flex flex-col items-center gap-1 p-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all active:scale-95"
+          >
+            {copied ? <CheckCircle size={20} /> : <Copy size={20} />}
+            <span className="text-[10px] font-semibold">{copied ? "Copied!" : "Copy"}</span>
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+          Employees enter this code in <strong>AORANE App → Profile → Join Organisation</strong>. Their health data will then appear in your reports.
+        </p>
+      </div>
+
+      {/* Steps */}
+      <div className="w-full mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {steps.map((step, i) => (
+          <div key={i} className="rounded-xl border border-border bg-card p-4 flex gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center shrink-0 mt-0.5">
+              <step.icon size={15} className="text-primary" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full bg-primary/15 text-primary text-[9px] flex items-center justify-center font-black shrink-0">{i + 1}</span>
+                {step.title}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{step.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Note */}
+      <div className="w-full mt-5 flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 rounded-xl p-4 border border-border">
+        <TrendingUp size={13} className="mt-0.5 shrink-0 text-primary/60" />
+        <span>
+          Reports are generated automatically once members log health data. All data is anonymized and aggregated per <strong>DPDP Act 2023</strong> — individual employee data is never shared.
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Empty State — Members enrolled but no data this month ───────────────────
+
+function NoDataThisMonth({ month, totalMembers }: { month: string; totalMembers: number }) {
+  return (
+    <div className="flex flex-col items-center py-14 px-4 text-center max-w-md mx-auto">
+      <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mb-4">
+        <ClipboardList size={28} className="text-amber-500" />
+      </div>
+      <h2 className="text-lg font-bold text-foreground">No health data for {formatMonthLabel(month)}</h2>
+      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+        You have <strong>{totalMembers} member{totalMembers !== 1 ? "s" : ""}</strong> enrolled, but none of them logged health data in {formatMonthLabel(month)}. Encourage your team to use the AORANE app daily.
+      </p>
+      <div className="mt-6 grid grid-cols-3 gap-3 w-full">
+        {[
+          { icon: Utensils, label: "Log Food", color: "text-orange-500 bg-orange-50 border-orange-200" },
+          { icon: Droplets, label: "Log Water", color: "text-sky-500 bg-sky-50 border-sky-200" },
+          { icon: Activity, label: "Log Exercise", color: "text-emerald-500 bg-emerald-50 border-emerald-200" },
+        ].map((item, i) => (
+          <div key={i} className={`rounded-xl border p-3 flex flex-col items-center gap-2 text-center ${item.color}`}>
+            <item.icon size={20} />
+            <span className="text-xs font-semibold">{item.label}</span>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground mt-5">
+        The report will auto-populate once members start logging.
+      </p>
+    </div>
+  );
+}
+
 // ─── Print Styles (injected once) ─────────────────────────────────────────────
 
 const PRINT_STYLE = `
@@ -169,6 +300,11 @@ export default function Reports() {
   const insights = insightsData?.insights as string | null | undefined;
   const gradeStyle = getGradeStyle(report?.grade ?? null);
 
+  // Derived state flags
+  const hasMembers   = report && report.totalMembers > 0;
+  const hasData      = report && report.activeMembers > 0;
+  const showFullReport = hasMembers && hasData;
+
   return (
     <Layout>
       <style>{PRINT_STYLE}</style>
@@ -210,7 +346,7 @@ export default function Reports() {
           <div className="flex gap-2 shrink-0">
             <button
               onClick={handleDownloadPDF}
-              disabled={!report || reportLoading}
+              disabled={!showFullReport || reportLoading}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40"
             >
               <Download size={15} />
@@ -218,7 +354,7 @@ export default function Reports() {
             </button>
             <button
               onClick={() => emailMutation.mutate()}
-              disabled={!report || emailMutation.isPending || emailSent}
+              disabled={!showFullReport || emailMutation.isPending || emailSent}
               className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors disabled:opacity-40"
             >
               {emailMutation.isPending ? (
@@ -243,6 +379,8 @@ export default function Reports() {
 
       {/* ── Content ─────────────────────────────────────────────── */}
       <div className="p-6 space-y-6">
+
+        {/* Loading */}
         {reportLoading && (
           <div className="flex items-center justify-center py-20">
             <div className="flex flex-col items-center gap-3">
@@ -252,6 +390,7 @@ export default function Reports() {
           </div>
         )}
 
+        {/* Error */}
         {reportError && (
           <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
             <AlertCircle size={16} />
@@ -259,29 +398,43 @@ export default function Reports() {
           </div>
         )}
 
-        {report && (
+        {/* ── Case 1: No members enrolled at all ── */}
+        {!reportLoading && !reportError && report && !hasMembers && (
+          <NoMembersState
+            orgCode={report.org ? (org?.orgCode ?? "—") : (org?.orgCode ?? "—")}
+            orgName={org?.name ?? report.org?.name ?? "your organisation"}
+          />
+        )}
+
+        {/* ── Case 2: Members exist but no data this month ── */}
+        {!reportLoading && !reportError && hasMembers && !hasData && (
+          <NoDataThisMonth month={month} totalMembers={report!.totalMembers} />
+        )}
+
+        {/* ── Case 3: Full report ── */}
+        {showFullReport && (
           <>
             {/* Summary Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className={`rounded-2xl p-5 border ${gradeStyle.bg} ${gradeStyle.border} text-center`}>
-                <div className={`text-4xl font-black ${gradeStyle.text}`}>{report.averages?.healthScore ?? 0}</div>
+                <div className={`text-4xl font-black ${gradeStyle.text}`}>{report!.averages?.healthScore ?? 0}</div>
                 <div className="text-xs text-muted-foreground mt-1 font-semibold">AVG HEALTH SCORE</div>
                 <div className={`mt-2 inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full text-white ${gradeStyle.badge}`}>
-                  {report.grade} — {report.gradeLabel}
+                  {report!.grade} — {report!.gradeLabel}
                 </div>
               </div>
               <div className="rounded-2xl p-5 border border-emerald-200 bg-emerald-50 text-center">
-                <div className="text-4xl font-black text-emerald-600">{report.activeMembers}</div>
+                <div className="text-4xl font-black text-emerald-600">{report!.activeMembers}</div>
                 <div className="text-xs text-muted-foreground mt-1 font-semibold">ACTIVE MEMBERS</div>
-                <div className="text-xs text-emerald-600 mt-2">of {report.totalMembers} enrolled</div>
+                <div className="text-xs text-emerald-600 mt-2">of {report!.totalMembers} enrolled</div>
               </div>
               <div className="rounded-2xl p-5 border border-violet-200 bg-violet-50 text-center">
-                <div className="text-4xl font-black text-violet-600">{report.compliance.exercisePct}%</div>
+                <div className="text-4xl font-black text-violet-600">{report!.compliance.exercisePct}%</div>
                 <div className="text-xs text-muted-foreground mt-1 font-semibold">EXERCISE COMPLIANCE</div>
                 <div className="text-xs text-violet-600 mt-2">≥ 30 min/day</div>
               </div>
               <div className="rounded-2xl p-5 border border-sky-200 bg-sky-50 text-center">
-                <div className="text-4xl font-black text-sky-600">{report.compliance.waterPct}%</div>
+                <div className="text-4xl font-black text-sky-600">{report!.compliance.waterPct}%</div>
                 <div className="text-xs text-muted-foreground mt-1 font-semibold">HYDRATION GOAL MET</div>
                 <div className="text-xs text-sky-600 mt-2">≥ 8 glasses/day</div>
               </div>
@@ -294,12 +447,12 @@ export default function Reports() {
                 Health Pillars (Employee Average)
               </h3>
               <div>
-                <ScoreBar score={report.averages?.exerciseScore  ?? 0} label="Physical Activity"  icon={Activity}  />
-                <ScoreBar score={report.averages?.foodScore      ?? 0} label="Nutrition & Diet"   icon={Utensils}  />
-                <ScoreBar score={report.averages?.waterScore     ?? 0} label="Hydration"          icon={Droplets}  />
-                <ScoreBar score={report.averages?.sleepScore     ?? 0} label="Sleep Quality"      icon={Moon}      />
-                <ScoreBar score={report.averages?.stressScore    ?? 0} label="Stress Management"  icon={Brain}     />
-                <ScoreBar score={report.averages?.medicineScore  ?? 0} label="Medicine Adherence" icon={Pill}      />
+                <ScoreBar score={report!.averages?.exerciseScore  ?? 0} label="Physical Activity"  icon={Activity}  />
+                <ScoreBar score={report!.averages?.foodScore      ?? 0} label="Nutrition & Diet"   icon={Utensils}  />
+                <ScoreBar score={report!.averages?.waterScore     ?? 0} label="Hydration"          icon={Droplets}  />
+                <ScoreBar score={report!.averages?.sleepScore     ?? 0} label="Sleep Quality"      icon={Moon}      />
+                <ScoreBar score={report!.averages?.stressScore    ?? 0} label="Stress Management"  icon={Brain}     />
+                <ScoreBar score={report!.averages?.medicineScore  ?? 0} label="Medicine Adherence" icon={Pill}      />
               </div>
             </div>
 
@@ -310,11 +463,11 @@ export default function Reports() {
                 Employee Grade Distribution
               </h3>
               <div className="flex gap-3 flex-wrap">
-                <GradeCard grade="A+" count={report.gradeDistribution?.excellent        ?? 0} label="Excellent"        color="bg-emerald-50 border-emerald-200 text-emerald-700" />
-                <GradeCard grade="A"  count={report.gradeDistribution?.veryGood         ?? 0} label="Very Good"        color="bg-blue-50 border-blue-200 text-blue-700"          />
-                <GradeCard grade="B"  count={report.gradeDistribution?.good             ?? 0} label="Good"             color="bg-sky-50 border-sky-200 text-sky-700"              />
-                <GradeCard grade="C"  count={report.gradeDistribution?.average          ?? 0} label="Average"          color="bg-amber-50 border-amber-200 text-amber-700"        />
-                <GradeCard grade="D/F" count={report.gradeDistribution?.needsImprovement ?? 0} label="Needs Attention" color="bg-red-50 border-red-200 text-red-700"             />
+                <GradeCard grade="A+" count={report!.gradeDistribution?.excellent        ?? 0} label="Excellent"        color="bg-emerald-50 border-emerald-200 text-emerald-700" />
+                <GradeCard grade="A"  count={report!.gradeDistribution?.veryGood         ?? 0} label="Very Good"        color="bg-blue-50 border-blue-200 text-blue-700"          />
+                <GradeCard grade="B"  count={report!.gradeDistribution?.good             ?? 0} label="Good"             color="bg-sky-50 border-sky-200 text-sky-700"              />
+                <GradeCard grade="C"  count={report!.gradeDistribution?.average          ?? 0} label="Average"          color="bg-amber-50 border-amber-200 text-amber-700"        />
+                <GradeCard grade="D/F" count={report!.gradeDistribution?.needsImprovement ?? 0} label="Needs Attention" color="bg-red-50 border-red-200 text-red-700"             />
               </div>
             </div>
 
@@ -337,9 +490,9 @@ export default function Reports() {
 
               {!insightsLoading && insights && <AIInsights text={insights} />}
 
-              {!insightsLoading && !insights && report.activeMembers === 0 && (
+              {!insightsLoading && !insights && (
                 <div className="text-sm text-muted-foreground text-center py-6">
-                  No employee health data available for this month to generate insights.
+                  AI guide could not be generated for this month. Check back later.
                 </div>
               )}
             </div>
@@ -348,27 +501,17 @@ export default function Reports() {
             <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 rounded-xl p-4 border border-border">
               <TrendingUp size={13} className="mt-0.5 shrink-0 text-primary/60" />
               <span>
-                <strong>Data note:</strong> Report covers {report.dataPoints.toLocaleString()} health log entries from {report.activeMembers} active members in {formatMonthLabel(month)}.
+                <strong>Data note:</strong> Report covers {report!.dataPoints.toLocaleString()} health log entries from {report!.activeMembers} active members in {formatMonthLabel(month)}.
                 All data is anonymized and aggregated per <strong>DPDP Act 2023</strong>. Individual employee data is never shared.
               </span>
             </div>
           </>
         )}
-
-        {report && report.totalMembers === 0 && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center">
-            <TrendingDown size={32} className="text-amber-500 mx-auto mb-3" />
-            <h3 className="text-base font-bold text-amber-800">No Members Found</h3>
-            <p className="text-sm text-amber-700 mt-2">
-              No active members enrolled in your organization. Share your enrollment code to get started.
-            </p>
-          </div>
-        )}
       </div>
 
       {/* ── Print View (hidden, shown only on print) ──────────── */}
       <div id="corporate-report-print" ref={printRef} style={{ fontFamily: "Arial, sans-serif", color: "#0d1f33" }}>
-        {report && (
+        {showFullReport && (
           <div style={{ maxWidth: "800px", margin: "0 auto" }}>
             {/* Print Header */}
             <div style={{ background: "linear-gradient(135deg, #0077B6, #023E8A, #1B998B)", padding: "32px 40px", borderRadius: "12px", marginBottom: "24px" }}>
@@ -382,8 +525,8 @@ export default function Reports() {
               </div>
               <div style={{ marginTop: "14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>{formatMonthLabel(month)}</div>
-                <div style={{ background: report.gradeColor || "#0077B6", padding: "5px 14px", borderRadius: "20px", fontSize: "13px", fontWeight: 800, color: "#fff" }}>
-                  {report.grade} — {report.gradeLabel}
+                <div style={{ background: report!.gradeColor || "#0077B6", padding: "5px 14px", borderRadius: "20px", fontSize: "13px", fontWeight: 800, color: "#fff" }}>
+                  {report!.grade} — {report!.gradeLabel}
                 </div>
               </div>
             </div>
@@ -391,10 +534,10 @@ export default function Reports() {
             {/* Print Stats */}
             <div style={{ display: "flex", gap: "16px", marginBottom: "24px" }}>
               {[
-                { label: "Avg Health Score", value: `${report.averages?.healthScore ?? 0}/100`, color: "#0077B6" },
-                { label: "Active Members",   value: String(report.activeMembers),               color: "#10b981" },
-                { label: "Exercise Compliance", value: `${report.compliance.exercisePct}%`,     color: "#7c3aed" },
-                { label: "Hydration Goal",   value: `${report.compliance.waterPct}%`,           color: "#0284c7" },
+                { label: "Avg Health Score", value: `${report!.averages?.healthScore ?? 0}/100`, color: "#0077B6" },
+                { label: "Active Members",   value: String(report!.activeMembers),               color: "#10b981" },
+                { label: "Exercise Compliance", value: `${report!.compliance.exercisePct}%`,     color: "#7c3aed" },
+                { label: "Hydration Goal",   value: `${report!.compliance.waterPct}%`,           color: "#0284c7" },
               ].map((s, i) => (
                 <div key={i} style={{ flex: 1, textAlign: "center", padding: "16px", background: "#f9fafb", borderRadius: "10px", border: "1px solid #e5e7eb" }}>
                   <div style={{ fontSize: "26px", fontWeight: 900, color: s.color }}>{s.value}</div>
@@ -407,12 +550,12 @@ export default function Reports() {
             <div style={{ background: "#f9fafb", borderRadius: "10px", padding: "20px", marginBottom: "24px", border: "1px solid #e5e7eb" }}>
               <div style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "14px", color: "#0d1f33" }}>Health Pillars</div>
               {[
-                { label: "Physical Activity",  score: report.averages?.exerciseScore  ?? 0 },
-                { label: "Nutrition & Diet",   score: report.averages?.foodScore      ?? 0 },
-                { label: "Hydration",          score: report.averages?.waterScore     ?? 0 },
-                { label: "Sleep Quality",      score: report.averages?.sleepScore     ?? 0 },
-                { label: "Stress Management",  score: report.averages?.stressScore    ?? 0 },
-                { label: "Medicine Adherence", score: report.averages?.medicineScore  ?? 0 },
+                { label: "Physical Activity",  score: report!.averages?.exerciseScore  ?? 0 },
+                { label: "Nutrition & Diet",   score: report!.averages?.foodScore      ?? 0 },
+                { label: "Hydration",          score: report!.averages?.waterScore     ?? 0 },
+                { label: "Sleep Quality",      score: report!.averages?.sleepScore     ?? 0 },
+                { label: "Stress Management",  score: report!.averages?.stressScore    ?? 0 },
+                { label: "Medicine Adherence", score: report!.averages?.medicineScore  ?? 0 },
               ].map((p, i) => {
                 const c = p.score >= 75 ? "#10b981" : p.score >= 50 ? "#f59e0b" : "#ef4444";
                 return (
