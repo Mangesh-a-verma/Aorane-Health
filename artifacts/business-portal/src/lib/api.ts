@@ -58,6 +58,20 @@ export interface Overview {
   org: Org; memberCount: number; activeSeats: number;
 }
 
+export interface CorporateReport {
+  org: { id: string; name: string; orgType: string; industry: string | null; companySize: string | null; contactEmail: string; city: string | null; state: string | null };
+  month: string;
+  totalMembers: number;
+  activeMembers: number;
+  dataPoints: number;
+  averages: { healthScore: number; exerciseScore: number; foodScore: number; waterScore: number; sleepScore: number; stressScore: number; medicineScore: number } | null;
+  compliance: { exercisePct: number; waterPct: number };
+  gradeDistribution: { excellent: number; veryGood: number; good: number; average: number; needsImprovement: number } | null;
+  grade: string | null;
+  gradeLabel: string | null;
+  gradeColor: string | null;
+}
+
 export interface OrgPlan {
   label: string; seats: number; price: number; priceYearly: number; color: string;
 }
@@ -263,4 +277,14 @@ export const api = {
 
   sendPhoneOtp: () =>
     request<{ success: boolean; message: string; stub: boolean }>("/business/verify/send-phone-otp", { method: "POST" }),
+
+  // Corporate Monthly Health Reports
+  getReportData: (month: string) =>
+    request<{ report: CorporateReport }>(`/business/report/data?month=${month}`),
+
+  getReportInsights: (month: string) =>
+    request<{ insights: string | null }>(`/business/report/insights?month=${month}`),
+
+  sendReportEmail: (month: string) =>
+    request<{ success: boolean; sentTo: string }>("/business/report/email", { method: "POST", body: JSON.stringify({ month }) }),
 };

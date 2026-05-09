@@ -18,6 +18,7 @@ import Billing from "@/pages/Billing";
 import Analytics from "@/pages/Analytics";
 import Communications from "@/pages/Communications";
 import Verify from "@/pages/Verify";
+import Reports from "@/pages/Reports";
 
 const queryClient = new QueryClient();
 
@@ -95,6 +96,7 @@ function Router() {
       <Route path="/billing" component={() => <ProtectedRoute component={Billing} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
       <Route path="/verify" component={() => <ProtectedRoute component={Verify} />} />
+      <Route path="/reports" component={() => <ProtectedRoute component={Reports} />} />
       <Route component={NotFound} />
     </Switch>
   );

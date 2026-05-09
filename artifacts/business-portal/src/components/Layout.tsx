@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard, Users, QrCode, Settings, LogOut,
   Menu, X, Bell, ChevronRight,
-  BarChart2, Megaphone, CreditCard, ShieldCheck, ShieldAlert,
+  BarChart2, Megaphone, CreditCard, ShieldCheck, ShieldAlert, FileText,
 } from "lucide-react";
 
 function InactivityBanner({ onStay }: { onStay: () => void }) {
@@ -38,6 +38,7 @@ const navItems = [
   { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { path: "/members", icon: Users, label: "Members" },
   { path: "/analytics", icon: BarChart2, label: "Analytics" },
+  { path: "/reports", icon: FileText, label: "Health Reports" },
   { path: "/communications", icon: Megaphone, label: "Communications" },
   { path: "/codes", icon: QrCode, label: "Enrollment Codes" },
   { path: "/billing", icon: CreditCard, label: "Billing" },
