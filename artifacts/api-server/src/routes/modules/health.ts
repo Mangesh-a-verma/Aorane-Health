@@ -310,7 +310,7 @@ router.post("/health/sleep", requireAuth, async (req: AuthRequest, res) => {
     }
     const result = await pool.query(
       `INSERT INTO sleep_logs (user_id, sleep_date, sleep_hours, bedtime, wake_time, quality, notes, is_offline_entry, logged_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+       VALUES ($1, $2, $3, $4, $5, $6::sleep_quality, $7, $8, NOW())
        ON CONFLICT DO NOTHING
        RETURNING *`,
       [
@@ -363,7 +363,7 @@ router.put("/health/sleep/:date", requireAuth, async (req: AuthRequest, res) => 
       return;
     }
     const result = await pool.query(
-      `UPDATE sleep_logs SET sleep_hours=$1, bedtime=$2, wake_time=$3, quality=$4, notes=$5, logged_at=NOW()
+      `UPDATE sleep_logs SET sleep_hours=$1, bedtime=$2, wake_time=$3, quality=$4::sleep_quality, notes=$5, logged_at=NOW()
        WHERE id=$6 RETURNING *`,
       [hours, bedtime ?? null, wakeTime ?? null, quality ?? null, notes ?? null, existing.rows[0].id]
     );
