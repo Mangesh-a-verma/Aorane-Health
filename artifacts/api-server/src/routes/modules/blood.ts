@@ -690,30 +690,6 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
   }
 });
 
-// ── Diagnostic: table + column check (no auth needed — remove after debugging) ─
-router.get("/blood/debug/schema", async (_req, res) => {
-  try {
-    const tableCheck = await pool.query(
-      `SELECT column_name, data_type, udt_name
-       FROM information_schema.columns
-       WHERE table_name = 'blood_emergency_requests'
-       ORDER BY ordinal_position`
-    );
-    const enumCheck = await pool.query(
-      `SELECT typname FROM pg_type WHERE typname IN ('blood_group','blood_request_status','donor_response')`
-    );
-    const countCheck = await pool.query(`SELECT COUNT(*) FROM blood_emergency_requests`);
-    res.json({
-      table_exists: tableCheck.rows.length > 0,
-      columns: tableCheck.rows,
-      enums: enumCheck.rows,
-      row_count: countCheck.rows[0].count,
-    });
-  } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
-  }
-});
-
 // ── Confirm Blood Donation (V2) — records donation + 90-day cooldown ─────────
 // Called when a donor actually donates blood (verified by donor themselves OR admin)
 router.post("/blood/donate/confirm", requireAuth, async (req: AuthRequest, res) => {
