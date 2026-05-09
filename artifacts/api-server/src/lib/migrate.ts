@@ -1268,6 +1268,20 @@ export async function runStartupMigrations(): Promise<void> {
     // ── blood_donors: phone column + auto-verify all existing donors (OTP flow removed) ─
     `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS phone TEXT`,
     `UPDATE blood_donors SET otp_verified = TRUE WHERE otp_verified = FALSE`,
+
+    // ── admin_notifications: in-app bell notifications for admin panel ────────
+    `CREATE TABLE IF NOT EXISTS admin_notifications (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      data JSONB,
+      is_read BOOLEAN NOT NULL DEFAULT FALSE,
+      read_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_admin_notif_created ON admin_notifications(created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_admin_notif_is_read ON admin_notifications(is_read)`,
   ];
 
   let ok = 0; let fail = 0;

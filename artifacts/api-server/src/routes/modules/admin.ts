@@ -1218,6 +1218,29 @@ router.post("/admin/users/:id/reset-ai-usage", requireAdmin, async (req: AdminRe
   }
 });
 
+// ── Admin Notifications — bell icon feed ─────────────────────────────────────
+router.get("/admin/notifications", requireAdmin, async (_req: AdminRequest, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, type, title, message, data, is_read, created_at
+       FROM admin_notifications
+       ORDER BY created_at DESC
+       LIMIT 30`
+    );
+    const unreadCount = rows.filter((r: { is_read: boolean }) => !r.is_read).length;
+    res.json({ notifications: rows, unreadCount });
+  } catch { res.status(500).json({ error: "Failed to fetch notifications" }); }
+});
+
+router.post("/admin/notifications/read-all", requireAdmin, async (_req: AdminRequest, res) => {
+  try {
+    await pool.query(
+      `UPDATE admin_notifications SET is_read = TRUE, read_at = NOW() WHERE is_read = FALSE`
+    );
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: "Failed to mark notifications as read" }); }
+});
+
 router.post("/admin/change-password", requireAdmin, async (req: AdminRequest, res) => {
   try {
     const { currentPassword, newPassword } = req.body as { currentPassword: string; newPassword: string };

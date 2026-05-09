@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { createAdminNotif } from "../../lib/notify-admin";
 import { db, enquiriesTable, companySettingsTable } from "@workspace/db";
 import { desc, eq, sql } from "drizzle-orm";
 import { Resend } from "resend";
@@ -182,6 +183,14 @@ router.post("/enquiries", async (req, res) => {
       downloadUrl = rows[0]?.url || null;
     }
     res.json({ success: true, id: created.id, downloadUrl });
+
+    // ── Admin notification (fire-and-forget) ──────────────────────────────────
+    createAdminNotif(
+      "new_enquiry",
+      `New Enquiry: ${name}`,
+      `${email} · ${type}${city ? ` · ${city}` : ""}`,
+      { enquiryId: created.id }
+    ).catch(() => {});
   } catch (e) {
     req.log.error({ err: e }, "enquiries submit failed");
     res.status(500).json({ error: "Failed to submit enquiry" });

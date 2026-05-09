@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "@workspace/db";
 import { verifyWebhookSignature } from "../../lib/razorpay";
+import { createAdminNotif } from "../../lib/notify-admin";
 import type { Request, Response } from "express";
 import { logger } from "../../lib/logger";
 
@@ -61,6 +62,16 @@ router.post("/webhooks/razorpay", async (req: Request, res: Response) => {
          WHERE id = (SELECT user_id FROM subscriptions WHERE razorpay_subscription_id = $1 LIMIT 1)`,
         [subscriptionId]
       ).catch((e: Error) => logger.warn({ err: e.message }, "user plan update failed"));
+
+      // ── Admin notification ────────────────────────────────────────────────
+      const amtPaise = paymentEntity?.amount ?? 0;
+      const amtLabel = amtPaise ? `₹${Math.round(amtPaise / 100)}` : "";
+      createAdminNotif(
+        "new_payment",
+        `💳 Subscription Payment${amtLabel ? ` — ${amtLabel}` : ""}`,
+        `Subscription renewed · ${subscriptionId}`,
+        { subscriptionId, amountPaise: amtPaise }
+      ).catch(() => {});
     }
 
     if (eventType === "subscription.halted" && subEntity?.id) {

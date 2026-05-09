@@ -1,5 +1,6 @@
 // Blood Emergency Module — pool.query fix applied
 import { Router } from "express";
+import { createAdminNotif } from "../../lib/notify-admin";
 import { db, pool, bloodDonorsTable, bloodDonationsTable, bloodEmergencyRequestsTable } from "@workspace/db";
 import { eq, and, or, ilike, isNull, isNotNull, lt, sql, inArray, ne } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -546,6 +547,14 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
     const request = insertRows[0];
 
     res.status(201).json({ success: true, request });
+
+    // ── Admin notification (fire-and-forget) ──────────────────────────────────
+    createAdminNotif(
+      "new_blood_emergency",
+      `🆘 Blood Emergency: ${String(resolvedBloodGroup)}`,
+      `${String(patientName)} needs ${String(resolvedBloodGroup)} · ${String(hospitalName)}, ${String(hospitalCity)}`,
+      { requestId: request.id }
+    ).catch(() => {});
 
     // ── Fire-and-forget: notify compatible donors (GPS-based if lat/lng given, else city/state) ─
     (async () => {

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { createAdminNotif } from "../../lib/notify-admin";
 import { pool } from "@workspace/db";
 import { requireAuth } from "../../middlewares/user-auth";
 import { requireAdmin } from "../../middlewares/admin-auth";
@@ -134,6 +135,14 @@ router.post("/support/ticket", requireAuth, async (req: AuthRequest, res) => {
       ticketId: r.rows[0].id,
       message: "Your complaint has been submitted. Our team will respond within 24 hours.",
     });
+
+    // ── Admin notification (fire-and-forget) ──────────────────────────────────
+    createAdminNotif(
+      "new_support_ticket",
+      `New Support Ticket: ${subject.trim().slice(0, 60)}`,
+      `${p.full_name || "User"} · ${cat} · ${pri} priority`,
+      { ticketId: r.rows[0].id }
+    ).catch(() => {});
   } catch (e) {
     req.log.error({ err: e }, "support ticket error");
     res.status(500).json({ error: "Failed to submit ticket" });

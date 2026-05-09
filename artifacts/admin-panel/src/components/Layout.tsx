@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useRoute } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { api, type Enquiry } from "@/lib/api";
+import { api, type AdminNotif } from "@/lib/api";
 import {
   LayoutDashboard, Users, Building2, Flag, UtensilsCrossed,
   Tag, Megaphone, Droplet, Languages, ClipboardList, LogOut,
@@ -125,7 +125,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   });
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
-  const [notifEnquiries, setNotifEnquiries] = useState<Enquiry[]>([]);
+  const [notifications, setNotifications] = useState<AdminNotif[]>([]);
   const [newCount, setNewCount] = useState(0);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -135,19 +135,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
 
-  useEffect(() => {
-    api.enquiries().then(d => {
-      setNewCount(d.stats?.newCount ?? 0);
-      setNotifEnquiries((d.enquiries ?? []).slice(0, 6));
+  function fetchNotifications() {
+    api.getAdminNotifications().then(d => {
+      setNewCount(d.unreadCount ?? 0);
+      setNotifications(d.notifications ?? []);
     }).catch(() => {});
+  }
+
+  useEffect(() => {
+    fetchNotifications();
+    const timer = setInterval(fetchNotifications, 60_000);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
     if (!notifOpen) return;
     setNotifLoading(true);
-    api.enquiries().then(d => {
-      setNewCount(d.stats?.newCount ?? 0);
-      setNotifEnquiries((d.enquiries ?? []).slice(0, 6));
+    api.getAdminNotifications().then(d => {
+      setNewCount(0);
+      setNotifications(d.notifications ?? []);
+      api.markNotificationsReadAll().catch(() => {});
     }).catch(() => {}).finally(() => setNotifLoading(false));
   }, [notifOpen]);
 
@@ -310,54 +317,49 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <div className="absolute right-0 top-9 w-80 rounded-2xl shadow-2xl z-50 overflow-hidden bg-card border border-border">
                   <div className="px-4 py-3 flex items-center justify-between border-b border-border">
                     <span className="text-xs font-bold text-foreground">Notifications</span>
-                    {newCount > 0 && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-primary/10 text-primary">
-                        {newCount} new
-                      </span>
-                    )}
+                    <span className="text-[10px] text-muted-foreground">Last 30</span>
                   </div>
 
-                  <div className="max-h-72 overflow-y-auto">
+                  <div className="max-h-80 overflow-y-auto">
                     {notifLoading ? (
                       <div className="py-8 text-center text-xs text-muted-foreground">Loading…</div>
-                    ) : notifEnquiries.length === 0 ? (
+                    ) : notifications.length === 0 ? (
                       <div className="py-8 text-center text-xs text-muted-foreground">
                         <Inbox size={20} className="mx-auto mb-2 opacity-30" />
-                        No new enquiries
+                        No notifications yet
                       </div>
                     ) : (
-                      notifEnquiries.map(e => (
-                        <Link key={e.id} href="/enquiries" onClick={() => setNotifOpen(false)}>
-                          <a className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted/40 transition-colors border-b border-border/50">
-                            <div className="w-7 h-7 rounded-xl shrink-0 flex items-center justify-center mt-0.5"
-                                 style={{ background: e.status === "new" ? "#F59E0B22" : "#0077B622" }}>
-                              <MessageSquare size={12} style={{ color: e.status === "new" ? "#F59E0B" : "#0077B6" }} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-medium truncate text-foreground">{e.name}</span>
-                                <span className={`text-[9px] shrink-0 px-1.5 py-0.5 rounded-full font-bold uppercase ${
-                                  e.status === "new" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" : "bg-muted text-muted-foreground"
-                                }`}>
-                                  {e.status}
-                                </span>
+                      notifications.map(n => {
+                        const cfg = {
+                          new_payment:        { icon: IndianRupee,   color: "#10B981", bg: "#10B98122", href: "/subscriptions" },
+                          new_blood_emergency:{ icon: Droplet,       color: "#EF4444", bg: "#EF444422", href: "/blood-requests" },
+                          new_enquiry:        { icon: MessageSquare, color: "#F59E0B", bg: "#F59E0B22", href: "/enquiries" },
+                          new_support_ticket: { icon: FileText,      color: "#0077B6", bg: "#0077B622", href: "/support-tickets" },
+                        }[n.type] ?? { icon: Bell, color: "#6B7280", bg: "#6B728022", href: "/" };
+                        const Icon = cfg.icon;
+                        return (
+                          <Link key={n.id} href={cfg.href} onClick={() => setNotifOpen(false)}>
+                            <a className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted/40 transition-colors border-b border-border/50 ${!n.is_read ? "bg-primary/5" : ""}`}>
+                              <div className="w-7 h-7 rounded-xl shrink-0 flex items-center justify-center mt-0.5"
+                                   style={{ background: cfg.bg }}>
+                                <Icon size={12} style={{ color: cfg.color }} />
                               </div>
-                              <div className="text-[10px] mt-0.5 truncate text-muted-foreground">{e.email}</div>
-                              <div className="text-[10px] mt-0.5 text-muted-foreground/60">
-                                {new Date(e.createdAt).toLocaleDateString("en-IN")}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="text-xs font-medium truncate text-foreground">{n.title}</span>
+                                  {!n.is_read && <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-primary" />}
+                                </div>
+                                <div className="text-[10px] mt-0.5 truncate text-muted-foreground">{n.message}</div>
+                                <div className="text-[10px] mt-0.5 text-muted-foreground/50">
+                                  {new Date(n.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                </div>
                               </div>
-                            </div>
-                          </a>
-                        </Link>
-                      ))
+                            </a>
+                          </Link>
+                        );
+                      })
                     )}
                   </div>
-
-                  <Link href="/enquiries" onClick={() => setNotifOpen(false)}>
-                    <a className="block px-4 py-2.5 text-center text-xs font-medium text-primary border-t border-border hover:bg-muted/30 transition-colors cursor-pointer">
-                      View all enquiries →
-                    </a>
-                  </Link>
                 </div>
               )}
             </div>

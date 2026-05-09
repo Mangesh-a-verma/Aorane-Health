@@ -325,6 +325,11 @@ export const api = {
   },
   promoteFood: (id: string) => req<{ success: boolean; foodItem: { id: string; foodNameEn: string } | null }>(`/admin/food-cache/${id}/promote`, { method: "POST" }),
   rejectFood:  (id: string) => req<{ success: boolean }>(`/admin/food-cache/${id}/reject`, { method: "POST" }),
+  getAdminNotifications: () =>
+    req<{ notifications: AdminNotif[]; unreadCount: number }>("/admin/notifications"),
+  markNotificationsReadAll: () =>
+    req<{ success: boolean }>("/admin/notifications/read-all", { method: "POST" }),
+
   exportFoodCache: async (filter = "all", format: "csv" | "json" = "json") => {
     const token = getToken();
     const url = `${API_BASE}/admin/food-cache/export?filter=${filter}&format=${format}`;
@@ -374,4 +379,14 @@ export type FoodCacheStats = {
   promoted: number;
   rejected: number;
   autoPromoted: number;
+};
+
+export type AdminNotif = {
+  id: string;
+  type: "new_payment" | "new_blood_emergency" | "new_enquiry" | "new_support_ticket";
+  title: string;
+  message: string;
+  data: Record<string, unknown> | null;
+  is_read: boolean;
+  created_at: string;
 };
