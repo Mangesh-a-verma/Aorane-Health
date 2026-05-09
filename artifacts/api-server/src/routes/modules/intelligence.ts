@@ -17,6 +17,7 @@ import type { AuthRequest } from "../../middlewares/user-auth";
 import { aiRateLimit } from "../../middlewares/ai-rate-limit";
 import { callAI } from "../../lib/ai";
 import { requireFeature } from "../../middlewares/feature-check";
+import { checkAndUseAILimit } from "../../lib/aiLimiter";
 import { getWeatherContext } from "../../lib/weather";
 import { calculateCaloriesBurned, getMet, MET_VALUES } from "../../lib/met";
 
@@ -124,10 +125,23 @@ async function gather30DayData(userId: string) {
 
 // ── Monthly Disease Risk Prediction ──────────────────────────────────────────
 
-router.get("/health/intelligence/predict", requireAuth, aiRateLimit("health_prediction", 5), async (req: AuthRequest, res) => {
+router.get("/health/intelligence/predict", requireAuth, requireFeature("health_prediction"), aiRateLimit("health_prediction", 5), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
+    const planType = req.userPlan || "free";
     const month = getCurrentMonth();
+
+    const limitCheck = await checkAndUseAILimit(userId, "ai_predictions_enabled", planType);
+    if (!limitCheck.allowed) {
+      res.status(403).json({
+        error: `Health Predictions are not available on the ${planType.toUpperCase()} plan. Please upgrade to unlock this feature.`,
+        feature: "ai_predictions_enabled",
+        reason: "plan_not_supported",
+        currentPlan: planType,
+        upgradeSuggested: true,
+      });
+      return;
+    }
 
     const cached = await db.select().from(healthPredictionsTable)
       .where(and(eq(healthPredictionsTable.userId, userId), eq(healthPredictionsTable.month, month)))
@@ -144,7 +158,7 @@ router.get("/health/intelligence/predict", requireAuth, aiRateLimit("health_pred
   }
 });
 
-router.post("/health/intelligence/predict/refresh", requireAuth, aiRateLimit("health_prediction", 5), async (req: AuthRequest, res) => {
+router.post("/health/intelligence/predict/refresh", requireAuth, requireFeature("health_prediction"), aiRateLimit("health_prediction", 5), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const month = getCurrentMonth();
@@ -288,7 +302,7 @@ Return ONLY valid JSON (no markdown, no extra text):
 
 // ── Weekly Diet Chart ─────────────────────────────────────────────────────────
 
-router.get("/health/intelligence/diet-chart", requireAuth, aiRateLimit("diet_chart", 4), async (req: AuthRequest, res) => {
+router.get("/health/intelligence/diet-chart", requireAuth, requireFeature("weekly_diet_chart"), aiRateLimit("diet_chart", 4), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const weekStart = getCurrentWeekStart();
@@ -308,7 +322,7 @@ router.get("/health/intelligence/diet-chart", requireAuth, aiRateLimit("diet_cha
   }
 });
 
-router.post("/health/intelligence/diet-chart/refresh", requireAuth, aiRateLimit("diet_chart", 2), async (req: AuthRequest, res) => {
+router.post("/health/intelligence/diet-chart/refresh", requireAuth, requireFeature("weekly_diet_chart"), aiRateLimit("diet_chart", 2), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const weekStart = getCurrentWeekStart();

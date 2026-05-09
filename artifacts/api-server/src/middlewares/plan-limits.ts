@@ -57,6 +57,28 @@ export function invalidatePlanLimitsCache(featureName?: string): void {
   else FEATURE_CACHE.clear();
 }
 
+/**
+ * isBooleanFeatureEnabled — check if a boolean plan_features row is enabled for a plan.
+ * Does NOT track usage. For features like ads_shown, wearable_sync, ai_predictions_enabled.
+ * Returns true (fail-open) if feature not found in DB.
+ */
+export async function isBooleanFeatureEnabled(
+  featureName: string,
+  planType: string,
+): Promise<boolean> {
+  const row = await getFeatureRow(featureName);
+  if (!row) return true;
+  const plan = (planType || "free").toLowerCase();
+  const raw = plan === "max" ? row.maxValue
+    : plan === "pro" ? row.proValue
+    : plan === "family" ? row.familyValue
+    : row.freeValue;
+  if (raw === "false" || raw === "0") return false;
+  if (raw === "true") return true;
+  const n = parseInt(raw, 10);
+  return !isNaN(n) && n !== 0;
+}
+
 /** Get daily limit for a plan from the feature row */
 function getLimitForPlan(row: FeatureRow, plan: string): number {
   const raw = (() => {

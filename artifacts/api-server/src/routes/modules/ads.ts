@@ -16,6 +16,7 @@ import { requireAuth } from "../../middlewares/user-auth";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import type { AdminRequest } from "../../middlewares/admin-auth";
+import { isBooleanFeatureEnabled } from "../../middlewares/plan-limits";
 
 const router = Router();
 
@@ -24,7 +25,14 @@ const router = Router();
 router.get("/ads/active", requireAuth, async (req: AuthRequest, res) => {
   try {
     const screen = (req.query.screen as string) || "dashboard";
+    const planType = req.userPlan || "free";
     const now = new Date();
+
+    const adsEnabled = await isBooleanFeatureEnabled("ads_shown", planType);
+    if (!adsEnabled) {
+      res.json({ ads: [], adsEnabled: false });
+      return;
+    }
 
     const ads = await db.select().from(adCampaignsTable)
       .where(
@@ -39,9 +47,15 @@ router.get("/ads/active", requireAuth, async (req: AuthRequest, res) => {
         )
       )
       .orderBy(asc(adCampaignsTable.slidePosition), asc(adCampaignsTable.priority))
-      .limit(5);
+      .limit(10);
 
-    res.json({ ads });
+    // Filter by targetPlans in JS — Drizzle has no native array-contains operator
+    // Ad shows if: targetPlans is null/empty (show to all), OR user's plan is in the list
+    const filteredAds = ads.filter(ad =>
+      !ad.targetPlans || ad.targetPlans.length === 0 || ad.targetPlans.includes(planType)
+    ).slice(0, 5);
+
+    res.json({ ads: filteredAds, adsEnabled: true });
   } catch {
     res.status(500).json({ error: "Failed to fetch ads" });
   }

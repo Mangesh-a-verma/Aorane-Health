@@ -5,6 +5,7 @@ import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { aiRateLimit } from "../../middlewares/ai-rate-limit";
 import { requireFeature } from "../../middlewares/feature-check";
+import { checkAndUseAILimit } from "../../lib/aiLimiter";
 
 const router = Router();
 
@@ -42,6 +43,32 @@ router.get("/medical/reports/:id", requireAuth, async (req: AuthRequest, res) =>
 // ─────────────────────────────────────────────────────────
 router.post("/medical/scan", requireAuth, requireFeature("medical_report"), aiRateLimit("medical_scan", 5), async (req: AuthRequest, res) => {
   try {
+    const planType = req.userPlan || "free";
+    const limitCheck = await checkAndUseAILimit(req.userId!, "ai_medical_scan_daily", planType);
+    if (!limitCheck.allowed) {
+      if (limitCheck.planRequired) {
+        res.status(403).json({
+          error: `Medical Report Scan is not available on the ${planType.toUpperCase()} plan. Upgrade to ${limitCheck.planRequired.toUpperCase()} to unlock it.`,
+          feature: "ai_medical_scan_daily",
+          reason: "plan_not_supported",
+          currentPlan: planType,
+          planRequired: limitCheck.planRequired,
+          upgradeSuggested: true,
+        });
+      } else {
+        res.status(429).json({
+          error: `Aaj ki medical scan limit khatam ho gayi! Limit: ${limitCheck.limit}/day on ${planType.toUpperCase()} plan.`,
+          feature: "ai_medical_scan_daily",
+          limitPerDay: limitCheck.limit,
+          usedToday: limitCheck.usedToday,
+          currentPlan: planType,
+          resetsAt: "midnight IST",
+          upgradeSuggested: planType === "free",
+        });
+      }
+      return;
+    }
+
     const { imageBase64, reportType = "blood_test", mimeType = "image/jpeg" } = req.body as {
       imageBase64?: string;
       reportType?: string;

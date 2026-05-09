@@ -129,7 +129,10 @@ export function AdsSlider() {
     if (!token) { setAds(PLACEHOLDER_ADS); setLoading(false); return; }
     try {
       const res = await api.getActiveAds("dashboard");
+      // adsEnabled: false means this plan has ads turned off by admin — show nothing
+      if (res.adsEnabled === false) { setAds([]); setLoading(false); return; }
       const fetched = (res.ads as Ad[]) || [];
+      // Fall back to AORANE promo slides only when no real ads exist from DB
       setAds(fetched.length >= 2 ? fetched : PLACEHOLDER_ADS);
     } catch { setAds(PLACEHOLDER_ADS); }
     setLoading(false);
@@ -173,6 +176,8 @@ export function AdsSlider() {
       </View>
     );
   }
+
+  if (ads.length === 0) return null;
 
   return (
     <View style={st.wrapper}>

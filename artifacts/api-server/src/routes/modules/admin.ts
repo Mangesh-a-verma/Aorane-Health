@@ -1159,7 +1159,9 @@ router.put("/admin/plan-features/:feature_name", requireAdmin, async (req: Admin
     );
     if (!rows.length) { res.status(404).json({ error: "Feature not found" }); return; }
     const { invalidateAILimiterCache } = await import("../../lib/aiLimiter");
+    const { invalidatePlanLimitsCache } = await import("../../middlewares/plan-limits");
     invalidateAILimiterCache();
+    invalidatePlanLimitsCache();
     await db.insert(adminAuditLogsTable).values({
       adminId: req.adminId!, action: "update_plan_feature",
       targetType: "plan_feature", targetId: featureName,

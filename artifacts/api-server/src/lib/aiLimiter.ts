@@ -14,7 +14,8 @@ export type AIFeature =
   | "ai_medical_scan_daily"
   | "ai_diet_plan_daily"
   | "ai_health_coach_daily"
-  | "ai_meal_swap_daily";
+  | "ai_meal_swap_daily"
+  | "ai_predictions_enabled";
 
 // ── 5-minute plan_features cache ─────────────────────────────────────────────
 interface CachedFeature {

@@ -5,6 +5,7 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { isBooleanFeatureEnabled } from "../../middlewares/plan-limits";
 
 const router = Router();
 
@@ -59,6 +60,19 @@ router.get("/wearable/connections", requireAuth, async (req: AuthRequest, res) =
 // Health Connect sync — mobile reads data natively, sends to server
 router.post("/wearable/sync/health_connect", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const planType = req.userPlan || "free";
+    const wearableEnabled = await isBooleanFeatureEnabled("wearable_sync", planType);
+    if (!wearableEnabled) {
+      res.status(403).json({
+        error: `Wearable sync is not available on the ${planType.toUpperCase()} plan. Please upgrade to enable Health Connect sync.`,
+        feature: "wearable_sync",
+        reason: "plan_not_supported",
+        currentPlan: planType,
+        upgradeSuggested: true,
+      });
+      return;
+    }
+
     const {
       steps, heartRateAvg, heartRateMin, heartRateMax,
       caloriesBurned, sleepHours, bloodOxygen, activeMinutes, distanceKm,
