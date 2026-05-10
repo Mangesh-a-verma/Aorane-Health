@@ -86,7 +86,7 @@ export default function Register() {
 
   const handleSendOtp = async () => {
     if (!form.name || !form.contactEmail) { setError("Organization name and email are required."); return; }
-    if (!form.gstin || form.gstin.length < 15) { setError("GSTIN is required and must be 15 characters."); return; }
+    if (form.gstin && form.gstin.length > 0 && form.gstin.length < 15) { setError("GSTIN must be exactly 15 characters (e.g. 22AAAAA0000A1Z5)."); return; }
     setIsLoading(true); setError(""); setDevOtp(null);
     try {
       const res = await api.sendRegOtp(form.contactEmail);
@@ -125,7 +125,7 @@ export default function Register() {
 
   const handleSubmit = async () => {
     if (form.adminPassword !== form.confirmPassword) { setError("Passwords do not match"); return; }
-    if (form.adminPassword.length < 6) { setError("Password must be at least 6 characters"); return; }
+    if (form.adminPassword.length < 8) { setError("Password must be at least 8 characters"); return; }
     setIsLoading(true); setError("");
     try {
       const res = await api.register({
@@ -302,13 +302,12 @@ export default function Register() {
                   <Input label="Email Address" type="email" value={form.contactEmail} onChange={v => set("contactEmail", v)} placeholder="admin@yourorg.com" required />
                   <div>
                     <Input
-                      label="GSTIN (required)"
+                      label="GSTIN (optional)"
                       value={form.gstin}
                       onChange={v => set("gstin", v.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
                       placeholder="22AAAAA0000A1Z5"
-                      required
                     />
-                    <p style={{ fontSize: 12, color: "#6b7280", margin: "4px 0 0 2px" }}>15-character GST Identification Number issued by the Government of India</p>
+                    <p style={{ fontSize: 12, color: "#6b7280", margin: "4px 0 0 2px" }}>15-character GST Identification Number — required for GST invoicing. You can add it later from Settings.</p>
                   </div>
                   <Input label="Phone Number" value={form.contactPhone} onChange={v => set("contactPhone", v)} placeholder="+91 98765 43210" />
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -326,14 +325,14 @@ export default function Register() {
                   </button>
                   <button
                     onClick={handleSendOtp}
-                    disabled={isLoading || !form.name || !form.contactEmail || form.gstin.length < 15}
+                    disabled={isLoading || !form.name || !form.contactEmail}
                     style={{
                       flex: 1, padding: "13px 0", borderRadius: 12, border: "none",
-                      background: form.name && form.contactEmail && form.gstin.length >= 15 ? `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)` : "#e5e7eb",
-                      color: form.name && form.contactEmail && form.gstin.length >= 15 ? "white" : "#9ca3af",
-                      fontWeight: 700, fontSize: 15, cursor: isLoading || !form.name || !form.contactEmail || form.gstin.length < 15 ? "not-allowed" : "pointer",
+                      background: form.name && form.contactEmail ? `linear-gradient(135deg, ${PRIMARY} 0%, ${TEAL} 100%)` : "#e5e7eb",
+                      color: form.name && form.contactEmail ? "white" : "#9ca3af",
+                      fontWeight: 700, fontSize: 15, cursor: isLoading || !form.name || !form.contactEmail ? "not-allowed" : "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                      boxShadow: form.name && form.contactEmail && form.gstin.length >= 15 ? "0 4px 16px rgba(0,93,144,0.25)" : "none",
+                      boxShadow: form.name && form.contactEmail ? "0 4px 16px rgba(0,93,144,0.25)" : "none",
                       opacity: isLoading ? 0.75 : 1,
                     }}
                   >
