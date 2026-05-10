@@ -161,13 +161,19 @@ function calcPersonalisedCalorieGoal(
 ): { goal: number; source: "calculated" | "preference" | "default" } {
   if (!tdee) return { goal: fallback, source: fallback !== 2000 ? "preference" : "default" };
   const multipliers: Record<string, number> = {
-    weight_loss:       0.85,
-    fat_loss:          0.85,
-    muscle_gain:       1.10,
-    bulking:           1.15,
-    diabetes_control:  1.0,
-    heart_health:      1.0,
-    general_wellness:  1.0,
+    weight_loss:          0.85,
+    lose_weight:          0.85,
+    fat_loss:             0.85,
+    muscle_gain:          1.10,
+    gain_weight:          1.10,
+    gain_muscle:          1.10,
+    bulking:              1.15,
+    diabetes_control:     1.0,
+    diabetes_management:  1.0,
+    heart_health:         1.0,
+    hormonal_balance:     1.0,
+    reduce_stress:        1.0,
+    general_wellness:     1.0,
   };
   const mult = multipliers[primaryGoal] ?? 1.0;
   return { goal: Math.round(tdee * mult), source: "calculated" };
