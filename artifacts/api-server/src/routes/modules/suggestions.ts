@@ -278,8 +278,8 @@ router.get("/suggestions/daily", requireAuth, aiRateLimit("daily_suggestions", 3
     if (weightKg && heightCm && age) {
       effectiveTDEE = calculateTDEE(weightKg, heightCm, age, gender, activityLevel, workProfile || undefined);
       const primaryGoal = goals?.primaryGoal || "maintain";
-      if (primaryGoal === "lose_weight" || primaryGoal === "weight_loss") calorieGoal = Math.round(effectiveTDEE * 0.82);
-      else if (primaryGoal === "gain_weight" || primaryGoal === "gain_muscle" || primaryGoal === "athletic") calorieGoal = Math.round(effectiveTDEE * 1.12);
+      if (primaryGoal === "lose_weight" || primaryGoal === "weight_loss" || primaryGoal === "fat_loss") calorieGoal = Math.round(effectiveTDEE * 0.82);
+      else if (primaryGoal === "gain_weight" || primaryGoal === "gain_muscle" || primaryGoal === "muscle_gain" || primaryGoal === "bulking" || primaryGoal === "athletic") calorieGoal = Math.round(effectiveTDEE * 1.12);
       else calorieGoal = effectiveTDEE;
     }
 
