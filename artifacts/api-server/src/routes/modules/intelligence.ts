@@ -9,7 +9,7 @@
  */
 
 import { Router } from "express";
-import { db, usersTable, userProfilesTable, userPreferencesTable, userMedicalConditionsTable, foodLogsTable, waterLogsTable, exerciseLogsTable, stressLogsTable, healthPredictionsTable, weeklyDietChartsTable } from "@workspace/db";
+import { db, usersTable, userProfilesTable, userPreferencesTable, userMedicalConditionsTable, userHealthGoalsTable, foodLogsTable, waterLogsTable, exerciseLogsTable, stressLogsTable, healthPredictionsTable, weeklyDietChartsTable } from "@workspace/db";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -53,11 +53,48 @@ function calcAge(dob: string | null): number | null {
   return Math.floor((Date.now() - new Date(dob).getTime()) / (1000 * 60 * 60 * 24 * 365));
 }
 
+// Work profile → TDEE multiplier (matches suggestions.ts for consistency)
+const INTEL_WORK_MULTIPLIERS: Record<string, number> = {
+  "Office/Desk Job": 1.2, "IT/Software": 1.2, "Call Center/BPO": 1.2, "Freelancer/WFH": 1.2,
+  "Teacher/Professor": 1.375, "Doctor/Healthcare": 1.375, "Business Owner": 1.375,
+  "Housewife": 1.375, "House Husband": 1.375, "Retired": 1.375, "Artist/Creative": 1.375,
+  "Student (School)": 1.375, "Field/Sales": 1.55, "Driver/Delivery": 1.55,
+  "Factory Worker": 1.55, "ASHA/ANM Worker": 1.55, "Student (College)": 1.55,
+  "Police/CRPF": 1.725, "Army/Defence": 1.725, "Farmer/Agriculture": 1.725,
+  "Construction Worker": 1.725, "Athlete/Sports": 1.9,
+};
+const INTEL_EXERCISE_EXTRA: Record<string, number> = {
+  sedentary: 0, light: 0.05, lightly_active: 0.05,
+  moderate: 0.1, moderately_active: 0.1,
+  very: 0.175, very_active: 0.175, athlete: 0.25,
+};
+
+// Goal → calorie multiplier (all DB goal values covered)
+const GOAL_CALORIE_MULT: Record<string, number> = {
+  weight_loss: 0.85, lose_weight: 0.85, fat_loss: 0.85,
+  muscle_gain: 1.10, gain_weight: 1.10, gain_muscle: 1.10, bulking: 1.15, athletic: 1.10,
+  diabetes_management: 1.0, diabetes_control: 1.0, heart_health: 1.0,
+  hormonal_balance: 1.0, reduce_stress: 1.0, general_wellness: 1.0,
+};
+
+// Human-readable label for AI prompts
+function goalLabel(primaryGoal: string): string {
+  const labels: Record<string, string> = {
+    weight_loss: "Weight Loss", lose_weight: "Weight Loss", fat_loss: "Fat Loss",
+    muscle_gain: "Muscle Gain", gain_weight: "Weight Gain", gain_muscle: "Muscle Gain",
+    bulking: "Bulking / Muscle Gain", athletic: "Athletic Performance",
+    diabetes_management: "Diabetes Management", diabetes_control: "Diabetes Control",
+    heart_health: "Heart Health", hormonal_balance: "Hormonal Balance",
+    reduce_stress: "Stress Reduction", general_wellness: "General Wellness",
+  };
+  return labels[primaryGoal] ?? primaryGoal.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 async function gatherUserContext(userId: string) {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, userId)).limit(1);
-  const [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId)).limit(1);
   const conditions = await db.select().from(userMedicalConditionsTable).where(eq(userMedicalConditionsTable.userId, userId));
+  const [goals] = await db.select().from(userHealthGoalsTable).where(eq(userHealthGoalsTable.userId, userId)).limit(1);
 
   const age = calcAge(profile?.dateOfBirth as string | null);
   const weight = profile?.weightKg ? Number(profile.weightKg) : null;
@@ -66,15 +103,17 @@ async function gatherUserContext(userId: string) {
   const city = (profile as unknown as Record<string, string>)?.city ?? null;
   const state = (profile as unknown as Record<string, string>)?.state ?? null;
   const workProfile = (profile as unknown as Record<string, string>)?.workProfile ?? null;
+  const activityLevel = (profile as unknown as Record<string, string>)?.activityLevel ?? "moderate";
   const conditionsList = conditions.map((c) => c.condition).join(", ") || "None";
   const dietaryPref = profile?.foodPreference ?? "vegetarian";
-  const healthGoals = "General wellness";
-  void prefs;
+  const primaryGoal = goals?.primaryGoal || "general_wellness";
+  const targetWeightKg = goals?.targetWeightKg ? Number(goals.targetWeightKg) : null;
+  const healthGoals = goalLabel(primaryGoal);
 
   let bmi: number | null = null;
   if (weight && height) bmi = Math.round((weight / ((height / 100) ** 2)) * 10) / 10;
 
-  return { user, profile, age, weight, height, gender, city, state, workProfile, conditionsList, dietaryPref, healthGoals, bmi };
+  return { user, profile, age, weight, height, gender, city, state, workProfile, activityLevel, conditionsList, dietaryPref, primaryGoal, targetWeightKg, healthGoals, bmi };
 }
 
 async function gather30DayData(userId: string) {
@@ -340,26 +379,37 @@ async function generateDietChart(userId: string, weekStart: string, res: import(
   const data = await gather30DayData(userId);
   const weather = await getWeatherContext(ctx.city ?? "India", ctx.state ?? undefined);
 
+  // TDEE: Harris-Benedict BMR × (work profile multiplier + exercise add-on)
+  // Matches suggestions.ts logic for cross-module consistency
   let bmr = 0;
   if (ctx.weight && ctx.height && ctx.age) {
     bmr = ctx.gender === "female"
       ? 655 + 9.6 * ctx.weight + 1.8 * ctx.height - 4.7 * ctx.age
       : 66 + 13.7 * ctx.weight + 5 * ctx.height - 6.8 * ctx.age;
   }
-  const tdee = bmr ? Math.round(bmr * 1.55) : (data.avgCalories || 1800);
-  const targetCal = ctx.healthGoals.includes("weight_loss") ? Math.round(tdee * 0.8)
-    : ctx.healthGoals.includes("muscle_gain") ? Math.round(tdee * 1.1) : tdee;
+  const workMult = ctx.workProfile ? (INTEL_WORK_MULTIPLIERS[ctx.workProfile] ?? 1.4) : 1.4;
+  const exerciseMult = INTEL_EXERCISE_EXTRA[ctx.activityLevel] ?? 0.1;
+  const effectiveMult = Math.min(2.0, workMult + exerciseMult);
+  const tdee = bmr ? Math.round(bmr * effectiveMult) : (data.avgCalories || 1800);
+
+  // Calorie target based on actual user goal from DB
+  const calMult = GOAL_CALORIE_MULT[ctx.primaryGoal] ?? 1.0;
+  const targetCal = Math.round(tdee * calMult);
 
   const prompt = `You are a certified Indian dietitian. Create a 7-day personalized Indian diet chart.
 
 USER PROFILE:
 - Age: ${ctx.age ?? "Unknown"}, Gender: ${ctx.gender}
 - Weight: ${ctx.weight ? ctx.weight + " kg" : "Unknown"}, BMI: ${ctx.bmi ?? "Unknown"}
+- Target weight: ${ctx.targetWeightKg ? ctx.targetWeightKg + " kg" : "Not set"}
 - Health conditions: ${ctx.conditionsList}
 - Diet preference: ${ctx.dietaryPref}
+- Work profile: ${ctx.workProfile ?? "Unknown"}
 - Health goal: ${ctx.healthGoals}
-- Target daily calories: ${targetCal} kcal
+- Calculated TDEE: ${tdee} kcal/day
+- Target daily calories: ${targetCal} kcal (${calMult < 1 ? "deficit for weight loss" : calMult > 1 ? "surplus for muscle/weight gain" : "maintenance"})
 - Avg current intake: ${data.avgCalories} kcal/day
+- Avg protein intake: ${data.avgProtein}g/day
 - Current water intake: ${data.avgWaterGlasses} glasses/day
 - Weather: ${weather}
 
@@ -368,10 +418,11 @@ RULES:
 2. All 7 days must be different — no repetition
 3. Include regional variety across the week
 4. Respect dietary preference (${ctx.dietaryPref})
-5. Consider health conditions for restrictions
-6. Give meal timings in Indian format (7 AM, 1 PM, 7 PM style)
-7. Include hydration advice
-8. Each day must show total estimated calories
+5. Calibrate ALL meal calories to hit the target of ${targetCal} kcal/day (not a generic plan)
+6. Consider health conditions for restrictions (e.g. diabetes: low-GI; heart: low-sodium; hormonal: high-fiber)
+7. Give meal timings in Indian format (7 AM, 1 PM, 7 PM style)
+8. Include hydration advice
+9. Each day must show total estimated calories close to ${targetCal}
 
 Return ONLY valid JSON (no markdown):
 {
