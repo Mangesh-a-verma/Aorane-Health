@@ -1,0 +1,35 @@
+Task: Transform the Health Tracking App into a high-end, professional UI/UX using React, Tailwind CSS, Lucide-React for icons, and Framer Motion for animations. The design should be inspired by the 'Paytm' service-grid layout and 'Apple Health' clean aesthetics.
+
+1. Visual Identity & Theme:
+Color Palette: Pure White background (#FFFFFF), primary Trust Blue (#007AFF), and success Mint Green (#34C759).
+
+Typography: Use a clean Sans-Serif font stack (Inter/SF Pro). Bold headings for sections.
+
+Glassmorphism: Apply backdrop-blur-md and bg-white/70 to the Top Header and Bottom Navigation Bar for a premium glass effect.
+
+2. Layout Structure (Paytm Inspired):
+Header: User profile icon on the left, "Live Health Score" in the center, and a Notification Bell (Lucide) on the right.
+
+Top Stats Grid: 4-column grid for quick-glance metrics: Steps, Calories, Sleep, and Water. Each item should be a card with a Lucide icon and a subtle gradient border.
+
+Main Dashboard: Use rounded-edge cards (rounded-2xl) with soft shadows (shadow-sm). Each card should represent a feature (e.g., 'Heart Rate Monitor', 'Workout Plans').
+
+Bottom Nav: A fixed glass-effect bar with 4 icons: Home, Reports, Community, and Profile.
+
+3. Animations (Framer Motion):
+Page Transitions: Smooth fade-in and slide-up effect when switching tabs.
+
+Micro-interactions: Add a whileTap={{ scale: 0.95 }} effect to all buttons and cards.
+
+Progress Rings: Animate the daily goal progress rings using Framer Motion's stroke-dasharray transition.
+
+4. Technical Instructions:
+Icons: Use ONLY lucide-react icons (e.g., <Activity />, <Heart />, <User />).
+
+State Management: Keep existing backend logic and API connections. Only overhaul the frontend/components and styles.
+
+Responsiveness: The UI must be mobile-first, ensuring it looks like a native Android/iOS app.
+
+Cleanup: Remove any cluttered borders; use whitespace and soft dividers (border-gray-50) to separate sections.
+
+Action: Please rewrite the frontend components now to reflect this modern, professional health-tech aesthetic.

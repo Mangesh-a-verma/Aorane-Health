@@ -1,0 +1,119 @@
+services:
+  # ── API Server (Node.js) ────────────────────────────────────
+  - type: web
+    name: aorane-api
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile && npx pnpm@10 --filter @workspace/api-server build
+    startCommand: npx pnpm@10 --filter @workspace/api-server start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: APP_URL
+        value: https://aorane.onrender.com
+      - key: API_BASE_URL
+        value: https://aorane.onrender.com/api
+      - key: ALLOWED_ORIGIN
+        value: https://aorane.com,https://aorane-landing.onrender.com,https://aorane-admin.onrender.com,https://aorane-business.onrender.com
+      - key: RESEND_FROM_EMAIL
+        value: noreply@aorane.in
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: ADMIN_JWT_SECRET
+        sync: false
+      - key: BUSINESS_JWT_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: GOOGLE_FIT_CLIENT_ID
+        sync: false
+      - key: GOOGLE_FIT_CLIENT_SECRET
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: OPENWEATHER_API_KEY
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+
+  # ── Landing Page (Static Site) ──────────────────────────────
+  - type: web
+    name: aorane-landing
+    runtime: static
+    region: singapore
+    autoDeploy: true
+    buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile && VITE_API_URL=https://aorane.onrender.com npx pnpm@10 --filter @workspace/aorane-landing build
+    staticPublishPath: artifacts/aorane-landing/dist/public
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # ── Admin Panel (Static Site) ───────────────────────────────
+  - type: web
+    name: aorane-admin
+    runtime: static
+    region: singapore
+    autoDeploy: true
+    buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile && VITE_API_URL=https://aorane.onrender.com npx pnpm@10 --filter @workspace/admin-panel build
+    staticPublishPath: artifacts/admin-panel/dist/public
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # ── Business Portal (Static Site) ──────────────────────────
+  - type: web
+    name: aorane-business
+    runtime: static
+    region: singapore
+    autoDeploy: true
+    buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile && VITE_API_URL=https://aorane.onrender.com npx pnpm@10 --filter @workspace/business-portal build
+    staticPublishPath: artifacts/business-portal/dist/public
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -1,0 +1,33 @@
+Role: Senior Frontend Architect & UI/UX Specialist (Expert in Google Stitch & Material Design 3).
+
+Task: Rewrite the existing basic frontend into a premium, high-conversion landing page for a Health Tracking Platform.
+
+Core UI Requirements (Google Stitch Vibe):
+
+Design Language: Use Google Stitch-inspired layouts—clean spacing, rounded corners (large radius), and a modular card-based design.
+
+Theme: Primary Light Theme. Use 'Deep Blue' (#0747A6) for trust/authority and 'Emerald Medical Green' (#10B981) for health/growth. Use soft grey backgrounds (#F8FAFC) to make cards pop.
+
+Glassmorphism: Apply subtle glassmorphism on the Navbar and Sidebar elements.
+
+Advanced Features & Sections:
+
+Dynamic Hero Section: Implement an Advanced Interactive Data-Slider. Instead of just images, the slider should transition between a "B2C View" (showing heart rate/sleep charts) and a "B2B View" (showing population health analytics). Use Framer Motion for smooth, "medical-grade" animations.
+
+Marketing Hybrid Vibe: The UI must cater to both B2C (Patients/Users) and B2B (Clinics/Corporates). Use a Sticky Audience Toggle at the top to personalize the landing page content dynamically.
+
+Advanced Interactive Dashboard Preview: Create a "Bento Box" style grid layout that showcases live-looking health metrics (ECG waves, Activity rings, and Sleep scores) using Recharts or Chart.js.
+
+Trust & Compliance Section: A dedicated professional section for HIPAA compliance, Data Security, and Partner logos, using a clean, minimalist grid.
+
+Technical Specifications:
+
+Framework: React with Tailwind CSS.
+
+Icons: Use Lucide-React (for a thin, modern look).
+
+Typography: Use 'Plus Jakarta Sans' or 'Inter' for a tech-heavy healthcare feel.
+
+Components: Focus on "Stateful UI"—buttons should have micro-interactions, and cards should have subtle hover-lift effects.
+
+Instructions for Agent: "I have the backend ready. Focus 100% on the Visual Excellence and UX flow. Use modern frontend libraries to ensure the 'Healthcare + Technology' vibe is consistent. The final output should look like a top-tier SaaS product."

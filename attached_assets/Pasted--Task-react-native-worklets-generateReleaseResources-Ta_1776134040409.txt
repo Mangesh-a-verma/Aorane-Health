@@ -1,0 +1,49 @@
+> Task :react-native-worklets:generateReleaseResources
+> Task :react-native-worklets:packageReleaseResources
+> Task :react-native-svg:processReleaseManifest
+> Task :react-native-worklets:extractDeepLinksRelease
+> Task :react-native-worklets:processReleaseManifest
+> Task :react-native-svg:writeReleaseAarMetadata
+> Task :react-native-worklets:writeReleaseAarMetadata
+> Task :app:generateReleaseResources
+> Task :app:mapReleaseSourceSetPaths FAILED
+> Task :expo:compileReleaseLibraryResources
+> Task :react-native-keyboard-controller:compileReleaseLibraryResources
+> Task :react-native-reanimated:compileReleaseLibraryResources
+> Task :react-native-async-storage_async-storage:compileReleaseLibraryResources
+> Task :expo-constants:compileReleaseLibraryResources
+> Task :react-native-gesture-handler:compileReleaseLibraryResources
+> Task :expo-modules-core:compileReleaseLibraryResources
+
+[Incubating] Problems report is available at: file:///Users/builder/clone/artifacts/aorane-mobile/android/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:mapReleaseSourceSetPaths'.
+> Error while evaluating property 'allGeneratedRes' of task ':app:mapReleaseSourceSetPaths'.
+   > Failed to calculate the value of task ':app:mapReleaseSourceSetPaths' property 'allGeneratedRes'.
+      > Querying the mapped value of map(flatmap(provider(task 'createBundleReleaseJsAndAssets', class com.facebook.react.tasks.BundleHermesCTask))) before task ':app:createBundleReleaseJsAndAssets' has completed is not supported
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 3m 25s
+126 actionable tasks: 126 executed
+
+
+Build failed :|
+Step 5 script `Build Android AAB` exited with status code 1
+
+
+Build failed :|
+Step 5 script `Build Android AAB` exited with status code 1

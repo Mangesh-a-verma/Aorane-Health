@@ -1,0 +1,235 @@
+uploads = []
+
+[[generated]]
+id = "LdSxjwX-l_1-bC4JqjtGK"
+uri = "file://artifacts/aorane-mobile/assets/images/icon.png"
+type = "image"
+title = "generated_image"
+
+[[outputs]]
+id = "ksxMjiURDkTDzXKMEQGdN"
+uri = "file://AORANE_UI_DESIGN_PROMPT.md"
+type = "text"
+title = "AORANE — Complete UI Design Prompt (Figma / Flutter)"
+
+[[outputs]]
+id = "_X-uj7BC0v5-3NHmQ5v7j"
+uri = "file://admin-panel-dist.tar.gz"
+type = "unspecified"
+title = "Admin Panel — Production Build (284KB)"
+
+[[outputs]]
+id = "zmDU-qY3GEu7ehu3l41vl"
+uri = "file://exports/AORANE_Blueprint.pdf"
+type = "pdf"
+title = "AORANE Platform — Complete Blueprint & Analysis (23 Pages)"
+
+[[outputs]]
+id = "4GygxH04m-sVbkO74AYxD"
+uri = "file://aorane-project-blueprint.pdf"
+type = "pdf"
+title = "Aorane Project Blueprint — Complete Technical Documentation"
+
+[[outputs]]
+id = "L1dkreKTI5_1oKvKm_yY9"
+uri = "file://AORANE_Project_Report.pdf"
+type = "pdf"
+title = "AORANE — Complete Project Status & Business Report"
+
+[[outputs]]
+id = "3tlxwp4yr5IiTNZBikMWS"
+uri = "file://AORANE_Corporate_Benefits.pdf"
+type = "pdf"
+title = "AORANE — Corporate Benefits Guide (B2B)"
+
+[[outputs]]
+id = "4XUwngSBabm7WDUyNS8-4"
+uri = "file://AORANE_Individual_Benefits.pdf"
+type = "pdf"
+title = "AORANE — Individual User Benefits Guide"
+
+[[outputs]]
+id = "7FhY6oZ6S1HC743V677J6"
+uri = "file://AORANE_Investor_Deck.pdf"
+type = "pdf"
+title = "AORANE — Investor Deck (Seed Round)"
+
+[[outputs]]
+id = "VU4ZbPBokkkBKJRurm6Mo"
+uri = "file://.local/exports/AORANE_Project_Analysis.pdf"
+type = "pdf"
+title = "AORANE — Complete Project Analysis Document"
+
+[[outputs]]
+id = "AO8MxrWp8SiiNAx9w0EtU"
+uri = "file://exports/aorane-project-structure.pdf"
+type = "pdf"
+title = "Aorane Platform — Complete Project Architecture (20 pages)"
+
+[[outputs]]
+id = "BqyoWaa0AAiwPqBiT9LwJ"
+uri = "file://exports/aorane-b2b-strategy.pdf"
+type = "pdf"
+title = "Aorane B2B Marketing Strategy — Corporate Wellness Sales Playbook"
+
+[[outputs]]
+id = "zLwd01hYZDV2K_1zO-zD_"
+uri = "file://exports/aorane-b2c-strategy.pdf"
+type = "pdf"
+title = "Aorane B2C Marketing Strategy — 0 to 10,000 Users Growth Playbook"
+
+[[outputs]]
+id = "446c_SbufsG8FSH5brbba"
+uri = "file://screenshots/blood-emergency-instagram.jpg"
+type = "image"
+title = "Instagram Post (1080×1350) — Blood Emergency"
+
+[[outputs]]
+id = "HBXSZPlFLoKJtE4JltcmX"
+uri = "file://screenshots/blood-emergency-twitter.jpg"
+type = "image"
+title = "Twitter/X Post (1200×675) — Blood Emergency"
+
+[[outputs]]
+id = "K_m2Js9qC7uZHxp0V9c4d"
+uri = "file://screenshots/aorane-facebook-banner.jpg"
+type = "image"
+title = "Aorane Facebook Post Banner (1200×628)"
+
+[[outputs]]
+id = "G-TbpjEzV7xviohYmw_jA"
+uri = "file://screenshots/poster-01-stress-monitor.jpg"
+type = "image"
+title = "Poster 1 — Stress Level Monitor"
+
+[[outputs]]
+id = "7kThQNd3Evod4bXKsN707"
+uri = "file://screenshots/poster-02-indian-food-database.jpg"
+type = "image"
+title = "Poster 2 — Indian Food Database"
+
+[[outputs]]
+id = "gS9nNEyyjMeiEr01HE55v"
+uri = "file://screenshots/poster-03-blood-emergency.jpg"
+type = "image"
+title = "Poster 3 — Blood Emergency Features"
+
+[[outputs]]
+id = "9a0Ifc6Xq9Dpzm_xN5u4v"
+uri = "file://screenshots/poster-04-b2b-saas.jpg"
+type = "image"
+title = "Poster 4 — B2B SaaS Platform"
+
+[[outputs]]
+id = "ZIIj0aZ5tyXkJ8EBld6sN"
+uri = "file://screenshots/poster-05-weekly-monthly-report.jpg"
+type = "image"
+title = "Poster 5 — Weekly & Monthly Health Report"
+
+[[outputs]]
+id = "lReX1SlV-WWqSD46-hnx1"
+uri = "file://screenshots/poster-06-health-score-card.jpg"
+type = "image"
+title = "Poster 6 — Health Score & Health Card"
+
+[[outputs]]
+id = "U2yzAI2hyo0Ep6TX1HOFQ"
+uri = "file://screenshots/poster-07-medical-report-analysis.jpg"
+type = "image"
+title = "Poster 7 — Medical Report Analysis"
+
+[[outputs]]
+id = "e8S3WBUdxPsDCPk_f-0ff"
+uri = "file://screenshots/poster-08-profile-analysis.jpg"
+type = "image"
+title = "Poster 8 — Profile Based Analysis"
+
+[[outputs]]
+id = "b0ikgACQm6Ztlt2uOa9U5"
+uri = "file://screenshots/poster-09-ai-integration.jpg"
+type = "image"
+title = "Poster 9 — AI Integration"
+
+[[outputs]]
+id = "UsaXHmvMq34_kT5p30ntE"
+uri = "file://screenshots/aorane-marketing-posters.zip"
+type = "unspecified"
+title = "Aorane Marketing Posters — All 10 Images (ZIP)"
+
+[[outputs]]
+id = "kuCtGLOxmQUdIgxwF4CO_"
+uri = "file://screenshots/aorane-b2b-marketing.pdf"
+type = "pdf"
+title = "Aorane B2B Marketing PDF (10 Pages)"
+
+[[outputs]]
+id = "KM9NZ-jMqnwpq18WrdOCC"
+uri = "file://screenshots/fb-cover1-health-digitized.jpg"
+type = "image"
+title = "Cover 1 — Your Health, Digitized (Teal/Cyan)"
+
+[[outputs]]
+id = "gnIwj5YkFq5UnwtUNOw22"
+uri = "file://screenshots/fb-cover2-track-analyze-thrive.jpg"
+type = "image"
+title = "Cover 2 — Track. Analyze. Thrive. (Green)"
+
+[[outputs]]
+id = "Z8fiAqKKbolDS5IsdYz9y"
+uri = "file://screenshots/fb-cover3-india-health-revolution.jpg"
+type = "image"
+title = "Cover 3 — India's Health Revolution (Orange/Saffron)"
+
+[[outputs]]
+id = "wGJJ8Kh3r1ewCbOA06fMB"
+uri = "file://screenshots/fb-cover4-b2b-employee-wellness.jpg"
+type = "image"
+title = "Cover 4 — Employee Wellness, Reinvented (Dark Blue/Tech)"
+
+[[outputs]]
+id = "nFbDlOFfrJET9g87NcVNA"
+uri = "file://screenshots/poster-square.jpg"
+type = "image"
+title = "AORANE Marketing Poster — Instagram Square (1080×1080)"
+
+[[outputs]]
+id = "MP5SY_wOZqk6wV6ayYE8S"
+uri = "file://screenshots/poster-story.jpg"
+type = "image"
+title = "AORANE Marketing Poster — Instagram Story (1080×1920)"
+
+[[outputs]]
+id = "x3Cki_QzCwcb8hHy7PjFs"
+uri = "file://screenshots/poster-light-square.jpg"
+type = "image"
+title = "Instagram Square — 1080×1080 (Logo Fixed)"
+
+[[outputs]]
+id = "_GQnmPanLVGyH5s6_Kx5f"
+uri = "file://screenshots/poster-light-story.jpg"
+type = "image"
+title = "Instagram Story — 1080×1920 (Logo Fixed)"
+
+[[outputs]]
+id = "1pXFA-aOFHWbtUS27TPKz"
+uri = "file://aorane-health-score-guide.pdf"
+type = "pdf"
+title = "Aorane Health Score & Active Percentage Guide"
+
+[[outputs]]
+id = "PTi6oktr_3RQ3r7oJKi2F"
+uri = "file://AORANE_Org_Structure.docx"
+type = "word_document"
+title = "AORANE — Org Structure & Staffing Plan"
+
+[[outputs]]
+id = "QI4YC5bCA_xiORPdqmmFA"
+uri = "file://AORANE_AI_Agents.pdf"
+type = "pdf"
+title = "AORANE — AI Agent System: Architecture, Workflow & Cost Analysis"
+
+[[outputs]]
+id = "nRFDD1_X00Gt4KDvIdbK5"
+uri = "file://aorane-plans.pdf"
+type = "pdf"
+title = "AORANE Plans Comparison — Individual + Business"

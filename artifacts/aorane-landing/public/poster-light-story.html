@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080"/>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    width:1080px;height:1920px;overflow:hidden;
+    font-family:'Inter',sans-serif;
+    background:#f0f6ff;
+    color:#0a1628;
+  }
+
+  .bg{
+    position:absolute;inset:0;
+    background:
+      radial-gradient(ellipse 1000px 800px at 50% -5%, rgba(0,119,182,0.12) 0%, transparent 55%),
+      radial-gradient(ellipse 800px 800px at 100% 50%, rgba(27,153,139,0.09) 0%, transparent 55%),
+      radial-gradient(ellipse 700px 700px at 0% 90%, rgba(0,119,182,0.08) 0%, transparent 55%),
+      linear-gradient(180deg, #eaf3ff 0%, #f5fbff 35%, #edfcf8 70%, #eaf3ff 100%);
+  }
+  .dots{
+    position:absolute;inset:0;opacity:0.2;
+    background-image:radial-gradient(circle,#0077B622 1.5px,transparent 1.5px);
+    background-size:44px 44px;
+  }
+  /* decorative arcs */
+  .arc-top{
+    position:absolute;top:-180px;left:50%;transform:translateX(-50%);
+    width:900px;height:900px;border-radius:50%;
+    border:80px solid rgba(0,119,182,0.05);
+    pointer-events:none;
+  }
+  .arc-bot{
+    position:absolute;bottom:-200px;right:-150px;
+    width:700px;height:700px;border-radius:50%;
+    border:60px solid rgba(27,153,139,0.06);
+    pointer-events:none;
+  }
+
+  .wrap{
+    position:relative;z-index:2;
+    width:1080px;height:1920px;
+    padding:100px 68px 100px;
+    display:flex;flex-direction:column;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:70px;
+  }
+  .logo-box{display:flex;align-items:center;gap:0;}
+  .logo-box img{height:52px;width:auto;object-fit:contain;}
+  .logo-fallback{display:none;align-items:center;gap:14px;}
+  .logo-fallback-icon{
+    width:54px;height:54px;border-radius:15px;
+    background:linear-gradient(135deg,#0077B6,#1B998B);
+    display:flex;align-items:center;justify-content:center;
+    font-size:26px;font-weight:900;color:#fff;
+  }
+  .logo-fallback-text{font-size:28px;font-weight:800;color:#0a1628;letter-spacing:0.06em;}
+  .top-badge{
+    display:flex;align-items:center;gap:8px;
+    background:linear-gradient(135deg,rgba(0,119,182,0.08),rgba(27,153,139,0.08));
+    border:1.5px solid rgba(0,119,182,0.2);
+    border-radius:100px;padding:10px 22px;
+    font-size:13px;font-weight:700;color:#0077B6;
+  }
+  .dot2{width:8px;height:8px;border-radius:50%;background:#1B998B;animation:bl 2s infinite;}
+  @keyframes bl{0%,100%{opacity:1}50%{opacity:0.3}}
+
+  /* ── HERO ── */
+  .hero{margin-bottom:62px;}
+  .eyebrow{
+    font-size:14px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;
+    color:#0077B6;margin-bottom:16px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .eyebrow::before{content:'';width:32px;height:2.5px;background:linear-gradient(90deg,#0077B6,#1B998B);border-radius:2px;}
+  .h1{font-size:88px;font-weight:900;line-height:1.0;margin-bottom:20px;color:#0a1628;}
+  .h1 .grad{
+    background:linear-gradient(135deg,#0077B6,#1B998B);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .h1sub{font-size:22px;font-weight:400;color:#4a6080;line-height:1.65;max-width:820px;}
+
+  /* ── SCORE HERO CARD ── */
+  .score-card{
+    background:#fff;border-radius:28px;
+    padding:38px 44px;
+    box-shadow:0 8px 48px rgba(0,119,182,0.12),0 2px 8px rgba(0,0,0,0.04);
+    border:1.5px solid rgba(0,119,182,0.12);
+    display:flex;align-items:center;gap:44px;
+    margin-bottom:58px;
+    position:relative;overflow:hidden;
+  }
+  .score-card::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:4px;
+    background:linear-gradient(90deg,#0077B6,#1B998B);
+  }
+  .ring-wrap{position:relative;width:150px;height:150px;flex-shrink:0;}
+  .ring-wrap svg{transform:rotate(-90deg);}
+  .ring-ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .ring-n{font-size:44px;font-weight:900;color:#0a1628;line-height:1;}
+  .ring-s{font-size:12px;font-weight:600;color:#94a3b8;letter-spacing:0.12em;margin-top:3px;}
+  .score-right{}
+  .grade-pill{
+    display:inline-flex;align-items:center;gap:7px;
+    background:linear-gradient(135deg,#0077B6,#1B998B);
+    border-radius:100px;padding:8px 20px;margin-bottom:14px;
+    font-size:14px;font-weight:700;color:#fff;
+  }
+  .score-t{font-size:28px;font-weight:800;color:#0a1628;line-height:1.2;margin-bottom:10px;}
+  .score-d{font-size:16px;color:#64748b;line-height:1.65;}
+
+  /* ── SECTION TITLE ── */
+  .sec-title{
+    font-size:13px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;
+    color:#94a3b8;margin-bottom:20px;
+    display:flex;align-items:center;gap:14px;
+  }
+  .sec-title::after{content:'';flex:1;height:1.5px;background:rgba(0,119,182,0.1);}
+
+  /* ── PARAMS GRID ── */
+  .params{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:52px;}
+  .pc{
+    background:#fff;border-radius:20px;padding:22px 22px;
+    box-shadow:0 3px 20px rgba(0,0,0,0.06);
+    border:1.5px solid rgba(0,0,0,0.04);
+    position:relative;overflow:hidden;
+  }
+  .pc::before{
+    content:'';position:absolute;top:0;left:0;bottom:0;width:4px;
+    background:var(--c);border-radius:0 3px 3px 0;
+  }
+  .pc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;}
+  .pc-icon-box{
+    width:46px;height:46px;border-radius:13px;flex-shrink:0;
+    background:linear-gradient(135deg,var(--cb1),var(--cb2));
+    display:flex;align-items:center;justify-content:center;font-size:22px;
+  }
+  .pc-pct{font-size:38px;font-weight:900;color:var(--c);line-height:1;}
+  .pc-pcts{font-size:18px;font-weight:700;}
+  .pc-name{font-size:18px;font-weight:800;color:#0a1628;margin-bottom:5px;}
+  .pc-info{font-size:12.5px;color:#64748b;line-height:1.65;}
+  .pc-bar{height:4px;background:rgba(0,0,0,0.06);border-radius:10px;margin-top:14px;overflow:hidden;}
+  .pc-bar-f{height:100%;border-radius:10px;background:linear-gradient(90deg,var(--c),var(--c2));width:var(--w);}
+
+  /* ── HOW IT WORKS ── */
+  .steps{display:flex;flex-direction:column;gap:14px;margin-bottom:52px;}
+  .step{
+    display:flex;align-items:center;gap:22px;
+    background:#fff;border-radius:18px;padding:22px 26px;
+    box-shadow:0 2px 16px rgba(0,0,0,0.05);
+    border:1.5px solid rgba(0,119,182,0.08);
+  }
+  .step-n{
+    width:44px;height:44px;border-radius:50%;flex-shrink:0;
+    background:linear-gradient(135deg,#0077B6,#1B998B);
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;font-weight:800;color:#fff;
+    box-shadow:0 4px 14px rgba(0,119,182,0.3);
+  }
+  .step-txt{font-size:16px;font-weight:700;color:#0a1628;line-height:1.4;}
+  .step-txt span{display:block;font-size:13px;font-weight:400;color:#64748b;margin-top:3px;line-height:1.5;}
+
+  /* ── REFS ── */
+  .refs{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:52px;}
+  .rtag{
+    font-size:12px;font-weight:600;letter-spacing:0.06em;
+    padding:8px 16px;border-radius:100px;
+    background:rgba(0,119,182,0.07);color:#0077B6;
+    border:1.5px solid rgba(0,119,182,0.18);
+  }
+
+  /* ── CTA ── */
+  .cta{
+    background:#fff;border-radius:28px;padding:46px 50px;
+    box-shadow:0 8px 48px rgba(0,119,182,0.12),0 2px 8px rgba(0,0,0,0.04);
+    border:1.5px solid rgba(0,119,182,0.14);
+    text-align:center;position:relative;overflow:hidden;
+  }
+  .cta::before{
+    content:'';position:absolute;
+    bottom:-120px;left:50%;transform:translateX(-50%);
+    width:700px;height:300px;border-radius:50%;
+    background:radial-gradient(ellipse,rgba(0,119,182,0.07) 0%,transparent 70%);
+  }
+  .cta-t{font-size:38px;font-weight:900;color:#0a1628;margin-bottom:10px;position:relative;}
+  .cta-s{font-size:17px;color:#64748b;margin-bottom:32px;position:relative;}
+  .cta-btn{
+    display:inline-block;
+    background:linear-gradient(135deg,#0077B6,#1B998B);
+    border-radius:100px;padding:20px 56px;
+    font-size:20px;font-weight:800;color:#fff;
+    box-shadow:0 8px 28px rgba(0,119,182,0.32);
+    letter-spacing:0.03em;position:relative;
+  }
+  .cta-url{font-size:14px;color:#94a3b8;margin-top:20px;letter-spacing:0.1em;position:relative;}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="dots"></div>
+<div class="arc-top"></div>
+<div class="arc-bot"></div>
+<div class="wrap">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="logo-box">
+      <img src="logo.png" alt="AORANE" style="height:56px;width:auto;object-fit:contain;"
+        onerror="this.style.display='none';document.querySelector('.logo-fallback').style.display='flex'"/>
+      <div class="logo-fallback">
+        <div class="logo-fallback-icon">A</div>
+        <div class="logo-fallback-text">AORANE</div>
+      </div>
+    </div>
+    <div class="top-badge">
+      <div class="dot2"></div>
+      WHO · ICMR Backed
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="eyebrow">India's Health Scoring Platform</div>
+    <div class="h1">Track What<br/>Actually<br/><span class="grad">Matters</span></div>
+    <div class="h1sub">Beyond step counts — AORANE gives you a real, science-backed health score using 6 clinically validated parameters every single day.</div>
+  </div>
+
+  <!-- SCORE HERO -->
+  <div class="score-card">
+    <div class="ring-wrap">
+      <svg width="150" height="150" viewBox="0 0 150 150">
+        <circle cx="75" cy="75" r="62" fill="none" stroke="#e8f0ff" stroke-width="11"/>
+        <circle cx="75" cy="75" r="62" fill="none" stroke="url(#sg2)" stroke-width="11"
+          stroke-linecap="round" stroke-dasharray="389.6" stroke-dashoffset="78"/>
+        <defs>
+          <linearGradient id="sg2" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#0077B6"/>
+            <stop offset="100%" stop-color="#1B998B"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <div class="ring-ctr">
+        <div class="ring-n">82</div>
+        <div class="ring-s">/100</div>
+      </div>
+    </div>
+    <div class="score-right">
+      <div class="grade-pill">⭐ Grade A — Very Good</div>
+      <div class="score-t">Today's<br/>Health Score</div>
+      <div class="score-d">Calculated in real-time from your<br/>actual daily health data</div>
+    </div>
+  </div>
+
+  <!-- PARAMS -->
+  <div class="sec-title">6 Score Parameters</div>
+  <div class="params">
+    <div class="pc" style="--c:#0077B6;--cb1:rgba(0,119,182,0.08);--cb2:rgba(0,119,182,0.04);--c2:#38BDF8;--w:30%">
+      <div class="pc-top">
+        <div class="pc-icon-box">🍽️</div>
+        <div class="pc-pct">30<span class="pc-pcts">%</span></div>
+      </div>
+      <div class="pc-name">Nutrition</div>
+      <div class="pc-info">Calories · Protein · Fiber<br/>Micronutrients (ICMR RDA 2024)</div>
+      <div class="pc-bar"><div class="pc-bar-f"></div></div>
+    </div>
+    <div class="pc" style="--c:#1B998B;--cb1:rgba(27,153,139,0.08);--cb2:rgba(27,153,139,0.04);--c2:#10B981;--w:25%">
+      <div class="pc-top">
+        <div class="pc-icon-box">💪</div>
+        <div class="pc-pct">25<span class="pc-pcts">%</span></div>
+      </div>
+      <div class="pc-name">Exercise</div>
+      <div class="pc-info">WHO MET-minutes tracking<br/>≥600 MET-min/week goal</div>
+      <div class="pc-bar"><div class="pc-bar-f"></div></div>
+    </div>
+    <div class="pc" style="--c:#0EA5E9;--cb1:rgba(14,165,233,0.08);--cb2:rgba(14,165,233,0.04);--c2:#38BDF8;--w:15%">
+      <div class="pc-top">
+        <div class="pc-icon-box">💧</div>
+        <div class="pc-pct">15<span class="pc-pcts">%</span></div>
+      </div>
+      <div class="pc-name">Hydration</div>
+      <div class="pc-info">2000–3000 ml daily<br/>Activity-adjusted goals</div>
+      <div class="pc-bar"><div class="pc-bar-f"></div></div>
+    </div>
+    <div class="pc" style="--c:#8B5CF6;--cb1:rgba(139,92,246,0.08);--cb2:rgba(139,92,246,0.04);--c2:#A78BFA;--w:15%">
+      <div class="pc-top">
+        <div class="pc-icon-box">💊</div>
+        <div class="pc-pct">15<span class="pc-pcts">%</span></div>
+      </div>
+      <div class="pc-name">Medicine</div>
+      <div class="pc-info">WHO Adherence protocol<br/>Daily dose tracking</div>
+      <div class="pc-bar"><div class="pc-bar-f"></div></div>
+    </div>
+    <div class="pc" style="--c:#F59E0B;--cb1:rgba(245,158,11,0.08);--cb2:rgba(245,158,11,0.04);--c2:#FBBF24;--w:10%">
+      <div class="pc-top">
+        <div class="pc-icon-box">😴</div>
+        <div class="pc-pct">10<span class="pc-pcts">%</span></div>
+      </div>
+      <div class="pc-name">Sleep</div>
+      <div class="pc-info">CDC/WHO: 7–9h optimal<br/>Quality-based scoring</div>
+      <div class="pc-bar"><div class="pc-bar-f"></div></div>
+    </div>
+    <div class="pc" style="--c:#10B981;--cb1:rgba(16,185,129,0.08);--cb2:rgba(16,185,129,0.04);--c2:#34D399;--w:5%">
+      <div class="pc-top">
+        <div class="pc-icon-box">⚖️</div>
+        <div class="pc-pct">5<span class="pc-pcts">%</span></div>
+      </div>
+      <div class="pc-name">BMI</div>
+      <div class="pc-info">Asia-Pacific guidelines<br/>Calibrated for Indians</div>
+      <div class="pc-bar"><div class="pc-bar-f"></div></div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="sec-title">How It Works</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-txt">Log Your Daily Health Data
+        <span>Food, exercise, water, medicine, and sleep — all in one app</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-txt">AI Calculates Your Personalised Goals
+        <span>Harris-Benedict BMR · Adjusted for your age, weight, height &amp; health goals</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-txt">Get Your Scientific Health Score
+        <span>WHO + ICMR guidelines · Updated every time you log · Uniquely yours</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- REFS -->
+  <div class="refs">
+    <div class="rtag">WHO Physical Activity 2020</div>
+    <div class="rtag">ICMR Dietary Guidelines 2024</div>
+    <div class="rtag">ICMR RDA 2020</div>
+    <div class="rtag">Harris-Benedict BMR</div>
+    <div class="rtag">CDC Sleep Guidelines</div>
+    <div class="rtag">Asia-Pacific BMI</div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta">
+    <div class="cta-t">Start Tracking Today 🚀</div>
+    <div class="cta-s">India's first scientifically validated health scoring app</div>
+    <div class="cta-btn">Download AORANE Free</div>
+    <div class="cta-url">aorane.com · iOS &amp; Android</div>
+  </div>
+
+</div>
+</body>
+</html>

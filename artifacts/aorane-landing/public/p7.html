@@ -1,0 +1,65 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1080px;height:1080px;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;}
+.wrap{width:1080px;height:1080px;background:linear-gradient(145deg,#faf5ff 0%,#f3e8ff 40%,#fdf2f8 100%);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;}
+.bg1{position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(168,85,247,0.09),transparent);top:-100px;right:-100px;}
+.bg2{position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(236,72,153,0.07),transparent);bottom:-80px;left:-80px;}
+.logo{margin-bottom:18px;}.logo img{height:52px;}
+.tag{background:linear-gradient(135deg,#9333ea,#a855f7);color:#fff;font-size:13px;font-weight:700;letter-spacing:2px;padding:6px 18px;border-radius:99px;text-transform:uppercase;margin-bottom:18px;}
+.icon-wrap{width:110px;height:110px;border-radius:28px;background:linear-gradient(135deg,#9333ea,#a855f7);display:flex;align-items:center;justify-content:center;font-size:52px;margin-bottom:22px;box-shadow:0 12px 32px rgba(147,51,234,0.3);}
+h1{font-size:48px;font-weight:900;color:#1e3a8a;text-align:center;line-height:1.1;margin-bottom:12px;}
+h1 span{color:#9333ea;}
+.sub{font-size:18px;color:#475569;text-align:center;max-width:700px;line-height:1.6;margin-bottom:22px;}
+.report-box{background:#fff;border-radius:22px;padding:24px 28px;width:720px;box-shadow:0 6px 28px rgba(0,0,0,0.08);margin-bottom:22px;}
+.rb-top{display:flex;align-items:center;gap:14px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #f1f5f9;}
+.rb-icon{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#9333ea,#a855f7);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
+.rb-title{font-size:15px;font-weight:800;color:#1e3a8a;}
+.rb-sub{font-size:12px;color:#64748b;margin-top:2px;}
+.rb-badge{margin-left:auto;background:#f3e8ff;color:#9333ea;font-size:12px;font-weight:700;padding:4px 12px;border-radius:99px;}
+.findings{display:flex;flex-direction:column;gap:10px;}
+.finding{display:flex;align-items:center;gap:12px;padding:8px 0;}
+.f-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.f-label{font-size:13px;color:#475569;flex:1;}
+.f-val{font-size:13px;font-weight:700;color:#1e3a8a;}
+.f-status{font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;}
+.normal{background:#dcfce7;color:#16a34a;}
+.attention{background:#fef3c7;color:#d97706;}
+.steps2{display:flex;gap:14px;margin-bottom:22px;}
+.step2{background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 3px 12px rgba(0,0,0,0.07);flex:1;text-align:center;}
+.s2-icon{font-size:24px;margin-bottom:6px;}
+.s2-text{font-size:12px;font-weight:700;color:#1e3a8a;}
+.cta{background:linear-gradient(135deg,#9333ea,#a855f7);color:#fff;font-size:17px;font-weight:700;padding:14px 36px;border-radius:99px;box-shadow:0 8px 24px rgba(147,51,234,0.35);}
+.url{position:absolute;bottom:28px;font-size:14px;color:#94a3b8;font-weight:500;}
+.bar{position:absolute;bottom:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#f97316,#9333ea,#22c55e);}
+</style></head><body>
+<div class="wrap">
+  <div class="bg1"></div><div class="bg2"></div>
+  <div class="logo"><img src="logo-p.png"/></div>
+  <div class="tag">AI Medical Intelligence</div>
+  <div class="icon-wrap">🔬</div>
+  <h1>Medical Report<br><span>Analysis</span></h1>
+  <div class="sub">Upload your lab reports and get instant AI-powered explanations in simple language — no medical degree needed.</div>
+  <div class="report-box">
+    <div class="rb-top">
+      <div class="rb-icon">📄</div>
+      <div><div class="rb-title">Blood Test Report — May 2026</div><div class="rb-sub">AI Analysis Complete · 14 parameters checked</div></div>
+      <div class="rb-badge">✅ Analyzed</div>
+    </div>
+    <div class="findings">
+      <div class="finding"><div class="f-dot" style="background:#22c55e"></div><div class="f-label">Haemoglobin (Hb)</div><div class="f-val">13.8 g/dL</div><div class="f-status normal">Normal</div></div>
+      <div class="finding"><div class="f-dot" style="background:#f59e0b"></div><div class="f-label">Vitamin D</div><div class="f-val">18 ng/mL</div><div class="f-status attention">Low</div></div>
+      <div class="finding"><div class="f-dot" style="background:#22c55e"></div><div class="f-label">Blood Sugar (Fasting)</div><div class="f-val">92 mg/dL</div><div class="f-status normal">Normal</div></div>
+      <div class="finding"><div class="f-dot" style="background:#22c55e"></div><div class="f-label">Cholesterol (Total)</div><div class="f-val">178 mg/dL</div><div class="f-status normal">Healthy</div></div>
+    </div>
+  </div>
+  <div class="steps2">
+    <div class="step2"><div class="s2-icon">📤</div><div class="s2-text">Upload PDF / Image</div></div>
+    <div class="step2"><div class="s2-icon">🤖</div><div class="s2-text">AI Scans Report</div></div>
+    <div class="step2"><div class="s2-icon">💡</div><div class="s2-text">Get Simple Insights</div></div>
+    <div class="step2"><div class="s2-icon">📋</div><div class="s2-text">Action Suggestions</div></div>
+  </div>
+  <div class="cta">Analyze Your Report — aorane.com</div>
+  <div class="url">aorane.com · Made in India 🇮🇳</div>
+  <div class="bar"></div>
+</div>
+</body></html>

@@ -1,0 +1,119 @@
+workflows:
+  android-release:
+    name: AORANE Android Release Build (AAB)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      node: 22.14.0
+      vars:
+        EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
+        PACKAGE_NAME: in.aorane.app
+        NPM_CONFIG_LEGACY_PEER_DEPS: "true"
+        EXPO_NO_TELEMETRY: "1"
+
+    scripts:
+      - name: Prepare workspace
+        script: |
+          mv pnpm-workspace.yaml pnpm-workspace.yaml.bak
+
+      - name: Install dependencies + verify HC
+        script: |
+          cd artifacts/aorane-mobile
+          npm install --legacy-peer-deps
+          echo "=== Verifying react-native-health-connect install ==="
+          if [ -f "node_modules/react-native-health-connect/package.json" ]; then
+            echo "HC FOUND: $(cat node_modules/react-native-health-connect/package.json | python3 -c 'import sys,json; print(json.load(sys.stdin).get(\"version\"))')"
+          else
+            echo "HC MISSING - installing explicitly..."
+            npm install --legacy-peer-deps react-native-health-connect@3.5.0
+            ls node_modules/react-native-health-connect/package.json && echo "HC now FOUND" || echo "HC install FAILED"
+          fi
+
+      - name: Expo Prebuild
+        script: |
+          cd artifacts/aorane-mobile
+          npx expo prebuild --platform android --clean --no-install
+
+      - name: Build Android AAB
+        script: |
+          set -e
+          cd artifacts/aorane-mobile/android
+          chmod +x gradlew
+          ./gradlew bundleRelease 2>&1
+          RESULT=$?
+          cd ../../..
+          mv pnpm-workspace.yaml.bak pnpm-workspace.yaml
+          exit $RESULT
+
+    artifacts:
+      - artifacts/aorane-mobile/android/app/build/outputs/bundle/release/*.aab
+      - artifacts/aorane-mobile/android/app/build/outputs/**/*.aab
+
+    publishing:
+      email:
+        recipients:
+          - mangeshangadverma@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  android-apk:
+    name: AORANE Android APK (Phone Testing)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      node: 22.14.0
+      vars:
+        EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
+        PACKAGE_NAME: in.aorane.app
+        NPM_CONFIG_LEGACY_PEER_DEPS: "true"
+        EXPO_NO_TELEMETRY: "1"
+
+    scripts:
+      - name: Prepare workspace
+        script: |
+          mv pnpm-workspace.yaml pnpm-workspace.yaml.bak
+
+      - name: Install dependencies + verify HC
+        script: |
+          cd artifacts/aorane-mobile
+          npm install --legacy-peer-deps
+          echo "=== Verifying react-native-health-connect install ==="
+          if [ -f "node_modules/react-native-health-connect/package.json" ]; then
+            echo "HC FOUND: $(cat node_modules/react-native-health-connect/package.json | python3 -c 'import sys,json; print(json.load(sys.stdin).get(\"version\"))')"
+            echo "HC entry: react-native field = $(cat node_modules/react-native-health-connect/package.json | python3 -c 'import sys,json; print(json.load(sys.stdin).get(\"react-native\",\"NONE\"))')"
+          else
+            echo "HC MISSING - installing explicitly..."
+            npm install --legacy-peer-deps react-native-health-connect@3.5.0
+            ls node_modules/react-native-health-connect/package.json && echo "HC now FOUND" || echo "HC install FAILED"
+          fi
+
+      - name: Expo Prebuild
+        script: |
+          cd artifacts/aorane-mobile
+          npx expo prebuild --platform android --clean --no-install
+
+      - name: Build Android Release APK
+        script: |
+          set -e
+          cd artifacts/aorane-mobile/android
+          chmod +x gradlew
+          ./gradlew assembleRelease 2>&1
+          RESULT=$?
+          cd ../../..
+          mv pnpm-workspace.yaml.bak pnpm-workspace.yaml
+          exit $RESULT
+
+    artifacts:
+      - artifacts/aorane-mobile/android/app/build/outputs/apk/release/*.apk
+      - artifacts/aorane-mobile/android/app/build/outputs/**/*.apk
+
+    publishing:
+      email:
+        recipients:
+          - mangeshangadverma@gmail.com
+        notify:
+          success: true
+          failure: true

@@ -1,0 +1,10 @@
+Solve Problem:
+1. Business.aorane.com - is page me hindi english mix ho rahi hai, abhi kewal english lugauge me hi chahiye. 
+2. Business Poratl verification chahiye, Mobile through otp and Gmail/Email through verification link or OTP jaise aasan lage.
+3. portal ka theam dark hai, ise light me chahiye like landing page.
+4. https://business.aorane.com/billing ( Billing page working nahi hai, mai chahta hun account free me create ho lekin baad me bulk me sheet book karna pade inhe tabhi kitne user ke liye inhe payment karna hoga pata chalega and ye pahle payment karenge tabhi inko inke Organization Enrollment Code milega jiski help se inke users inke code ke jariye plan upgrade kar payenge.
+Corporates bulk me sheet means numbers of user book kar sake jisse utne hi log inke code ke jariye free me join ho sake , in users ka payment inki company karegi, jisme max-199, pro-249 wala plan ho and dono me agar yearly plan choose karte han to 15% ka off denge ham.
+5. Billing page propar banao, jisme invoice bhi generate ho, company apne gst number ( business details) ke according paln lengi, perfact calculation hona chahiye gst bhi count hoga, and baki text bhi, ak propar purchase order ki tarah, jisme govt rulls me hame problem na ho, invoice direct inke mail pe jayegi payment hote hi, and hamare mail pe bhi, and jab chahye invoice download bhi kar sake.
+6. main focuse ( company ke users ka data dikhega dashboard pe, like agar 100 users han copany ke to kitne % user ka health acha hai, kitno ka nahi hai, kitne % active rahte han daily, pura data dikhna chahiye graphics ka bhi use karo. personal data nahi dikhna chahiye jaise agar female ho to period reminder, kisi tarah ke medical report ka data, bas kitne % healthy hai koi yaisa rasta nikalo jisse users ki privacy bani rahe.
+7. kisi perticuler user ka data dekhna ho to uski user id / name / register mobile number se search kiya ja sake use perticuller user ko and company chahye to use user ka subscription cancel bhi kar sake jarurat padne par.
+8. Business portal landing page me aor information dalo jisse thoda trust badhe marketing ke najariye se.

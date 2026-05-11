@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/aorane-landing/"
+title = "AORANE Landing Page"
+version = "1.0.0"
+id = "artifacts/aorane-landing"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/aorane-landing/" ]
+localPort = 22011
+
+[services.development]
+run = "pnpm --filter @workspace/aorane-landing run dev"
+
+[services.production]
+build = ["sh", "-c", "BASE_PATH=/ pnpm --filter @workspace/aorane-landing run build"]
+publicDir = "artifacts/aorane-landing/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22011"
+BASE_PATH = "/aorane-landing/"

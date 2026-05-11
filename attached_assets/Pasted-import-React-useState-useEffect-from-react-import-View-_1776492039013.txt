@@ -1,0 +1,128 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import Svg, { Circle, Text as SvgText } from 'react-native-svg';
+
+const { width } = Dimensions.get('window');
+
+const StressDashboard = () => {
+  const [stressLevel, setStressLevel] = useState(0);
+
+  // Mock Data (Ye data aapke API ya Google Fit se aayega)
+  const userData = {
+    hrv: 45,            // ms (Lower means more stress)
+    hrvBaseline: 60,    // User ka normal average
+    sleepHours: 5.5,    // hours
+    workHours: 10,      // hours
+    caffeineCups: 4,    // count
+    exerciseDone: false,
+    medicalHistory: true // e.g., Hypertension
+  };
+
+  useEffect(() => {
+    const level = calculateStress(userData);
+    setStressLevel(level);
+  }, []);
+
+  // --- ADVANCE STRESS ALGORITHM ---
+  const calculateStress = (data) => {
+    let score = 0;
+
+    // 1. HRV Analysis (40% Weightage)
+    // Agar HRV baseline se 20% niche hai, stress points badh jayenge
+    const hrvDrop = ((data.hrvBaseline - data.hrv) / data.hrvBaseline) * 100;
+    if (hrvDrop > 0) score += Math.min(hrvDrop * 1.5, 40);
+
+    // 2. Sleep Analysis (25% Weightage)
+    if (data.sleepHours < 7) {
+      const sleepDeficit = 7 - data.sleepHours;
+      score += Math.min(sleepDeficit * 8, 25);
+    }
+
+    // 3. Work Load (20% Weightage)
+    if (data.workHours > 8) {
+      const extraWork = data.workHours - 8;
+      score += Math.min(extraWork * 5, 20);
+    }
+
+    // 4. Lifestyle & Medical (15% Weightage)
+    if (data.caffeineCups > 3) score += 5;
+    if (!data.exerciseDone) score += 5;
+    if (data.medicalHistory) score += 5;
+
+    return Math.min(Math.round(score), 100);
+  };
+
+  // UI Components
+  const ProgressCircle = ({ percentage }) => {
+    const radius = 80;
+    const stroke = 15;
+    const normalizedRadius = radius - stroke * 2;
+    const circumference = normalizedRadius * 2 * Math.PI;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+    const getColor = (p) => {
+      if (p < 30) return '#4CAF50'; // Low (Green)
+      if (p < 70) return '#FFB300'; // Moderate (Yellow)
+      return '#F44336';            // High (Red)
+    };
+
+    return (
+      <View style={styles.chartContainer}>
+        <Svg height={radius * 2} width={radius * 2}>
+          <Circle
+            stroke="#e6e6e6"
+            fill="transparent"
+            strokeWidth={stroke}
+            r={normalizedRadius}
+            cx={radius}
+            cy={radius}
+          />
+          <Circle
+            stroke={getColor(percentage)}
+            fill="transparent"
+            strokeWidth={stroke}
+            strokeDasharray={circumference + ' ' + circumference}
+            style={{ strokeDashoffset }}
+            strokeLinecap="round"
+            r={normalizedRadius}
+            cx={radius}
+            cy={radius}
+          />
+        </Svg>
+        <View style={styles.labelContainer}>
+          <Text style={[styles.percentText, { color: getColor(percentage) }]}>{percentage}%</Text>
+          <Text style={styles.subText}>STRESS</Text>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <ScrollView style={styles.container}>
+      <Text style={styles.header}>Health Insights</Text>
+      
+      <ProgressCircle percentage={stressLevel} />
+
+      <View style={styles.statsCard}>
+        <Text style={styles.cardTitle}>Why this score?</Text>
+        <Text style={styles.detailText}>• HRV is {userData.hrv < userData.hrvBaseline ? 'Lower' : 'Normal'} than usual.</Text>
+        <Text style={styles.detailText}>• You slept {userData.sleepHours}h (Goal: 7h+).</Text>
+        <Text style={styles.detailText}>• Work intensity is High ({userData.workHours}h).</Text>
+      </View>
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F5F7FA', padding: 20 },
+  header: { fontSize: 24, fontWeight: 'bold', marginBottom: 30, color: '#1A1A1A', textAlign: 'center' },
+  chartContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 40 },
+  labelContainer: { position: 'absolute', alignItems: 'center' },
+  percentText: { fontSize: 40, fontWeight: 'bold' },
+  subText: { fontSize: 14, color: '#666', letterSpacing: 1 },
+  statsCard: { backgroundColor: '#FFF', padding: 20, borderRadius: 15, elevation: 3 },
+  cardTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
+  detailText: { fontSize: 16, color: '#444', marginBottom: 8 }
+});
+
+export default StressDashboard;

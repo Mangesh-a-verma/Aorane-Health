@@ -1,0 +1,190 @@
+workflows:
+
+  # ─── Testing APK (debug — no signing needed) ─────────────────────────────────
+  android-testing:
+    name: AORANE Android Testing APK
+    max_build_duration: 60
+    environment:
+      groups:
+        - aorane_credentials
+      node: 20.18.0
+      java: 17
+      vars:
+        EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
+        BUNDLE_ID: in.aorane.app
+        PACKAGE_NAME: in.aorane.app
+
+    scripts:
+      - name: Install pnpm
+        script: npm install -g pnpm@10
+
+      - name: Install monorepo dependencies
+        script: pnpm install --no-frozen-lockfile
+        working_directory: $CM_BUILD_DIR
+
+      - name: Install mobile deps + patch HC TurboModule
+        script: |
+          pnpm install --no-frozen-lockfile --shamefully-hoist
+          # Belt-and-suspenders: force real (non-symlink) HC install via npm
+          if [ ! -f "node_modules/react-native-health-connect/package.json" ] || [ -L "node_modules/react-native-health-connect" ]; then
+            echo "HC symlink or missing — forcing npm install..."
+            npm install react-native-health-connect@3.5.0 --legacy-peer-deps --no-save
+          fi
+          echo "=== HC check ===" && ls node_modules/react-native-health-connect/package.json && echo "HC OK"
+
+          # ── CRITICAL PATCH ──────────────────────────────────────────────────
+          # TurboModuleRegistry.getEnforcing() hard-crashes the app when HC
+          # native module is unavailable (e.g. device missing HC app).
+          # Patching to .get() which returns null instead of crashing.
+          #
+          # FIX: Metro bundler uses lib/module/ (ESM) NOT lib/commonjs/.
+          # Previous patch only fixed commonjs — lib/module was left unpatched → crash.
+          # Now patching ALL .js and .ts files in the entire HC package.
+          HC_DIR="node_modules/react-native-health-connect"
+          echo "=== Patching ALL HC files containing getEnforcing ==="
+          PATCHED=0
+          while IFS= read -r f; do
+            sed -i 's/TurboModuleRegistry\.getEnforcing/TurboModuleRegistry.get/g' "$f"
+            echo "  Patched: $f"
+            PATCHED=$((PATCHED + 1))
+          done < <(grep -rl "getEnforcing" "$HC_DIR" 2>/dev/null)
+          echo "=== Done: $PATCHED file(s) patched ==="
+
+          # Verify lib/module (the one Metro actually uses) is patched
+          HC_MOD="$HC_DIR/lib/module/NativeHealthConnect.js"
+          if [ -f "$HC_MOD" ]; then
+            if grep -q "getEnforcing" "$HC_MOD"; then
+              echo "ERROR: lib/module still contains getEnforcing — force patching"
+              sed -i 's/getEnforcing/get/g' "$HC_MOD"
+            else
+              echo "OK: lib/module/NativeHealthConnect.js is clean"
+            fi
+            tail -3 "$HC_MOD"
+          fi
+          # Verify lib/commonjs as well
+          HC_LIB="$HC_DIR/lib/commonjs/NativeHealthConnect.js"
+          if [ -f "$HC_LIB" ]; then
+            grep -q "getEnforcing" "$HC_LIB" && sed -i 's/getEnforcing/get/g' "$HC_LIB"
+            echo "OK: lib/commonjs/NativeHealthConnect.js clean"
+          fi
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
+
+      - name: Expo prebuild (generate Android native code)
+        script: |
+          npx expo prebuild \
+            --platform android \
+            --clean \
+            --no-install
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
+
+      - name: Build Android debug APK
+        script: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile/android
+
+    artifacts:
+      - $CM_BUILD_DIR/artifacts/aorane-mobile/android/app/build/outputs/apk/debug/*.apk
+
+    publishing:
+      email:
+        recipients:
+          - mangeshangadverma@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  # ─── Production Release (AAB for Play Store) ─────────────────────────────────
+  android-release:
+    name: AORANE Android Release Build
+    max_build_duration: 60
+    environment:
+      groups:
+        - aorane_credentials
+      node: 20.18.0
+      java: 17
+      vars:
+        EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
+        BUNDLE_ID: in.aorane.app
+        PACKAGE_NAME: in.aorane.app
+
+    scripts:
+      - name: Install pnpm
+        script: npm install -g pnpm@10
+
+      - name: Install monorepo dependencies
+        script: pnpm install --no-frozen-lockfile
+        working_directory: $CM_BUILD_DIR
+
+      - name: Install mobile deps + patch HC TurboModule
+        script: |
+          pnpm install --no-frozen-lockfile --shamefully-hoist
+          # Belt-and-suspenders: force real (non-symlink) HC install via npm
+          if [ ! -f "node_modules/react-native-health-connect/package.json" ] || [ -L "node_modules/react-native-health-connect" ]; then
+            echo "HC symlink or missing — forcing npm install..."
+            npm install react-native-health-connect@3.5.0 --legacy-peer-deps --no-save
+          fi
+          echo "=== HC check ===" && ls node_modules/react-native-health-connect/package.json && echo "HC OK"
+
+          # ── CRITICAL PATCH ──────────────────────────────────────────────────
+          # FIX: Metro bundler uses lib/module/ (ESM) NOT lib/commonjs/.
+          # Patching ALL .js and .ts files in the entire HC package.
+          HC_DIR="node_modules/react-native-health-connect"
+          echo "=== Patching ALL HC files containing getEnforcing ==="
+          PATCHED=0
+          while IFS= read -r f; do
+            sed -i 's/TurboModuleRegistry\.getEnforcing/TurboModuleRegistry.get/g' "$f"
+            echo "  Patched: $f"
+            PATCHED=$((PATCHED + 1))
+          done < <(grep -rl "getEnforcing" "$HC_DIR" 2>/dev/null)
+          echo "=== Done: $PATCHED file(s) patched ==="
+          HC_MOD="$HC_DIR/lib/module/NativeHealthConnect.js"
+          if [ -f "$HC_MOD" ]; then
+            grep -q "getEnforcing" "$HC_MOD" && sed -i 's/getEnforcing/get/g' "$HC_MOD"
+            echo "OK: lib/module/NativeHealthConnect.js clean" && tail -3 "$HC_MOD"
+          fi
+          HC_LIB="$HC_DIR/lib/commonjs/NativeHealthConnect.js"
+          if [ -f "$HC_LIB" ]; then
+            grep -q "getEnforcing" "$HC_LIB" && sed -i 's/getEnforcing/get/g' "$HC_LIB"
+            echo "OK: lib/commonjs/NativeHealthConnect.js clean"
+          fi
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
+
+      - name: Expo prebuild (generate Android native code)
+        script: |
+          npx expo prebuild \
+            --platform android \
+            --clean \
+            --no-install
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile
+
+      - name: Build Android release AAB
+        script: |
+          chmod +x gradlew
+          ./gradlew bundleRelease \
+            -PandroidVersionCode=1 \
+            -PandroidVersionName=1.0.0
+        working_directory: $CM_BUILD_DIR/artifacts/aorane-mobile/android
+
+      - name: Sign AAB
+        script: |
+          jarsigner \
+            -verbose \
+            -keystore $CM_KEYSTORE_PATH \
+            -storepass $CM_KEYSTORE_PASSWORD \
+            -keypass $CM_KEY_PASSWORD \
+            -signedjar $CM_BUILD_DIR/artifacts/aorane-mobile/android/app/build/outputs/bundle/release/app-release-signed.aab \
+            $CM_BUILD_DIR/artifacts/aorane-mobile/android/app/build/outputs/bundle/release/app-release.aab \
+            $CM_KEY_ALIAS
+
+    artifacts:
+      - $CM_BUILD_DIR/artifacts/aorane-mobile/android/app/build/outputs/bundle/release/*.aab
+      - $CM_BUILD_DIR/artifacts/aorane-mobile/android/app/build/outputs/apk/**/*.apk
+
+    publishing:
+      email:
+        recipients:
+          - mangeshangadverma@gmail.com
+        notify:
+          success: true
+          failure: true

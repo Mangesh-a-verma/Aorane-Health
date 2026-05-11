@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1640px; height: 624px; overflow: hidden; font-family: 'Poppins', sans-serif; }
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800;900&display=swap');
+
+  .cover {
+    width: 1640px; height: 624px;
+    background: linear-gradient(140deg, #0D1B2A 0%, #1B3A5C 40%, #0077B6 75%, #00B4D8 100%);
+    position: relative; display: flex; align-items: center; overflow: hidden;
+  }
+
+  /* Tech grid lines */
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,180,216,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,180,216,0.06) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* Glowing orbs */
+  .orb1 {
+    position: absolute; width: 500px; height: 500px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,119,182,0.4) 0%, transparent 70%);
+    top: -150px; right: 100px;
+  }
+  .orb2 {
+    position: absolute; width: 300px; height: 300px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,180,216,0.3) 0%, transparent 70%);
+    bottom: -100px; right: 350px;
+  }
+
+  /* Connecting lines / nodes */
+  .node {
+    position: absolute;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(0,180,216,0.6);
+    box-shadow: 0 0 12px rgba(0,180,216,0.8);
+  }
+  .line {
+    position: absolute;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0,180,216,0.4), transparent);
+    transform-origin: left center;
+  }
+
+  /* Right visual: organization cards */
+  .right-panel {
+    position: absolute; right: 70px; top: 50%; transform: translateY(-50%);
+    width: 500px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  }
+
+  .org-card {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 16px;
+    transition: all 0.3s;
+  }
+  .org-card .icon { font-size: 26px; margin-bottom: 8px; }
+  .org-card .name { font-size: 13px; font-weight: 700; color: white; margin-bottom: 4px; }
+  .org-card .seats {
+    font-size: 11px; color: rgba(255,255,255,0.6);
+    display: flex; align-items: center; gap: 4px;
+  }
+  .seat-fill {
+    height: 3px; border-radius: 3px; margin-top: 8px;
+    background: rgba(255,255,255,0.1); overflow: hidden;
+  }
+  .seat-fill-inner { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #00B4D8, #0077B6); }
+  .active-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; color: #4ade80; font-weight: 600; margin-top: 6px;
+  }
+
+  /* Left content */
+  .content { padding-left: 90px; z-index: 10; max-width: 840px; }
+
+  .logo { height: 52px; margin-bottom: 22px; filter: brightness(0) invert(1); }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(0,180,216,0.2); border: 1px solid rgba(0,180,216,0.4);
+    border-radius: 50px; padding: 6px 16px; margin-bottom: 18px;
+    font-size: 13px; color: #7DD3FC; font-weight: 600;
+  }
+
+  .tagline {
+    font-size: 50px; font-weight: 800; color: white;
+    line-height: 1.1; letter-spacing: -1px;
+    text-shadow: 0 2px 30px rgba(0,0,0,0.3);
+  }
+  .tagline .hl { color: #00B4D8; }
+
+  .sub { font-size: 18px; color: rgba(255,255,255,0.75); margin-top: 16px; font-weight: 300; }
+
+  .features { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+  .feat {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 15px; color: rgba(255,255,255,0.85); font-weight: 400;
+  }
+  .feat .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #00B4D8; flex-shrink: 0;
+    box-shadow: 0 0 8px rgba(0,180,216,0.8);
+  }
+
+  .website {
+    position: absolute; bottom: 24px; left: 90px;
+    font-size: 13px; color: rgba(255,255,255,0.5); letter-spacing: 1px;
+  }
+
+  .bottom-glow {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, #0077B6, #00B4D8, #48CAE4, #00B4D8, #0077B6);
+  }
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="grid"></div>
+  <div class="orb1"></div>
+  <div class="orb2"></div>
+
+  <!-- Tech nodes -->
+  <div class="node" style="right:620px;top:120px"></div>
+  <div class="node" style="right:580px;top:300px"></div>
+  <div class="node" style="right:640px;top:480px"></div>
+
+  <div class="content">
+    <img src="logo-full.png" class="logo" alt="Aorane" />
+    <div class="badge">🏢 B2B Health Solutions</div>
+    <div class="tagline">Employee Wellness,<br><span class="hl">Reinvented</span><br>for India.</div>
+    <div class="sub">Corporate · Hospital · Insurance · NGO</div>
+    <div class="features">
+      <div class="feat"><div class="dot"></div>Bulk employee health monitoring</div>
+      <div class="feat"><div class="dot"></div>Custom branded health portal</div>
+      <div class="feat"><div class="dot"></div>Real-time analytics dashboard</div>
+    </div>
+  </div>
+
+  <!-- Org cards -->
+  <div class="right-panel">
+    <div class="org-card">
+      <div class="icon">🏥</div>
+      <div class="name">Apollo Hospital</div>
+      <div class="seats">👥 420 / 500 seats</div>
+      <div class="seat-fill"><div class="seat-fill-inner" style="width:84%"></div></div>
+      <div class="active-badge">● Active</div>
+    </div>
+    <div class="org-card">
+      <div class="icon">🏢</div>
+      <div class="name">TCS Bengaluru</div>
+      <div class="seats">👥 186 / 200 seats</div>
+      <div class="seat-fill"><div class="seat-fill-inner" style="width:93%"></div></div>
+      <div class="active-badge">● Active</div>
+    </div>
+    <div class="org-card">
+      <div class="icon">🏋️</div>
+      <div class="name">Gold's Gym Chain</div>
+      <div class="seats">👥 38 / 50 seats</div>
+      <div class="seat-fill"><div class="seat-fill-inner" style="width:76%"></div></div>
+      <div class="active-badge">● Active</div>
+    </div>
+    <div class="org-card">
+      <div class="icon">🎓</div>
+      <div class="name">DPS Schools</div>
+      <div class="seats">👥 92 / 100 seats</div>
+      <div class="seat-fill"><div class="seat-fill-inner" style="width:92%"></div></div>
+      <div class="active-badge">● Active</div>
+    </div>
+  </div>
+
+  <div class="website">www.aorane.com &nbsp;|&nbsp; Enterprise Health Intelligence</div>
+  <div class="bottom-glow"></div>
+</div>
+</body>
+</html>

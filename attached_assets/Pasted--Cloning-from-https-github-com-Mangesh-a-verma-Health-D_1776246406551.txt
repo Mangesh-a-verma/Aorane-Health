@@ -1,0 +1,59 @@
+==> Cloning from https://github.com/Mangesh-a-verma/Health-Data-Hub
+==> Checking out commit 3ae4fd48e027086364da32566d269ed26bcb8d62 in branch main
+==> Requesting Node.js version 20
+==> Using Node.js version 20.20.2 via /opt/render/project/src/.nvmrc
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Running build command 'npx --yes pnpm@10 install --no-frozen-lockfile --ignore-scripts && npx pnpm@10 --filter @workspace/api-server build'...
+> @workspace/api-server@0.0.0 build /opt/render/project/src/artifacts/api-server
+> node ./build.mjs
+✘ [ERROR] Could not resolve "../../middlewares/ai-rate-limit"
+    src/routes/modules/ai.ts:6:28:
+      6 │ import { aiRateLimit } from "../../middlewares/ai-rate-limit";
+        ╵                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+✘ [ERROR] Could not resolve "../../middlewares/ai-rate-limit"
+    src/routes/modules/intelligence.ts:16:28:
+      16 │ import { aiRateLimit } from "../../middlewares/ai-rate-limit";
+         ╵                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+✘ [ERROR] Could not resolve "../../middlewares/feature-check"
+    src/routes/modules/ai.ts:7:31:
+      7 │ import { requireFeature } from "../../middlewares/feature-check";
+        ╵                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+✘ [ERROR] Could not resolve "../../lib/ai"
+    src/routes/modules/ai.ts:8:23:
+      8 │ import { callAI } from "../../lib/ai";
+        ╵                        ~~~~~~~~~~~~~~
+✘ [ERROR] Could not resolve "../../lib/ai"
+    src/routes/modules/intelligence.ts:17:23:
+      17 │ import { callAI } from "../../lib/ai";
+         ╵                        ~~~~~~~~~~~~~~
+✘ [ERROR] Could not resolve "../../lib/ai"
+    src/routes/modules/admin.ts:7:34:
+      7 │ import { invalidateAICache } from "../../lib/ai";
+        ╵                                   ~~~~~~~~~~~~~~
+✘ [ERROR] Could not resolve "../../lib/razorpay"
+    src/routes/modules/business.ts:12:7:
+      12 │ } from "../../lib/razorpay";
+         ╵        ~~~~~~~~~~~~~~~~~~~~
+✘ [ERROR] Could not resolve "../../middlewares/feature-check"
+    src/routes/modules/admin.ts:8:39:
+      8 │ ... { invalidateFeatureCache } from "../../middlewares/feature-check";
+        ╵                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+8 errors
+Error: Build failed with 8 errors:
+src/routes/modules/admin.ts:7:34: ERROR: Could not resolve "../../lib/ai"
+src/routes/modules/admin.ts:8:39: ERROR: Could not resolve "../../middlewares/feature-check"
+src/routes/modules/ai.ts:6:28: ERROR: Could not resolve "../../middlewares/ai-rate-limit"
+src/routes/modules/ai.ts:7:31: ERROR: Could not resolve "../../middlewares/feature-check"
+src/routes/modules/ai.ts:8:23: ERROR: Could not resolve "../../lib/ai"
+...
+    at failureErrorWithLog (/opt/render/project/src/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:1467:15)
+    at /opt/render/project/src/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:926:25
+    at /opt/render/project/src/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:1345:9
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  errors: [Getter/Setter],
+  warnings: [Getter/Setter]
+}
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 build: `node ./build.mjs`
+Exit status 1
+==> Build failed 😞
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys

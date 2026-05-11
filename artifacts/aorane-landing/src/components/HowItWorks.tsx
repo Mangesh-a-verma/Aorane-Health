@@ -1,0 +1,128 @@
+import { motion } from "framer-motion";
+import { Smartphone, Scan, Brain, TrendingUp, ArrowRight } from "lucide-react";
+
+const steps = [
+  {
+    num: "01",
+    icon: Smartphone,
+    title: "Download & Sign Up",
+    desc: "Create your free account in 60 seconds. OTP login — no passwords needed. Available on Android (Play Store ID: in.aorane.app).",
+    color: "#0747A6",
+    bg: "#EEF4FF",
+  },
+  {
+    num: "02",
+    icon: Scan,
+    title: "Log Your Health",
+    desc: "Snap food photos, log exercises, enter vitals. AI does the heavy lifting — voice input, photo recognition, and smart suggestions included.",
+    color: "#10B981",
+    bg: "#F0FDF9",
+  },
+  {
+    num: "03",
+    icon: Brain,
+    title: "Get AI Insights",
+    desc: "AI-powered analysis of your data delivers personalized health recommendations daily. Early risk detection, pattern recognition, custom advice.",
+    color: "#7C3AED",
+    bg: "#F5F3FF",
+  },
+  {
+    num: "04",
+    icon: TrendingUp,
+    title: "Track & Improve",
+    desc: "Watch your health score climb week over week. Set personal goals, beat your records, share achievements with family and friends.",
+    color: "#F59E0B",
+    bg: "#FFFBEB",
+  },
+];
+
+export default function HowItWorks() {
+  return (
+    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-[#F8FAFC]">
+      <div className="max-w-7xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <span className="text-xs font-bold text-[#10B981] bg-[#10B981]/10 px-3 py-1 rounded-full uppercase tracking-widest">
+            How It Works
+          </span>
+          <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-gray-900">
+            Start your health journey in{" "}
+            <span className="gradient-text">4 simple steps</span>
+          </h2>
+          <p className="mt-3 text-gray-500 max-w-xl mx-auto">
+            From download to your first AI health insight — takes less than 5 minutes.
+          </p>
+        </motion.div>
+
+        <div className="relative">
+          <div className="hidden lg:block absolute top-20 left-0 right-0 h-0.5 border-t-2 border-dashed border-gray-200 mx-32" />
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {steps.map((step, i) => (
+              <motion.div
+                key={step.num}
+                initial={{ opacity: 0, y: 32 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.12 }}
+                className="relative flex flex-col items-center text-center"
+              >
+                <div className="relative z-10 mb-5">
+                  <div
+                    className="w-16 h-16 rounded-3xl flex items-center justify-center shadow-lg"
+                    style={{ background: step.color }}
+                  >
+                    <step.icon className="w-7 h-7 text-white" />
+                  </div>
+                  <div
+                    className="absolute -top-2 -right-2 w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black text-white shadow"
+                    style={{ background: step.bg, color: step.color, border: `2px solid ${step.color}` }}
+                  >
+                    {step.num}
+                  </div>
+                </div>
+
+                {i < steps.length - 1 && (
+                  <div className="lg:hidden absolute top-8 left-[calc(50%+32px)] w-[calc(100%-64px)] flex items-center justify-center">
+                  </div>
+                )}
+
+                <h3 className="text-base font-extrabold text-gray-900 mb-2">{step.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{step.desc}</p>
+
+                {i < steps.length - 1 && (
+                  <ArrowRight
+                    className="hidden lg:block absolute -right-6 top-8 w-5 h-5 text-gray-300"
+                    style={{ zIndex: 20 }}
+                  />
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-14 text-center"
+        >
+          <a
+            href="https://github.com/Mangesh-a-verma/Health-Data-Hub/releases/download/v2.0/Aorane.v2.apk"
+            download="Aorane.v2.apk"
+            className="inline-flex items-center gap-2 px-8 py-4 blue-gradient text-white rounded-2xl font-bold text-sm shadow-lg hover:opacity-90 transition-opacity"
+          >
+            <Smartphone className="w-4 h-4" />
+            Get Started Free on Android
+            <ArrowRight className="w-4 h-4" />
+          </a>
+          <p className="mt-3 text-xs text-gray-400">No credit card required · Free forever plan available</p>
+        </motion.div>
+      </div>
+    </section>
+  );
+}

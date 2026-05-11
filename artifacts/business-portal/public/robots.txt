@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /register
+
+# Private dashboard pages — do not index
+Disallow: /dashboard
+Disallow: /members
+Disallow: /analytics
+Disallow: /communications
+Disallow: /codes
+Disallow: /billing
+Disallow: /settings
+Disallow: /verify
+Disallow: /auth
+
+Sitemap: https://business.aorane.com/sitemap.xml

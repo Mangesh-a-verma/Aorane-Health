@@ -1,0 +1,13 @@
+{
+    "installCommand": "npx --yes pnpm@10 install --no-frozen-lockfile --ignore-scripts && npx --yes pnpm@10 rebuild esbuild",
+    "buildCommand": "NODE_ENV=production VITE_API_URL=https://aorane.onrender.com npx pnpm@10 --filter @workspace/business-portal build",
+    "outputDirectory": "dist/public",
+    "framework": null,
+    "redirects": [
+      { "source": "/business-portal/:path*", "destination": "/:path*", "permanent": false }
+    ],
+    "rewrites": [
+      { "source": "/(.*)", "destination": "/index.html" }
+    ]
+  }
+  

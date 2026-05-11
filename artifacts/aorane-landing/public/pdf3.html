@@ -1,0 +1,100 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1240px;height:1754px;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;}
+.page{width:1240px;height:1754px;background:#fff;position:relative;display:flex;flex-direction:column;}
+.top-bar{height:8px;background:linear-gradient(90deg,#f97316,#1e3a8a,#22c55e);}
+.header{padding:40px 72px 0;display:flex;align-items:center;justify-content:space-between;}
+.header-logo img{height:44px;}
+.header-title{font-size:13px;font-weight:600;color:#94a3b8;letter-spacing:2px;text-transform:uppercase;}
+.content{flex:1;padding:36px 72px 40px;}
+.section-tag{display:inline-block;background:#f0fdf4;color:#16a34a;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;border-radius:99px;margin-bottom:14px;}
+h2{font-size:46px;font-weight:900;color:#1e3a8a;margin-bottom:10px;line-height:1.1;}
+h2 span{color:#f97316;}
+.intro{font-size:17px;color:#475569;max-width:900px;line-height:1.7;margin-bottom:36px;}
+.platform-arch{display:flex;gap:20px;margin-bottom:32px;}
+.arch-card{flex:1;border-radius:20px;padding:28px 24px;text-align:center;position:relative;overflow:hidden;}
+.arch-card.blue{background:linear-gradient(135deg,#eff6ff,#dbeafe);border:2px solid #bfdbfe;}
+.arch-card.orange{background:linear-gradient(135deg,#fff7ed,#fed7aa);border:2px solid #fdba74;}
+.arch-card.green{background:linear-gradient(135deg,#f0fdf4,#bbf7d0);border:2px solid #86efac;}
+.arch-icon{font-size:44px;margin-bottom:14px;}
+.arch-title{font-size:18px;font-weight:800;color:#1e3a8a;margin-bottom:8px;}
+.arch-sub{font-size:13px;color:#475569;line-height:1.5;margin-bottom:14px;}
+.arch-pills{display:flex;flex-direction:column;gap:6px;align-items:center;}
+.arch-pill{background:rgba(255,255,255,0.8);border-radius:99px;padding:4px 14px;font-size:12px;font-weight:600;color:#1e3a8a;}
+.flow{display:flex;align-items:center;gap:0;background:#f8fafc;border-radius:20px;padding:24px 32px;margin-bottom:28px;}
+.flow-step{flex:1;text-align:center;}
+.flow-num{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#1d4ed8);color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+.flow-title{font-size:14px;font-weight:700;color:#1e3a8a;margin-bottom:4px;}
+.flow-sub{font-size:12px;color:#64748b;}
+.flow-arrow{font-size:24px;color:#cbd5e1;flex-shrink:0;margin:0 -4px;}
+.key-numbers{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.kn-card{background:linear-gradient(135deg,#f0f7ff,#fff);border:1px solid #dbeafe;border-radius:16px;padding:20px;text-align:center;}
+.kn-val{font-size:32px;font-weight:900;color:#1e3a8a;}
+.kn-label{font-size:12px;color:#64748b;margin-top:4px;font-weight:500;}
+.bottom-bar{height:6px;background:linear-gradient(90deg,#f97316,#1e3a8a,#22c55e);}
+.page-num{position:absolute;bottom:24px;right:60px;font-size:12px;color:#94a3b8;font-weight:500;}
+</style></head><body>
+<div class="page">
+  <div class="top-bar"></div>
+  <div class="header"><div class="header-logo"><img src="logo-p.png"/></div><div class="header-title">Our Solution</div></div>
+  <div class="content">
+    <div class="section-tag">The Solution</div>
+    <h2>Aorane B2B — A Complete<br><span>3-Layer Platform</span> for Organizations</h2>
+    <div class="intro">Aorane provides a complete end-to-end health management ecosystem — a mobile app for employees, a web portal for business admins, and a powerful API backend — all working together seamlessly.</div>
+    <div class="platform-arch">
+      <div class="arch-card blue">
+        <div class="arch-icon">📱</div>
+        <div class="arch-title">Employee Mobile App</div>
+        <div class="arch-sub">Each employee gets access to the full Aorane health tracking app — food, fitness, medicine, stress, and more.</div>
+        <div class="arch-pills">
+          <div class="arch-pill">iOS &amp; Android</div>
+          <div class="arch-pill">AI Food Scanner</div>
+          <div class="arch-pill">Health Score</div>
+          <div class="arch-pill">Blood Emergency</div>
+        </div>
+      </div>
+      <div class="arch-card orange">
+        <div class="arch-icon">🖥️</div>
+        <div class="arch-title">Business Admin Portal</div>
+        <div class="arch-sub">HR/Admin team gets a powerful web dashboard to monitor workforce health, manage members, and send communications.</div>
+        <div class="arch-pills">
+          <div class="arch-pill">Real-time Analytics</div>
+          <div class="arch-pill">Member Management</div>
+          <div class="arch-pill">Enrollment Codes</div>
+          <div class="arch-pill">Team Announcements</div>
+        </div>
+      </div>
+      <div class="arch-card green">
+        <div class="arch-icon">⚙️</div>
+        <div class="arch-title">Secure API Backend</div>
+        <div class="arch-sub">Enterprise-grade REST API on Render (Mumbai region), PostgreSQL on Supabase — 99.9% uptime SLA with full audit logs.</div>
+        <div class="arch-pills">
+          <div class="arch-pill">Supabase PostgreSQL</div>
+          <div class="arch-pill">JWT Auth</div>
+          <div class="arch-pill">DPDPA Compliant</div>
+          <div class="arch-pill">Audit Logs</div>
+        </div>
+      </div>
+    </div>
+    <div class="flow">
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-title">Register Org</div><div class="flow-sub">Sign up in 5 min</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-title">Get Enrollment Codes</div><div class="flow-sub">Share with employees</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-title">Employees Join</div><div class="flow-sub">Download app &amp; enroll</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-num">4</div><div class="flow-title">Track Health Daily</div><div class="flow-sub">Food, steps, stress, sleep</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-num">5</div><div class="flow-title">HR Gets Insights</div><div class="flow-sub">Real-time dashboard</div></div>
+    </div>
+    <div class="key-numbers">
+      <div class="kn-card"><div class="kn-val">8</div><div class="kn-label">Org Types Supported</div></div>
+      <div class="kn-card"><div class="kn-val">500+</div><div class="kn-label">Seats per Organization</div></div>
+      <div class="kn-card"><div class="kn-val">25+</div><div class="kn-label">API Endpoints for B2B</div></div>
+      <div class="kn-card"><div class="kn-val">99.9%</div><div class="kn-label">Uptime SLA</div></div>
+    </div>
+  </div>
+  <div class="bottom-bar"></div>
+  <div class="page-num">Page 3 of 10</div>
+</div>
+</body></html>
