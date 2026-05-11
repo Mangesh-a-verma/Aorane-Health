@@ -30,6 +30,36 @@ workflows:
             ls node_modules/react-native-health-connect/package.json && echo "HC now FOUND" || echo "HC install FAILED"
           fi
 
+      - name: Restore google-services.json from encrypted env var
+        # FIX C5 — google-services.json is intentionally NOT committed to git
+        # (Firebase API key + project IDs were exposed before). We decode it at
+        # build time from an encrypted Codemagic env var GOOGLE_SERVICES_JSON_BASE64.
+        #
+        # ONE-TIME SETUP (Codemagic UI):
+        #   1. Locally on your Mac/Linux machine, base64-encode the file:
+        #        macOS:   base64 -i google-services.json | pbcopy
+        #        Linux:   base64 -w 0 google-services.json
+        #   2. Codemagic UI → Your app → Environment variables (or Teams → Integrations)
+        #      → Add variable:
+        #         Name:  GOOGLE_SERVICES_JSON_BASE64
+        #         Value: <paste the base64 string>
+        #         Secure: ✓ (checked)
+        #         Group:  <leave default, or create a group and reference it under environment.groups>
+        #   3. Re-run the build.
+        script: |
+          set -e
+          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "ERROR: GOOGLE_SERVICES_JSON_BASE64 env var is not set in Codemagic."
+            echo "See the comment in codemagic.yaml for one-time setup instructions."
+            exit 1
+          fi
+          TARGET="$CM_BUILD_DIR/artifacts/aorane-mobile/google-services.json"
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > "$TARGET"
+          # Sanity check: must be valid JSON with project_info.project_id
+          python3 -c "import json; d=json.load(open('$TARGET')); assert d.get('project_info',{}).get('project_id'), 'missing project_id'" \
+            || { echo "ERROR: decoded google-services.json is not valid JSON"; exit 1; }
+          echo "OK: google-services.json restored ($(wc -c < $TARGET) bytes, project_id=$(python3 -c "import json; print(json.load(open('$TARGET'))['project_info']['project_id'])"))"
+
       - name: Expo Prebuild
         script: |
           cd artifacts/aorane-mobile
@@ -89,6 +119,36 @@ workflows:
             npm install --legacy-peer-deps react-native-health-connect@3.5.0
             ls node_modules/react-native-health-connect/package.json && echo "HC now FOUND" || echo "HC install FAILED"
           fi
+
+      - name: Restore google-services.json from encrypted env var
+        # FIX C5 — google-services.json is intentionally NOT committed to git
+        # (Firebase API key + project IDs were exposed before). We decode it at
+        # build time from an encrypted Codemagic env var GOOGLE_SERVICES_JSON_BASE64.
+        #
+        # ONE-TIME SETUP (Codemagic UI):
+        #   1. Locally on your Mac/Linux machine, base64-encode the file:
+        #        macOS:   base64 -i google-services.json | pbcopy
+        #        Linux:   base64 -w 0 google-services.json
+        #   2. Codemagic UI → Your app → Environment variables (or Teams → Integrations)
+        #      → Add variable:
+        #         Name:  GOOGLE_SERVICES_JSON_BASE64
+        #         Value: <paste the base64 string>
+        #         Secure: ✓ (checked)
+        #         Group:  <leave default, or create a group and reference it under environment.groups>
+        #   3. Re-run the build.
+        script: |
+          set -e
+          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "ERROR: GOOGLE_SERVICES_JSON_BASE64 env var is not set in Codemagic."
+            echo "See the comment in codemagic.yaml for one-time setup instructions."
+            exit 1
+          fi
+          TARGET="$CM_BUILD_DIR/artifacts/aorane-mobile/google-services.json"
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > "$TARGET"
+          # Sanity check: must be valid JSON with project_info.project_id
+          python3 -c "import json; d=json.load(open('$TARGET')); assert d.get('project_info',{}).get('project_id'), 'missing project_id'" \
+            || { echo "ERROR: decoded google-services.json is not valid JSON"; exit 1; }
+          echo "OK: google-services.json restored ($(wc -c < $TARGET) bytes, project_id=$(python3 -c "import json; print(json.load(open('$TARGET'))['project_info']['project_id'])"))"
 
       - name: Expo Prebuild
         script: |
