@@ -14,3 +14,12 @@ replit.nix
 coverage/
 .turbo/
 .github/workflows/eas-build-android.yml
+-e 
+# Environment and credential files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
