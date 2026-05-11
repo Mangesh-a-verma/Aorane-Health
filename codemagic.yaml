@@ -6,6 +6,8 @@ workflows:
 
     environment:
       node: 22.14.0
+      groups:
+        - aorane_credentials
       vars:
         EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
         PACKAGE_NAME: in.aorane.app
@@ -95,6 +97,8 @@ workflows:
 
     environment:
       node: 22.14.0
+      groups:
+        - aorane_credentials
       vars:
         EXPO_PUBLIC_API_URL: https://aorane.onrender.com/api
         PACKAGE_NAME: in.aorane.app
