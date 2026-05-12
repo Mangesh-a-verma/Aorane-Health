@@ -7,6 +7,7 @@ services:
     plan: free
     buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile && npx pnpm@10 --filter @workspace/api-server build
     startCommand: npx pnpm@10 --filter @workspace/api-server start
+    preDeployCommand: npx pnpm@10 --filter @workspace/api-server run db:migrate
     autoDeploy: true
     envVars:
       - key: NODE_ENV

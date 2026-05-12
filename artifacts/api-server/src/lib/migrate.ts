@@ -1313,3 +1313,11 @@ export async function runStartupMigrations(): Promise<void> {
   }
   logger.info({ ok, fail, total: migrations.length }, "Startup migrations complete");
 }
+
+import { fileURLToPath } from "url";
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  runStartupMigrations().then(() => process.exit(0)).catch((e) => {
+    logger.error({ err: e }, "Migration script failed");
+    process.exit(1);
+  });
+}
