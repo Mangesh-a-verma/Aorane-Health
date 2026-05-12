@@ -252,7 +252,7 @@ For unknown:
 
     const geminiBody = JSON.stringify({
       contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: imageBase64 } }] }],
-      generationConfig: { temperature: 0.2 },
+      generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
     });
 
     let geminiRes: globalThis.Response | null = null;
@@ -276,9 +276,7 @@ For unknown:
 
     const data = await geminiRes.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON in response");
-    const result = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+    let result: Record<string, unknown>; try { result = JSON.parse(rawText) as Record<string, unknown>; } catch(e) { throw new Error("Invalid JSON"); }
 
     res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
   } catch (err) {
