@@ -425,7 +425,7 @@ function calcMedicineScore(
 ): { score: number; data: DailyHealthScore["medicine"] } {
   const score = scheduled > 0
     ? Math.min(100, Math.round((taken / scheduled) * 100))
-    : 75; // No medicines → neutral
+    : 100; // No medicines → healthy
   return { score, data: { taken, scheduled } };
 }
 
@@ -435,7 +435,7 @@ function calcSleepScore(
   sleepHours: number | null,
   quality: string | null,
 ): { score: number; isOptimal: boolean } {
-  if (!sleepHours || sleepHours <= 0) return { score: 50, isOptimal: false };
+  if (!sleepHours || sleepHours <= 0) return { score: 85, isOptimal: false }; // Neutral fallback
 
   let base: number;
   let optimal = false;
@@ -486,7 +486,7 @@ function calcStressScore(
   stressScore: number | null,
   mood: string | null,
 ): { score: number; isLogged: boolean } {
-  if (stressScore === null) return { score: 60, isLogged: false };
+  if (stressScore === null) return { score: 85, isLogged: false }; // Neutral fallback
 
   let base: number;
   if      (stressScore <= 20) base = 100;  // Very relaxed
