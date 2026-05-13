@@ -592,7 +592,7 @@ export async function computeScientificScore(userId: string, date: string): Prom
     ).catch(() => ({ rows: [] })),
     // Sleep log
     pool.query(
-      `SELECT sleep_hours, quality, bedtime, wake_time FROM sleep_logs WHERE user_id=$1 AND sleep_date=$2 ORDER BY logged_at DESC LIMIT 1`,
+      `SELECT SUM(sleep_hours) as sleep_hours, MAX(quality) as quality FROM sleep_logs WHERE user_id=$1 AND sleep_date=$2`,
       [userId, date],
     ).catch(() => ({ rows: [] })),
     // Stress log — most recent entry for today
@@ -691,7 +691,7 @@ export async function computeScientificScore(userId: string, date: string): Prom
 
   // Stress data
   const dailyStressLog  = stressR.rows[0] ?? null;
-  const rawStressScore  = dailyStressLog ? parseInt(dailyStressLog.stress_score || "0") : null;
+  const rawStressScore  = dailyStressLog && dailyStressLog.stress_score != null ? Number(dailyStressLog.stress_score) : null;
   const stressMood      = dailyStressLog?.mood || null;
   const stressIsLogged  = !!dailyStressLog;
 

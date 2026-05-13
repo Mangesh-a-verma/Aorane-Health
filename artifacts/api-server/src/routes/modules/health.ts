@@ -298,7 +298,21 @@ router.post("/health/sleep", requireAuth, async (req: AuthRequest, res) => {
       res.status(400).json({ error: "sleepDate and sleepHours are required" });
       return;
     }
-    const hours = parseFloat(String(sleepHours));
+
+    let calculatedHours = parseFloat(String(sleepHours));
+    if (bedtime && wakeTime) {
+      try {
+        const bed = new Date(`1970-01-01T${bedtime}:00Z`);
+        let wake = new Date(`1970-01-01T${wakeTime}:00Z`);
+        if (wake < bed) wake = new Date(`1970-01-02T${wakeTime}:00Z`);
+        const diffHours = (wake.getTime() - bed.getTime()) / (1000 * 60 * 60);
+        if (diffHours > 0 && diffHours <= 24) {
+          calculatedHours = diffHours;
+        }
+      } catch (e) {}
+    }
+    const hours = Math.round(calculatedHours * 10) / 10;
+
     if (isNaN(hours) || hours <= 0 || hours > 24) {
       res.status(400).json({ error: "sleepHours must be between 0.1 and 24" });
       return;
@@ -311,7 +325,7 @@ router.post("/health/sleep", requireAuth, async (req: AuthRequest, res) => {
     const result = await pool.query(
       `INSERT INTO sleep_logs (user_id, sleep_date, sleep_hours, bedtime, wake_time, quality, notes, is_offline_entry, logged_at)
        VALUES ($1, $2, $3, $4, $5, $6::sleep_quality, $7, $8, NOW())
-       ON CONFLICT DO NOTHING
+       ON CONFLICT (id) DO NOTHING
        RETURNING *`,
       [
         req.userId!,

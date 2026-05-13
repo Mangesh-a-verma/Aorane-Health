@@ -238,7 +238,7 @@ function SummaryBanner({ greeting, healthScore, calories, water, exerciseMin, ac
           <Text style={bn.sub}>Today's health overview</Text>
         </View>
         <View style={bn.scoreBlock}>
-          <PremiumScoreRing score={healthScore} size={80} strokeWidth={8} label="HEALTH" />
+          <PremiumScoreRing score={healthScore} size={80} strokeWidth={8} label="HEALTH" textColor="white" />
         </View>
       </View>
       <View style={bn.divider} />
