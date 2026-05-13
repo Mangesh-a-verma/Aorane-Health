@@ -710,9 +710,12 @@ export default function HealthReportScreen() {
               {/* 2. Score Summary */}
               <View style={s.sec}>
                 <Text style={[s.secTitle, { color: P, borderColor: P }]}>HEALTH SCORE OVERVIEW</Text>
-                <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flexDirection: "row", gap: 10, alignItems: 'center' }}>
+                  <View style={{ marginRight: 10 }}>
+                    <PremiumScoreRing score={healthScore} size={110} strokeWidth={8} label="HEALTH" subLabel={activeLabel(healthScore)} textColor="black" />
+                  </View>
+                  <View style={{ flex: 1, gap: 10 }}>
                   {[
-                    // { label: "Health Score", val: healthScore, unit: "/100", color: activeColor(healthScore), sub: activeLabel(healthScore) },
                     { label: "Active Score",  val: overall,     unit: "%",    color: "#6366F1",              sub: activeLabel(overall) },
                     { label: "Stress Level",  val: stressAvg,   unit: "/100", color: stressColor(stressAvg), sub: stressLabel(stressAvg) },
                   ].map(sc => (
@@ -724,6 +727,7 @@ export default function HealthReportScreen() {
                       <Text style={s.scoreSub}>{sc.sub}</Text>
                     </View>
                   ))}
+                  </View>
                 </View>
               </View>
               <View style={s.rule} />

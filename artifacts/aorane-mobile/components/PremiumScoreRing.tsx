@@ -17,9 +17,10 @@ interface PremiumScoreRingProps {
   strokeWidth?: number;
   label?: string;
   subLabel?: string;
+  textColor?: "dynamic" | "white" | "black";
 }
 
-export function PremiumScoreRing({ score, size = 120, strokeWidth = 10, label, subLabel }: PremiumScoreRingProps) {
+export function PremiumScoreRing({ score, size = 120, strokeWidth = 10, label, subLabel, textColor = "dynamic" }: PremiumScoreRingProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const progress = useSharedValue(0);
@@ -45,12 +46,14 @@ export function PremiumScoreRing({ score, size = 120, strokeWidth = 10, label, s
   });
 
   const staticColor = score >= 90 ? "#8b5cf6" : score >= 75 ? "#10b981" : score >= 50 ? "#f59e0b" : "#ef4444";
+  const resolvedTextColor = textColor === "white" ? "#FFFFFF" : textColor === "black" ? "#000000" : staticColor;
+  const resolvedSubTextColor = textColor === "white" ? "rgba(255,255,255,0.8)" : textColor === "black" ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.6)";
 
   return (
     <View style={[{ width: size, height: size }, styles.container]}>
       <Svg width={size} height={size}>
         <Circle
-          stroke="rgba(255,255,255,0.15)"
+          stroke={textColor === "black" ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.15)"}
           fill="none"
           cx={size / 2}
           cy={size / 2}
@@ -72,9 +75,9 @@ export function PremiumScoreRing({ score, size = 120, strokeWidth = 10, label, s
         />
       </Svg>
       <View style={[styles.innerContent, StyleSheet.absoluteFillObject]}>
-        {label && <Text style={[styles.label, { color: staticColor }]}>{label}</Text>}
-        <Text style={[styles.score, { color: staticColor }]}>{Math.round(score)}</Text>
-        {subLabel && <Text style={styles.subLabel}>{subLabel}</Text>}
+        {label && <Text style={[styles.label, { color: resolvedTextColor }]}>{label}</Text>}
+        <Text style={[styles.score, { color: resolvedTextColor }]}>{Math.round(score)}</Text>
+        {subLabel && <Text style={[styles.subLabel, { color: resolvedSubTextColor }]}>{subLabel}</Text>}
       </View>
     </View>
   );
