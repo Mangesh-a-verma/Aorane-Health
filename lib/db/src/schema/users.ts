@@ -70,6 +70,14 @@ export const userProfilesTable = pgTable("user_profiles", {
   exerciseFrequency: text("exercise_frequency"),
   exerciseTypes: text("exercise_types").array(),
   sleepHoursAvg: decimal("sleep_hours_avg", { precision: 3, scale: 1 }),
+  // Phase 2: Memory & Trends
+  currentHealthStreak: integer("current_health_streak").notNull().default(0),
+  longestHealthStreak: integer("longest_health_streak").notNull().default(0),
+  rolling7DayScore: integer("rolling_7_day_score"),
+  rolling30DayScore: integer("rolling_30_day_score"),
+  biologicalAge: integer("biological_age"),
+  aiHealthPredictions: jsonb("ai_health_predictions"),
+
   wakeTime: text("wake_time"),
   sleepTime: text("sleep_time"),
   stressLevelSelf: text("stress_level_self"),

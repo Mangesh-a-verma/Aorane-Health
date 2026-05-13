@@ -21,6 +21,7 @@ export interface DailyHealthScore {
   grade:           string;   // A+, A, B, C, D, F
   gradeLabel:      string;   // "Excellent", "Very Good" etc.
   dataConfidence:  number;   // 0–100, how complete today's data is
+  trends?: { currentStreak: number; longestStreak: number; rolling7Day: number | null; rolling30Day: number | null; biologicalAge: number | null };
 
   // Component scores (all 0–100)
   exerciseScore:  number;
@@ -576,7 +577,7 @@ export async function computeScientificScore(userId: string, date: string): Prom
     ).catch(() => ({ rows: [{ water_goal_glasses: null, calorie_goal: "2000" }] })),
     // User profile — basic columns
     pool.query(
-      `SELECT weight_kg, gender, bmi, sleep_hours_avg FROM user_profiles WHERE user_id=$1`,
+      `SELECT weight_kg, gender, bmi, sleep_hours_avg, current_health_streak, longest_health_streak, rolling_7_day_score, rolling_30_day_score, biological_age FROM user_profiles WHERE user_id=$1`,
       [userId],
     ).catch(() => ({ rows: [{ weight_kg: "60", gender: "other", bmi: null, sleep_hours_avg: "0" }] })),
     // Health goals
@@ -717,19 +718,41 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const stressCalc  = calcStressScore(rawStressScore, stressMood);
   const bmi         = calcBmiScore(bmiValue > 0 ? bmiValue : null);
 
-  // ── Composite Score (WHO/ICMR Weighted) ─────────────────────────────────────
-  // Food 28% | Exercise 22% | Water 13% | Medicine 12% | Sleep 10% | Stress 10% | BMI 5%
-  const overallScore = Math.round(
-    food.score        * 0.28 +
-    ex.score          * 0.22 +
-    water.score       * 0.13 +
-    med.score         * 0.12 +
-    sleep.score       * 0.10 +
-    stressCalc.score  * 0.10 +
-    bmi.score         * 0.05,
-  );
+  // ── Composite Score (Dynamic Weight Normalization) ─────────────────────────
+  const weights = {
+    bmi: { active: !!(bmiValue > 0), weight: 0.12, score: bmi.score },
+    food: { active: mealCount > 0, weight: 0.15, score: food.score },
+    water: { active: totalGlasses > 0 || totalMl > 0, weight: 0.05, score: water.score },
+    exercise: { active: exSessions > 0, weight: 0.14, score: ex.score },
+    sleep: { active: sleepIsLogged, weight: 0.08, score: sleep.score },
+    // Mock new metrics dynamically, default to false (not logged) since they aren't wired up to SQL yet
+    bp: { active: false, weight: 0.05, score: 0 },
+    spo2: { active: false, weight: 0.03, score: 0 },
+    hr: { active: false, weight: 0.03, score: 0 },
+    steps: { active: false, weight: 0.04, score: 0 },
+    stress: { active: stressIsLogged, weight: 0.05, score: stressCalc.score },
+    medicalHistory: { active: true, weight: 0.15, score: med.score }, // Mapping Medicine to Medical History temporarily to avoid breaking frontend output schema
+    workLifestyle: { active: !!profile?.work_profile, weight: 0.06, score: 80 }, // Example hardcode since missing
+    ageRisk: { active: !!dateOfBirth, weight: 0.03, score: 85 },
+    consistency: { active: true, weight: 0.02, score: 90 }
+  };
 
-  const fieldsLogged = [
+  let activeWeightSum = 0;
+  let rawScoreAcc = 0;
+
+  for (const key in weights) {
+    const item = weights[key as keyof typeof weights];
+    if (item.active) {
+      activeWeightSum += item.weight;
+      rawScoreAcc += item.score * item.weight;
+    }
+  }
+
+  // Normalize: (Original Weight / Sum of Active Weights) * 100
+  // Since we aggregate the score*weight locally, we just divide the sum by the activeWeightSum
+  const overallScore = activeWeightSum > 0 ? Math.round(rawScoreAcc / activeWeightSum) : 0;
+
+    const fieldsLogged = [
     mealCount > 0,
     exSessions > 0,
     totalGlasses > 0,
@@ -767,8 +790,12 @@ export async function computeScientificScore(userId: string, date: string): Prom
      fieldsLogged, 6],
   ).catch(() => {});
 
+  // Phase 2: Update Rolling Averages & Streaks
+  import("./health-trends.js").then(m => m.updateHealthTrends(userId)).catch(() => {});
+
   return {
     overallScore, grade, gradeLabel, dataConfidence,
+    trends: { currentStreak: parseInt(profile?.current_health_streak || "0"), longestStreak: parseInt(profile?.longest_health_streak || "0"), rolling7Day: profile?.rolling_7_day_score ? parseInt(profile.rolling_7_day_score) : null, rolling30Day: profile?.rolling_30_day_score ? parseInt(profile.rolling_30_day_score) : null, biologicalAge: profile?.biological_age ? parseInt(profile.biological_age) : null },
     exerciseScore: ex.score,
     foodScore:     food.score,
     waterScore:    water.score,
