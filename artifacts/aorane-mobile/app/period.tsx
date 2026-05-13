@@ -92,10 +92,10 @@ export default function PeriodScreen() {
 
         {prediction && (
           <LinearGradient colors={["#EC4899","#8B5CF6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 22, padding: 20, marginBottom: 16 }}>
-            <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, fontFamily: "Inter_500Medium", marginBottom: 6 }}>Agli Period</Text>
+            <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, fontFamily: "Inter_500Medium", marginBottom: 6 }}>Next Period</Text>
             <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, marginBottom: 12 }}>
               <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 42 }}>{daysLeft}</Text>
-              <Text style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter_500Medium", fontSize: 16, paddingBottom: 6 }}>din baad</Text>
+              <Text style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter_500Medium", fontSize: 16, paddingBottom: 6 }}>days away</Text>
             </View>
             <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 13, fontFamily: "Inter_500Medium" }}>📅 {prediction.nextPeriodDate}</Text>
             <View style={{ marginTop: 12, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 12, padding: 10, flexDirection: "row", gap: 16 }}>

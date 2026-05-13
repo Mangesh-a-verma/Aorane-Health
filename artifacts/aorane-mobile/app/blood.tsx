@@ -196,10 +196,10 @@ export default function BloodEmergencyScreen() {
       setDonorStatus(prev => prev ? { ...prev, isAvailable: res.isAvailable } : prev);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       Alert.alert(
-        res.isAvailable ? "✅ Ab Aap Available Ho" : "⏸ Availability Paused",
+        res.isAvailable ? "✅ You Are Now Available" : "⏸ Availability Paused",
         res.isAvailable
-          ? "Blood requests mein aapka naam dikhega. Agar koi zaroorat ho toh remove kar sakte ho."
-          : "Aap temporarily unavailable ho. Jab ready ho tab wapas ON kar dena.",
+          ? "Your name will appear in donor searches. You can pause your availability at any time if needed."
+          : "You are currently marked as unavailable. You can toggle this back on when you are ready to donate.",
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to update";
@@ -315,11 +315,11 @@ export default function BloodEmergencyScreen() {
     if (!donorLat || !donorLng) {
       await new Promise<void>((resolve) =>
         Alert.alert(
-          "📍 GPS Recommended",
-          "Aapne GPS button use nahi kiya.\n\nBina GPS ke aap sirf city search mein dikhenge — 'Donors Near Me' search mein nahi aayenge.\n\nAbhi GPS add karna chahte hain?",
+          "📍 Location Recommended",
+          "Location not provided.\n\nWithout location access, you will only appear in general city searches, not in the 'Donors Near Me' radius.\n\nWould you like to add your location now?",
           [
-            { text: "GPS Add Karo", style: "default", onPress: async () => { resolve(); await autofillFromGPS(); } },
-            { text: "City Search Kaafi Hai", style: "cancel", onPress: () => resolve() },
+            { text: "Add Location", style: "default", onPress: async () => { resolve(); await autofillFromGPS(); } },
+            { text: "City Search is Fine", style: "cancel", onPress: () => resolve() },
           ]
         )
       );
@@ -333,8 +333,8 @@ export default function BloodEmergencyScreen() {
     try {
       await api.registerBloodDonor({ bloodGroup: donorBloodGroup, city: donorCity.trim(), state: donorState.trim(), phone: donorPhone.trim(), lat: donorLat, lng: donorLng });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      const gpsNote = donorLat ? "\n\nAap GPS Near Me search mein bhi dikhenge. ✅" : "\n\nTip: GPS add karo taaki Near Me search mein aao.";
-      Alert.alert("✅ Registered!", `You are now a blood donor!${gpsNote}\n\nThank you! 🙏 Ek donation se 3 lives bachti hain ❤️`);
+      const gpsNote = donorLat ? "\n\nYou will now appear in 'Near Me' searches. ✅" : "\n\nTip: Add your location to appear in nearby searches.";
+      Alert.alert("✅ Registered!", `You are now a blood donor!${gpsNote}\n\nThank you! 🙏 One donation can save up to 3 lives ❤️`);
       setDonorCity(""); setDonorState(""); setDonorPhone("");
       setDonorLat(undefined); setDonorLng(undefined);
     } catch (e) { Alert.alert("Error", (e as Error).message || "Registration failed"); }
@@ -378,18 +378,18 @@ export default function BloodEmergencyScreen() {
 
   const handleCancelRequest = useCallback(async (id: string) => {
     Alert.alert(
-      "Request Cancel Karo?",
-      "Yeh request permanently cancel ho jaayegi. Donors ko aur notification nahi jayegi.",
+      "Cancel Request?",
+      "This request will be permanently cancelled. Donors will no longer be notified.",
       [
-        { text: "Nahi, Rehne Do", style: "cancel" },
-        { text: "Haan, Cancel Karo", style: "destructive", onPress: async () => {
+        { text: "No, Keep It", style: "cancel" },
+        { text: "Yes, Cancel Request", style: "destructive", onPress: async () => {
           setCancelling(id);
           try {
             await api.cancelBloodRequest(id);
             setMyRequests(prev => prev.map(r => r.id === id ? { ...r, status: "cancelled" } : r));
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
           } catch {
-            Alert.alert("Error", "Request cancel nahi ho saka. Dobara try karo.");
+            Alert.alert("Error", "Could not cancel request. Please try again.");
           }
           setCancelling(null);
         }},
@@ -404,10 +404,10 @@ export default function BloodEmergencyScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       Alert.alert(
         "✅ Response Registered!",
-        "Aapka response save ho gaya.\n\nHospital ko directly contact karo. Requester ko notification bhi mil gayi hai. 🙏",
+        "Response saved.\n\nPlease contact the hospital directly. The requester has been notified. 🙏",
       );
     } catch {
-      Alert.alert("Error", "Response submit nahi ho saka. Dobara try karo.");
+      Alert.alert("Error", "Could not submit response. Please try again.");
     }
     setRespondingId(null);
   }, []);
@@ -537,8 +537,8 @@ export default function BloodEmergencyScreen() {
               ) : myRequests.length === 0 ? (
                 <View style={{ alignItems: "center", paddingVertical: 40, gap: 10 }}>
                   <Ionicons name="document-outline" size={48} color={C.muted} />
-                  <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 16 }}>Koi request nahi</Text>
-                  <Text style={{ color: C.muted, fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" }}>Aapne abhi tak koi blood request nahi daali</Text>
+                  <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 16 }}>No Requests Found</Text>
+                  <Text style={{ color: C.muted, fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" }}>You have not submitted any blood requests yet.</Text>
                 </View>
               ) : myRequests.map((r) => {
                 const STATUS_CONFIG = {
@@ -584,7 +584,7 @@ export default function BloodEmergencyScreen() {
                         <TouchableOpacity onPress={() => handleMarkFulfilled(r.id)} disabled={fulfilling === r.id || cancelling === r.id} activeOpacity={0.85}
                           style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "rgba(16,185,129,0.1)", borderRadius: 10, paddingVertical: 9, borderWidth: 1, borderColor: "rgba(16,185,129,0.3)" }}>
                           {fulfilling === r.id ? <ActivityIndicator size="small" color={C.green} /> : <Ionicons name="checkmark-circle" size={15} color={C.green} />}
-                          <Text style={{ color: C.green, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>Blood Mil Gaya</Text>
+                          <Text style={{ color: C.green, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>Blood Received</Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => handleCancelRequest(r.id)} disabled={fulfilling === r.id || cancelling === r.id} activeOpacity={0.85}
                           style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, backgroundColor: "rgba(220,38,38,0.08)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, borderWidth: 1, borderColor: "rgba(220,38,38,0.2)" }}>
@@ -896,7 +896,7 @@ export default function BloodEmergencyScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: C.amber, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>90-Day Cooldown Active</Text>
                       <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
-                        Aap {donorStatus.daysLeft} din baad wapas donate kar sakte ho. Tab tak availability ON nahi hogi.
+                        You can donate again in {donorStatus.daysLeft} days. Your availability cannot be enabled until then.
                       </Text>
                     </View>
                   </View>
@@ -908,7 +908,7 @@ export default function BloodEmergencyScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Availability Toggle</Text>
                       <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
-                        {donorStatus.isAvailable ? "Donors list mein visible ho — requests aa sakti hain" : "Ab koi blood request nahi aayegi aapko"}
+                        {donorStatus.isAvailable ? "You are visible on the donor list — you may receive requests." : "You will no longer receive blood requests."}
                       </Text>
                     </View>
                     <TouchableOpacity
@@ -930,7 +930,7 @@ export default function BloodEmergencyScreen() {
             {/* ── Registration Form — show only if not yet registered ── */}
             {!statusLoading && (!donorStatus?.registered) && (
               <Card>
-                <Text style={styles.cardTitle}>Donor Register Karo</Text>
+                <Text style={styles.cardTitle}>Register as Donor</Text>
                 <BloodGroupGrid selected={donorBloodGroup} onSelect={setDonorBloodGroup} />
 
                 {/* GPS auto-fill */}
@@ -1044,7 +1044,7 @@ export default function BloodEmergencyScreen() {
                     {hospitalGpsLoading ? "Getting location..." : reqHospitalLat ? "✅ Hospital GPS Saved" : "📍 Pin Hospital Location (Recommended)"}
                   </Text>
                   <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 }}>
-                    {reqHospitalLat ? `${reqHospitalLat.toFixed(4)}, ${reqHospitalLng?.toFixed(4)} — donors will be matched by distance` : "GPS se nearby donors dhundhe jaayenge — city name se zyada accurate"}
+                    {reqHospitalLat ? `${reqHospitalLat.toFixed(4)}, ${reqHospitalLng?.toFixed(4)} — donors will be matched by distance` : "Nearby donors will be found via location — more accurate than city search."}
                   </Text>
                 </View>
                 {reqHospitalLat && (

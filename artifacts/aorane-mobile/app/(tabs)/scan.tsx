@@ -265,7 +265,7 @@ export default function SmartScanScreen() {
       }
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("503") || msg.includes("Gemini") || msg.includes("service")) {
-        Alert.alert("AI Unavailable", "AI Smart Scan se connection fail. Please try again.");
+        Alert.alert("AI Unavailable", "Connection to AI Smart Scan failed. Please try again.");
       } else {
         Alert.alert("Scan Failed", "Could not analyse this image. Try with a clearer photo in good lighting.");
       }

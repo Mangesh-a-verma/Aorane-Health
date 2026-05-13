@@ -239,10 +239,10 @@ export default function EditWorkProfileScreen() {
 
         {/* Calorie explanation */}
         <View style={{ backgroundColor: "#EFF9FF", borderRadius: 14, borderWidth: 1, borderColor: "#BAE6FD", padding: 14, gap: 8 }}>
-          <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 13 }}>🧮 Calorie Calculation Kaise Hoti Hai?</Text>
+          <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 13 }}>🧮 How are Calories Calculated?</Text>
           <Text style={{ color: C.text, fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 19 }}>
             <Text style={{ fontFamily: "Inter_600SemiBold" }}>TDEE = BMR × Work Multiplier{"\n"}</Text>
-            Jaise koi 70kg Army Officer (male, 25yr, 170cm):{"\n"}
+            For example, a 70kg Army Officer (male, 25yr, 170cm):{"\n"}
             BMR = 1,710 kcal{"\n"}
             TDEE = 1,710 × 1.725 = <Text style={{ fontFamily: "Inter_700Bold", color: C.primary }}>2,950 kcal/day</Text>{"\n"}
             Vs Office worker = 1,710 × 1.2 = <Text style={{ fontFamily: "Inter_700Bold", color: C.muted }}>2,052 kcal/day</Text>

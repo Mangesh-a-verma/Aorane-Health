@@ -298,7 +298,7 @@ router.post("/health/sleep", requireAuth, async (req: AuthRequest, res) => {
       res.status(400).json({ error: "sleepDate and sleepHours are required" });
       return;
     }
-
+    
     let calculatedHours = parseFloat(String(sleepHours));
     if (bedtime && wakeTime) {
       try {

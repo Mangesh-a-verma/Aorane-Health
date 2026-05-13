@@ -303,7 +303,7 @@ export default function UpgradeScreen() {
         startSubPolling(subRes.subscriptionId);
       }
     } catch (e: unknown) {
-      Alert.alert("Error", (e as Error).message || "Autopay setup failed. Dobara try karein.");
+      Alert.alert("Error", (e as Error).message || "Autopay setup failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -321,10 +321,10 @@ export default function UpgradeScreen() {
         if (refreshUser) await refreshUser();
         setSuccess(true);
       } else {
-        Alert.alert("Subscription Pending", "Autopay abhi active nahi hai. Browser mein payment complete karein.");
+        Alert.alert("Subscription Pending", "Autopay is not yet active. Please complete the payment in your browser.");
       }
     } catch {
-      Alert.alert("Error", "Status check nahi ho paya. Dobara try karein.");
+      Alert.alert("Error", "Could not check status. Please try again.");
     } finally { setLoading(false); }
   }, [refreshUser, stopSubPolling]);
 

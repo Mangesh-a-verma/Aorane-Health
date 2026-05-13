@@ -51,11 +51,11 @@ function wmoDesc(code: number): string {
   return "Thunderstorm";
 }
 function weatherHealthTip(code: number, temp: number): string {
-  if (temp >= 38) return "🔥 Bahut garmi hai — pani zyada piyein, outdoor exercise avoid karein";
+  if (temp >= 38) return "🔥 High heat alert — drink plenty of water and avoid outdoor exercise.";
   if (temp >= 32) return "☀️ Stay hydrated! Heat affects energy & focus";
-  if (temp <= 12) return "🧣 Thandi hai — warm up well before exercising";
+  if (temp <= 12) return "🧣 It's cold — ensure a proper warm-up before exercising.";
   if (code >= 51 && code <= 82) return "🌧️ Rainy day — indoor workout kaafi accha rahega";
-  if (code >= 95) return "⛈️ Thunderstorm — ghar ke andar rehna safer hai";
+  if (code >= 95) return "⛈️ Thunderstorm — it is safer to stay indoors.";
   return "🌿 Great weather for a walk or outdoor exercise!";
 }
 
@@ -726,7 +726,7 @@ export default function DashboardScreen() {
       {/* ── OFFLINE BANNER ── */}
       {isOffline && (
         <View style={s.offlineBanner}>
-          <Text style={s.offlineTxt}>📶 Internet nahi hai — data load nahi ho sakta. Online hone ke baad refresh karein.</Text>
+          <Text style={s.offlineTxt}>📶 No internet connection — unable to load data. Please refresh once online.</Text>
         </View>
       )}
 

@@ -69,10 +69,10 @@ export async function updateHealthTrends(userId: string): Promise<void> {
       `SELECT score_date FROM daily_health_scores WHERE user_id=$1 AND score_date <= $2 ORDER BY score_date DESC LIMIT 365`,
       [userId, today]
     );
-
+    
     let calculatedStreak = 0;
     let expectedDate = new Date(today);
-
+    
     for (const row of historyR.rows) {
       const rowDate = row.score_date;
       const expDateStr = expectedDate.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
@@ -89,11 +89,11 @@ export async function updateHealthTrends(userId: string): Promise<void> {
 
     // Update user profile
     await pool.query(
-      `UPDATE user_profiles SET
-        current_health_streak = $1,
-        longest_health_streak = $2,
-        rolling_7_day_score = $3,
-        rolling_30_day_score = $4
+      `UPDATE user_profiles SET 
+        current_health_streak = $1, 
+        longest_health_streak = $2, 
+        rolling_7_day_score = $3, 
+        rolling_30_day_score = $4 
        WHERE user_id = $5`,
       [currentStreak, longestStreak, rolling7, rolling30, userId]
     );
