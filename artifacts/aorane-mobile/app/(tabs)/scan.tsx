@@ -6,6 +6,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { PremiumScoreRing } from "../../components/PremiumScoreRing";
 import { BlurView } from "expo-blur";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";

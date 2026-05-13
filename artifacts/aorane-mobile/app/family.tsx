@@ -7,6 +7,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { PremiumScoreRing } from "../components/PremiumScoreRing";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
@@ -70,14 +71,7 @@ function ScoreBar({ label, score, color }: { label: string; score: number; color
   );
 }
 
-function HealthScoreRing({ score }: { score: number }) {
-  const color = score >= 75 ? "#10B981" : score >= 50 ? "#F59E0B" : "#DC2626";
-  return (
-    <View style={{ alignItems: "center", justifyContent: "center", width: 78, height: 78, borderRadius: 39, borderWidth: 5, borderColor: color, backgroundColor: `${color}15` }}>
-      <Text style={{ color, fontSize: 22, fontFamily: "Inter_700Bold" }}>{score}</Text>
-    </View>
-  );
-}
+
 
 function AlertBadge({ severity }: { severity: string }) {
   const cfg: Record<string, { bg: string; text: string }> = {
@@ -210,7 +204,7 @@ function MemberDetailModal({ member, isOwner, onClose }: { member: Member; isOwn
                 <GlassCard style={{ marginBottom: 14 }}>
                   <View style={{ padding: 18 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 18 }}>
-                      <HealthScoreRing score={today?.healthScore as number || 0} />
+                      <PremiumScoreRing score={today?.healthScore as number || 0} size={80} strokeWidth={8} label="SCORE" />
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: isDark ? "#fff" : "#0F172A", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 3 }}>Today's Health</Text>
                         <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" }}>
