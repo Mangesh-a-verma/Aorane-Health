@@ -21,6 +21,7 @@ export interface DailyHealthScore {
   grade:           string;   // A+, A, B, C, D, F
   gradeLabel:      string;   // "Excellent", "Very Good" etc.
   dataConfidence:  number;   // 0–100, how complete today's data is
+  trends?: { currentStreak: number; longestStreak: number; rolling7Day: number | null; rolling30Day: number | null; biologicalAge: number | null };
 
   // Component scores (all 0–100)
   exerciseScore:  number;
@@ -576,7 +577,7 @@ export async function computeScientificScore(userId: string, date: string): Prom
     ).catch(() => ({ rows: [{ water_goal_glasses: null, calorie_goal: "2000" }] })),
     // User profile — basic columns
     pool.query(
-      `SELECT weight_kg, gender, bmi, sleep_hours_avg FROM user_profiles WHERE user_id=$1`,
+      `SELECT weight_kg, gender, bmi, sleep_hours_avg, current_health_streak, longest_health_streak, rolling_7_day_score, rolling_30_day_score, biological_age FROM user_profiles WHERE user_id=$1`,
       [userId],
     ).catch(() => ({ rows: [{ weight_kg: "60", gender: "other", bmi: null, sleep_hours_avg: "0" }] })),
     // Health goals
@@ -789,8 +790,12 @@ export async function computeScientificScore(userId: string, date: string): Prom
      fieldsLogged, 6],
   ).catch(() => {});
 
+  // Phase 2: Update Rolling Averages & Streaks
+  import("./health-trends.js").then(m => m.updateHealthTrends(userId)).catch(() => {});
+
   return {
     overallScore, grade, gradeLabel, dataConfidence,
+    trends: { currentStreak: parseInt(profile?.current_health_streak || "0"), longestStreak: parseInt(profile?.longest_health_streak || "0"), rolling7Day: profile?.rolling_7_day_score ? parseInt(profile.rolling_7_day_score) : null, rolling30Day: profile?.rolling_30_day_score ? parseInt(profile.rolling_30_day_score) : null, biologicalAge: profile?.biological_age ? parseInt(profile.biological_age) : null },
     exerciseScore: ex.score,
     foodScore:     food.score,
     waterScore:    water.score,
