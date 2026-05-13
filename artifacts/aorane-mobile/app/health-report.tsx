@@ -7,6 +7,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { PremiumScoreRing } from "../components/PremiumScoreRing";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { api } from "@/lib/api";
@@ -711,7 +712,7 @@ export default function HealthReportScreen() {
                 <Text style={[s.secTitle, { color: P, borderColor: P }]}>HEALTH SCORE OVERVIEW</Text>
                 <View style={{ flexDirection: "row", gap: 10 }}>
                   {[
-                    { label: "Health Score", val: healthScore, unit: "/100", color: activeColor(healthScore), sub: activeLabel(healthScore) },
+                    // { label: "Health Score", val: healthScore, unit: "/100", color: activeColor(healthScore), sub: activeLabel(healthScore) },
                     { label: "Active Score",  val: overall,     unit: "%",    color: "#6366F1",              sub: activeLabel(overall) },
                     { label: "Stress Level",  val: stressAvg,   unit: "/100", color: stressColor(stressAvg), sub: stressLabel(stressAvg) },
                   ].map(sc => (

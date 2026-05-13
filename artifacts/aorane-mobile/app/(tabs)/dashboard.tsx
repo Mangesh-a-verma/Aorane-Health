@@ -5,6 +5,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { PremiumScoreRing } from "../../components/PremiumScoreRing";
+import { PremiumTrendCard } from "../../components/PremiumTrendCard";
 import { AdsSlider } from "@/components/AdsSlider";
 import { router, useFocusEffect } from "expo-router";
 import { api } from "@/lib/api";
@@ -215,7 +217,8 @@ function getGreeting() {
 
 
 // ── SUMMARY BANNER ─────────────────────────────────────────────────────────────
-function SummaryBanner({ greeting, healthScore, calories, water, exerciseMin, activityPct }: {
+function SummaryBanner({ greeting, healthScore, calories, water, exerciseMin, activityPct, trends }: {
+  trends?: { currentStreak: number; longestStreak: number; rolling7Day: number | null; rolling30Day: number | null };
   greeting: string; healthScore: number;
   calories: { eaten: number; burned: number };
   water: { current: number; goal: number };
@@ -235,14 +238,7 @@ function SummaryBanner({ greeting, healthScore, calories, water, exerciseMin, ac
           <Text style={bn.sub}>Today's health overview</Text>
         </View>
         <View style={bn.scoreBlock}>
-          <View style={bn.badge}>
-            <Text style={bn.badgeNum}>{healthScore}</Text>
-            <Text style={bn.badgeLbl}>HEALTH</Text>
-          </View>
-          <View style={bn.actBadge}>
-            <Text style={bn.actNum}>{activityPct}%</Text>
-            <Text style={bn.actLbl}>ACTIVE</Text>
-          </View>
+          <PremiumScoreRing score={healthScore} size={80} strokeWidth={8} label="HEALTH" />
         </View>
       </View>
       <View style={bn.divider} />
@@ -597,6 +593,7 @@ export default function DashboardScreen() {
   const [showWeatherModal, setShowWeatherModal] = useState(false);
 
   const [healthScore, setHealthScore] = useState(0);
+  const [trends, setTrends] = useState<any>(null);
   const [water,       setWater]       = useState({ current: 0, goal: 8 });
   const [calories,    setCalories]    = useState({ eaten: 0, burned: 0 });
   const [nutrition,   setNutrition]   = useState({ protein: 0, carbs: 0, fat: 0 });
@@ -658,6 +655,7 @@ export default function DashboardScreen() {
       if (scoreRes.status === "fulfilled") {
         const sc = scoreRes.value.score as Record<string, number>;
         setHealthScore(sc.healthScore ?? 0);
+        setTrends(sc.trends ?? null);
       }
       if (activityRes.status === "fulfilled") {
         setActivityPct(activityRes.value.pct ?? 0);
@@ -745,9 +743,11 @@ export default function DashboardScreen() {
         <Animated.View style={[s.body, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
 
           {/* 1. SUMMARY BANNER */}
+          {trends && <PremiumTrendCard currentStreak={trends.currentStreak} rolling7Day={trends.rolling7Day} rolling30Day={trends.rolling30Day} />}
           <SummaryBanner
             greeting={greeting}
             healthScore={healthScore}
+            trends={trends}
             calories={calories}
             water={water}
             exerciseMin={exerciseMin}

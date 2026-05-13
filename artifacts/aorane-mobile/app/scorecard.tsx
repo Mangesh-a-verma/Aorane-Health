@@ -7,6 +7,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { PremiumScoreRing } from "../components/PremiumScoreRing";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import { api } from "@/lib/api";
@@ -466,7 +467,7 @@ export default function ScorecardScreen() {
                     <View style={{ flexDirection: "row", gap: 6 }}>
                       <View style={{ backgroundColor: "rgba(255,255,255,0.14)", borderRadius: 7, paddingHorizontal: 7, paddingVertical: 4, alignItems: "center" }}>
                         <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 6, fontFamily: "Inter_500Medium", letterSpacing: 0.8 }}>HEALTH</Text>
-                        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13 }}>{Math.round(card.healthScore ?? card.activePercent?.overall ?? 0)}%</Text>
+                        <PremiumScoreRing score={card.healthScore ?? card.activePercent?.overall ?? 0} size={50} strokeWidth={5} />
                       </View>
                       <View style={{ backgroundColor: "rgba(255,255,255,0.14)", borderRadius: 7, paddingHorizontal: 7, paddingVertical: 4, alignItems: "center" }}>
                         <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 6, fontFamily: "Inter_500Medium", letterSpacing: 0.8 }}>THIS WEEK</Text>
