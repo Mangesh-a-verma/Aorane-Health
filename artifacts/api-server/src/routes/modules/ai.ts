@@ -214,8 +214,13 @@ router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), aiRateL
       return;
     }
 
-    const { imageBase64, mimeType = "image/jpeg" } = req.body as { imageBase64?: string; mimeType?: string };
+    let { imageBase64, mimeType = "image/jpeg" } = req.body as { imageBase64?: string; mimeType?: string };
     if (!imageBase64) { res.status(400).json({ error: "imageBase64 required" }); return; }
+
+    // Clean Data URI prefix if present
+    if (imageBase64.includes("base64,")) {
+      imageBase64 = imageBase64.split("base64,")[1];
+    }
 
     const proxyBaseUrl = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
     const proxyKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
@@ -252,7 +257,7 @@ For unknown:
 
     const geminiBody = JSON.stringify({
       contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: imageBase64 } }] }],
-      generationConfig: { temperature: 0.2 },
+      generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
     });
 
     let geminiRes: globalThis.Response | null = null;
@@ -270,15 +275,15 @@ For unknown:
 
     if (!geminiRes || !geminiRes.ok) {
       const status = geminiRes?.status;
+      const errText = await geminiRes?.text().catch(() => "");
+      req.log.error({ status, body: errText?.slice(0, 300) }, "Gemini smart-scan HTTP error");
       if (status === 429) { res.status(429).json({ error: "AI is busy right now. Please try again in a moment." }); return; }
-      throw new Error(`Gemini error: ${status}`);
+      throw new Error(`Gemini error: ${status} - ${errText?.slice(0, 100)}`);
     }
 
     const data = await geminiRes.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON in response");
-    const result = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+    let result: Record<string, unknown>; try { result = JSON.parse(rawText) as Record<string, unknown>; } catch(e) { throw new Error("Invalid JSON"); }
 
     res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
   } catch (err) {
