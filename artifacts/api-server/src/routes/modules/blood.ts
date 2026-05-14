@@ -163,15 +163,15 @@ router.get("/blood/donors", async (req, res) => {
         distanceKm: haversineKm(userLat, userLng, parseFloat(d.lat!), parseFloat(d.lng!)),
       }));
 
-      let filtered = withDist.filter(d => d.distanceKm <= baseRadius).sort((a, b) => a.distanceKm - b.distanceKm);
+      let filtered = withDist.filter(d => d.distanceKm <= baseRadius).sort((a: any, b: any) => a.distanceKm - b.distanceKm);
       let searchedRadius = baseRadius;
 
       if (filtered.length < 3) {
-        const at100 = withDist.filter(d => d.distanceKm <= 100).sort((a, b) => a.distanceKm - b.distanceKm);
+        const at100 = withDist.filter(d => d.distanceKm <= 100).sort((a: any, b: any) => a.distanceKm - b.distanceKm);
         if (at100.length > filtered.length) { filtered = at100; searchedRadius = 100; }
       }
       if (filtered.length < 3) {
-        const at200 = withDist.filter(d => d.distanceKm <= 200).sort((a, b) => a.distanceKm - b.distanceKm);
+        const at200 = withDist.filter(d => d.distanceKm <= 200).sort((a: any, b: any) => a.distanceKm - b.distanceKm);
         if (at200.length > filtered.length) { filtered = at200; searchedRadius = 200; }
       }
 
@@ -283,7 +283,7 @@ router.get("/blood/requests/active", async (req, res) => {
        LIMIT 100`
     );
     // Map snake_case DB columns to camelCase for mobile app compatibility
-    const requests = result.rows.map((r) => ({
+    const requests = result.rows.map((r: any) => ({
       id: r.id,
       requesterId: r.requester_id,
       patientName: r.patient_name,
@@ -586,13 +586,13 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
           }));
 
           let radius = 50;
-          let gpsDonors = withDist.filter(d => d.dist <= radius).sort((a, b) => a.dist - b.dist);
+          let gpsDonors = withDist.filter(d => d.dist <= radius).sort((a: any, b: any) => a.dist - b.dist);
           if (gpsDonors.length < 5) {
-            const at100 = withDist.filter(d => d.dist <= 100).sort((a, b) => a.dist - b.dist);
+            const at100 = withDist.filter(d => d.dist <= 100).sort((a: any, b: any) => a.dist - b.dist);
             if (at100.length > gpsDonors.length) { gpsDonors = at100; radius = 100; }
           }
           if (gpsDonors.length < 5) {
-            const at200 = withDist.filter(d => d.dist <= 200).sort((a, b) => a.dist - b.dist);
+            const at200 = withDist.filter(d => d.dist <= 200).sort((a: any, b: any) => a.dist - b.dist);
             if (at200.length > gpsDonors.length) { gpsDonors = at200; radius = 200; }
           }
           donorRows = gpsDonors.slice(0, 100);
@@ -782,7 +782,7 @@ router.get("/blood/requests/mine", requireAuth, async (req: AuthRequest, res) =>
        LIMIT 20`,
       [req.userId]
     );
-    const requests = result.rows.map((r) => ({
+    const requests = result.rows.map((r: any) => ({
       id: r.id,
       patientName: r.patient_name,
       bloodGroupNeeded: r.blood_group_needed,

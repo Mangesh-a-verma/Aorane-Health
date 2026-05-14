@@ -148,7 +148,7 @@ router.post("/business/login", async (req, res) => {
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
-    const valid = await verifyAndMigratePassword(password, admin.passwordHash, async (h) => {
+    const valid = await verifyAndMigratePassword(password, admin.passwordHash, async (h: any) => {
       await db.update(orgAdminsTable).set({ passwordHash: h }).where(eq(orgAdminsTable.id, admin.id));
     });
     if (!valid) {
@@ -415,41 +415,35 @@ router.get("/business/members/search", requireBusinessAuth, async (req: Business
     if (!q || q.length < 4) { res.status(400).json({ error: "Minimum 4 characters required" }); return; }
     const isAoraneId = /^\d{8,12}$/.test(q);
 
-    const searchFilter = isAoraneId
-      ? eq(userProfilesTable.aoraneId, q)
-      : ilike(userProfilesTable.fullName, `%${q}%`);
+    // Get all member userIds in this org
+    const memberRows = await db.select({ userId: orgMembersTable.userId })
+      .from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.isActive, true)));
+    const memberIds = memberRows.map((m: any) => m.userId);
+    if (!memberIds.length) { res.json({ results: [], count: 0 }); return; }
 
-    const joinedResults = await db.select({
-      userId: userProfilesTable.userId,
-      aoraneId: userProfilesTable.aoraneId,
-      name: userProfilesTable.fullName,
-      bloodGroup: userProfilesTable.bloodGroup,
-      gender: userProfilesTable.gender,
-      dateOfBirth: userProfilesTable.dateOfBirth,
-      city: userProfilesTable.city,
-      bmi: userProfilesTable.bmi,
-      plan: usersTable.plan,
-    })
-      .from(userProfilesTable)
-      .innerJoin(orgMembersTable, and(
-        eq(userProfilesTable.userId, orgMembersTable.userId),
-        eq(orgMembersTable.orgId, req.orgId!),
-        eq(orgMembersTable.isActive, true)
-      ))
-      .leftJoin(usersTable, eq(userProfilesTable.userId, usersTable.id))
-      .where(searchFilter)
-      .limit(10);
+    let profiles: typeof userProfilesTable.$inferSelect[] = [];
+    if (isAoraneId) {
+      profiles = await db.select().from(userProfilesTable).where(eq(userProfilesTable.aoraneId, q)).limit(10);
+    } else {
+      profiles = await db.select().from(userProfilesTable).where(ilike(userProfilesTable.fullName, `%${q}%`)).limit(10);
+    }
+    // Filter to only org members
+    const filteredProfiles = profiles.filter((p: any) => memberIds.includes(p.userId));
 
-    const results = joinedResults.map((r) => ({
-      userId: r.userId,
-      aoraneId: r.aoraneId,
-      name: r.name,
-      bloodGroup: r.bloodGroup,
-      gender: r.gender,
-      age: r.dateOfBirth ? Math.floor((Date.now() - new Date(r.dateOfBirth).getTime()) / (86400000 * 365.25)) : null,
-      city: r.city,
-      bmi: r.bmi,
-      plan: r.plan,
+    const results = await Promise.all(filteredProfiles.map(async (p: any) => {
+      const [user] = await db.select().from(usersTable).where(eq(usersTable.id, p.userId)).limit(1);
+      return {
+        userId: p.userId,
+        aoraneId: p.aoraneId,
+        name: p.fullName,
+        bloodGroup: p.bloodGroup,
+        gender: p.gender,
+        age: p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (86400000 * 365.25)) : null,
+        city: (p as Record<string, unknown>).city,
+        bmi: p.bmi,
+        plan: user?.plan,
+      };
     }));
     res.json({ results, count: results.length });
   } catch (err) {
@@ -506,9 +500,9 @@ router.get("/business/members/:userId/stress", requireBusinessAuth, async (req: 
 
     const latestScore = logs.length > 0 ? logs[0].stressScore : null;
     const avgScore = logs.length > 0
-      ? Math.round(logs.reduce((s, l) => s + l.stressScore, 0) / logs.length)
+      ? Math.round(logs.reduce((s: any, l: any) => s + l.stressScore, 0) / logs.length)
       : null;
-    const burnoutRisk = logs.length >= 3 && logs.slice(0, 3).every((l) => l.stressScore >= 70);
+    const burnoutRisk = logs.length >= 3 && logs.slice(0, 3).every((l: any) => l.stressScore >= 70);
     const level =
       latestScore == null ? "No Data"
       : latestScore < 30  ? "Low"
@@ -741,7 +735,7 @@ router.get("/business/billing/subscription", requireBusinessAuth, async (req: Bu
     const payments = await db.select().from(orgPaymentsTable)
       .where(eq(orgPaymentsTable.orgId, req.orgId!))
       .orderBy(desc(orgPaymentsTable.createdAt)).limit(5);
-    const activePayment = payments.find((p) => p.status === "success") || payments.find((p) => p.autoRenew) || payments[0] || null;
+    const activePayment = payments.find((p: any) => p.status === "success") || payments.find((p: any) => p.autoRenew) || payments[0] || null;
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
     const plans = await getOrgPlansFromDB();
     res.json({ payment: activePayment || null, org, plans });
@@ -811,7 +805,7 @@ router.post("/business/billing/verify", requireBusinessAuth, async (req: Busines
     if (org?.contactEmail) {
       db.select({ fullName: orgAdminsTable.fullName }).from(orgAdminsTable)
         .where(and(eq(orgAdminsTable.orgId, req.orgId!), eq(orgAdminsTable.role, "owner"))).limit(1)
-        .then((admins) => {
+        .then((admins: any) => {
           const expiresAt = new Date(); expiresAt.setFullYear(expiresAt.getFullYear() + 1);
           sendCorporatePaymentWelcomeEmail({
             toEmail: org.contactEmail!,
@@ -901,7 +895,7 @@ router.post("/business/billing/subscription/verify", requireBusinessAuth, async 
     if (org?.contactEmail) {
       db.select({ fullName: orgAdminsTable.fullName }).from(orgAdminsTable)
         .where(and(eq(orgAdminsTable.orgId, req.orgId!), eq(orgAdminsTable.role, "owner"))).limit(1)
-        .then((admins) => {
+        .then((admins: any) => {
           sendCorporatePaymentWelcomeEmail({
             toEmail: org.contactEmail!,
             adminName: admins[0]?.fullName || org.name,
@@ -940,7 +934,7 @@ router.get("/business/analytics", requireBusinessAuth, async (req: BusinessReque
     const memberRows = await db.select({ userId: orgMembersTable.userId, joinedAt: orgMembersTable.joinedAt })
       .from(orgMembersTable)
       .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.isActive, true)));
-    const memberIds = memberRows.map((m) => m.userId);
+    const memberIds = memberRows.map((m: any) => m.userId);
 
     let profiles: { gender: string | null; bmi: string | null; plan: string; dateOfBirth: string | null }[] = [];
     if (memberIds.length) {
@@ -1088,7 +1082,7 @@ router.patch("/business/admin/password", requireBusinessAuth, async (req: Busine
     if (newPassword.length < 8) { res.status(400).json({ error: "New password must be at least 8 characters" }); return; }
     const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.id, req.orgAdminId!));
     if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
-    const valid = await verifyAndMigratePassword(currentPassword, admin.passwordHash, async (h) => {
+    const valid = await verifyAndMigratePassword(currentPassword, admin.passwordHash, async (h: any) => {
       await db.update(orgAdminsTable).set({ passwordHash: h }).where(eq(orgAdminsTable.id, admin.id));
     });
     if (!valid) { res.status(401).json({ error: "Current password is incorrect" }); return; }
@@ -1176,7 +1170,7 @@ router.get("/business/health-analytics", requireBusinessAuth, async (req: Busine
     const memberRows = await db.select({ userId: orgMembersTable.userId })
       .from(orgMembersTable)
       .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.isActive, true)));
-    const memberIds = memberRows.map((m) => m.userId);
+    const memberIds = memberRows.map((m: any) => m.userId);
     if (!memberIds.length) {
       res.json({ totalMembers: 0, activeToday: 0, activeLast7Days: 0, avgHealthScore: 0, avgFood: 0, avgWater: 0, avgExercise: 0, avgMedicine: 0, healthyCount: 0, atRiskCount: 0, inactiveCount: 0, dailyActiveTrend: [], avgStressScore: null, highStressCount: 0, moderateStressCount: 0, lowStressCount: 0, stressTrackedCount: 0 });
       return;
@@ -1260,7 +1254,7 @@ router.get("/business/health-analytics", requireBusinessAuth, async (req: Busine
     }
     const stressValues = Array.from(latestStressByUser.values());
     const avgStressScore = stressValues.length
-      ? Math.round(stressValues.reduce((a, b) => a + b, 0) / stressValues.length)
+      ? Math.round(stressValues.reduce((a: any, b: any) => a + b, 0) / stressValues.length)
       : null;
     const highStressCount = stressValues.filter(v => v >= 70).length;
     const moderateStressCount = stressValues.filter(v => v >= 40 && v < 70).length;
@@ -1534,7 +1528,7 @@ router.post("/business/billing/seat-verify", requireBusinessAuth, async (req: Bu
       // Also send corporate payment welcome email with Enrollment Code
       db.select({ fullName: orgAdminsTable.fullName }).from(orgAdminsTable)
         .where(and(eq(orgAdminsTable.orgId, req.orgId!), eq(orgAdminsTable.role, "owner"))).limit(1)
-        .then((admins) => {
+        .then((admins: any) => {
           sendCorporatePaymentWelcomeEmail({
             toEmail: org.contactEmail!,
             adminName: admins[0]?.fullName || org.name,

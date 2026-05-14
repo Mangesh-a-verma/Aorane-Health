@@ -5,7 +5,10 @@
     "declarationMap": true,
     "emitDeclarationOnly": true,
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "declaration": true
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }

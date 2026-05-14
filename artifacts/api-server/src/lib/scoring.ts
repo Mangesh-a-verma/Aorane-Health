@@ -207,11 +207,11 @@ function calcProteinGoal(
 // ─── Condition-adjusted Fiber Goal ───────────────────────────────────────────
 // ICMR: 25–30g standard; diabetes management → 35g; digestive conditions → 20g
 function calcFiberGoal(conditions: string[]): { goalG: number; note: string } {
-  const lower = conditions.map((c) => c.toLowerCase());
-  if (lower.some((c) => c.includes("diabetes") || c.includes("prediabetes") || c.includes("blood_sugar"))) {
+  const lower = conditions.map((c: any) => c.toLowerCase());
+  if (lower.some((c: any) => c.includes("diabetes") || c.includes("prediabetes") || c.includes("blood_sugar"))) {
     return { goalG: 35, note: "Elevated (diabetes management — ICMR)" };
   }
-  if (lower.some((c) => c.includes("ibs") || c.includes("colitis") || c.includes("crohn"))) {
+  if (lower.some((c: any) => c.includes("ibs") || c.includes("colitis") || c.includes("crohn"))) {
     return { goalG: 20, note: "Reduced (digestive condition)" };
   }
   return { goalG: 27, note: "ICMR 2024: 25–30g/day midpoint" };
@@ -222,12 +222,12 @@ function calcFiberGoal(conditions: string[]): { goalG: number; note: string } {
 function calcMicronutrientTargets(
   gender: string, age: number | null, conditions: string[],
 ): { calciumMg: number; ironMg: number; vitaminCMg: number; vitaminB12Mcg: number; vitaminDMcg: number } {
-  const lower = conditions.map((c) => c.toLowerCase());
+  const lower = conditions.map((c: any) => c.toLowerCase());
   const isElderly = age !== null && age >= 60;
-  const hasAnemia = lower.some((c) =>
+  const hasAnemia = lower.some((c: any) =>
     c.includes("anemia") || c.includes("anaemia") || c.includes("iron_deficiency") || c.includes("iron deficiency"),
   );
-  const hasOsteoporosis = lower.some((c) =>
+  const hasOsteoporosis = lower.some((c: any) =>
     c.includes("osteoporosis") || c.includes("osteopenia") || c.includes("bone"),
   );
 
@@ -516,7 +516,7 @@ function calcDataConfidence(
     hasSleepData    ? 12 : 0,
     hasStressData   ?  8 : 0,
   ];
-  return Math.min(100, weights.reduce((a, b) => a + b, 0));
+  return Math.min(100, weights.reduce((a: any, b: any) => a + b, 0));
 }
 
 // ─── Main Scoring Function ────────────────────────────────────────────────────

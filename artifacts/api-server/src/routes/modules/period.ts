@@ -10,7 +10,7 @@ function predictNextCycle(logs: Array<{ startDate: string; cycleLength: number |
   if (!logs.length) return null;
   const latest = logs[0];
   const avgCycle = logs.length > 1
-    ? Math.round(logs.slice(0, 5).reduce((s, l) => s + (l.cycleLength || 28), 0) / Math.min(logs.length, 5))
+    ? Math.round(logs.slice(0, 5).reduce((s: any, l: any) => s + (l.cycleLength || 28), 0) / Math.min(logs.length, 5))
     : (latest.cycleLength || 28);
   const lastStart = new Date(latest.startDate);
   const nextStart = new Date(lastStart);

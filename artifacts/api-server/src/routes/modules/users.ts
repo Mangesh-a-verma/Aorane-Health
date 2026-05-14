@@ -394,19 +394,19 @@ router.get("/users/search", requireAuth, async (req: AuthRequest, res) => {
     const privacyRows = profileRows.length
       ? await pool.query(
           `SELECT user_id, share_basic_profile, share_bmi FROM user_privacy_settings WHERE user_id = ANY($1::uuid[])`,
-          [profileRows.map((p) => p.user_id)]
+          [profileRows.map((p: any) => p.user_id)]
         ).catch(() => ({ rows: [] as { user_id: string; share_basic_profile: boolean; share_bmi: boolean }[] }))
       : { rows: [] as { user_id: string; share_basic_profile: boolean; share_bmi: boolean }[] };
 
-    const privacyMap = new Map(privacyRows.rows.map((r) => [String(r.user_id), r]));
+    const privacyMap = new Map(privacyRows.rows.map((r: any) => [String(r.user_id), r]));
 
     // Exclude users who have explicitly disabled basic profile sharing (default = true)
-    const visibleProfiles = profileRows.filter((p) => {
+    const visibleProfiles = profileRows.filter((p: any) => {
       const priv = privacyMap.get(String(p.user_id));
-      return priv ? priv.share_basic_profile !== false : true;
+      return priv ? (priv as any)?.share_basic_profile !== false : true;
     });
 
-    const results = await Promise.all(visibleProfiles.map(async (p) => {
+    const results = await Promise.all(visibleProfiles.map(async (p: any) => {
       const priv = privacyMap.get(String(p.user_id));
       const activeData = await getCumulativeActivePercent(String(p.user_id)).catch(() => ({ pct: 0, todayPct: 0, weekPct: 0, daysTracked: 0, trend: "stable" as const }));
       const dob = p.date_of_birth as string | null;
@@ -423,7 +423,7 @@ router.get("/users/search", requireAuth, async (req: AuthRequest, res) => {
         age: dob ? Math.floor((Date.now() - new Date(dob).getTime()) / (86400000 * 365.25)) : null,
         city: p.city,
         state: p.state,
-        bmi: priv?.share_bmi !== false ? p.bmi : null,
+        bmi: (priv as any)?.share_bmi !== false ? p.bmi : null,
         plan: p.plan,
         phone: maskedPhone,
         activePercent: activeData.pct,

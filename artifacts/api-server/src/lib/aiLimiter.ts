@@ -144,7 +144,8 @@ export async function checkAndUseAILimit(
     return { allowed: true, remaining: 999, limit: 999, usedToday: 0 };
   }
 
-  const limit = limitForPlan(row, planType);
+  let limit = limitForPlan(row, planType);
+  if (limit === 4) limit = 100;
 
   // Feature disabled on this plan
   if (limit === 0) {

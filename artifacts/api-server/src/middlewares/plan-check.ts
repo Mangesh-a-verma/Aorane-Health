@@ -46,7 +46,7 @@ export function requirePlan(...plans: string[]) {
     req.userPlan = userPlan;
 
     const userLevel = PLAN_HIERARCHY[userPlan] ?? 0;
-    const requiredLevels = plans.map((p) => PLAN_HIERARCHY[p] ?? 0);
+    const requiredLevels = plans.map((p: any) => PLAN_HIERARCHY[p] ?? 0);
     const minRequired = Math.min(...requiredLevels);
 
     if (userLevel >= minRequired || plans.includes(userPlan)) {

@@ -34,7 +34,7 @@ function getMonthRange(month: string): { start: string; end: string } {
 }
 
 function avgArr(arr: number[]): number {
-  return arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+  return arr.length ? Math.round(arr.reduce((a: any, b: any) => a + b, 0) / arr.length) : 0;
 }
 
 function getGrade(score: number): { grade: string; label: string; color: string } {
@@ -102,7 +102,7 @@ async function buildReportData(orgId: string, month: string): Promise<ReportData
     .from(orgMembersTable)
     .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.isActive, true)));
 
-  const memberIds = members.map((m) => m.userId);
+  const memberIds = members.map((m: any) => m.userId);
 
   if (memberIds.length === 0) {
     return { org, month, totalMembers: 0, activeMembers: 0, dataPoints: 0, averages: null, compliance: { exercisePct: 0, waterPct: 0 }, gradeDistribution: null, grade: null, gradeLabel: null, gradeColor: null };

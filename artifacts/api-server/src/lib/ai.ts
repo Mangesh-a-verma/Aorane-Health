@@ -83,7 +83,7 @@ async function callNvidiaProvider(
   temp: number,
 ): Promise<string> {
   return callDeepSeek(
-    messages.map((m) => ({ role: m.role, content: m.content })),
+    messages.map((m: any) => ({ role: m.role, content: m.content })),
     apiKey,
     maxTokens,
     temp,
@@ -97,10 +97,10 @@ async function callGoogleProvider(
   apiKey: string,
   maxTokens: number,
 ): Promise<string> {
-  const systemMsg = messages.find((m) => m.role === "system");
+  const systemMsg = messages.find((m: any) => m.role === "system");
   const chatMsgs = messages
-    .filter((m) => m.role !== "system")
-    .map((m) => ({
+    .filter((m: any) => m.role !== "system")
+    .map((m: any) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }],
     }));
@@ -134,10 +134,10 @@ async function callAnthropicProvider(
   apiKey: string,
   maxTokens: number,
 ): Promise<string> {
-  const systemMsg = messages.find((m) => m.role === "system");
+  const systemMsg = messages.find((m: any) => m.role === "system");
   const chatMsgs = messages
-    .filter((m) => m.role !== "system")
-    .map((m) => ({ role: m.role, content: m.content }));
+    .filter((m: any) => m.role !== "system")
+    .map((m: any) => ({ role: m.role, content: m.content }));
 
   const body: Record<string, unknown> = {
     model,

@@ -39,7 +39,7 @@ const PROVIDERS = [
 // List available providers
 router.get("/wearable/providers", requireAuth, async (_req: AuthRequest, res) => {
   res.json({
-    providers: PROVIDERS.map((p) => ({
+    providers: PROVIDERS.map((p: any) => ({
       ...p,
       available: p.id === "health_connect",
     })),
@@ -128,17 +128,17 @@ router.get("/wearable/data", requireAuth, async (req: AuthRequest, res) => {
 
     const latest = data[0] || null;
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const recent = data.filter((d) => d.recordedAt >= sevenDaysAgo);
-    const withHr = recent.filter((d) => d.heartRateAvg);
-    const withSleep = recent.filter((d) => d.sleepHours);
-    const withSpo2 = recent.filter((d) => d.bloodOxygen);
+    const recent = data.filter((d: any) => d.recordedAt >= sevenDaysAgo);
+    const withHr = recent.filter((d: any) => d.heartRateAvg);
+    const withSleep = recent.filter((d: any) => d.sleepHours);
+    const withSpo2 = recent.filter((d: any) => d.bloodOxygen);
 
-    const avgSteps = recent.length > 0 ? Math.round(recent.reduce((s, d) => s + (d.steps || 0), 0) / recent.length) : null;
-    const avgHr = withHr.length > 0 ? Math.round(withHr.reduce((s, d) => s + (d.heartRateAvg || 0), 0) / withHr.length) : null;
-    const totalCalories = recent.reduce((s, d) => s + parseFloat(d.caloriesBurned || "0"), 0);
-    const totalActiveMin = recent.reduce((s, d) => s + (d.activeMinutes || 0), 0);
-    const avgSleep = withSleep.length > 0 ? Math.round(withSleep.reduce((s, d) => s + parseFloat(d.sleepHours || "0"), 0) / withSleep.length * 10) / 10 : null;
-    const avgSpo2 = withSpo2.length > 0 ? Math.round(withSpo2.reduce((s, d) => s + parseFloat(d.bloodOxygen || "0"), 0) / withSpo2.length * 10) / 10 : null;
+    const avgSteps = recent.length > 0 ? Math.round(recent.reduce((s: any, d: any) => s + (d.steps || 0), 0) / recent.length) : null;
+    const avgHr = withHr.length > 0 ? Math.round(withHr.reduce((s: any, d: any) => s + (d.heartRateAvg || 0), 0) / withHr.length) : null;
+    const totalCalories = recent.reduce((s: any, d: any) => s + parseFloat(d.caloriesBurned || "0"), 0);
+    const totalActiveMin = recent.reduce((s: any, d: any) => s + (d.activeMinutes || 0), 0);
+    const avgSleep = withSleep.length > 0 ? Math.round(withSleep.reduce((s: any, d: any) => s + parseFloat(d.sleepHours || "0"), 0) / withSleep.length * 10) / 10 : null;
+    const avgSpo2 = withSpo2.length > 0 ? Math.round(withSpo2.reduce((s: any, d: any) => s + parseFloat(d.bloodOxygen || "0"), 0) / withSpo2.length * 10) / 10 : null;
 
     res.json({
       latest, history: data,

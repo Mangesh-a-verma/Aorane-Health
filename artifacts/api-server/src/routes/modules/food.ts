@@ -515,7 +515,7 @@ All numeric values must be numbers (not strings). dietaryTags must be an array. 
           { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(geminiBody) }
         );
         if (geminiRes.status === 429 && attempt < 3) {
-          await new Promise((r) => setTimeout(r, attempt * 2000));
+          await new Promise((r: any) => setTimeout(r, attempt * 2000));
           continue;
         }
         break;
@@ -556,7 +556,7 @@ All numeric values must be numbers (not strings). dietaryTags must be an array. 
         aiResult: foodScanCacheTable.aiResult,
       }).from(foodScanCacheTable).orderBy(desc(foodScanCacheTable.lastUsedAt)).limit(200);
 
-      const similarEntry = recentEntries.find((e) =>
+      const similarEntry = recentEntries.find((e: any) =>
         isSimilarName(normalizedSearch, e.nameNormalized || normalizeFoodName(e.foodNameEn))
       );
 
@@ -609,15 +609,15 @@ router.get("/food/summary/:date", requireAuth, async (req: AuthRequest, res) => 
     );
     const summary = {
       date,
-      totalCalories: logs.reduce((sum, l) => sum + Number(l.calories), 0),
-      totalProteinG: logs.reduce((sum, l) => sum + Number(l.proteinG || 0), 0),
-      totalCarbsG: logs.reduce((sum, l) => sum + Number(l.carbsG || 0), 0),
-      totalFatG: logs.reduce((sum, l) => sum + Number(l.fatG || 0), 0),
-      totalFiberG: logs.reduce((sum, l) => sum + Number(l.fiberG || 0), 0),
-      totalCalciumMg: logs.reduce((sum, l) => sum + Number(l.calciumMg || 0), 0),
-      totalVitaminB12Mcg: logs.reduce((sum, l) => sum + Number(l.vitaminB12Mcg || 0), 0),
-      totalVitaminCMg: logs.reduce((sum, l) => sum + Number(l.vitaminCMg || 0), 0),
-      totalIronMg: logs.reduce((sum, l) => sum + Number(l.ironMg || 0), 0),
+      totalCalories: logs.reduce((sum: any, l: any) => sum + Number(l.calories), 0),
+      totalProteinG: logs.reduce((sum: any, l: any) => sum + Number(l.proteinG || 0), 0),
+      totalCarbsG: logs.reduce((sum: any, l: any) => sum + Number(l.carbsG || 0), 0),
+      totalFatG: logs.reduce((sum: any, l: any) => sum + Number(l.fatG || 0), 0),
+      totalFiberG: logs.reduce((sum: any, l: any) => sum + Number(l.fiberG || 0), 0),
+      totalCalciumMg: logs.reduce((sum: any, l: any) => sum + Number(l.calciumMg || 0), 0),
+      totalVitaminB12Mcg: logs.reduce((sum: any, l: any) => sum + Number(l.vitaminB12Mcg || 0), 0),
+      totalVitaminCMg: logs.reduce((sum: any, l: any) => sum + Number(l.vitaminCMg || 0), 0),
+      totalIronMg: logs.reduce((sum: any, l: any) => sum + Number(l.ironMg || 0), 0),
       mealCount: logs.length,
     };
     res.json({ summary });
@@ -644,14 +644,14 @@ router.get("/food/weekly-nutrition", requireAuth, async (req: AuthRequest, res) 
       );
       days.push({
         date: dateStr,
-        totalCalories: logs.reduce((s, l) => s + Number(l.calories), 0),
-        totalProteinG: logs.reduce((s, l) => s + Number(l.proteinG || 0), 0),
-        totalCarbsG: logs.reduce((s, l) => s + Number(l.carbsG || 0), 0),
-        totalFatG: logs.reduce((s, l) => s + Number(l.fatG || 0), 0),
-        totalCalciumMg: logs.reduce((s, l) => s + Number(l.calciumMg || 0), 0),
-        totalVitaminB12Mcg: logs.reduce((s, l) => s + Number(l.vitaminB12Mcg || 0), 0),
-        totalVitaminCMg: logs.reduce((s, l) => s + Number(l.vitaminCMg || 0), 0),
-        totalIronMg: logs.reduce((s, l) => s + Number(l.ironMg || 0), 0),
+        totalCalories: logs.reduce((s: any, l: any) => s + Number(l.calories), 0),
+        totalProteinG: logs.reduce((s: any, l: any) => s + Number(l.proteinG || 0), 0),
+        totalCarbsG: logs.reduce((s: any, l: any) => s + Number(l.carbsG || 0), 0),
+        totalFatG: logs.reduce((s: any, l: any) => s + Number(l.fatG || 0), 0),
+        totalCalciumMg: logs.reduce((s: any, l: any) => s + Number(l.calciumMg || 0), 0),
+        totalVitaminB12Mcg: logs.reduce((s: any, l: any) => s + Number(l.vitaminB12Mcg || 0), 0),
+        totalVitaminCMg: logs.reduce((s: any, l: any) => s + Number(l.vitaminCMg || 0), 0),
+        totalIronMg: logs.reduce((s: any, l: any) => s + Number(l.ironMg || 0), 0),
         mealCount: logs.length,
       });
     }
@@ -703,14 +703,14 @@ router.get("/food/monthly-nutrition", requireAuth, async (req: AuthRequest, res)
         weekLabel: `Week ${weekNum} (${startD.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${endD.toLocaleDateString("en-IN", { day: "numeric", month: "short" })})`,
         startDate: startStr,
         endDate: endStr,
-        totalCalories: Math.round(logs.reduce((s, l) => s + Number(l.calories), 0)),
-        totalProteinG: Math.round(logs.reduce((s, l) => s + Number(l.proteinG || 0), 0) * 10) / 10,
-        totalCarbsG: Math.round(logs.reduce((s, l) => s + Number(l.carbsG || 0), 0) * 10) / 10,
-        totalFatG: Math.round(logs.reduce((s, l) => s + Number(l.fatG || 0), 0) * 10) / 10,
-        totalCalciumMg: Math.round(logs.reduce((s, l) => s + Number(l.calciumMg || 0), 0) * 10) / 10,
-        totalVitaminB12Mcg: Math.round(logs.reduce((s, l) => s + Number(l.vitaminB12Mcg || 0), 0) * 100) / 100,
-        totalVitaminCMg: Math.round(logs.reduce((s, l) => s + Number(l.vitaminCMg || 0), 0) * 10) / 10,
-        totalIronMg: Math.round(logs.reduce((s, l) => s + Number(l.ironMg || 0), 0) * 10) / 10,
+        totalCalories: Math.round(logs.reduce((s: any, l: any) => s + Number(l.calories), 0)),
+        totalProteinG: Math.round(logs.reduce((s: any, l: any) => s + Number(l.proteinG || 0), 0) * 10) / 10,
+        totalCarbsG: Math.round(logs.reduce((s: any, l: any) => s + Number(l.carbsG || 0), 0) * 10) / 10,
+        totalFatG: Math.round(logs.reduce((s: any, l: any) => s + Number(l.fatG || 0), 0) * 10) / 10,
+        totalCalciumMg: Math.round(logs.reduce((s: any, l: any) => s + Number(l.calciumMg || 0), 0) * 10) / 10,
+        totalVitaminB12Mcg: Math.round(logs.reduce((s: any, l: any) => s + Number(l.vitaminB12Mcg || 0), 0) * 100) / 100,
+        totalVitaminCMg: Math.round(logs.reduce((s: any, l: any) => s + Number(l.vitaminCMg || 0), 0) * 10) / 10,
+        totalIronMg: Math.round(logs.reduce((s: any, l: any) => s + Number(l.ironMg || 0), 0) * 10) / 10,
         mealCount: logs.length,
       });
     }

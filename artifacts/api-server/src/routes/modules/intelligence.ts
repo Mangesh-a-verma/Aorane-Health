@@ -87,7 +87,7 @@ function goalLabel(primaryGoal: string): string {
     heart_health: "Heart Health", hormonal_balance: "Hormonal Balance",
     reduce_stress: "Stress Reduction", general_wellness: "General Wellness",
   };
-  return labels[primaryGoal] ?? primaryGoal.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return labels[primaryGoal] ?? primaryGoal.replace(/_/g, " ").replace(/\b\w/g, (c: any) => c.toUpperCase());
 }
 
 async function gatherUserContext(userId: string) {
@@ -104,7 +104,7 @@ async function gatherUserContext(userId: string) {
   const state = (profile as unknown as Record<string, string>)?.state ?? null;
   const workProfile = (profile as unknown as Record<string, string>)?.workProfile ?? null;
   const activityLevel = (profile as unknown as Record<string, string>)?.activityLevel ?? "moderate";
-  const conditionsList = conditions.map((c) => c.condition).join(", ") || "None";
+  const conditionsList = conditions.map((c: any) => c.condition).join(", ") || "None";
   const dietaryPref = profile?.foodPreference ?? "vegetarian";
   const primaryGoal = goals?.primaryGoal || "general_wellness";
   const targetWeightKg = goals?.targetWeightKg ? Number(goals.targetWeightKg) : null;
@@ -135,25 +135,25 @@ async function gather30DayData(userId: string) {
   const days = Math.max(1, Math.ceil((Date.now() - new Date(from).getTime()) / (1000 * 60 * 60 * 24)));
 
   const avgCalories = foodLogs.length > 0
-    ? Math.round(foodLogs.reduce((s, l) => s + Number(l.calories ?? 0), 0) / days) : 0;
+    ? Math.round(foodLogs.reduce((s: any, l: any) => s + Number(l.calories ?? 0), 0) / days) : 0;
   const avgProtein = foodLogs.length > 0
-    ? Math.round(foodLogs.reduce((s, l) => s + Number(l.proteinG ?? 0), 0) / days) : 0;
+    ? Math.round(foodLogs.reduce((s: any, l: any) => s + Number(l.proteinG ?? 0), 0) / days) : 0;
   const avgCarbs = foodLogs.length > 0
-    ? Math.round(foodLogs.reduce((s, l) => s + Number(l.carbsG ?? 0), 0) / days) : 0;
+    ? Math.round(foodLogs.reduce((s: any, l: any) => s + Number(l.carbsG ?? 0), 0) / days) : 0;
   const avgFat = foodLogs.length > 0
-    ? Math.round(foodLogs.reduce((s, l) => s + Number(l.fatG ?? 0), 0) / days) : 0;
+    ? Math.round(foodLogs.reduce((s: any, l: any) => s + Number(l.fatG ?? 0), 0) / days) : 0;
 
   const avgWaterGlasses = waterLogs.length > 0
-    ? Math.round((waterLogs.reduce((s, l) => s + (l.glassesCount ?? 0), 0) / days) * 10) / 10 : 0;
+    ? Math.round((waterLogs.reduce((s: any, l: any) => s + (l.glassesCount ?? 0), 0) / days) * 10) / 10 : 0;
 
   const totalExerciseSessions = exerciseLogs.length;
   const avgExerciseMinutes = totalExerciseSessions > 0
-    ? Math.round(exerciseLogs.reduce((s, l) => s + (l.durationMinutes ?? 0), 0) / totalExerciseSessions) : 0;
+    ? Math.round(exerciseLogs.reduce((s: any, l: any) => s + (l.durationMinutes ?? 0), 0) / totalExerciseSessions) : 0;
 
   const avgSleepHours = stressLogs.length > 0
-    ? Math.round((stressLogs.reduce((s, l) => s + Number(l.sleepHours ?? 0), 0) / stressLogs.length) * 10) / 10 : null;
+    ? Math.round((stressLogs.reduce((s: any, l: any) => s + Number(l.sleepHours ?? 0), 0) / stressLogs.length) * 10) / 10 : null;
   const avgStressLevel = stressLogs.length > 0
-    ? Math.round((stressLogs.reduce((s, l) => s + (l.stressScore ?? 5), 0) / stressLogs.length) * 10) / 10 : null;
+    ? Math.round((stressLogs.reduce((s: any, l: any) => s + (l.stressScore ?? 5), 0) / stressLogs.length) * 10) / 10 : null;
 
   return {
     avgCalories, avgProtein, avgCarbs, avgFat,
