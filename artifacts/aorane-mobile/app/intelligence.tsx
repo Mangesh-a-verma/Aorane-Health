@@ -65,7 +65,7 @@ function ScoreRing({ score, label }: { score: number; label: string }) {
 }
 
 function RiskBar({ risk }: { risk: Prediction["risks"][0] }) {
-  const c = RISK_COLORS[risk.level] ?? RISK_COLORS.moderate;
+  const c = RISK_COLORS[risk?.level?.toLowerCase()] ?? RISK_COLORS.moderate;
   return (
     <View style={[styles.riskCard, { backgroundColor: c.bg }]}>
       <View style={styles.riskHeader}>
