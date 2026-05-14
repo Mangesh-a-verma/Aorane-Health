@@ -204,7 +204,7 @@ router.get("/admin/enquiries", requireAdmin, async (req: AdminRequest, res) => {
     const conds = [];
     if (status && typeof status === "string") conds.push(eq(enquiriesTable.status, status));
     if (type && typeof type === "string") conds.push(eq(enquiriesTable.type, type));
-    const where = conds.length ? sql`${conds.reduce((a, b) => sql`${a} AND ${b}`)}` : undefined;
+    const where = conds.length ? sql`${conds.reduce((a: any, b: any) => sql`${a} AND ${b}`)}` : undefined;
     const rows = await db.select().from(enquiriesTable).where(where).orderBy(desc(enquiriesTable.createdAt)).limit(500);
 
     const totals = await db.select({

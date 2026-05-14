@@ -102,8 +102,8 @@ router.post("/stress/log", requireAuth, async (req: AuthRequest, res) => {
         db.select().from(medicineLogsTable).where(and(eq(medicineLogsTable.userId, req.userId!), gte(medicineLogsTable.scheduledAt, todayStart), lte(medicineLogsTable.scheduledAt, todayEnd))),
       ]);
 
-      const waterGlasses = waterLogs.reduce((s, l) => s + (l.glassesCount || 0), 0);
-      const exerciseMin  = exerciseLogs.reduce((s, l) => s + (l.durationMinutes || 0), 0);
+      const waterGlasses = waterLogs.reduce((s: any, l: any) => s + (l.glassesCount || 0), 0);
+      const exerciseMin  = exerciseLogs.reduce((s: any, l: any) => s + (l.durationMinutes || 0), 0);
       const sleepHours   = Number(profile?.sleepHoursAvg) || 7;
       const mealCount    = foodLogs.length;
 
@@ -187,7 +187,7 @@ router.get("/stress/today", requireAuth, async (req: AuthRequest, res) => {
       .orderBy(desc(stressLogsTable.loggedAt));
 
     const latestScore = logs[0]?.stressScore ?? null;
-    const avgScore    = logs.length ? Math.round(logs.reduce((s, l) => s + l.stressScore, 0) / logs.length) : null;
+    const avgScore    = logs.length ? Math.round(logs.reduce((s: any, l: any) => s + l.stressScore, 0) / logs.length) : null;
 
     // Burnout risk check — last 3 calendar days all avg > 65
     const threeDaysAgo = new Date();
@@ -237,7 +237,7 @@ router.get("/stress/logs", requireAuth, async (req: AuthRequest, res) => {
       .orderBy(desc(stressLogsTable.loggedAt))
       .limit(limit);
 
-    const avgScore = logs.length ? Math.round(logs.reduce((s, l) => s + l.stressScore, 0) / logs.length) : 0;
+    const avgScore = logs.length ? Math.round(logs.reduce((s: any, l: any) => s + l.stressScore, 0) / logs.length) : 0;
     res.json({ logs, avgScore, count: logs.length });
   } catch {
     res.status(500).json({ error: "Failed to get stress logs" });
@@ -269,18 +269,18 @@ router.get("/stress/weekly", requireAuth, async (req: AuthRequest, res) => {
       d.setDate(d.getDate() - i);
       const dateStr  = d.toISOString().split("T")[0]!;
       const dayLogs  = logs.filter(l => l.loggedAt.toISOString().split("T")[0] === dateStr);
-      const avg      = dayLogs.length ? Math.round(dayLogs.reduce((s, l) => s + l.stressScore, 0) / dayLogs.length) : 0;
+      const avg      = dayLogs.length ? Math.round(dayLogs.reduce((s: any, l: any) => s + l.stressScore, 0) / dayLogs.length) : 0;
 
       const moods     = dayLogs.filter(l => l.mood).map(l => l.mood!);
       const moodCount: Record<string, number> = {};
       moods.forEach(m => { moodCount[m] = (moodCount[m] || 0) + 1; });
-      const dominantMood = moods.length ? Object.entries(moodCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null : null;
+      const dominantMood = moods.length ? Object.entries(moodCount).sort((a: any, b: any) => b[1] - a[1])[0]?.[0] ?? null : null;
 
       days.push({ date: dateStr, dayLabel: DAY_NAMES[d.getDay()]!, dayLabelHi: DAY_NAMES[d.getDay()]!, avgScore: avg, count: dayLogs.length, dominantMood });
     }
 
     const activeDays = days.filter(d => d.count > 0);
-    const weekAvg    = activeDays.length ? Math.round(activeDays.reduce((s, d) => s + d.avgScore, 0) / activeDays.length) : 0;
+    const weekAvg    = activeDays.length ? Math.round(activeDays.reduce((s: any, d: any) => s + d.avgScore, 0) / activeDays.length) : 0;
 
     // Consecutive high-stress streak
     let highStreakDays = 0;
@@ -298,7 +298,7 @@ router.get("/stress/weekly", requireAuth, async (req: AuthRequest, res) => {
       .where(and(eq(stressLogsTable.userId, req.userId!), gte(stressLogsTable.loggedAt, thirtyDaysAgo)));
 
     const personalBaseline = baselineLogs.length >= 5
-      ? Math.round(baselineLogs.reduce((s, l) => s + l.stressScore, 0) / baselineLogs.length)
+      ? Math.round(baselineLogs.reduce((s: any, l: any) => s + l.stressScore, 0) / baselineLogs.length)
       : null;
 
     // vs baseline signal: positive = worse than usual, negative = better than usual
@@ -329,7 +329,7 @@ router.get("/stress/insight", requireAuth, aiRateLimit("stress_insight", 5), asy
       .limit(14);
 
     const avg = recentLogs.length
-      ? Math.round(recentLogs.reduce((s, l) => s + l.stressScore, 0) / recentLogs.length)
+      ? Math.round(recentLogs.reduce((s: any, l: any) => s + l.stressScore, 0) / recentLogs.length)
       : 40;
 
     let insight  = "";

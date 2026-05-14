@@ -31,7 +31,7 @@ router.post("/admin/login", async (req, res) => {
     const [admin] = await db.select().from(adminUsersTable).where(eq(adminUsersTable.email, email));
     if (!admin || !admin.isActive) { res.status(401).json({ error: "Invalid credentials" }); return; }
 
-    const valid = await verifyAndMigratePassword(password, admin.passwordHash, async (h) => {
+    const valid = await verifyAndMigratePassword(password, admin.passwordHash, async (h: any) => {
       await db.update(adminUsersTable).set({ passwordHash: h }).where(eq(adminUsersTable.id, admin.id));
     });
     if (!valid) { res.status(401).json({ error: "Invalid credentials" }); return; }
@@ -131,7 +131,7 @@ router.get("/admin/users", requireAdmin, async (req: AdminRequest, res) => {
     const [totalRow, rows] = await Promise.all([
       db.select({ count: count() }).from(usersTable)
         .leftJoin(userProfilesTable, eq(usersTable.id, userProfilesTable.userId))
-        .where(whereClause).then((r) => r[0]),
+        .where(whereClause).then((r: any) => r[0]),
       db.select({
           id: usersTable.id,
           phone: usersTable.phone,
@@ -155,7 +155,7 @@ router.get("/admin/users", requireAdmin, async (req: AdminRequest, res) => {
         .offset(offsetNum),
     ]);
 
-    const usersOut = rows.map((r) => ({ ...r, aoraneId: r.aoraneId ? r.aoraneId.toUpperCase() : null }));
+    const usersOut = rows.map((r: any) => ({ ...r, aoraneId: r.aoraneId ? r.aoraneId.toUpperCase() : null }));
     res.json({ users: usersOut, total: Number(totalRow?.count ?? 0), offset: offsetNum, limit: limitNum });
   } catch {
     res.status(500).json({ error: "Failed to fetch users" });
@@ -789,8 +789,8 @@ router.get("/admin/revenue", requireAdmin, async (req: AdminRequest, res) => {
     const PLAN_RATE: Record<string, number> = {};
     for (const r of pricingRows) { PLAN_RATE[r.planKey] = Number(r.monthlyPrice); }
     const PAID_PLANS = pricingRows.filter(r => Number(r.monthlyPrice) > 0).map(r => r.planKey);
-    const paidUsers  = planBreakdown.filter(p => PAID_PLANS.includes(p.plan)).reduce((a, b) => a + Number(b.count), 0);
-    const freeUsers  = planBreakdown.filter(p => !PAID_PLANS.includes(p.plan)).reduce((a, b) => a + Number(b.count), 0);
+    const paidUsers  = planBreakdown.filter(p => PAID_PLANS.includes(p.plan)).reduce((a: any, b: any) => a + Number(b.count), 0);
+    const freeUsers  = planBreakdown.filter(p => !PAID_PLANS.includes(p.plan)).reduce((a: any, b: any) => a + Number(b.count), 0);
 
     const [totalRev] = await db.select({ total: sql<number>`COALESCE(SUM(CAST(amount AS NUMERIC)), 0)` }).from(paymentsTable).where(eq(paymentsTable.status, "success"));
     const planRevenue = await db
@@ -969,7 +969,7 @@ router.get("/admin/food-cache", requireAdmin, async (req, res) => {
     const [{ count: total }] = await db.select({ count: count() }).from(foodScanCacheTable)
       .where(conditions.length > 0 ? and(...conditions) : undefined);
 
-    res.json({ entries: rows.map((e) => ({
+    res.json({ entries: rows.map((e: any) => ({
       id: e.id,
       foodNameEn: e.foodNameEn,
       hitCount: e.hitCount,
@@ -1083,7 +1083,7 @@ router.get("/admin/food-cache/export", requireAdmin, async (req, res) => {
 
     if (format === "csv") {
       const csvHeader = "id,foodNameEn,hitCount,sourceAi,isPromoted,isRejected,createdAt,lastUsedAt,calories,proteinG,carbsG,fatG";
-      const csvRows = rows.map((e) => {
+      const csvRows = rows.map((e: any) => {
         const r = e.aiResult as Record<string, unknown>;
         return [e.id, `"${e.foodNameEn}"`, e.hitCount, e.sourceAi ?? "", e.isPromoted, e.isRejected,
           e.createdAt.toISOString(), e.lastUsedAt.toISOString(),
@@ -1250,7 +1250,7 @@ router.post("/admin/change-password", requireAdmin, async (req: AdminRequest, re
     if (newPassword.length < 8) { res.status(400).json({ error: "New password must be at least 8 characters" }); return; }
     const [admin] = await db.select().from(adminUsersTable).where(eq(adminUsersTable.id, req.adminId!));
     if (!admin) { res.status(404).json({ error: "Admin not found" }); return; }
-    const valid = await verifyAndMigratePassword(currentPassword, admin.passwordHash, async (h) => {
+    const valid = await verifyAndMigratePassword(currentPassword, admin.passwordHash, async (h: any) => {
       await db.update(adminUsersTable).set({ passwordHash: h }).where(eq(adminUsersTable.id, admin.id));
     });
     if (!valid) { res.status(401).json({ error: "Current password is incorrect" }); return; }

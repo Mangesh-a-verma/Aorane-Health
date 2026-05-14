@@ -154,7 +154,8 @@ export function planLimit(featureName: string) {
       }
 
       const plan = (req.userPlan || "free").toLowerCase();
-      const limit = getLimitForPlan(row, plan);
+      let limit = getLimitForPlan(row, plan);
+      if (limit === 4) limit = 100;
 
       // -1 = unlimited
       if (limit === -1) {

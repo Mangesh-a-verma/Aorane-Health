@@ -270,7 +270,7 @@ router.get("/suggestions/daily", requireAuth, aiRateLimit("daily_suggestions", 3
     const gender = (profile?.gender as string) || "other";
     const foodPreference = (profile?.foodPreference as string) || "veg";
     const foodAllergies = (profile?.foodAllergies as string[]) || [];
-    const medicalConditions = conditions.map((c) => c.condition);
+    const medicalConditions = conditions.map((c: any) => c.condition);
 
     // 4. Calculate calorie goal — now uses BOTH workProfile + activityLevel
     let calorieGoal = prefs?.calorieGoal || 2000;
@@ -295,9 +295,9 @@ router.get("/suggestions/daily", requireAuth, aiRateLimit("daily_suggestions", 3
         db.select().from(exerciseLogsTable).where(and(eq(exerciseLogsTable.userId, userId), gte(exerciseLogsTable.loggedAt, dayStart), lte(exerciseLogsTable.loggedAt, dayEnd))),
       ]);
 
-      if (foodLogs.status === "fulfilled") caloriesToday = Math.round(foodLogs.value.reduce((s, l) => s + Number(l.calories || 0), 0));
-      if (waterLogs.status === "fulfilled") waterToday = waterLogs.value.reduce((s, l) => s + (l.glassesCount || 0), 0);
-      if (exerciseLogs.status === "fulfilled") exerciseMinToday = exerciseLogs.value.reduce((s, l) => s + (l.durationMinutes || 0), 0);
+      if (foodLogs.status === "fulfilled") caloriesToday = Math.round(foodLogs.value.reduce((s: any, l: any) => s + Number(l.calories || 0), 0));
+      if (waterLogs.status === "fulfilled") waterToday = waterLogs.value.reduce((s: any, l: any) => s + (l.glassesCount || 0), 0);
+      if (exerciseLogs.status === "fulfilled") exerciseMinToday = exerciseLogs.value.reduce((s: any, l: any) => s + (l.durationMinutes || 0), 0);
     } catch { }
 
     // 6. Generate AI suggestions

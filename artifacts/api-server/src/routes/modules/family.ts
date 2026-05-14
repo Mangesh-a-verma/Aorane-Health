@@ -45,7 +45,7 @@ router.get("/family/group", requireAuth, async (req: AuthRequest, res) => {
     const group = await getGroupByMembership(membership);
     const allMembers = await db.select().from(familyMembersTable).where(eq(familyMembersTable.groupId, group.id));
 
-    const memberDetails = await Promise.all(allMembers.map(async (m) => {
+    const memberDetails = await Promise.all(allMembers.map(async (m: any) => {
       const [u] = await db.select().from(usersTable).where(eq(usersTable.id, m.userId));
       const [p] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, m.userId));
       const scores = await db.select().from(dailyHealthScoresTable)
@@ -229,10 +229,10 @@ router.get("/family/member/:memberId/health", requireAuth, async (req: AuthReque
 
       const foodLogs = await db.select().from(foodLogsTable)
         .where(and(eq(foodLogsTable.userId, memberId), gte(foodLogsTable.loggedAt, todayStart)));
-      const totalCal = foodLogs.reduce((s, l) => s + Number(l.calories || 0), 0);
-      const totalProtein = foodLogs.reduce((s, l) => s + Number(l.proteinG || 0), 0);
-      const totalCarbs = foodLogs.reduce((s, l) => s + Number(l.carbsG || 0), 0);
-      const totalFat = foodLogs.reduce((s, l) => s + Number(l.fatG || 0), 0);
+      const totalCal = foodLogs.reduce((s: any, l: any) => s + Number(l.calories || 0), 0);
+      const totalProtein = foodLogs.reduce((s: any, l: any) => s + Number(l.proteinG || 0), 0);
+      const totalCarbs = foodLogs.reduce((s: any, l: any) => s + Number(l.carbsG || 0), 0);
+      const totalFat = foodLogs.reduce((s: any, l: any) => s + Number(l.fatG || 0), 0);
       foodData = {
         logsCount: foodLogs.length,
         totalCalories: Math.round(totalCal),
@@ -267,8 +267,8 @@ router.get("/family/member/:memberId/health", requireAuth, async (req: AuthReque
 
       const exerciseLogs = await db.select().from(exerciseLogsTable)
         .where(and(eq(exerciseLogsTable.userId, memberId), gte(exerciseLogsTable.loggedAt, todayStart)));
-      const totalMins = exerciseLogs.reduce((s, l) => s + (l.durationMinutes || 0), 0);
-      const totalSteps = exerciseLogs.reduce((s, l) => s + (l.steps || 0), 0);
+      const totalMins = exerciseLogs.reduce((s: any, l: any) => s + (l.durationMinutes || 0), 0);
+      const totalSteps = exerciseLogs.reduce((s: any, l: any) => s + (l.steps || 0), 0);
       exerciseData = {
         sessionsToday: exerciseLogs.length,
         totalMinutes: totalMins,
@@ -281,8 +281,8 @@ router.get("/family/member/:memberId/health", requireAuth, async (req: AuthReque
 
       const waterLogs = await db.select().from(waterLogsTable)
         .where(and(eq(waterLogsTable.userId, memberId), gte(waterLogsTable.loggedAt, todayStart)));
-      const totalMl = waterLogs.reduce((s, l) => s + (l.mlAmount || 0), 0);
-      waterData = { totalMl, glasses: waterLogs.reduce((s, l) => s + (l.glassesCount || 0), 0) };
+      const totalMl = waterLogs.reduce((s: any, l: any) => s + (l.mlAmount || 0), 0);
+      waterData = { totalMl, glasses: waterLogs.reduce((s: any, l: any) => s + (l.glassesCount || 0), 0) };
       if (totalMl < 500 && new Date().getHours() >= 18) {
         alerts.push({ type: "water", message: "Low water intake today", severity: "warning" });
       }
@@ -372,9 +372,9 @@ router.get("/family/member/:memberId/history", requireAuth, async (req: AuthRequ
       waterGlasses: h.waterGlasses,
     }));
 
-    const avgScore = points.length ? Math.round(points.reduce((s, p) => s + p.healthScore, 0) / points.length) : 0;
+    const avgScore = points.length ? Math.round(points.reduce((s: any, p: any) => s + p.healthScore, 0) / points.length) : 0;
     const avgCalories = points.filter(p => p.calories).length
-      ? Math.round(points.filter(p => p.calories).reduce((s, p) => s + (p.calories || 0), 0) / points.filter(p => p.calories).length)
+      ? Math.round(points.filter(p => p.calories).reduce((s: any, p: any) => s + (p.calories || 0), 0) / points.filter(p => p.calories).length)
       : null;
 
     res.json({ period, days, points, summary: { avgScore, avgCalories, totalPoints: points.length } });

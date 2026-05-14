@@ -61,7 +61,7 @@ router.post("/ai/diet-plan", requireAuth, requireFeature("meal_planner"), aiRate
     const weightKg = profile?.weightKg ? Number(profile.weightKg) : null;
     const heightCm = profile?.heightCm ? Number(profile.heightCm) : null;
     const gender = profile?.gender || "other";
-    const conditionsList = conditions.map((c) => c.condition).join(", ") || "none";
+    const conditionsList = conditions.map((c: any) => c.condition).join(", ") || "none";
     const dietaryPref = (preferences.dietaryPref as string) || profile?.foodPreference || "vegetarian";
     const activityLevel = (preferences.activityLevel as string) || profile?.activityLevel || "moderate";
     const goalsList = ((preferences.healthGoals as string[]) || []).join(", ") || "general wellness";
@@ -267,7 +267,7 @@ For unknown:
         { method: "POST", headers: { "Content-Type": "application/json" }, body: geminiBody },
       );
       if (geminiRes.status === 429 && attempt < 3) {
-        await new Promise((r) => setTimeout(r, attempt * 2000));
+        await new Promise((r: any) => setTimeout(r, attempt * 2000));
         continue;
       }
       break;

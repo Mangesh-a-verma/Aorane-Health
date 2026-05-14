@@ -215,7 +215,7 @@ router.post("/payment/verify", requireAuth, async (req: AuthRequest, res) => {
     pool.query(
       `SELECT u.email, up.full_name, up.aorane_id FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = $1 LIMIT 1`,
       [req.userId!]
-    ).then((r) => {
+    ).then((r: any) => {
       const row = r.rows[0];
       if (row?.email) {
         sendIndividualPaymentWelcomeEmail({
@@ -329,7 +329,7 @@ router.post("/payment/subscription/verify", requireAuth, async (req: AuthRequest
     pool.query(
       `SELECT u.email, up.full_name, up.aorane_id FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = $1 LIMIT 1`,
       [req.userId!]
-    ).then((r) => {
+    ).then((r: any) => {
       const row = r.rows[0];
       if (row?.email) {
         sendIndividualPaymentWelcomeEmail({
@@ -520,7 +520,7 @@ router.post("/payment/rzp-callback", async (req, res) => {
         pool.query(
           `SELECT u.email, up.full_name, up.aorane_id FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = $1 LIMIT 1`,
           [payment.userId]
-        ).then((r) => {
+        ).then((r: any) => {
           const row = r.rows[0];
           if (row?.email) {
             sendIndividualPaymentWelcomeEmail({

@@ -1316,7 +1316,7 @@ export async function runStartupMigrations(): Promise<void> {
 
 import { fileURLToPath } from "url";
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  runStartupMigrations().then(() => process.exit(0)).catch((e) => {
+  runStartupMigrations().then(() => process.exit(0)).catch((e: any) => {
     logger.error({ err: e }, "Migration script failed");
     process.exit(1);
   });
