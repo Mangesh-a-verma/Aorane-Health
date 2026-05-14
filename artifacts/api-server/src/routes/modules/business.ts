@@ -415,35 +415,41 @@ router.get("/business/members/search", requireBusinessAuth, async (req: Business
     if (!q || q.length < 4) { res.status(400).json({ error: "Minimum 4 characters required" }); return; }
     const isAoraneId = /^\d{8,12}$/.test(q);
 
-    // Get all member userIds in this org
-    const memberRows = await db.select({ userId: orgMembersTable.userId })
-      .from(orgMembersTable)
-      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.isActive, true)));
-    const memberIds = memberRows.map((m) => m.userId);
-    if (!memberIds.length) { res.json({ results: [], count: 0 }); return; }
+    const searchFilter = isAoraneId
+      ? eq(userProfilesTable.aoraneId, q)
+      : ilike(userProfilesTable.fullName, `%${q}%`);
 
-    let profiles: typeof userProfilesTable.$inferSelect[] = [];
-    if (isAoraneId) {
-      profiles = await db.select().from(userProfilesTable).where(eq(userProfilesTable.aoraneId, q)).limit(10);
-    } else {
-      profiles = await db.select().from(userProfilesTable).where(ilike(userProfilesTable.fullName, `%${q}%`)).limit(10);
-    }
-    // Filter to only org members
-    const filteredProfiles = profiles.filter((p) => memberIds.includes(p.userId));
+    const joinedResults = await db.select({
+      userId: userProfilesTable.userId,
+      aoraneId: userProfilesTable.aoraneId,
+      name: userProfilesTable.fullName,
+      bloodGroup: userProfilesTable.bloodGroup,
+      gender: userProfilesTable.gender,
+      dateOfBirth: userProfilesTable.dateOfBirth,
+      city: userProfilesTable.city,
+      bmi: userProfilesTable.bmi,
+      plan: usersTable.plan,
+    })
+      .from(userProfilesTable)
+      .innerJoin(orgMembersTable, and(
+        eq(userProfilesTable.userId, orgMembersTable.userId),
+        eq(orgMembersTable.orgId, req.orgId!),
+        eq(orgMembersTable.isActive, true)
+      ))
+      .leftJoin(usersTable, eq(userProfilesTable.userId, usersTable.id))
+      .where(searchFilter)
+      .limit(10);
 
-    const results = await Promise.all(filteredProfiles.map(async (p) => {
-      const [user] = await db.select().from(usersTable).where(eq(usersTable.id, p.userId)).limit(1);
-      return {
-        userId: p.userId,
-        aoraneId: p.aoraneId,
-        name: p.fullName,
-        bloodGroup: p.bloodGroup,
-        gender: p.gender,
-        age: p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (86400000 * 365.25)) : null,
-        city: (p as Record<string, unknown>).city,
-        bmi: p.bmi,
-        plan: user?.plan,
-      };
+    const results = joinedResults.map((r) => ({
+      userId: r.userId,
+      aoraneId: r.aoraneId,
+      name: r.name,
+      bloodGroup: r.bloodGroup,
+      gender: r.gender,
+      age: r.dateOfBirth ? Math.floor((Date.now() - new Date(r.dateOfBirth).getTime()) / (86400000 * 365.25)) : null,
+      city: r.city,
+      bmi: r.bmi,
+      plan: r.plan,
     }));
     res.json({ results, count: results.length });
   } catch (err) {
