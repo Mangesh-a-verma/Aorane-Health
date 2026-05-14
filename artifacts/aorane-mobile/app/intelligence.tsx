@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Alert, Share,
+  ActivityIndicator, RefreshControl, Alert, Share, Animated, Easing, LayoutAnimation, Platform, UIManager
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import { router } from "expo-router";
 import { api } from "@/lib/api";
 import { APILimitError } from "@/lib/apiErrors";
@@ -53,6 +54,40 @@ type DietChart = {
   days: DayChart[]; weeklyTips: string[];
 };
 
+
+
+function SkeletonLoader({ height = 100, width = "100%", borderRadius = 12 }: { height?: number; width?: string | number; borderRadius?: number }) {
+  const anim = useRef(new Animated.Value(0.3)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 0.7, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0.3, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+  return <Animated.View style={{ height, width: width as any, borderRadius, backgroundColor: "#E2E8F0", opacity: anim, marginBottom: 12 }} />;
+}
+
+function PremiumLoadingState({ message, subMessage }: { message: string, subMessage: string }) {
+  return (
+    <View style={styles.loadingBox}>
+      <View style={styles.skeletonContainer}>
+        <SkeletonLoader height={24} width="60%" />
+        <SkeletonLoader height={100} width="100%" />
+        <SkeletonLoader height={80} width="100%" />
+        <SkeletonLoader height={80} width="100%" />
+      </View>
+      <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFillObject} />
+      <View style={styles.loadingOverlay}>
+        <ActivityIndicator size="large" color={PRIMARY} />
+        <Text style={styles.loadingText}>{message}</Text>
+        <Text style={styles.loadingSubText}>{subMessage}</Text>
+      </View>
+    </View>
+  );
+}
+
 function ScoreRing({ score, label }: { score: number; label: string }) {
   const colors = SCORE_COLORS(score) as [string, string];
   return (
@@ -65,7 +100,7 @@ function ScoreRing({ score, label }: { score: number; label: string }) {
 }
 
 function RiskBar({ risk }: { risk: Prediction["risks"][0] }) {
-  const c = RISK_COLORS[risk.level] ?? RISK_COLORS.moderate;
+  const c = RISK_COLORS[risk?.level?.toLowerCase()] ?? RISK_COLORS.moderate;
   return (
     <View style={[styles.riskCard, { backgroundColor: c.bg }]}>
       <View style={styles.riskHeader}>
@@ -101,11 +136,20 @@ function MealSection({ label, time, items, calories, icon }: {
   );
 }
 
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 function DayCard({ dayData, isToday }: { dayData: DayChart; isToday: boolean }) {
   const [expanded, setExpanded] = useState(isToday);
+  const toggleExpand = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded(e => !e);
+  };
   return (
     <View style={[styles.dayCard, isToday && styles.dayCardToday]}>
-      <TouchableOpacity style={styles.dayHeader} onPress={() => setExpanded(e => !e)}>
+      <TouchableOpacity style={styles.dayHeader} onPress={toggleExpand} activeOpacity={0.7}>
         <View style={styles.dayLeft}>
           {isToday && <View style={styles.todayDot} />}
           <Text style={[styles.dayName, isToday && { color: PRIMARY, fontFamily: "Inter_700Bold" }]}>{dayData.day}</Text>
@@ -344,11 +388,7 @@ export default function HealthIntelligence() {
         </View>
 
         {dietLoading && !dietChart && (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color={ACCENT} />
-            <Text style={styles.loadingText}>Creating your personalized Indian diet chart...</Text>
-            <Text style={styles.loadingSubText}>This may take 20-40 seconds</Text>
-          </View>
+          <PremiumLoadingState message="Creating your personalized Indian diet chart..." subMessage="This may take 20-40 seconds" />
         )}
 
         {dietError !== "" && (
@@ -417,11 +457,7 @@ export default function HealthIntelligence() {
         </View>
 
         {predLoading && !prediction && (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color={PRIMARY} />
-            <Text style={styles.loadingText}>AI is analyzing your health data...</Text>
-            <Text style={styles.loadingSubText}>This may take 15-30 seconds</Text>
-          </View>
+          <PremiumLoadingState message="AI is analyzing your health data..." subMessage="This may take 15-30 seconds" />
         )}
 
         {predError !== "" && (
@@ -509,7 +545,9 @@ const styles = StyleSheet.create({
   sectionBigTitle: { flex: 1, fontSize: 17, fontFamily: "Inter_700Bold", color: "#1E293B" },
   miniRefreshBtn: { padding: 6, borderRadius: 12, backgroundColor: "#F8FAFC" },
 
-  loadingBox: { alignItems: "center", paddingVertical: 60, gap: 12 },
+  loadingBox: { position: "relative", minHeight: 200, justifyContent: "center", marginVertical: 12 },
+  skeletonContainer: { opacity: 0.5 },
+  loadingOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, justifyContent: "center", alignItems: "center", gap: 12, backgroundColor: "rgba(255, 255, 255, 0.4)", overflow: "hidden", borderRadius: 16 },
   loadingText: { fontSize: 14, fontFamily: "Inter_500Medium", color: "#475569", textAlign: "center" },
   loadingSubText: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#94A3B8" },
   errorBox: { backgroundColor: "#FFF1F2", borderRadius: 12, padding: 16, alignItems: "center", gap: 8 },
@@ -531,7 +569,7 @@ const styles = StyleSheet.create({
   // Day cards
   dayCard: {
     backgroundColor: "#FFF", borderRadius: 14, overflow: "hidden",
-    elevation: 1, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4,
+    elevation: 3, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12,
   },
   dayCardToday: { borderWidth: 1.5, borderColor: PRIMARY },
   dayHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 12 },
@@ -551,7 +589,7 @@ const styles = StyleSheet.create({
   dayTip:    { flexDirection: "row", gap: 6, alignItems: "center" },
   dayTipText:{ flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", color: "#64748B" },
 
-  weeklyTips: { backgroundColor: "#FFF", borderRadius: 14, padding: 14, gap: 8, elevation: 1, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 },
+  weeklyTips: { backgroundColor: "#FFF", borderRadius: 14, padding: 14, gap: 8, elevation: 3, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
   tipsTitle:  { fontSize: 14, fontFamily: "Inter_700Bold", color: "#1E293B", marginBottom: 4 },
   tipRow:     { flexDirection: "row", gap: 8, alignItems: "flex-start" },
   tipText:    { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: "#475569", lineHeight: 17 },
@@ -562,7 +600,7 @@ const styles = StyleSheet.create({
   scoreRow: {
     flexDirection: "row", gap: 16, alignItems: "center",
     backgroundColor: "#FFF", borderRadius: 16, padding: 16,
-    elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8,
+    elevation: 6, shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 16,
   },
   scoreRing: { width: 100, height: 100, borderRadius: 50, alignItems: "center", justifyContent: "center" },
   scoreNumber: { fontSize: 30, fontFamily: "Inter_700Bold", color: "#FFF" },
@@ -583,11 +621,14 @@ const styles = StyleSheet.create({
   riskPct: { fontSize: 22, fontFamily: "Inter_700Bold" },
   barBg: { height: 6, borderRadius: 3, backgroundColor: "rgba(0,0,0,0.08)" },
   barFill: { height: 6, borderRadius: 3 },
+  insightBox: { backgroundColor: "rgba(255,255,255,0.6)", padding: 10, borderRadius: 8, marginTop: 4, borderWidth: 1, borderColor: "rgba(139, 92, 246, 0.1)" },
+  insightHeader: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 },
+  insightTitle: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#8B5CF6", textTransform: "uppercase", letterSpacing: 0.5 },
   riskReason: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#475569", lineHeight: 17 },
 
   recCard: {
     flexDirection: "row", gap: 12, backgroundColor: "#FFF", borderRadius: 12, padding: 12,
-    alignItems: "flex-start", elevation: 1, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4,
+    alignItems: "flex-start", elevation: 3, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12,
   },
   recDot: { width: 8, height: 8, borderRadius: 4, marginTop: 4, flexShrink: 0 },
   recContent: { flex: 1, gap: 2 },
