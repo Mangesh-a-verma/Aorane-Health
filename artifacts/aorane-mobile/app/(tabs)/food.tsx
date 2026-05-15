@@ -141,6 +141,8 @@ export default function FoodScreen() {
   const foodScanUsage = useAIScanUsage("food_scan", userPlan);
   const [scanning,     setScanning]     = useState(false);
   const [submitting,   setSubmitting]   = useState(false);
+  const [pendingFoodItem, setPendingFoodItem] = useState<any | null>(null);
+  const [quantity, setQuantity] = useState<string>("1");
   const [weatherData,  setWeatherData]  = useState<{
     weatherContext?: string; season?: string; weatherTip?: string;
     suggestions?: Array<{ name: string; nameHindi: string; emoji: string; reason: string; calories: number; benefit: string; category: string; isSeasonalSpecial: boolean }>;
@@ -291,22 +293,30 @@ export default function FoodScreen() {
 
   useFocusEffect(useCallback(() => { loadLogs(); }, []));
 
-  const logItem = async (item: { foodNameEn: string; calories: number; proteinG?: number; carbsG?: number; fatG?: number; fiberG?: number; sodiumMg?: number; vitamins?: { vitaminC_mg?: number; vitaminD_mcg?: number; vitaminB12_mcg?: number; calcium_mg?: number; iron_mg?: number } }, method = "text") => {
+  const logItem = async (item: { foodNameEn: string; calories: number; proteinG?: number; carbsG?: number; fatG?: number; fiberG?: number; sodiumMg?: number; vitamins?: { vitaminC_mg?: number; vitaminD_mcg?: number; vitaminB12_mcg?: number; calcium_mg?: number; iron_mg?: number } }, method = "text", qtyMultiplier: number = 1) => {
     setSubmitting(true);
     const v = item.vitamins || {};
+
+    // Apply quantity multiplier
+    const calc = (val?: number) => String(Math.round(((val || 0) * qtyMultiplier) * 10) / 10);
+    const calc100 = (val?: number) => String(Math.round(((val || 0) * qtyMultiplier) * 100) / 100);
+    const calcCal = (val?: number) => String(Math.round((val || 0) * qtyMultiplier));
+
     const logBody = {
       foodNameEn: item.foodNameEn, mealType: activeMeal,
-      calories: String(Math.round(item.calories)),
-      proteinG: String(Math.round((item.proteinG || 0) * 10) / 10),
-      carbsG:   String(Math.round((item.carbsG || 0) * 10) / 10),
-      fatG:     String(Math.round((item.fatG || 0) * 10) / 10),
-      fiberG:   String(Math.round((item.fiberG || 0) * 10) / 10),
-      ...(item.sodiumMg != null   ? { sodiumMg:     String(Math.round(item.sodiumMg * 10) / 10) }    : {}),
-      ...(v.calcium_mg != null    ? { calciumMg:    String(Math.round((v.calcium_mg || 0) * 10) / 10) }   : {}),
-      ...(v.vitaminB12_mcg != null ? { vitaminB12Mcg: String(Math.round((v.vitaminB12_mcg || 0) * 100) / 100) } : {}),
-      ...(v.vitaminC_mg != null   ? { vitaminCMg:   String(Math.round((v.vitaminC_mg || 0) * 10) / 10) }   : {}),
-      ...(v.iron_mg != null       ? { ironMg:       String(Math.round((v.iron_mg || 0) * 10) / 10) }       : {}),
-      ...(v.vitaminD_mcg != null  ? { vitaminDMcg:  String(Math.round((v.vitaminD_mcg || 0) * 10) / 10) }  : {}),
+      calories: calcCal(item.calories),
+      proteinG: calc(item.proteinG),
+      carbsG:   calc(item.carbsG),
+      fatG:     calc(item.fatG),
+      fiberG:   calc(item.fiberG),
+      quantityG: String(qtyMultiplier),
+      quantityDescription: `${qtyMultiplier} serving${qtyMultiplier !== 1 ? 's' : ''}`,
+      ...(item.sodiumMg != null   ? { sodiumMg:     calc(item.sodiumMg) }    : {}),
+      ...(v.calcium_mg != null    ? { calciumMg:    calc(v.calcium_mg) }   : {}),
+      ...(v.vitaminB12_mcg != null ? { vitaminB12Mcg: calc100(v.vitaminB12_mcg) } : {}),
+      ...(v.vitaminC_mg != null   ? { vitaminCMg:   calc(v.vitaminC_mg) }   : {}),
+      ...(v.iron_mg != null       ? { ironMg:       calc(v.iron_mg) }       : {}),
+      ...(v.vitaminD_mcg != null  ? { vitaminDMcg:  calc(v.vitaminD_mcg) }  : {}),
       inputMethod: method,
     };
     try {
@@ -321,15 +331,15 @@ export default function FoodScreen() {
             id: temp.id as string,
             foodNameEn: item.foodNameEn,
             mealType: activeMeal,
-            calories: String(Math.round(item.calories)),
-            proteinG: String(item.proteinG || 0),
-            carbsG: String(item.carbsG || 0),
-            fatG: String(item.fatG || 0),
-            fiberG: String(item.fiberG || 0),
+            calories: calcCal(item.calories),
+            proteinG: calc(item.proteinG),
+            carbsG: calc(item.carbsG),
+            fatG: calc(item.fatG),
+            fiberG: calc(item.fiberG),
             _offline: true,
           };
           setLogs((prev) => [...prev, tempLog]);
-          setTotalCal((c) => c + Math.round(item.calories));
+          setTotalCal((c) => c + Number(calcCal(item.calories)));
         },
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -340,6 +350,19 @@ export default function FoodScreen() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+
+  const handlePendingLog = (item: any) => {
+    setPendingFoodItem(item);
+    setQuantity("1");
+  };
+
+  const confirmLog = () => {
+    if (!pendingFoodItem) return;
+    const qty = parseFloat(quantity) || 1;
+    logItem(pendingFoodItem, "text", qty);
+    setPendingFoodItem(null);
   };
 
   const deleteLog = async (id: string, name: string) => {
@@ -353,7 +376,7 @@ export default function FoodScreen() {
   };
 
   const closeModal = () => {
-    setShowModal(false); setText(""); setHistResults([]); setDbResults([]);
+    setShowModal(false); setText(""); setPendingFoodItem(null); setHistResults([]); setDbResults([]);
     setScanResult(null); setScanMeta(null);
   };
   const openModal = (meal: MealType) => { setActiveMeal(meal); setShowModal(true); loadFavs(); };
@@ -789,7 +812,7 @@ export default function FoodScreen() {
                   {favorites.slice(0, 10).map((fav) => (
                     <TouchableOpacity
                       key={fav.foodNameEn}
-                      onPress={() => logItem(fav, "text")}
+                      onPress={() => handlePendingLog(fav)}
                       disabled={submitting}
                       activeOpacity={0.8}
                       style={s.favChip}
@@ -862,7 +885,7 @@ export default function FoodScreen() {
                   {histResults.map((item, i) => (
                     <TouchableOpacity
                       key={item.foodNameEn}
-                      onPress={() => logItem(item, "text")}
+                      onPress={() => handlePendingLog(item)}
                       disabled={submitting}
                       style={[s.resultRow, i > 0 && s.resultRowBorder]}
                     >
@@ -886,7 +909,7 @@ export default function FoodScreen() {
                   {dbResults.slice(0, 8).map((item, i) => (
                     <TouchableOpacity
                       key={String(item.id)}
-                      onPress={() => logItem({ foodNameEn: String(item.foodNameEn), calories: Number(item.calories), proteinG: Number(item.proteinG||0), carbsG: Number(item.carbsG||0), fatG: Number(item.fatG||0), fiberG: Number(item.fiberG||0) }, "text")}
+                      onPress={() => handlePendingLog({ foodNameEn: String(item.foodNameEn), calories: Number(item.calories), proteinG: Number(item.proteinG||0), carbsG: Number(item.carbsG||0), fatG: Number(item.fatG||0), fiberG: Number(item.fiberG||0) })}
                       disabled={submitting}
                       style={[s.resultRow, i > 0 && s.resultRowBorder]}
                     >
@@ -978,7 +1001,7 @@ export default function FoodScreen() {
                     </View>
                   )}
 
-                  <TouchableOpacity onPress={() => logItem(scanResult, "text")} disabled={submitting} activeOpacity={0.85}>
+                  <TouchableOpacity onPress={() => handlePendingLog(scanResult)} disabled={submitting} activeOpacity={0.85}>
                     <LinearGradient colors={[P, G]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.logBtn}>
                       {submitting
                         ? <ActivityIndicator color="#FFF" />
@@ -995,6 +1018,68 @@ export default function FoodScreen() {
           </ScrollView>
         </View>
       </Modal>
+
+      {/* ── QUANTITY MODAL ── */}
+      <Modal visible={!!pendingFoodItem} animationType="fade" transparent presentationStyle="overFullScreen">
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+          <View style={{ backgroundColor: "#FFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: insets.bottom + 24 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: DS.color.text }} numberOfLines={1}>{pendingFoodItem?.foodNameEn}</Text>
+              <TouchableOpacity onPress={() => setPendingFoodItem(null)} style={s.closeBtn}>
+                <X size={20} color={DS.color.text} strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginVertical: 20, gap: 16 }}>
+              <TouchableOpacity onPress={() => setQuantity(String(Math.max(0.5, (parseFloat(quantity) || 1) - 0.5)))} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: DS.color.bgSoft, alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 24, color: DS.color.text }}>-</Text>
+              </TouchableOpacity>
+              <View style={{ alignItems: "center" }}>
+                <TextInput
+                  style={{ fontSize: 32, fontFamily: "Inter_700Bold", color: P, textAlign: "center", minWidth: 80 }}
+                  value={quantity}
+                  onChangeText={setQuantity}
+                  keyboardType="numeric"
+                  maxLength={4}
+                />
+                <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: DS.color.muted }}>Servings / Multiplier</Text>
+              </View>
+              <TouchableOpacity onPress={() => setQuantity(String((parseFloat(quantity) || 1) + 0.5))} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: DS.color.bgSoft, alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 24, color: DS.color.text }}>+</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: "row", justifyContent: "space-around", marginBottom: 24, backgroundColor: DS.color.bgSoft, padding: 12, borderRadius: 16 }}>
+              <View style={{ alignItems: "center" }}>
+                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: DS.color.orange }}>{Math.round((pendingFoodItem?.calories || 0) * (parseFloat(quantity) || 1))}</Text>
+                <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: DS.color.muted }}>kcal</Text>
+              </View>
+              <View style={{ width: 1, backgroundColor: DS.color.borderLight }} />
+              <View style={{ alignItems: "center" }}>
+                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: DS.color.red }}>{Math.round((pendingFoodItem?.proteinG || 0) * (parseFloat(quantity) || 1) * 10) / 10}g</Text>
+                <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: DS.color.muted }}>Protein</Text>
+              </View>
+              <View style={{ width: 1, backgroundColor: DS.color.borderLight }} />
+              <View style={{ alignItems: "center" }}>
+                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: P }}>{Math.round((pendingFoodItem?.carbsG || 0) * (parseFloat(quantity) || 1) * 10) / 10}g</Text>
+                <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: DS.color.muted }}>Carbs</Text>
+              </View>
+              <View style={{ width: 1, backgroundColor: DS.color.borderLight }} />
+              <View style={{ alignItems: "center" }}>
+                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: DS.color.purple }}>{Math.round((pendingFoodItem?.fatG || 0) * (parseFloat(quantity) || 1) * 10) / 10}g</Text>
+                <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: DS.color.muted }}>Fat</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity onPress={confirmLog} disabled={submitting || (parseFloat(quantity) || 0) <= 0}>
+              <LinearGradient colors={[P, G]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.logBtn}>
+                {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={s.logBtnText}>Confirm Logging</Text>}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <LimitWarningToast
         visible={foodToastVisible}
         remaining={foodToastRemaining}
