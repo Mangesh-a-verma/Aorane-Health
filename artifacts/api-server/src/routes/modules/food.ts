@@ -471,7 +471,7 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
       const geminiKey = process.env["GOOGLE_GEMINI_API_KEY"];
       if (!geminiKey) { res.status(503).json({ error: "Image AI service not configured" }); return; }
 
-      const promptText = `You are a certified Indian dietitian and nutrition expert. Carefully look at this food image and identify what food or meal is shown.
+      const promptText = `You are a certified Indian dietitian and nutrition expert. Carefully look at this food image and identify what food or meal is shown. Visually estimate the serving size based on the image, and provide highly accurate macro-nutrients (Calories, Protein, Carbs, Fat) for that specific estimated serving size.
 
 Return ONLY a valid JSON object (no markdown, no explanation, no extra text) with exactly these fields:
 {
@@ -484,7 +484,7 @@ Return ONLY a valid JSON object (no markdown, no explanation, no extra text) wit
   "sodiumMg": 420,
   "sugarG": 3,
   "servingSizeG": 150,
-  "servingDescription": "1 sandwich (150g)",
+  "servingDescription": "1 sandwich (150g) visually estimated",
   "category": "snack",
   "dietaryTags": ["vegetarian"],
   "vitamins": {
@@ -511,7 +511,7 @@ All numeric values must be numbers (not strings). dietaryTags must be an array. 
       let geminiRes: globalThis.Response | null = null;
       for (let attempt = 1; attempt <= 3; attempt++) {
         geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
           { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(geminiBody) }
         );
         if (geminiRes.status === 429 && attempt < 3) {
@@ -524,19 +524,19 @@ All numeric values must be numbers (not strings). dietaryTags must be an array. 
       if (!geminiRes || !geminiRes.ok) {
         const errText = await geminiRes?.text().catch(() => "");
         req.log.error({ status: geminiRes?.status, body: errText?.slice(0, 300) }, "Gemini food scan error");
-        res.status(502).json({ error: "Food image analysis failed. Please try again." }); return;
+        res.status(502).json({ error: `AI API Error: Failed to analyze image. Details: ${errText ? errText.substring(0, 100) : "Timeout or unknown error"}` }); return;
       }
 
       const geminiData = await geminiRes.json() as { candidates?: Array<{ content: { parts: Array<{ text: string }> } }> };
       const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
       if (!text) {
         req.log.warn({ geminiData }, "Gemini food scan: empty response");
-        res.status(502).json({ error: "Could not identify food in image. Please try with a clearer photo." }); return;
+        res.status(502).json({ error: "AI API Error: Could not parse AI response or response was empty." }); return;
       }
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         req.log.warn({ text: text.slice(0, 300) }, "Gemini food scan: no JSON in response");
-        res.status(502).json({ error: "Could not identify food in image. Please try with a clearer photo." }); return;
+        res.status(502).json({ error: "AI API Error: Could not parse AI response or response was empty." }); return;
       }
       result = JSON.parse(jsonMatch[0]);
     } else {
