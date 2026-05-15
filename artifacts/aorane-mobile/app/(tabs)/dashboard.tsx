@@ -123,7 +123,7 @@ function useWeather() {
   return { weather, wLoading, refetchWeather: fetchW };
 }
 
-function WeatherPill({
+const WeatherPill = React.memo(function WeatherPill({
   weather, loading, onPress,
 }: { weather: WeatherInfo | null; loading: boolean; onPress: () => void }) {
   if (loading) {
@@ -148,9 +148,9 @@ function WeatherPill({
       <Text style={wp.pillTxt}>{weather.temp}°C · {weather.city}</Text>
     </TouchableOpacity>
   );
-}
+});
 
-function WeatherModal({
+const WeatherModal = React.memo(function WeatherModal({
   weather, visible, onClose,
 }: { weather: WeatherInfo | null; visible: boolean; onClose: () => void }) {
   if (!weather) return null;
@@ -181,7 +181,7 @@ function WeatherModal({
       </TouchableOpacity>
     </Modal>
   );
-}
+});
 
 const wp = StyleSheet.create({
   pill:      {
@@ -217,7 +217,7 @@ function getGreeting() {
 
 
 // ── SUMMARY BANNER ─────────────────────────────────────────────────────────────
-function SummaryBanner({ greeting, healthScore, calories, water, exerciseMin, activityPct, trends }: {
+const SummaryBanner = React.memo(function SummaryBanner({ greeting, healthScore, calories, water, exerciseMin, activityPct, trends }: {
   trends?: { currentStreak: number; longestStreak: number; rolling7Day: number | null; rolling30Day: number | null };
   greeting: string; healthScore: number;
   calories: { eaten: number; burned: number };
@@ -258,7 +258,7 @@ function SummaryBanner({ greeting, healthScore, calories, water, exerciseMin, ac
       </View>
     </LinearGradient>
   );
-}
+});
 const bn = StyleSheet.create({
   card:     { borderRadius: 20, padding: 16, overflow: "hidden" },
   shine1:   { position: "absolute", width: 160, height: 160, borderRadius: 80, backgroundColor: "rgba(255,255,255,0.07)", top: -50, right: -30 },
