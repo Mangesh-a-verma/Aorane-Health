@@ -27,11 +27,6 @@ function getHC(): HCModule | null {
   if (_hcAttempted) return _hc;
   _hcAttempted = true;
   try {
-    // ── CRITICAL GUARD ──────────────────────────────────────────────────────
-    // Check native module exists BEFORE requiring the JS wrapper.
-    // If NativeModules.HealthConnect is null/undefined, calling any method on
-    // the JS module causes a JVM crash that JS try-catch cannot catch.
-    // The module may register under either key depending on build config.
     const nativeBridge =
       NativeModules.HealthConnect ??
       NativeModules.RNHealthConnect ??
@@ -42,18 +37,30 @@ function getHC(): HCModule | null {
     }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require("react-native-health-connect");
-    if (
-      mod &&
-      typeof mod.initialize === "function" &&
-      typeof mod.requestPermission === "function" &&
-      typeof mod.readRecords === "function"
-    ) {
-      _hc = mod as HCModule;
+
+    // Instead of directly using mod methods, we wrap them to ensure they catch everything
+    if (mod) {
+        _hc = {
+            initialize: async () => {
+                try { return typeof mod.initialize === 'function' ? await mod.initialize() : false; } catch { return false; }
+            },
+            requestPermission: async (perms) => {
+                try { return typeof mod.requestPermission === 'function' ? await mod.requestPermission(perms) : []; } catch { return []; }
+            },
+            readRecords: async (type, opts) => {
+                try { return typeof mod.readRecords === 'function' ? await mod.readRecords(type, opts) : { records: [] }; } catch { return { records: [] }; }
+            },
+            getSdkStatus: async () => {
+                try { return typeof mod.getSdkStatus === 'function' ? await mod.getSdkStatus() : 1; } catch { return 1; }
+            },
+            SdkAvailabilityStatus: mod.SdkAvailabilityStatus || { SDK_UNAVAILABLE: 1, SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED: 2, SDK_AVAILABLE: 3 }
+        };
     } else {
-      _hc = null;
+        _hc = null;
     }
     return _hc;
-  } catch {
+  } catch (err) {
+    console.log("Health Connect Initialization Error:", err);
     _hc = null;
     return null;
   }

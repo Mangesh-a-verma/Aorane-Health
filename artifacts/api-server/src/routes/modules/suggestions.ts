@@ -315,7 +315,15 @@ router.get("/suggestions/daily", requireAuth, aiRateLimit("daily_suggestions", 3
     const generatedAt = new Date();
     try {
       const jsonStr = await callAI("health_suggestions", [{ role: "user", content: prompt }], { maxTokens: 2000 });
-      suggestions = JSON.parse(jsonStr);
+      let cleanJson = jsonStr.trim();
+      if (cleanJson.startsWith("```json")) {
+        cleanJson = cleanJson.substring(7);
+      }
+      if (cleanJson.endsWith("```")) {
+        cleanJson = cleanJson.substring(0, cleanJson.length - 3);
+      }
+      cleanJson = cleanJson.trim();
+      suggestions = JSON.parse(cleanJson);
     } catch {
       // Fallback if Gemini fails
       suggestions = {
