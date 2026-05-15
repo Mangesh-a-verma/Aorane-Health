@@ -243,11 +243,11 @@ export default function FoodScreen() {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) { Alert.alert("Permission", "Gallery access is required"); return; }
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.7, base64: true });
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.5, base64: true });
       if (!result.canceled && result.assets[0]?.base64) {
         await runScan({ imageBase64: result.assets[0].base64, mimeType: "image/jpeg" });
       }
-    } catch { Alert.alert("Error", "Could not select photo. Please try again."); }
+    } catch (err) { Alert.alert("Gallery Error", (err instanceof Error ? err.message : "Could not select photo. Please try again.")); }
   };
 
   const takePhoto = async () => {
@@ -258,11 +258,11 @@ export default function FoodScreen() {
     try {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) { Alert.alert("Permission", "Camera access is required"); return; }
-      const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.7, base64: true });
+      const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.5, base64: true });
       if (!result.canceled && result.assets[0]?.base64) {
         await runScan({ imageBase64: result.assets[0].base64, mimeType: "image/jpeg" });
       }
-    } catch { Alert.alert("Error", "Could not open camera. Please try again."); }
+    } catch (err) { Alert.alert("Camera Error", (err instanceof Error ? err.message : "Could not open camera. Please try again.")); }
   };
 
   const runScan = async (data: { foodName?: string; imageBase64?: string; mimeType?: string }) => {

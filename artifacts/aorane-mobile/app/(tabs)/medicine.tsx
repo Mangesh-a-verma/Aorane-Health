@@ -185,17 +185,17 @@ export default function MedicineScreen() {
       if (fromCamera) {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (!perm.granted) { Alert.alert("Permission", "Camera permission is required"); return; }
-        result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.8, base64: true });
+        result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.5, base64: true });
       } else {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!perm.granted) { Alert.alert("Permission", "Gallery permission is required"); return; }
-        result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8, base64: true });
+        result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.5, base64: true });
       }
       if (!result.canceled && result.assets[0]) {
         setSelectedImage(result.assets[0].uri); setScanResult(null);
         if (result.assets[0].base64) await analyseReport(result.assets[0].base64, result.assets[0].mimeType || "image/jpeg");
       }
-    } catch { Alert.alert("Error", "Could not select image. Please try again."); }
+    } catch (err) { Alert.alert("Error", (err instanceof Error ? err.message : "Could not select image. Please try again.")); }
   };
 
   const analyseReport = async (base64: string, mimeType: string) => {
@@ -205,7 +205,7 @@ export default function MedicineScreen() {
       const res = await api.scanMedicalReport({ imageBase64: base64, mimeType });
       setScanResult(res.analysis);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch { Alert.alert("AI Error", "Report analysis failed. Please ensure the image is clear."); }
+    } catch (err) { Alert.alert("AI Error", (err instanceof Error ? err.message : "Report analysis failed.")); }
     setIsScanning(false);
   };
 

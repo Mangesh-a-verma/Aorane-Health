@@ -84,7 +84,8 @@ router.post("/medical/scan", requireAuth, requireFeature("medical_report"), aiRa
       res.status(503).json({ error: "AI service not configured" }); return;
     }
 
-    const prompt = `You are a senior Indian pathologist and healthcare expert. Analyze this medical report image carefully.
+    const prompt = `You are a senior Indian pathologist and healthcare expert. Analyze this medical report image carefully. Extract precise key-value pairs of the results (e.g., "Sugar (Fasting)": "100 mg/dL"). Append a strict medical disclaimer to the overall assessment, stating that this is an AI analysis and not a substitute for professional medical advice.
+
 Return ONLY a valid JSON object with NO markdown or extra text:
 {
   "reportType": "blood_test | urine_test | lipid_profile | thyroid | diabetes | liver | kidney | vitamin | other",
@@ -105,7 +106,7 @@ Return ONLY a valid JSON object with NO markdown or extra text:
   "criticalValues": [
     { "testName": "string", "value": "string", "urgency": "immediate | urgent | monitor" }
   ],
-  "overallAssessment": "2-3 sentence overall summary of the report",
+  "overallAssessment": "2-3 sentence overall summary of the report. MUST INCLUDE A MEDICAL DISCLAIMER at the end.",
   "aiAdvice": "Practical health advice based on these results in 2-3 sentences",
   "dietRecommendations": ["array of 3-5 specific diet tips based on results"],
   "followUpRequired": true or false,
@@ -125,13 +126,13 @@ Be accurate with Indian medical reference ranges. Flag anything outside normal r
     };
 
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(geminiBody) }
     );
 
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
-      res.status(502).json({ error: "AI analysis failed", detail: errText }); return;
+      res.status(502).json({ error: `AI API Error: Failed to analyze medical report. Details: ${errText ? errText.substring(0, 100) : "Timeout or unknown error"}` }); return;
     }
 
     const geminiData = await geminiRes.json() as {
@@ -141,7 +142,7 @@ Be accurate with Indian medical reference ranges. Flag anything outside normal r
     const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      res.status(502).json({ error: "Could not parse AI response", rawText: text.slice(0, 500) }); return;
+      res.status(502).json({ error: "AI API Error: Could not parse AI response. The model output was not valid JSON." }); return;
     }
 
     const analysisResult = JSON.parse(jsonMatch[0]) as {
