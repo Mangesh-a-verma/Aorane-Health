@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal,
-  TextInput, Alert, ActivityIndicator, Platform, Dimensions,
+  TextInput, Alert, ActivityIndicator, Platform, Dimensions, FlatList,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -318,52 +318,58 @@ export default function ExerciseScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          logs.map((log) => {
-            const ex  = EXERCISE_LIST.find((e) => e.name === log.exerciseType);
-            const clr = ex?.color || P;
-            const ico = ex?.icon || "run-fast";
-            const hasStrengthDetails = log.sets || log.reps;
-            const hasSteps = log.steps && Number(log.steps) > 0;
-            return (
-              <View key={log.id} style={s.logCard}>
-                <View style={[s.logIcon, { backgroundColor: clr + "18" }]}>
-                  <MaterialCommunityIcons name={ico as keyof typeof MaterialCommunityIcons.glyphMap} size={22} color={clr} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.logName}>{log.exerciseType}</Text>
-                  <Text style={s.logDetails}>
-                    {log.durationMinutes} min · {log.intensity}
-                    {log.metValue ? ` · MET ${Number(log.metValue).toFixed(1)}` : ""}
-                  </Text>
-                  {hasStrengthDetails && (
-                    <View style={s.detailPills}>
-                      {log.sets ? (
-                        <View style={s.pill}>
-                          <Text style={s.pillText}>{log.sets} sets</Text>
-                        </View>
-                      ) : null}
-                      {log.reps ? (
-                        <View style={s.pill}>
-                          <Text style={s.pillText}>{log.reps} reps</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  )}
-                  {hasSteps && (
-                    <View style={s.detailPills}>
-                      <View style={[s.pill, { backgroundColor: G + "18" }]}>
-                        <Text style={[s.pillText, { color: G }]}>👣 {Number(log.steps).toLocaleString()} steps</Text>
+          <FlatList
+            data={logs}
+            keyExtractor={log => String(log.id)}
+            initialNumToRender={5}
+            scrollEnabled={false}
+            renderItem={({ item: log }) => {
+              const ex  = EXERCISE_LIST.find((e) => e.name === log.exerciseType);
+              const clr = ex?.color || P;
+              const ico = ex?.icon || "run-fast";
+              const hasStrengthDetails = log.sets || log.reps;
+              const hasSteps = log.steps && Number(log.steps) > 0;
+              return (
+                <View style={s.logCard}>
+                  <View style={[s.logIcon, { backgroundColor: clr + "18" }]}>
+                    <MaterialCommunityIcons name={ico as keyof typeof MaterialCommunityIcons.glyphMap} size={22} color={clr} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.logName}>{log.exerciseType}</Text>
+                    <Text style={s.logDetails}>
+                      {log.durationMinutes} min · {log.intensity}
+                      {log.metValue ? ` · MET ${Number(log.metValue).toFixed(1)}` : ""}
+                    </Text>
+                    {hasStrengthDetails && (
+                      <View style={s.detailPills}>
+                        {log.sets ? (
+                          <View style={s.pill}>
+                            <Text style={s.pillText}>{log.sets} sets</Text>
+                          </View>
+                        ) : null}
+                        {log.reps ? (
+                          <View style={s.pill}>
+                            <Text style={s.pillText}>{log.reps} reps</Text>
+                          </View>
+                        ) : null}
                       </View>
-                    </View>
-                  )}
+                    )}
+                    {hasSteps && (
+                      <View style={s.detailPills}>
+                        <View style={[s.pill, { backgroundColor: G + "18" }]}>
+                          <Text style={[s.pillText, { color: G }]}>👣 {Number(log.steps).toLocaleString()} steps</Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                  <View style={s.logCal}>
+                    <Text style={[s.logCalNum, { color: DS.color.orange }]}>{Math.round(Number(log.caloriesBurned || 0))}</Text>
+                    <Text style={s.logCalUnit}>kcal</Text>
+                  </View>
                 </View>
-                <View style={s.logCal}>
-                  <Text style={[s.logCalNum, { color: DS.color.orange }]}>{Math.round(Number(log.caloriesBurned || 0))}</Text>
-                  <Text style={s.logCalUnit}>kcal</Text>
-                </View>
-              </View>
-            );
-          })
+              );
+            }}
+          />
         )}
       </ScrollView>
 
