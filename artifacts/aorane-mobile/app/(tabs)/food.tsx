@@ -19,6 +19,7 @@ import { DS } from "@/lib/theme";
 import { UpgradeModal, type UpgradeModalConfig } from "@/components/UpgradeModal";
 import { AIUsageIndicator } from "@/components/AIUsageIndicator";
 import { LimitWarningToast } from "@/components/LimitWarningToast";
+import { ScanningOverlay } from "@/components/ScanningOverlay";
 import { Plus, Utensils, X, Search, Mic, Camera, Image as ImageIcon, Sparkles } from "lucide-react-native";
 import { useOfflineLog } from "@/hooks/useOfflineLog";
 
@@ -140,6 +141,7 @@ export default function FoodScreen() {
   const [foodToastRemaining, setFoodToastRemaining] = useState(0);
   const foodScanUsage = useAIScanUsage("food_scan", userPlan);
   const [scanning,     setScanning]     = useState(false);
+  const [selectedScanImage, setSelectedScanImage] = useState<string | null>(null);
   const [submitting,   setSubmitting]   = useState(false);
   const [pendingFoodItem, setPendingFoodItem] = useState<any | null>(null);
   const [quantity, setQuantity] = useState<string>("1");
@@ -243,8 +245,9 @@ export default function FoodScreen() {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) { Alert.alert("Permission", "Gallery access is required"); return; }
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.5, base64: true });
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: false, quality: 0.5, base64: true });
       if (!result.canceled && result.assets[0]?.base64) {
+        setSelectedScanImage(result.assets[0].uri);
         await runScan({ imageBase64: result.assets[0].base64, mimeType: "image/jpeg" });
       }
     } catch (err) { Alert.alert("Gallery Error", (err instanceof Error ? err.message : "Could not select photo. Please try again.")); }
@@ -258,8 +261,9 @@ export default function FoodScreen() {
     try {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) { Alert.alert("Permission", "Camera access is required"); return; }
-      const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.5, base64: true });
+      const result = await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 0.5, base64: true });
       if (!result.canceled && result.assets[0]?.base64) {
+        setSelectedScanImage(result.assets[0].uri);
         await runScan({ imageBase64: result.assets[0].base64, mimeType: "image/jpeg" });
       }
     } catch (err) { Alert.alert("Camera Error", (err instanceof Error ? err.message : "Could not open camera. Please try again.")); }
@@ -288,7 +292,7 @@ export default function FoodScreen() {
       }
       Alert.alert("AI Error", (e as Error).message || "Food analysis failed. Please try again.");
     }
-    setScanning(false);
+    setScanning(false); setSelectedScanImage(null);
   };
 
   useFocusEffect(useCallback(() => { loadLogs(); }, []));
@@ -541,6 +545,7 @@ export default function FoodScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
+
         </View>
       )}
 
@@ -604,6 +609,7 @@ export default function FoodScreen() {
             );
           })}
         </ScrollView>
+
       )}
 
       {/* ── NUTRITION REPORT MODAL ── */}
@@ -704,6 +710,7 @@ export default function FoodScreen() {
                 );
               })}
             </ScrollView>
+
           ) : nutriTab === "monthly" && monthlyData ? (
             <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
               {/* Monthly totals summary */}
@@ -765,6 +772,7 @@ export default function FoodScreen() {
                 );
               })}
             </ScrollView>
+
           ) : (
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
               <Text style={{ fontSize: 32, marginBottom: 12 }}>📭</Text>
@@ -802,6 +810,7 @@ export default function FoodScreen() {
               );
             })}
           </ScrollView>
+
 
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
             {/* Favourites */}
@@ -1016,6 +1025,7 @@ export default function FoodScreen() {
               </View>
             )}
           </ScrollView>
+
         </View>
       </Modal>
 

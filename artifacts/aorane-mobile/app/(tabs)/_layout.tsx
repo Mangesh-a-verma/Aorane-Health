@@ -12,8 +12,8 @@ import { Home, Dumbbell, ScanLine, Pill, User } from "lucide-react-native";
 import { DS } from "@/lib/theme";
 
 const INACTIVE  = DS.color.muted;
-const BAR_H     = 64;
-const SCAN_D    = 54;
+const BAR_H     = 68;
+const SCAN_D    = 66;
 
 // ── Tab Icon ──────────────────────────────────────────────────────────────────
 function TabIcon({ Icon, focused, label }: {
@@ -87,17 +87,18 @@ const sb = StyleSheet.create({
     width: SCAN_D + 16, height: SCAN_D + 16,
     borderRadius: (SCAN_D + 16) / 2,
     backgroundColor: DS.color.primarySoft,
-    top: -8, left: -8,
   },
   circle: {
     width: SCAN_D, height: SCAN_D,
     borderRadius: SCAN_D / 2,
     alignItems: "center", justifyContent: "center",
-    borderWidth: 3, borderColor: "#FFF",
     shadowColor: DS.color.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4, shadowRadius: 10,
-    elevation: 14,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 10,
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.2)",
   },
 });
 
