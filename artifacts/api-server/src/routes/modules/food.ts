@@ -511,7 +511,7 @@ All numeric values must be numbers (not strings). dietaryTags must be an array. 
       let geminiRes: globalThis.Response | null = null;
       for (let attempt = 1; attempt <= 3; attempt++) {
         geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`,
           { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(geminiBody) }
         );
         if (geminiRes.status === 429 && attempt < 3) {
