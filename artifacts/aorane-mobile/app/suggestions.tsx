@@ -143,7 +143,22 @@ export default function SuggestionsScreen() {
         await api.refreshSuggestions().catch(() => {});
       }
       const res = await api.getDailySuggestions();
-      setSuggestions(res.suggestions);
+      let cleanSuggestions = res.suggestions as unknown;
+      if (typeof cleanSuggestions === "string") {
+        try {
+          cleanSuggestions = JSON.parse(cleanSuggestions);
+        } catch {
+          let cleanStr = (cleanSuggestions as string).trim();
+          if (cleanStr.startsWith("```json")) cleanStr = cleanStr.substring(7);
+          if (cleanStr.endsWith("```")) cleanStr = cleanStr.substring(0, cleanStr.length - 3);
+          try {
+            cleanSuggestions = JSON.parse(cleanStr.trim());
+          } catch {
+            cleanSuggestions = { greeting: "Hello!", foodSuggestions: [], medicalWarnings: [] };
+          }
+        }
+      }
+      setSuggestions(cleanSuggestions as Suggestion || { greeting: "Hello!", foodSuggestions: [], medicalWarnings: [] });
       setFromCache(res.fromCache);
       setError(null);
       Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: Platform.OS !== "web" }).start();
