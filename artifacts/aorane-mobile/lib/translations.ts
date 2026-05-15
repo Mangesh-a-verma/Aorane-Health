@@ -14,6 +14,9 @@ export const LANGUAGE_NAMES: Record<LangCode, string> = {
 };
 
 type TranslationMap = {
+  limitWarningRemaining?: string;
+  limitWarningEmpty?: string;
+  aiUsageRemaining?: string;
   // ── Login ──
   loginTagline: string;
   selectLanguage: string;
@@ -166,6 +169,9 @@ export const translations: Record<LangCode, TranslationMap> = {
   // ENGLISH
   // ════════════════════════════════════════════
   en: {
+    limitWarningRemaining: '⚠️ Only {remaining} {feature} remaining today!',
+    limitWarningEmpty: '⚠️ You have used all your {feature} today!',
+    aiUsageRemaining: '{remaining}/{limit} {feature} remaining today',
     loginTagline: "Your health, in your hands 🇮🇳",
     selectLanguage: "SELECT YOUR LANGUAGE",
     loginTitle: "Login",

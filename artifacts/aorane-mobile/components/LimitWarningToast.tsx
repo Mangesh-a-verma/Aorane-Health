@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 import { View, Text, StyleSheet, Animated, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function LimitWarningToast({ visible, remaining, featureLabel = "scan", onDismiss }: Props) {
+  const { t } = useLanguage();
   const slideAnim = useRef(new Animated.Value(-90)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -35,8 +37,8 @@ export function LimitWarningToast({ visible, remaining, featureLabel = "scan", o
   const bgColor = isLast ? "#FEF2F2" : "#FFFBEB";
   const borderColor = isLast ? "#FCA5A5" : "#FCD34D";
   const message = isLast
-    ? `⚠️ Aakhri ${featureLabel}! Upgrade karo`
-    : `⚠️ Sirf ${remaining} ${featureLabel} baaki aaj!`;
+    ? t("limitWarningEmpty")?.replace("{feature}", featureLabel)
+    : t("limitWarningRemaining")?.replace("{remaining}", remaining.toString()).replace("{feature}", featureLabel);
 
   return (
     <Animated.View

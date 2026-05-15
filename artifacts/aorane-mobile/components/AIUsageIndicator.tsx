@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { useLanguage } from "@/context/LanguageContext";
 import { Ionicons } from "@expo/vector-icons";
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function AIUsageIndicator({ used, limit, label = "scans", iconName = "scan-outline", compact = false }: Props) {
+  const { t } = useLanguage();
   if (limit >= 999) return null;
 
   const remaining = Math.max(0, limit - used);
@@ -21,7 +23,7 @@ export function AIUsageIndicator({ used, limit, label = "scans", iconName = "sca
     <View style={[styles.container, compact && styles.compact]}>
       <Ionicons name={iconName as "scan-outline"} size={11} color={color} />
       <Text style={[styles.text, { color }]} numberOfLines={1}>
-        {remaining}/{limit} {label} baaki aaj
+        {t("aiUsageRemaining")?.replace("{remaining}", remaining.toString()).replace("{limit}", limit.toString()).replace("{feature}", label)}
       </Text>
       <View style={styles.track}>
         <View style={[styles.fill, { width: `${Math.round(pct * 100)}%` as `${number}%`, backgroundColor: color }]} />
