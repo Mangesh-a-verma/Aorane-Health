@@ -7,6 +7,24 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 import Landing from "@/pages/Landing";
+
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+
+function LandingContainer() {
+  const [authOpen, setAuthOpen] = React.useState(false);
+
+  return (
+    <>
+      <Landing onOpenAuth={() => setAuthOpen(true)} />
+      <Dialog open={authOpen} onOpenChange={setAuthOpen}>
+        <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden bg-white rounded-2xl border-0 shadow-2xl">
+          <Login onAuthSuccess={() => setAuthOpen(false)} isModal={true} />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import AuthRedirect from "@/pages/AuthRedirect";
@@ -84,7 +102,7 @@ function PublicOnlyRoute({ component: Component }: { component: React.ComponentT
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={() => <PublicOnlyRoute component={Landing} />} />
+      <Route path="/" component={() => <PublicOnlyRoute component={LandingContainer} />} />
       <Route path="/auth" component={AuthRedirect} />
       <Route path="/login" component={() => <PublicOnlyRoute component={Login} />} />
       <Route path="/register" component={() => <PublicOnlyRoute component={Register} />} />
