@@ -63,7 +63,7 @@ function Input({
   );
 }
 
-export default function Register() {
+export default function Register({ onAuthSuccess, isModal = true }: { onAuthSuccess?: () => void, isModal?: boolean } = {}) {
   const [, navigate] = useLocation();
   const { login } = useAuth();
   const [step, setStep] = useState(1);
