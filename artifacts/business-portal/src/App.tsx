@@ -7,6 +7,43 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 import Landing from "@/pages/Landing";
+
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+function LandingContainer() {
+  const [authOpen, setAuthOpen] = React.useState(false);
+
+  return (
+    <>
+      <Landing onOpenAuth={() => setAuthOpen(true)} />
+      <Dialog open={authOpen} onOpenChange={setAuthOpen}>
+        <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden bg-white rounded-2xl border-0 shadow-2xl">
+          <div className="p-4 bg-gray-50/50 border-b">
+            <h2 className="text-xl font-bold text-[#005d90]">Welcome to Aorane</h2>
+            <p className="text-sm text-gray-500">Sign in to your enterprise account</p>
+          </div>
+          <Tabs defaultValue="login" className="w-full">
+            <div className="px-6 pt-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Login</TabsTrigger>
+                <TabsTrigger value="register">Register</TabsTrigger>
+              </TabsList>
+            </div>
+            <TabsContent value="login">
+              <Login onAuthSuccess={() => setAuthOpen(false)} isModal={true} />
+            </TabsContent>
+            <TabsContent value="register">
+              <Register onAuthSuccess={() => setAuthOpen(false)} isModal={true} />
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import AuthRedirect from "@/pages/AuthRedirect";
@@ -84,7 +121,7 @@ function PublicOnlyRoute({ component: Component }: { component: React.ComponentT
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={() => <PublicOnlyRoute component={Landing} />} />
+      <Route path="/" component={() => <PublicOnlyRoute component={LandingContainer} />} />
       <Route path="/auth" component={AuthRedirect} />
       <Route path="/login" component={() => <PublicOnlyRoute component={Login} />} />
       <Route path="/register" component={() => <PublicOnlyRoute component={Register} />} />
