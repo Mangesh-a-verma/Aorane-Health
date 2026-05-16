@@ -1,0 +1,13 @@
+TASK: Deep Diagnostic Audit of Business Portal (Landing Page & CRM)
+CONTEXT: The user is planning a major UI/UX overhaul of the Business Web Portal to achieve a premium, modern "Healthcare Vibe" (using smooth sliders, modal-based auth, and advanced CRM data tables). Before writing any new UI code, perform a deep architectural and performance audit of the current web implementation.
+
+TASK (Analyze the following and generate a detailed report):
+1. Landing Page Architecture (apps/web or equivalent frontend web folder): Analyze the current landing page structure. Are the components modular enough to easily integrate advanced sliders and modern animations? Identify any bloated or hardcoded sections.
+2. Auth Flow (Login/Registration): Review the current authentication logic. Can the current page-based routing easily be converted into a seamless Popup/Modal experience without breaking session tokens or redirects?
+3. Business CRM & Dashboard: Evaluate the state management and data fetching in the CRM dashboard. Are there any unnecessary re-renders or heavy blocking API calls that would make a premium UI feel "laggy"?
+4. Data Sync (Enrollment Code): Trace the logic where a company/business views their enrolled users. If a user joins via the mobile app using a "Company Enrollment Code", how is that queried and displayed in the CRM? Check for N+1 query inefficiencies or potential sync delays.
+
+STRICT GUARDRAILS:
+- DO NOT MODIFY, ADD, OR DELETE ANY CODE. This is 100% READ-ONLY.
+- Output your findings in a highly structured Markdown report.
+- Highlight specific file paths and current bottlenecks that need fixing before the UI upgrade.
