@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Layout from "@/components/Layout";
+import { Skeleton } from "@/components/ui/skeleton";
 import { api, type Member, type MemberSearchResult, type MemberDetail } from "@/lib/api";
 import {
   Users, Search, UserCheck, Droplet, RefreshCw, Fingerprint, X,

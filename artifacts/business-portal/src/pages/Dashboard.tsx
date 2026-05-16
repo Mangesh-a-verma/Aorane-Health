@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
 import { api, type Overview, type HealthAnalytics, type MemberStress, type MemberSearchResult } from "@/lib/api";
 import {
   Users, Server, TrendingUp, Activity, Copy, Check,
@@ -72,11 +74,18 @@ export default function Dashboard() {
     return () => clearInterval(id);
   }, []);
   const firstName = admin?.fullName?.split(" ")[0] || "there";
-  const [overview, setOverview] = useState<Overview | null>(null);
-  const [analytics, setAnalytics] = useState<HealthAnalytics | null>(null);
+
+  const { data: overview, isLoading: loading } = useQuery({
+    queryKey: ["overview"],
+    queryFn: () => api.overview()
+  });
+
+  const { data: analytics, isLoading: analyticsLoading } = useQuery({
+    queryKey: ["healthAnalytics"],
+    queryFn: () => api.getHealthAnalytics()
+  });
+
   const [copied, setCopied] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
   // Employee stress lookup state
   const [stressQuery, setStressQuery] = useState("");
@@ -86,11 +95,6 @@ export default function Dashboard() {
   const [selectedStressUser, setSelectedStressUser] = useState<MemberSearchResult | null>(null);
   const [memberStress, setMemberStress] = useState<MemberStress | null>(null);
   const [stressLookupLoading, setStressLookupLoading] = useState(false);
-
-  useEffect(() => {
-    api.overview().then(setOverview).catch(console.error).finally(() => setLoading(false));
-    api.getHealthAnalytics().then(setAnalytics).catch(console.error).finally(() => setAnalyticsLoading(false));
-  }, []);
 
   const copyCode = () => {
     navigator.clipboard.writeText(org?.orgCode || "").then(() => {
