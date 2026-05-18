@@ -52,7 +52,7 @@ function Field({ label, type = "text", value, onChange, placeholder, icon, right
   );
 }
 
-export default function Login({ onAuthSuccess, isModal }: { onAuthSuccess?: () => void, isModal?: boolean } = {}) {
+export default function Login() {
   const [, navigate] = useLocation();
   const { login } = useAuth();
 
@@ -188,7 +188,7 @@ export default function Login({ onAuthSuccess, isModal }: { onAuthSuccess?: () =
   });
 
   return (
-    <div style={{ background: BG, fontFamily: "'Inter', sans-serif", display: "flex" }}>
+    <div style={{ minHeight: "100vh", background: BG, fontFamily: "'Inter', sans-serif", display: "flex" }}>
       <Helmet>
         <title>Sign In — AORANE Business Portal</title>
         <meta name="description" content="Sign in to your AORANE Business Portal account." />
