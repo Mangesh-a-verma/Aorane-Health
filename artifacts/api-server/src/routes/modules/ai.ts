@@ -34,6 +34,21 @@ function sendLimitBlocked(res: import("express").Response, feature: string, used
   }
 }
 
+// ── Diagnostic: AI Connection Test ───────────────────────────────────────────
+router.get("/test-ai-connection", async (req, res) => {
+  try {
+    const messages = [
+      { role: "system" as const, content: "You are a helpful assistant." },
+      { role: "user" as const, content: "Say hello and confirm you are working." }
+    ];
+    const responseText = await callAI("test_connection", messages, { maxTokens: 50, temperature: 0.1 });
+    res.json({ success: true, response: responseText });
+  } catch (error: any) {
+    console.error("AI Connection Test Error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ── AI Diet Plan ─────────────────────────────────────────────────────────────
 router.post("/ai/diet-plan", requireAuth, requireFeature("meal_planner"), aiRateLimit("meal_planner", 5), async (req: AuthRequest, res) => {
   try {

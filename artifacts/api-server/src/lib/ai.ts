@@ -123,9 +123,11 @@ async function callGoogleProvider(
     candidates?: Array<{ content: { parts: Array<{ text: string }> } }>;
   };
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON in Google AI response");
-  return jsonMatch[0];
+  if (text.includes("{") && text.includes("}")) {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) return jsonMatch[0];
+  }
+  return text;
 }
 
 async function callAnthropicProvider(
@@ -159,9 +161,11 @@ async function callAnthropicProvider(
 
   const data = await res.json() as { content?: Array<{ text?: string }> };
   const text = data.content?.[0]?.text ?? "";
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON in Anthropic response");
-  return jsonMatch[0];
+  if (text.includes("{") && text.includes("}")) {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) return jsonMatch[0];
+  }
+  return text;
 }
 
 async function callOpenAIProvider(
@@ -185,9 +189,11 @@ async function callOpenAIProvider(
     choices?: Array<{ message?: { content?: string } }>;
   };
   const text = data.choices?.[0]?.message?.content ?? "";
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON in OpenAI response");
-  return jsonMatch[0];
+  if (text.includes("{") && text.includes("}")) {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) return jsonMatch[0];
+  }
+  return text;
 }
 
 /**
