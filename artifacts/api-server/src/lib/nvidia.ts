@@ -55,8 +55,11 @@ export async function callDeepSeek(
 
   content = content.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 
-  const jsonMatch = content.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON found in AI response");
+  // Flexible return: return JSON if formatted as such, else plain text
+  if (content.includes("{") && content.includes("}")) {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) return jsonMatch[0];
+  }
 
-  return jsonMatch[0];
+  return content;
 }
