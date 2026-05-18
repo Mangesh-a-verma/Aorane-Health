@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, userProfilesTable, userPreferencesTable, userMedicalConditionsTable } from "@workspace/db";
+import { db, usersTable, userProfilesTable, userPreferencesTable, userMedicalConditionsTable, aiConfigTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
@@ -136,7 +136,20 @@ Return ONLY valid JSON (no markdown, no extra text):
   "generalTips": ["tip1", "tip2", "tip3"]
 }`;
 
-    const jsonStr = await callAI("meal_planner", [{ role: "user", content: prompt }], { maxTokens: 2000 });
+    let payload: any = [{ role: "user", content: prompt }];
+    try {
+      const [config] = await db.select().from(aiConfigTable).where(eq(aiConfigTable.feature, "meal_planner")).limit(1);
+      if (config && config.provider === "google") {
+        payload = [{ role: "user", parts: [{ text: prompt }] }];
+      }
+    } catch (e) {}
+
+    let jsonStr;
+    try {
+      jsonStr = await callAI("meal_planner", payload, { maxTokens: 2000 });
+    } catch (apiErr: any) {
+      return res.status(502).json({ error: "AI Provider failed to generate response", details: apiErr.message || String(apiErr) });
+    }
     const plan = JSON.parse(jsonStr);
     res.json({
       plan,
@@ -174,7 +187,20 @@ Return ONLY valid JSON:
   "emoji": "single relevant emoji"
 }`;
 
-    const jsonStr = await callAI("health_suggestions", [{ role: "user", content: prompt }], { maxTokens: 500 });
+    let payload: any = [{ role: "user", content: prompt }];
+    try {
+      const [config] = await db.select().from(aiConfigTable).where(eq(aiConfigTable.feature, "health_suggestions")).limit(1);
+      if (config && config.provider === "google") {
+        payload = [{ role: "user", parts: [{ text: prompt }] }];
+      }
+    } catch (e) {}
+
+    let jsonStr;
+    try {
+      jsonStr = await callAI("health_suggestions", payload, { maxTokens: 500 });
+    } catch (apiErr: any) {
+      return res.status(502).json({ error: "AI Provider failed to generate response", details: apiErr.message || String(apiErr) });
+    }
     const result = JSON.parse(jsonStr);
     res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
   } catch {
@@ -208,7 +234,20 @@ Return ONLY valid JSON:
   ]
 }`;
 
-    const jsonStr = await callAI("meal_planner", [{ role: "user", content: prompt }], { maxTokens: 800 });
+    let payload: any = [{ role: "user", content: prompt }];
+    try {
+      const [config] = await db.select().from(aiConfigTable).where(eq(aiConfigTable.feature, "meal_planner")).limit(1);
+      if (config && config.provider === "google") {
+        payload = [{ role: "user", parts: [{ text: prompt }] }];
+      }
+    } catch (e) {}
+
+    let jsonStr;
+    try {
+      jsonStr = await callAI("meal_planner", payload, { maxTokens: 800 });
+    } catch (apiErr: any) {
+      return res.status(502).json({ error: "AI Provider failed to generate response", details: apiErr.message || String(apiErr) });
+    }
     const result = JSON.parse(jsonStr);
     res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
   } catch {
