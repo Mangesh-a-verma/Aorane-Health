@@ -276,15 +276,6 @@ router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), aiRateL
       imageBase64 = imageBase64.split("base64,")[1];
     }
 
-    const proxyBaseUrl = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
-    const proxyKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
-    const userGeminiKey = process.env.GOOGLE_GEMINI_API_KEY;
-
-    const geminiBaseUrl = proxyBaseUrl || "https://generativelanguage.googleapis.com";
-    const geminiKey = proxyBaseUrl ? proxyKey : userGeminiKey;
-
-    if (!geminiKey) { res.status(503).json({ error: "Smart Scan AI is not configured. Contact support." }); return; }
-
     const prompt = `You are an expert AI health assistant. Carefully analyze this image and determine what type of content it shows.
 
 TASK: First identify the type, then provide detailed analysis.
@@ -309,35 +300,34 @@ For medicine:
 For unknown:
 { "type": "unknown", "message": "Could not identify health-related content in this image." }`;
 
-    const geminiBody = JSON.stringify({
-      contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: imageBase64 } }] }],
-      generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
-    });
+    let payload: any = [{
+      role: "user",
+      content: [
+        { type: "text", text: prompt },
+        { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
+      ]
+    }];
 
-    let geminiRes: globalThis.Response | null = null;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      geminiRes = await fetch(
-        `${geminiBaseUrl}/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: geminiBody },
-      );
-      if (geminiRes.status === 429 && attempt < 3) {
-        await new Promise((r: any) => setTimeout(r, attempt * 2000));
-        continue;
+    try {
+      const [config] = await db.select().from(aiConfigTable).where(eq(aiConfigTable.feature, "smart_scan")).limit(1);
+      if (config && config.provider === "google") {
+        payload = [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType, data: imageBase64 } }] }];
       }
-      break;
+    } catch (e) {}
+
+    let jsonStr;
+    try {
+      jsonStr = await callAI("smart_scan", payload, { maxTokens: 1000, temperature: 0.2 });
+    } catch (apiErr: any) {
+      return res.status(502).json({ error: "AI Provider failed to analyze the image", details: apiErr.message || String(apiErr) });
     }
 
-    if (!geminiRes || !geminiRes.ok) {
-      const status = geminiRes?.status;
-      const errText = await geminiRes?.text().catch(() => "");
-      req.log.error({ status, body: errText?.slice(0, 300) }, "Gemini smart-scan HTTP error");
-      if (status === 429) { res.status(429).json({ error: "AI is busy right now. Please try again in a moment." }); return; }
-      throw new Error(`Gemini error: ${status} - ${errText?.slice(0, 100)}`);
+    let result: Record<string, unknown>;
+    try {
+      result = JSON.parse(jsonStr) as Record<string, unknown>;
+    } catch(e) {
+      return res.status(502).json({ error: "Invalid JSON from AI provider", rawResponse: jsonStr });
     }
-
-    const data = await geminiRes.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    let result: Record<string, unknown>; try { result = JSON.parse(rawText) as Record<string, unknown>; } catch(e) { throw new Error("Invalid JSON"); }
 
     res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
   } catch (err) {
