@@ -133,6 +133,9 @@ Return ONLY valid JSON (no markdown, no extra text):
       "tip": "string (1 health tip for the day in English)"
     }
   ],
+  "generalTips": ["tip1", "tip2", "tip3"]
+}`;
+
     const payload: import("../../lib/ai").AIMessage[] = [{ role: "user", content: prompt }];
 
     let jsonStr;
@@ -175,6 +178,9 @@ Return ONLY valid JSON:
   "tip": "string (max 2 sentences, practical, specific)",
   "tipHindi": "string (same tip in Hindi)",
   "category": "nutrition|exercise|sleep|stress|hydration|ayurveda",
+  "explanation": "Why this suggestion matters for your specific condition/goals."
+}`;
+
     const payload: import("../../lib/ai").AIMessage[] = [{ role: "user", content: prompt }];
 
     let jsonStr;
@@ -213,6 +219,10 @@ Return ONLY valid JSON:
   "original": "${mealName}",
   "swaps": [
     { "name": "string", "nameHindi": "string", "reason": "string (why it's better)", "calories": number, "benefit": "string" }
+  ],
+  "tips": "Tips for preparation"
+}`;
+
     const payload: import("../../lib/ai").AIMessage[] = [{ role: "user", content: prompt }];
 
     let jsonStr;
@@ -269,6 +279,8 @@ For medical_report:
 
 For medicine:
 { "type": "medicine", "confidence": 0.88, "medicineName": "Name", "genericName": "Generic", "uses": "What it treats", "commonDosage": "Typical adult dose", "sideEffects": ["Side effect 1"], "warnings": ["Warning"], "disclaimer": "Always follow your doctor's prescription." }
+
+If no food or medical info is visible, return {"error": "No recognized items found."}`;
 
     const payload: import("../../lib/ai").AIMessage[] = [{
       role: "user",
