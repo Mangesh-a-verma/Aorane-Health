@@ -23,9 +23,9 @@ export async function updateHealthTrends(userId: string): Promise<void> {
         [userId, monthAgo, today]
       ),
       pool.query(
-        `SELECT current_health_streak, longest_health_streak FROM user_profiles WHERE user_id=$1`,
+        `SELECT * FROM user_profiles WHERE user_id=$1`,
         [userId]
-      ),
+      ).catch(() => ({ rows: [] })),
       pool.query(
         `SELECT health_score FROM daily_health_scores WHERE user_id=$1 AND score_date=$2`,
         [userId, today]
@@ -87,16 +87,24 @@ export async function updateHealthTrends(userId: string): Promise<void> {
     currentStreak = calculatedStreak;
     longestStreak = Math.max(currentStreak, longestStreak);
 
-    // Update user profile
-    await pool.query(
-      `UPDATE user_profiles SET 
-        current_health_streak = $1, 
-        longest_health_streak = $2, 
-        rolling_7_day_score = $3, 
-        rolling_30_day_score = $4 
-       WHERE user_id = $5`,
-      [currentStreak, longestStreak, rolling7, rolling30, userId]
-    );
+    // Update user profile (safe fallback if columns do not exist in DB)
+    try {
+      await pool.query(
+        `UPDATE user_profiles SET
+          current_health_streak = $1,
+          longest_health_streak = $2,
+          rolling_7_day_score = $3,
+          rolling_30_day_score = $4
+         WHERE user_id = $5`,
+        [currentStreak, longestStreak, rolling7, rolling30, userId]
+      );
+    } catch (e: any) {
+      if (e.code === '42703') { // undefined_column
+        logger.warn({ err: e.message }, "Skipping health trends update: columns missing in user_profiles");
+      } else {
+        throw e;
+      }
+    }
 
   } catch (err) {
     logger.error({ err }, "Failed to update health trends");
