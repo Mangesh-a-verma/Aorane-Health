@@ -1,0 +1,27 @@
+--- artifacts/api-server/src/routes/modules/admin.ts
++++ artifacts/api-server/src/routes/modules/admin.ts
+@@ -846,14 +846,16 @@
+ });
+
+ const DEFAULT_AI_FEATURES = [
+-  { feature: "food_scan",    label: "Food Scan & Nutrition AI",    provider: "gemini", model: "gemini-2.0-flash" },
+-  { feature: "medical_scan", label: "Medical Report AI",           provider: "gemini", model: "gemini-2.0-flash" },
+-  { feature: "smart_scan",   label: "Smart Scan (Camera AI)",      provider: "gemini", model: "gemini-2.0-flash" },
+-  { feature: "diet_plan",    label: "AI Diet Plan Generator",      provider: "gemini", model: "gemini-2.0-flash" },
+-  { feature: "suggestions",  label: "Daily Health Suggestions",    provider: "gemini", model: "gemini-2.0-flash" },
+-  { feature: "stress",       label: "Stress Insight Analysis",     provider: "gemini", model: "gemini-2.0-flash" },
+-  { feature: "health_tip",   label: "Health Tip Generator",        provider: "gemini", model: "gemini-2.0-flash" },
+-  { feature: "meal_swap",    label: "Meal Swap Suggestions",       provider: "gemini", model: "gemini-2.0-flash" },
++  { feature: "food_ai",            label: "Food AI Analysis",                provider: "google", model: "gemini-2.0-flash" },
++  { feature: "medical_ai",         label: "Medical AI Assistant",            provider: "google", model: "gemini-2.0-flash" },
++  { feature: "smart_scan",         label: "Smart Scan (OCR + AI)",           provider: "google", model: "gemini-2.0-flash" },
++  { feature: "water_ai",           label: "Water Intake Suggestions",        provider: "google", model: "gemini-2.0-flash" },
++  { feature: "stress_ai",          label: "Stress & Sleep Analysis",         provider: "google", model: "gemini-2.0-flash" },
++  { feature: "blood_ai",           label: "Blood Report Analysis",           provider: "google", model: "gemini-2.0-flash" },
++  { feature: "meal_planner",       label: "AI Meal Planner",                 provider: "google", model: "gemini-2.0-flash" },
++  { feature: "health_suggestions", label: "Daily Health Suggestions",        provider: "google", model: "gemini-2.0-flash" },
++  { feature: "health_prediction",  label: "Monthly Disease Risk Prediction", provider: "nvidia", model: "deepseek-ai/deepseek-v3.2" },
++  { feature: "weekly_diet_chart",  label: "Weekly AI Diet Chart",            provider: "nvidia", model: "deepseek-ai/deepseek-v3.2" },
+ ];
+
+ router.get("/admin/ai-config", requireAdmin, async (_req: AdminRequest, res) => {
