@@ -8,7 +8,8 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "db:migrate": "npx tsx src/lib/migrate.ts"
+    "db:migrate": "npx tsx src/lib/migrate.ts",
+    "db:fix": "npx tsx src/scripts/fix-db.ts"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",
