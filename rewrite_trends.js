@@ -1,4 +1,6 @@
-import { pool } from "@workspace/db";
+const fs = require('fs');
+
+const fileContent = `import { pool } from "@workspace/db";
 import { logger } from "./logger";
 
 function todayIST(): string {
@@ -9,7 +11,7 @@ export async function updateHealthTrends(userId: string): Promise<void> {
   try {
     // IMMEDIATE SAFETY WRAPPER: Avoid hard crash if schema is out of sync
     const checkColumns = await pool.query(
-      `SELECT column_name FROM information_schema.columns WHERE table_name = 'user_profiles' AND column_name = 'current_health_streak'`
+      \`SELECT column_name FROM information_schema.columns WHERE table_name = 'user_profiles' AND column_name = 'current_health_streak'\`
     );
 
     if (checkColumns.rowCount === 0) {
@@ -25,23 +27,23 @@ export async function updateHealthTrends(userId: string): Promise<void> {
     // 1. Fetch Rolling Averages from daily_health_scores
     const [weekR, monthR, profileR, todayScoreR, yesterdayScoreR] = await Promise.all([
       pool.query(
-        `SELECT ROUND(AVG(health_score)) as avg_score FROM daily_health_scores WHERE user_id=$1 AND score_date > $2 AND score_date <= $3`,
+        \`SELECT ROUND(AVG(health_score)) as avg_score FROM daily_health_scores WHERE user_id=$1 AND score_date > $2 AND score_date <= $3\`,
         [userId, weekAgo, today]
       ),
       pool.query(
-        `SELECT ROUND(AVG(health_score)) as avg_score FROM daily_health_scores WHERE user_id=$1 AND score_date > $2 AND score_date <= $3`,
+        \`SELECT ROUND(AVG(health_score)) as avg_score FROM daily_health_scores WHERE user_id=$1 AND score_date > $2 AND score_date <= $3\`,
         [userId, monthAgo, today]
       ),
       pool.query(
-        `SELECT current_health_streak, longest_health_streak FROM user_profiles WHERE user_id=$1`,
+        \`SELECT current_health_streak, longest_health_streak FROM user_profiles WHERE user_id=$1\`,
         [userId]
       ),
       pool.query(
-        `SELECT health_score FROM daily_health_scores WHERE user_id=$1 AND score_date=$2`,
+        \`SELECT health_score FROM daily_health_scores WHERE user_id=$1 AND score_date=$2\`,
         [userId, today]
       ),
       pool.query(
-        `SELECT health_score FROM daily_health_scores WHERE user_id=$1 AND score_date=$2`,
+        \`SELECT health_score FROM daily_health_scores WHERE user_id=$1 AND score_date=$2\`,
         [userId, yesterday]
       )
     ]);
@@ -64,13 +66,13 @@ export async function updateHealthTrends(userId: string): Promise<void> {
     }
 
     const historyR = await pool.query(
-      `SELECT score_date FROM daily_health_scores WHERE user_id=$1 AND score_date <= $2 ORDER BY score_date DESC LIMIT 365`,
+      \`SELECT score_date FROM daily_health_scores WHERE user_id=$1 AND score_date <= $2 ORDER BY score_date DESC LIMIT 365\`,
       [userId, today]
     );
-    
+
     let calculatedStreak = 0;
     let expectedDate = new Date(today);
-    
+
     for (const row of historyR.rows) {
       const rowDate = row.score_date;
       const expDateStr = expectedDate.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
@@ -86,12 +88,12 @@ export async function updateHealthTrends(userId: string): Promise<void> {
     longestStreak = Math.max(currentStreak, longestStreak);
 
     await pool.query(
-      `UPDATE user_profiles SET
+      \`UPDATE user_profiles SET
         current_health_streak = $1,
         longest_health_streak = $2,
         rolling_7_day_score = $3,
         rolling_30_day_score = $4
-       WHERE user_id = $5`,
+       WHERE user_id = $5\`,
       [currentStreak, longestStreak, rolling7, rolling30, userId]
     );
 
@@ -99,3 +101,6 @@ export async function updateHealthTrends(userId: string): Promise<void> {
     logger.warn({ err: err.message || String(err) }, "Bypassed health trends crash.");
   }
 }
+`;
+
+fs.writeFileSync('artifacts/api-server/src/lib/health-trends.ts', fileContent);
