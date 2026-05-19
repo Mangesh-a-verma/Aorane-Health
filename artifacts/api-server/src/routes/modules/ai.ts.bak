@@ -133,7 +133,16 @@ Return ONLY valid JSON (no markdown, no extra text):
       "tip": "string (1 health tip for the day in English)"
     }
   ],
-    const payload: import("../../lib/ai").AIMessage[] = [{ role: "user", content: prompt }];
+  "generalTips": ["tip1", "tip2", "tip3"]
+}`;
+
+    let payload: any = [{ role: "user", content: prompt }];
+    try {
+      const [config] = await db.select().from(aiConfigTable).where(eq(aiConfigTable.feature, "meal_planner")).limit(1);
+      if (config && config.provider === "google") {
+        payload = [{ role: "user", parts: [{ text: prompt }] }];
+      }
+    } catch (e) {}
 
     let jsonStr;
     try {
@@ -175,7 +184,16 @@ Return ONLY valid JSON:
   "tip": "string (max 2 sentences, practical, specific)",
   "tipHindi": "string (same tip in Hindi)",
   "category": "nutrition|exercise|sleep|stress|hydration|ayurveda",
-    const payload: import("../../lib/ai").AIMessage[] = [{ role: "user", content: prompt }];
+  "emoji": "single relevant emoji"
+}`;
+
+    let payload: any = [{ role: "user", content: prompt }];
+    try {
+      const [config] = await db.select().from(aiConfigTable).where(eq(aiConfigTable.feature, "health_suggestions")).limit(1);
+      if (config && config.provider === "google") {
+        payload = [{ role: "user", parts: [{ text: prompt }] }];
+      }
+    } catch (e) {}
 
     let jsonStr;
     try {
@@ -213,7 +231,16 @@ Return ONLY valid JSON:
   "original": "${mealName}",
   "swaps": [
     { "name": "string", "nameHindi": "string", "reason": "string (why it's better)", "calories": number, "benefit": "string" }
-    const payload: import("../../lib/ai").AIMessage[] = [{ role: "user", content: prompt }];
+  ]
+}`;
+
+    let payload: any = [{ role: "user", content: prompt }];
+    try {
+      const [config] = await db.select().from(aiConfigTable).where(eq(aiConfigTable.feature, "meal_planner")).limit(1);
+      if (config && config.provider === "google") {
+        payload = [{ role: "user", parts: [{ text: prompt }] }];
+      }
+    } catch (e) {}
 
     let jsonStr;
     try {
@@ -270,14 +297,23 @@ For medical_report:
 For medicine:
 { "type": "medicine", "confidence": 0.88, "medicineName": "Name", "genericName": "Generic", "uses": "What it treats", "commonDosage": "Typical adult dose", "sideEffects": ["Side effect 1"], "warnings": ["Warning"], "disclaimer": "Always follow your doctor's prescription." }
 
-    const payload: import("../../lib/ai").AIMessage[] = [{
+For unknown:
+{ "type": "unknown", "message": "Could not identify health-related content in this image." }`;
+
+    let payload: any = [{
       role: "user",
-      content: prompt,
-      media: {
-        mimeType,
-        data: imageBase64
-      }
+      content: [
+        { type: "text", text: prompt },
+        { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
+      ]
     }];
+
+    try {
+      const [config] = await db.select().from(aiConfigTable).where(eq(aiConfigTable.feature, "smart_scan")).limit(1);
+      if (config && config.provider === "google") {
+        payload = [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType, data: imageBase64 } }] }];
+      }
+    } catch (e) {}
 
     let jsonStr;
     try {

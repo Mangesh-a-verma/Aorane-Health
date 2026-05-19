@@ -12,9 +12,15 @@ import { db, aiConfigTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { callDeepSeek } from "./nvidia";
 
+export interface AIMedia {
+  mimeType: string;
+  data: string; // Base64
+}
+
 export interface AIMessage {
   role: "system" | "user" | "assistant";
   content: string;
+  media?: AIMedia;
 }
 
 interface CachedConfig {
@@ -82,13 +88,23 @@ async function callNvidiaProvider(
   maxTokens: number,
   temp: number,
 ): Promise<string> {
-  return callDeepSeek(
-    messages.map((m: any) => ({ role: m.role, content: m.content })),
-    apiKey,
-    maxTokens,
-    temp,
-    model,
-  );
+  const openaiMessages = messages.map(m => {
+    if (m.media) {
+      return {
+        role: m.role,
+        content: [
+          { type: "text", text: m.content },
+          {
+            type: "image_url",
+            image_url: { url: `data:${m.media.mimeType};base64,${m.media.data}` },
+          },
+        ],
+      };
+    }
+    return { role: m.role, content: m.content };
+  });
+
+  return callDeepSeek(openaiMessages as any, apiKey, maxTokens, temp, model);
 }
 
 async function callGoogleProvider(
@@ -100,10 +116,16 @@ async function callGoogleProvider(
   const systemMsg = messages.find((m: any) => m.role === "system");
   const chatMsgs = messages
     .filter((m: any) => m.role !== "system")
-    .map((m: any) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    }));
+    .map((m: any) => {
+      const parts: any[] = [{ text: m.content }];
+      if (m.media) {
+        parts.push({ inlineData: { mimeType: m.media.mimeType, data: m.media.data } });
+      }
+      return {
+        role: m.role === "assistant" ? "model" : "user",
+        parts,
+      };
+    });
 
   const body: Record<string, unknown> = {
     contents: chatMsgs,
@@ -139,7 +161,18 @@ async function callAnthropicProvider(
   const systemMsg = messages.find((m: any) => m.role === "system");
   const chatMsgs = messages
     .filter((m: any) => m.role !== "system")
-    .map((m: any) => ({ role: m.role, content: m.content }));
+    .map((m: any) => {
+      if (m.media) {
+        return {
+          role: m.role,
+          content: [
+            { type: "image", source: { type: "base64", media_type: m.media.mimeType, data: m.media.data } },
+            { type: "text", text: m.content },
+          ]
+        };
+      }
+      return { role: m.role, content: m.content };
+    });
 
   const body: Record<string, unknown> = {
     model,
@@ -175,13 +208,29 @@ async function callOpenAIProvider(
   maxTokens: number,
   temp: number,
 ): Promise<string> {
+  const openaiMessages = messages.map(m => {
+    if (m.media) {
+      return {
+        role: m.role,
+        content: [
+          { type: "text", text: m.content },
+          {
+            type: "image_url",
+            image_url: { url: `data:${m.media.mimeType};base64,${m.media.data}` },
+          },
+        ],
+      };
+    }
+    return { role: m.role, content: m.content };
+  });
+
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature: temp }),
+    body: JSON.stringify({ model, messages: openaiMessages, max_tokens: maxTokens, temperature: temp }),
   });
   if (!res.ok) throw new Error(`OpenAI error ${res.status}: ${await res.text()}`);
 
