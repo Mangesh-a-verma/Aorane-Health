@@ -313,27 +313,45 @@ If no food or medical info is visible, return {"error": "No recognized items fou
 });
 
 
-// TEMPORARY DB FIX ROUTE
-router.get("/fix-db", async (req, res) => {
-  try {
-    const { pool } = await import("@workspace/db");
-    const query = `
-      ALTER TABLE user_profiles
-      ADD COLUMN IF NOT EXISTS current_health_streak INTEGER DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS longest_health_streak INTEGER DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS rolling_7_day_score INTEGER DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS rolling_30_day_score INTEGER DEFAULT 0,
+// AUTOMATIC DB FIX - RUNS INSTANTLY WHEN SERVER STARTS (ChatGPT Powered + Auto Boot)
+(async () => {
+  try {
+    console.log("[AORANE DB FIX] Starting automatic schema migration...");
+    const { pool } = await import("@workspace/db");
+
+    // Check connection
+    await pool.query("SELECT NOW()");
+
+    // Add missing columns safely
+    await pool.query(`
+      ALTER TABLE user_profiles
+      ADD COLUMN IF NOT EXISTS current_health_streak INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS longest_health_streak INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS rolling_7_day_score INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS rolling_30_day_score INTEGER DEFAULT 0,
       ADD COLUMN IF NOT EXISTS biological_age INTEGER,
       ADD COLUMN IF NOT EXISTS ai_health_predictions JSONB,
       ADD COLUMN IF NOT EXISTS wake_time TEXT,
       ADD COLUMN IF NOT EXISTS sleep_time TEXT,
       ADD COLUMN IF NOT EXISTS stress_level_self TEXT;
-    `;
-    await pool.query(query);
-    res.json({ success: true, message: "Database columns added successfully!" });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message || String(error) });
-  }
+    `);
+
+    // Verify columns
+    const verify = await pool.query(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name = 'user_profiles';
+    `);
+
+    console.log("[AORANE DB FIX] Migration completed successfully. Total columns:", verify.rows.length);
+  } catch (error: any) {
+    console.error("[AORANE DB FIX] DB FIX ERROR DURING BOOT:", error.message || String(error));
+  }
+})();
+
+// Fallback response if someone hits any endpoint
+router.get("/fix-db", async (req, res) => {
+  res.json({ message: "Migration runs automatically on boot now! Check Render logs." });
 });
 
 export default router;
