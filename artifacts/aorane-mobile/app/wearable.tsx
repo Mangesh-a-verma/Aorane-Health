@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Platform, Alert, Dimensions, ActivityIndicator, Modal,
-  TextInput, RefreshControl, Linking, NativeModules,
+  TextInput, RefreshControl, Linking,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,17 +10,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/lib/api";
 
-// HC loaded lazily — missing/null native module must NOT crash the app.
-// Root cause of crashes: JS wrapper functions exist but underlying
-// NativeModules.HealthConnect is null → calling them causes JVM crash
-// that JS try-catch CANNOT intercept. We guard at the NativeModules level.
+// ─── Types ────────────────────────────────────────────────────────────────────
 type HCModule = {
   initialize: () => Promise<boolean>;
   requestPermission: (perms: Array<{ accessType: string; recordType: string }>) => Promise<Array<unknown>>;
   readRecords: (type: string, opts: unknown) => Promise<unknown>;
   getSdkStatus: () => Promise<number>;
-  SdkAvailabilityStatus: { SDK_UNAVAILABLE: number; SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED: number; SDK_AVAILABLE: number };
+  SdkAvailabilityStatus: {
+    SDK_UNAVAILABLE: number;
+    SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED: number;
+    SDK_AVAILABLE: number;
+  };
 };
+
+// ─── HC Lazy Loader (NativeModules check HATA DIYA — yahi crash ka root cause tha) ───
 let _hc: HCModule | null = null;
 let _hcAttempted = false;
 
@@ -28,76 +31,63 @@ function getHC(): HCModule | null {
   if (_hcAttempted) return _hc;
   _hcAttempted = true;
   try {
-    const nativeBridge =
-      NativeModules.HealthConnect ??
-      NativeModules.RNHealthConnect ??
-      NativeModules.ReactNativeHealthConnect;
-    if (!nativeBridge) {
+    // ✅ Seedha require karo — NativeModules check mat karo
+    // react-native-health-connect apna khud ka bridge use karta hai
+    const mod = require("react-native-health-connect");
+    if (!mod?.initialize) {
       _hc = null;
       return null;
     }
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require("react-native-health-connect");
-
-    // Instead of directly using mod methods, we wrap them to ensure they catch everything
-    if (mod) {
-        _hc = {
-            initialize: async () => {
-                try { return typeof mod.initialize === 'function' ? await mod.initialize() : false; } catch { return false; }
-            },
-            requestPermission: async (perms) => {
-                try { return typeof mod.requestPermission === 'function' ? await mod.requestPermission(perms) : []; } catch { return []; }
-            },
-            readRecords: async (type, opts) => {
-                try { return typeof mod.readRecords === 'function' ? await mod.readRecords(type, opts) : { records: [] }; } catch { return { records: [] }; }
-            },
-            getSdkStatus: async () => {
-                try { return typeof mod.getSdkStatus === 'function' ? await mod.getSdkStatus() : 1; } catch { return 1; }
-            },
-            SdkAvailabilityStatus: mod.SdkAvailabilityStatus || { SDK_UNAVAILABLE: 1, SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED: 2, SDK_AVAILABLE: 3 }
-        };
-    } else {
-        _hc = null;
-    }
+    _hc = {
+      initialize: async () => {
+        try { return await mod.initialize(); } catch { return false; }
+      },
+      requestPermission: async (perms) => {
+        try { return await mod.requestPermission(perms); } catch { return []; }
+      },
+      readRecords: async (type, opts) => {
+        try { return await mod.readRecords(type, opts); } catch { return { records: [] }; }
+      },
+      getSdkStatus: async () => {
+        try { return await mod.getSdkStatus(); } catch { return 1; }
+      },
+      SdkAvailabilityStatus: mod.SdkAvailabilityStatus ?? {
+        SDK_UNAVAILABLE: 1,
+        SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED: 2,
+        SDK_AVAILABLE: 3,
+      },
+    };
     return _hc;
   } catch (err) {
-    console.log("Health Connect Initialization Error:", err);
+    console.log("[HC] Module load failed:", err);
     _hc = null;
     return null;
   }
 }
 
-// Check if Health Connect app is installed on this device
 async function isHCAppInstalled(): Promise<boolean> {
+  if (Platform.OS !== "android") return false;
   try {
-    const urls = [
-      "healthconnect://",
-      "https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata",
-    ];
-    for (const url of urls) {
-      try {
-        const can = await Linking.canOpenURL(url);
-        if (url === "healthconnect://" && can) return true;
-      } catch { /* ignore */ }
-    }
-    // Fallback: assume installed if native module is present
-    return getHC() !== null;
+    return await Linking.canOpenURL("healthconnect://");
   } catch {
     return false;
   }
 }
 
+// ─── Constants ────────────────────────────────────────────────────────────────
 const { width: W } = Dimensions.get("window");
 
-// ─── Provider config ──────────────────────────────────────────────────────────
-const PROVIDER_META: Record<string, { emoji: string; name: string; color: string; grad: [string, string] }> = {
-  health_connect:  { emoji: "🤖", name: "Health Connect",        color: "#0B6E4F", grad: ["#0B6E4F","#1B998B"] },
-  apple_healthkit: { emoji: "🍎", name: "Apple HealthKit (iOS)", color: "#FF3B30", grad: ["#FF3B30","#FF6B6B"] },
-  samsung_health:  { emoji: "💙", name: "Samsung Health",        color: "#1428A0", grad: ["#1428A0","#00A8E0"] },
+const PROVIDER_META: Record<string, {
+  emoji: string; name: string; color: string; grad: [string, string];
+}> = {
+  health_connect:  { emoji: "🤖", name: "Health Connect",        color: "#0B6E4F", grad: ["#0B6E4F", "#1B998B"] },
+  apple_healthkit: { emoji: "🍎", name: "Apple HealthKit (iOS)", color: "#FF3B30", grad: ["#FF3B30", "#FF6B6B"] },
+  samsung_health:  { emoji: "💙", name: "Samsung Health",        color: "#1428A0", grad: ["#1428A0", "#00A8E0"] },
 };
 
 const ALLOWED_PROVIDERS = ["health_connect", "apple_healthkit", "samsung_health"];
 
+// ─── Sub-component Types ──────────────────────────────────────────────────────
 type WearableData = {
   steps: number | null; heartRateAvg: number | null; heartRateMin: number | null;
   heartRateMax: number | null; caloriesBurned: string | null; sleepHours: string | null;
@@ -117,7 +107,7 @@ type ProviderConfig = {
   available: boolean; requiresCredentials: boolean;
 };
 
-// ─── Metric Row ───────────────────────────────────────────────────────────────
+// ─── MetricCard ───────────────────────────────────────────────────────────────
 function MetricCard({ icon, label, value, unit, color }: {
   icon: string; label: string; value: string | number | null; unit?: string; color: string;
 }) {
@@ -135,17 +125,26 @@ function MetricCard({ icon, label, value, unit, color }: {
   );
 }
 
-// ─── Connected Device Card ────────────────────────────────────────────────────
+// ─── DeviceCard ───────────────────────────────────────────────────────────────
 function DeviceCard({ conn, onSync, onDisconnect, syncing }: {
   conn: Connection; onSync: () => void; onDisconnect: () => void; syncing: boolean;
 }) {
-  const meta = PROVIDER_META[conn.provider] ?? { emoji: "📱", name: conn.provider, color: "#0077B6", grad: ["#0077B6", "#1B998B"] as [string, string] };
+  const meta = PROVIDER_META[conn.provider] ?? {
+    emoji: "📱", name: conn.provider, color: "#0077B6",
+    grad: ["#0077B6", "#1B998B"] as [string, string],
+  };
   const lastSync = conn.lastSyncedAt
-    ? new Date(conn.lastSyncedAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+    ? new Date(conn.lastSyncedAt).toLocaleString("en-IN", {
+        day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+      })
     : "Never synced";
+
   return (
     <View style={styles.deviceCard}>
-      <LinearGradient colors={[`${meta.color}15`, `${meta.color}08`]} style={styles.deviceCardGrad}>
+      <LinearGradient
+        colors={[`${meta.color}15`, `${meta.color}08`]}
+        style={styles.deviceCardGrad}
+      >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <View style={[styles.deviceIcon, { backgroundColor: `${meta.color}20` }]}>
             <Text style={{ fontSize: 22 }}>{meta.emoji}</Text>
@@ -155,12 +154,20 @@ function DeviceCard({ conn, onSync, onDisconnect, syncing }: {
             <Text style={styles.deviceSync}>Last sync: {lastSync}</Text>
           </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
-            <TouchableOpacity onPress={onSync} disabled={syncing}
-              style={[styles.deviceBtn, { backgroundColor: `${meta.color}20` }]}>
-              {syncing ? <ActivityIndicator size="small" color={meta.color} /> : <Ionicons name="refresh" size={14} color={meta.color} />}
+            <TouchableOpacity
+              onPress={onSync}
+              disabled={syncing}
+              style={[styles.deviceBtn, { backgroundColor: `${meta.color}20` }]}
+            >
+              {syncing
+                ? <ActivityIndicator size="small" color={meta.color} />
+                : <Ionicons name="refresh" size={14} color={meta.color} />
+              }
             </TouchableOpacity>
-            <TouchableOpacity onPress={onDisconnect}
-              style={[styles.deviceBtn, { backgroundColor: "rgba(239,68,68,0.1)" }]}>
+            <TouchableOpacity
+              onPress={onDisconnect}
+              style={[styles.deviceBtn, { backgroundColor: "rgba(239,68,68,0.1)" }]}
+            >
               <Ionicons name="close" size={14} color="#EF4444" />
             </TouchableOpacity>
           </View>
@@ -170,40 +177,68 @@ function DeviceCard({ conn, onSync, onDisconnect, syncing }: {
   );
 }
 
-// ─── Manual Entry Modal ───────────────────────────────────────────────────────
+// ─── ManualEntryModal ─────────────────────────────────────────────────────────
 function ManualEntryModal({ visible, onClose, onSave }: {
-  visible: boolean; onClose: () => void; onSave: (data: Record<string, string>) => void;
+  visible: boolean;
+  onClose: () => void;
+  onSave: (data: Record<string, string>) => void;
 }) {
   const [fields, setFields] = useState({
     steps: "", heartRateAvg: "", heartRateMin: "", heartRateMax: "",
     caloriesBurned: "", sleepHours: "", bloodOxygen: "", activeMinutes: "", distanceKm: "",
   });
+
   const fieldDefs = [
-    { key: "steps",          label: "Steps",               unit: "steps",   icon: "👟", keyboard: "numeric" as const },
-    { key: "heartRateAvg",   label: "Heart Rate (Avg)",    unit: "bpm",     icon: "❤️", keyboard: "numeric" as const },
-    { key: "heartRateMin",   label: "Heart Rate (Min)",    unit: "bpm",     icon: "💙", keyboard: "numeric" as const },
-    { key: "heartRateMax",   label: "Heart Rate (Max)",    unit: "bpm",     icon: "❤️‍🔥", keyboard: "numeric" as const },
-    { key: "caloriesBurned", label: "Calories Burned",     unit: "kcal",    icon: "🔥", keyboard: "numeric" as const },
-    { key: "sleepHours",     label: "Sleep",               unit: "hrs",     icon: "😴", keyboard: "decimal-pad" as const },
-    { key: "bloodOxygen",    label: "Blood Oxygen (SpO2)", unit: "%",       icon: "🩸", keyboard: "decimal-pad" as const },
-    { key: "activeMinutes",  label: "Active Minutes",      unit: "min",     icon: "⚡", keyboard: "numeric" as const },
-    { key: "distanceKm",     label: "Distance",            unit: "km",      icon: "🛤️", keyboard: "decimal-pad" as const },
+    { key: "steps",          label: "Steps",               unit: "steps", icon: "👟", keyboard: "numeric" as const },
+    { key: "heartRateAvg",   label: "Heart Rate (Avg)",    unit: "bpm",   icon: "❤️", keyboard: "numeric" as const },
+    { key: "heartRateMin",   label: "Heart Rate (Min)",    unit: "bpm",   icon: "💙", keyboard: "numeric" as const },
+    { key: "heartRateMax",   label: "Heart Rate (Max)",    unit: "bpm",   icon: "❤️‍🔥", keyboard: "numeric" as const },
+    { key: "caloriesBurned", label: "Calories Burned",     unit: "kcal",  icon: "🔥", keyboard: "numeric" as const },
+    { key: "sleepHours",     label: "Sleep",               unit: "hrs",   icon: "😴", keyboard: "decimal-pad" as const },
+    { key: "bloodOxygen",    label: "Blood Oxygen (SpO2)", unit: "%",     icon: "🩸", keyboard: "decimal-pad" as const },
+    { key: "activeMinutes",  label: "Active Minutes",      unit: "min",   icon: "⚡", keyboard: "numeric" as const },
+    { key: "distanceKm",     label: "Distance",            unit: "km",    icon: "🛤️", keyboard: "decimal-pad" as const },
   ];
+
+  const handleSave = () => {
+    onSave(fields);
+    setFields({
+      steps: "", heartRateAvg: "", heartRateMin: "", heartRateMax: "",
+      caloriesBurned: "", sleepHours: "", bloodOxygen: "", activeMinutes: "", distanceKm: "",
+    });
+  };
+
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
-        <View style={{ backgroundColor: "#FFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: "90%", paddingBottom: 24 }}>
-          <View style={{ padding: 20, borderBottomWidth: 1, borderColor: "#E5EFF7", flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <Text style={{ fontFamily: "Inter_700Bold", fontSize: 18, color: "#0D1F33" }}>Manual Data Entry</Text>
-            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color="#7A90A4" /></TouchableOpacity>
+        <View style={{
+          backgroundColor: "#FFF", borderTopLeftRadius: 24,
+          borderTopRightRadius: 24, maxHeight: "90%", paddingBottom: 24,
+        }}>
+          <View style={{
+            padding: 20, borderBottomWidth: 1, borderColor: "#E5EFF7",
+            flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <Text style={{ fontFamily: "Inter_700Bold", fontSize: 18, color: "#0D1F33" }}>
+              Manual Data Entry
+            </Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={22} color="#7A90A4" />
+            </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
-            <Text style={{ color: "#7A90A4", fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 4 }}>
+            <Text style={{
+              color: "#7A90A4", fontSize: 12,
+              fontFamily: "Inter_400Regular", marginBottom: 4,
+            }}>
               Enter data from your smartwatch or smart band. Leave blank to skip.
             </Text>
             {fieldDefs.map((f) => (
               <View key={f.key}>
-                <Text style={{ fontSize: 12, color: "#374151", fontFamily: "Inter_500Medium", marginBottom: 6 }}>
+                <Text style={{
+                  fontSize: 12, color: "#374151",
+                  fontFamily: "Inter_500Medium", marginBottom: 6,
+                }}>
                   {f.icon} {f.label} ({f.unit})
                 </Text>
                 <TextInput
@@ -211,13 +246,24 @@ function ManualEntryModal({ visible, onClose, onSave }: {
                   onChangeText={(v) => setFields((s) => ({ ...s, [f.key]: v }))}
                   keyboardType={f.keyboard}
                   placeholder={`Enter ${f.label.toLowerCase()}`}
-                  style={{ backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#E5EFF7", borderRadius: 10, padding: 12, fontSize: 15, color: "#0D1F33", fontFamily: "Inter_400Regular" }}
+                  style={{
+                    backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#E5EFF7",
+                    borderRadius: 10, padding: 12, fontSize: 15,
+                    color: "#0D1F33", fontFamily: "Inter_400Regular",
+                  }}
                 />
               </View>
             ))}
-            <TouchableOpacity onPress={() => { onSave(fields); setFields({ steps: "", heartRateAvg: "", heartRateMin: "", heartRateMax: "", caloriesBurned: "", sleepHours: "", bloodOxygen: "", activeMinutes: "", distanceKm: "" }); }}
-              style={{ backgroundColor: "#0077B6", borderRadius: 14, padding: 16, alignItems: "center", marginTop: 8 }}>
-              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>Save Data</Text>
+            <TouchableOpacity
+              onPress={handleSave}
+              style={{
+                backgroundColor: "#0077B6", borderRadius: 14,
+                padding: 16, alignItems: "center", marginTop: 8,
+              }}
+            >
+              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>
+                Save Data
+              </Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -229,7 +275,9 @@ function ManualEntryModal({ visible, onClose, onSave }: {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function WearableScreen() {
   const insets = useSafeAreaInsets();
-  const [data, setData] = useState<{ latest: WearableData | null; summary: Summary | null; history: WearableData[] }>({ latest: null, summary: null, history: [] });
+  const [data, setData] = useState<{
+    latest: WearableData | null; summary: Summary | null; history: WearableData[];
+  }>({ latest: null, summary: null, history: [] });
   const [connections, setConnections] = useState<Connection[]>([]);
   const [providers, setProviders] = useState<ProviderConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -248,32 +296,40 @@ export default function WearableScreen() {
       api.getWearableConnections(),
       api.getWearableProviders(),
     ]);
-    if (wearableResult.status === "fulfilled") setData(wearableResult.value as typeof data);
-    if (connectionsResult.status === "fulfilled") setConnections((connectionsResult.value as { connections: Connection[] }).connections);
-    if (providersResult.status === "fulfilled") setProviders((providersResult.value as { providers: ProviderConfig[] }).providers);
+    if (wearableResult.status === "fulfilled")
+      setData(wearableResult.value as typeof data);
+    if (connectionsResult.status === "fulfilled")
+      setConnections((connectionsResult.value as { connections: Connection[] }).connections);
+    if (providersResult.status === "fulfilled")
+      setProviders((providersResult.value as { providers: ProviderConfig[] }).providers);
     setLoading(false);
     setRefreshing(false);
   };
 
   const onRefresh = useCallback(() => { setRefreshing(true); loadAll(); }, []);
 
-  // ─── Health Connect: read native SDK data and send to server ─────────────────
+  // ─── Native HC sync ───────────────────────────────────────────────────────
   const syncHealthConnectNative = async (): Promise<boolean> => {
     const hc = getHC();
-    if (!hc) throw new Error("Health Connect module not available in this build.");
+    if (!hc) throw new Error("Module unavailable.");
     const now = new Date();
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const timeRangeFilter = { operator: "between" as const, startTime: yesterday.toISOString(), endTime: now.toISOString() };
+    const range = {
+      operator: "between" as const,
+      startTime: yesterday.toISOString(),
+      endTime: now.toISOString(),
+    };
 
-    const [stepsRes, hrRes, calRes, sleepRes, spo2Res, distRes, exerciseRes] = await Promise.allSettled([
-      hc.readRecords("Steps", { timeRangeFilter }),
-      hc.readRecords("HeartRate", { timeRangeFilter }),
-      hc.readRecords("TotalCaloriesBurned", { timeRangeFilter }),
-      hc.readRecords("SleepSession", { timeRangeFilter }),
-      hc.readRecords("OxygenSaturation", { timeRangeFilter }),
-      hc.readRecords("Distance", { timeRangeFilter }),
-      hc.readRecords("ExerciseSession", { timeRangeFilter }),
-    ]);
+    const [stepsRes, hrRes, calRes, sleepRes, spo2Res, distRes, exerciseRes] =
+      await Promise.allSettled([
+        hc.readRecords("Steps",                { timeRangeFilter: range }),
+        hc.readRecords("HeartRate",            { timeRangeFilter: range }),
+        hc.readRecords("TotalCaloriesBurned",  { timeRangeFilter: range }),
+        hc.readRecords("SleepSession",         { timeRangeFilter: range }),
+        hc.readRecords("OxygenSaturation",     { timeRangeFilter: range }),
+        hc.readRecords("Distance",             { timeRangeFilter: range }),
+        hc.readRecords("ExerciseSession",      { timeRangeFilter: range }),
+      ]);
 
     let steps: number | null = null;
     let heartRateAvg: number | null = null;
@@ -306,72 +362,55 @@ export default function WearableScreen() {
     if (sleepRes.status === "fulfilled") {
       const recs = (sleepRes.value as { records: Array<{ startTime: string; endTime: string }> }).records;
       if (recs.length > 0) {
-        const ms = recs.reduce((s, r) => s + (new Date(r.endTime).getTime() - new Date(r.startTime).getTime()), 0);
+        const ms = recs.reduce((s, r) =>
+          s + (new Date(r.endTime).getTime() - new Date(r.startTime).getTime()), 0);
         sleepHours = Math.round((ms / 3_600_000) * 10) / 10;
       }
     }
     if (spo2Res.status === "fulfilled") {
       const recs = (spo2Res.value as { records: Array<{ percentage: number }> }).records;
-      if (recs.length > 0) bloodOxygen = Math.round(recs.reduce((s, r) => s + r.percentage, 0) / recs.length * 10) / 10;
+      if (recs.length > 0)
+        bloodOxygen = Math.round(
+          recs.reduce((s, r) => s + r.percentage, 0) / recs.length * 10
+        ) / 10;
     }
     if (distRes.status === "fulfilled") {
       const recs = (distRes.value as { records: Array<{ distance: { inMeters: number } }> }).records;
-      distanceKm = Math.round(recs.reduce((s, r) => s + (r.distance?.inMeters || 0), 0) / 1000 * 100) / 100;
+      distanceKm = Math.round(
+        recs.reduce((s, r) => s + (r.distance?.inMeters || 0), 0) / 1000 * 100
+      ) / 100;
     }
     if (exerciseRes.status === "fulfilled") {
-      // ExerciseSession gives exact duration — far more accurate than calorie estimation
       const recs = (exerciseRes.value as { records: Array<{ startTime: string; endTime: string }> }).records;
       if (recs.length > 0) {
-        const totalMs = recs.reduce((s, r) => s + (new Date(r.endTime).getTime() - new Date(r.startTime).getTime()), 0);
+        const totalMs = recs.reduce((s, r) =>
+          s + (new Date(r.endTime).getTime() - new Date(r.startTime).getTime()), 0);
         activeMinutes = Math.round(totalMs / 60_000);
       }
     }
 
-    const result = await api.syncHealthConnect({ steps, heartRateAvg, heartRateMin, heartRateMax, caloriesBurned, sleepHours, bloodOxygen, distanceKm, activeMinutes });
+    const result = await api.syncHealthConnect({
+      steps, heartRateAvg, heartRateMin, heartRateMax,
+      caloriesBurned, sleepHours, bloodOxygen, distanceKm, activeMinutes,
+    });
     return (result as { hasData: boolean }).hasData;
   };
 
-  // ─── Connect Health Connect (native Android permission flow) ─────────────────
+  // ─── Connect Health Connect ───────────────────────────────────────────────
   const connectHealthConnect = async () => {
     if (Platform.OS !== "android") {
-      Alert.alert("Android Only", "Health Connect is only available on Android devices.");
+      Alert.alert("Android Only", "Health Connect is only available on Android.");
       return;
     }
-    
     setConnectingHC(true);
-    
     try {
       const hc = getHC();
       if (!hc) {
-        Alert.alert(
-          "Update Required",
-          "Health Connect module is not linked in this build. Please install the latest APK.",
-          [{ text: "OK" }]
-        );
+        Alert.alert("Update Required", "Health Connect module not linked. Install the latest APK.");
         return;
       }
 
-      // Step 1: Validate SDK Status
-      const sdkStatus = await hc.getSdkStatus();
-      
-      if (sdkStatus === hc.SdkAvailabilityStatus.SDK_UNAVAILABLE) {
-        Alert.alert("Not Supported", "Health Connect is not supported on this device.");
-        return;
-      }
-      
-      if (sdkStatus === hc.SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
-        Alert.alert(
-          "Update Required",
-          "Please update the Health Connect app from the Play Store to continue.",
-          [
-            { text: "Update", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
-            { text: "Cancel", style: "cancel" }
-          ]
-        );
-        return;
-      }
-
-      // Step 2: Ensure Health Connect App is Actually Installed
+      // Step 1: App installed check (prevents native crash)
       const isInstalled = await isHCAppInstalled();
       if (!isInstalled) {
         Alert.alert(
@@ -379,27 +418,39 @@ export default function WearableScreen() {
           "Please install the Health Connect app from the Play Store first.",
           [
             { text: "Install", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
-            { text: "Cancel", style: "cancel" }
+            { text: "Cancel", style: "cancel" },
           ]
         );
         return;
       }
 
-      // Step 3: Initialize SDK
-      let initialized = false;
-      try {
-        initialized = await hc.initialize();
-      } catch (initErr) {
-        console.warn("[HC] Initialization failed:", initErr);
+      // Step 2: SDK status
+      const sdkStatus = await hc.getSdkStatus();
+      if (sdkStatus === hc.SdkAvailabilityStatus.SDK_UNAVAILABLE) {
+        Alert.alert("Not Supported", "Health Connect is not supported on this device.");
+        return;
+      }
+      if (sdkStatus === hc.SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
+        Alert.alert(
+          "Update Required", "Please update the Health Connect app from the Play Store.",
+          [
+            { text: "Update", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
+            { text: "Cancel", style: "cancel" },
+          ]
+        );
+        return;
       }
 
+      // Step 3: Initialize
+      let initialized = false;
+      try { initialized = await hc.initialize(); } catch (e) { console.warn("[HC] init failed:", e); }
       if (!initialized) {
         Alert.alert(
-          "Health Connect Not Ready",
-          "Initialization failed. Please open the Health Connect app once, then try again.",
+          "Not Ready",
+          "Initialization failed. Open the Health Connect app once, then try again.",
           [
             { text: "Open App", onPress: () => Linking.openURL("healthconnect://").catch(() => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")) },
-            { text: "Cancel", style: "cancel" }
+            { text: "Cancel", style: "cancel" },
           ]
         );
         return;
@@ -417,40 +468,36 @@ export default function WearableScreen() {
           { accessType: "read", recordType: "Distance" },
           { accessType: "read", recordType: "ExerciseSession" },
         ]);
-      } catch (permErr) {
-        console.warn("[HC] requestPermission failed:", permErr);
-        Alert.alert("Permission Error", "Could not open Health Connect permissions. Please allow them manually via Android Settings.");
+      } catch (e) {
+        console.warn("[HC] permission failed:", e);
+        Alert.alert("Permission Error", "Could not open Health Connect permissions screen.");
         return;
       }
 
       if (!granted || granted.length === 0) {
-        Alert.alert("Permission Denied", "No permissions were granted. Data synchronization requires at least some permissions.");
+        Alert.alert("Permissions Needed", "No permissions were granted. Please allow them to sync data.");
         return;
       }
 
-      // Step 5: Initial data sync
+      // Step 5: Sync
       const hasData = await syncHealthConnectNative();
       await loadAll();
       setShowConnect(false);
-      
       Alert.alert(
-        "Connected Successfully",
+        "Connected!",
         hasData
-          ? "Health Connect is linked and today's data has been synchronized."
-          : "Health Connect is linked. No activity data found for today—ensure your wearable is syncing to Health Connect."
+          ? "Health Connect linked and today's data synced."
+          : "Health Connect linked. No activity data found for today — ensure your wearable is syncing to Health Connect."
       );
-      
     } catch (e: unknown) {
-      const msg = (e as Error)?.message ?? String(e) ?? "Unknown error";
-      console.error("[HC] Connection error:", msg);
-      Alert.alert("Connection Failed", `An unexpected error occurred during connection.\n\nError: ${msg}`);
+      console.error("[HC] unexpected error:", e);
+      Alert.alert("Connection Failed", (e as Error)?.message || "Something went wrong.");
     } finally {
-      // Clean up loading state robustly in all scenarios
       setConnectingHC(false);
     }
   };
 
-  // ─── Sync provider (called from device card Refresh button) ─────────────────
+  // ─── Sync Provider ────────────────────────────────────────────────────────
   const syncProvider = async (provider: string) => {
     setSyncingProvider(provider);
     try {
@@ -459,50 +506,41 @@ export default function WearableScreen() {
           Alert.alert("Android Only", "Health Connect sync is only available on Android.");
           return;
         }
-        
-        // Guard 1: NativeModules check (prevents JVM crash)
         const hc = getHC();
         if (!hc) {
-          Alert.alert("Update Required", "Health Connect module not linked in this build. Install the latest APK.");
+          Alert.alert("Update Required", "Health Connect module not linked in this build.");
           return;
         }
 
-        // Guard 2: SDK Status Check (Added for safety on every sync)
+        const isInstalled = await isHCAppInstalled();
+        if (!isInstalled) {
+          Alert.alert("Not Installed", "Install Health Connect from Play Store.", [
+            { text: "Install", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
+            { text: "Cancel", style: "cancel" },
+          ]);
+          return;
+        }
+
         const sdkStatus = await hc.getSdkStatus();
         if (sdkStatus === hc.SdkAvailabilityStatus.SDK_UNAVAILABLE) {
           Alert.alert("Not Supported", "Health Connect is not supported on this device.");
           return;
         }
         if (sdkStatus === hc.SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
-          Alert.alert(
-            "Update Required",
-            "Please update the Health Connect app from the Play Store.",
-            [
-              { text: "Update", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
-              { text: "Cancel", style: "cancel" }
-            ]
-          );
+          Alert.alert("Update Required", "Please update the Health Connect app.", [
+            { text: "Update", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
+            { text: "Cancel", style: "cancel" },
+          ]);
           return;
         }
 
-        // Guard 3: HC app installed?
-        const installed = await isHCAppInstalled();
-        if (!installed) {
-          Alert.alert(
-            "Health Connect Not Installed",
-            "Install the Health Connect app from Play Store first.",
-            [{ text: "Install", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") }, { text: "Cancel", style: "cancel" }]
-          );
-          return;
-        }
-        
         let initialized = false;
         try { initialized = await hc.initialize(); } catch { initialized = false; }
         if (!initialized) {
           Alert.alert("Sync Failed", "Health Connect could not be initialized. Open the HC app once, then try again.");
           return;
         }
-        
+
         const hasData = await syncHealthConnectNative();
         await loadAll();
         Alert.alert(
@@ -513,37 +551,42 @@ export default function WearableScreen() {
         Alert.alert("Not Supported", `${PROVIDER_META[provider]?.name || provider} sync is not yet available.`);
       }
     } catch (err: unknown) {
-      Alert.alert("Sync Failed", (err as Error)?.message || "Could not sync data. Please try again.");
+      Alert.alert("Sync Failed", (err as Error)?.message || "Could not sync data.");
     } finally {
-      // Robust cleanup to stop the loading spinner
       setSyncingProvider(null);
     }
   };
 
+  // ─── Disconnect ───────────────────────────────────────────────────────────
   const disconnectProvider = (provider: string) => {
     Alert.alert(
       "Disconnect Device",
       `Disconnect ${PROVIDER_META[provider]?.name || provider}? Your existing data won't be deleted.`,
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Disconnect", style: "destructive", onPress: async () => {
-          try { await api.disconnectWearable(provider); await loadAll(); } catch { Alert.alert("Error", "Failed to disconnect."); }
-        }},
+        {
+          text: "Disconnect", style: "destructive",
+          onPress: async () => {
+            try { await api.disconnectWearable(provider); await loadAll(); }
+            catch { Alert.alert("Error", "Failed to disconnect."); }
+          },
+        },
       ]
     );
   };
 
+  // ─── Manual Save ──────────────────────────────────────────────────────────
   const saveManualData = async (fields: Record<string, string>) => {
     const payload: Record<string, number | undefined> = {};
-    if (fields.steps) payload.steps = parseInt(fields.steps);
-    if (fields.heartRateAvg) payload.heartRateAvg = parseInt(fields.heartRateAvg);
-    if (fields.heartRateMin) payload.heartRateMin = parseInt(fields.heartRateMin);
-    if (fields.heartRateMax) payload.heartRateMax = parseInt(fields.heartRateMax);
+    if (fields.steps)          payload.steps          = parseInt(fields.steps);
+    if (fields.heartRateAvg)   payload.heartRateAvg   = parseInt(fields.heartRateAvg);
+    if (fields.heartRateMin)   payload.heartRateMin   = parseInt(fields.heartRateMin);
+    if (fields.heartRateMax)   payload.heartRateMax   = parseInt(fields.heartRateMax);
     if (fields.caloriesBurned) payload.caloriesBurned = parseFloat(fields.caloriesBurned);
-    if (fields.sleepHours) payload.sleepHours = parseFloat(fields.sleepHours);
-    if (fields.bloodOxygen) payload.bloodOxygen = parseFloat(fields.bloodOxygen);
-    if (fields.activeMinutes) payload.activeMinutes = parseInt(fields.activeMinutes);
-    if (fields.distanceKm) payload.distanceKm = parseFloat(fields.distanceKm);
+    if (fields.sleepHours)     payload.sleepHours     = parseFloat(fields.sleepHours);
+    if (fields.bloodOxygen)    payload.bloodOxygen    = parseFloat(fields.bloodOxygen);
+    if (fields.activeMinutes)  payload.activeMinutes  = parseInt(fields.activeMinutes);
+    if (fields.distanceKm)     payload.distanceKm     = parseFloat(fields.distanceKm);
     try {
       await api.addManualWearableData(payload);
       await loadAll();
@@ -557,66 +600,97 @@ export default function WearableScreen() {
   const { latest, summary } = data;
   const activeConnections = connections.filter((c) => c.isActive);
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <View style={{ flex: 1, backgroundColor: "#F0F9FF" }}>
-      <LinearGradient colors={["#E0F2FE", "#BAE6FD", "#EFF6FF"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient
+        colors={["#E0F2FE", "#BAE6FD", "#EFF6FF"]}
+        style={StyleSheet.absoluteFill}
+      />
 
       <ScrollView
-        contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: 100, paddingHorizontal: 16 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0077B6"]} tintColor="#0077B6" />}
+        contentContainerStyle={{
+          paddingTop: topPad + 12, paddingBottom: 100, paddingHorizontal: 16,
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing} onRefresh={onRefresh}
+            colors={["#0077B6"]} tintColor="#0077B6"
+          />
+        }
       >
-        {/* ─── Header ─── */}
+        {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
-          <TouchableOpacity onPress={() => router.back()}
-            style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={20} color="#0077B6" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.pageTitle}>Smart Wearables</Text>
             <Text style={styles.pageSub}>Health Connect & Wearable Trackers</Text>
           </View>
-          <TouchableOpacity onPress={() => setShowManual(true)}
-            style={{ backgroundColor: "#0077B6", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <TouchableOpacity onPress={() => setShowManual(true)} style={styles.addBtn}>
             <Ionicons name="add" size={16} color="#FFF" />
-            <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 12 }}>Log Data</Text>
+            <Text style={styles.addBtnText}>Log Data</Text>
           </TouchableOpacity>
         </View>
 
         {loading ? (
           <View style={{ alignItems: "center", paddingTop: 60 }}>
             <ActivityIndicator size="large" color="#0077B6" />
-            <Text style={{ color: "#7A90A4", marginTop: 12, fontFamily: "Inter_400Regular" }}>Loading health data...</Text>
+            <Text style={{ color: "#7A90A4", marginTop: 12, fontFamily: "Inter_400Regular" }}>
+              Loading health data...
+            </Text>
           </View>
         ) : (
           <>
-            {/* ─── CONNECTED DEVICES ─── */}
+            {/* Connected Devices */}
             <View style={styles.section}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <View style={{
+                flexDirection: "row", justifyContent: "space-between",
+                alignItems: "center", marginBottom: 12,
+              }}>
                 <Text style={styles.sectionTitle}>Connected Devices</Text>
-                <TouchableOpacity onPress={() => setShowConnect(true)}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(0,119,182,0.08)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 }}>
+                <TouchableOpacity
+                  onPress={() => setShowConnect(true)}
+                  style={styles.connectSmallBtn}
+                >
                   <Ionicons name="add" size={14} color="#0077B6" />
-                  <Text style={{ color: "#0077B6", fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Connect</Text>
+                  <Text style={{ color: "#0077B6", fontSize: 12, fontFamily: "Inter_600SemiBold" }}>
+                    Connect
+                  </Text>
                 </TouchableOpacity>
               </View>
 
               {activeConnections.length === 0 ? (
                 <View style={styles.emptyCard}>
                   <Text style={{ fontSize: 40, marginBottom: 12 }}>⌚</Text>
-                  <Text style={{ fontFamily: "Inter_700Bold", fontSize: 16, color: "#0D1F33", textAlign: "center" }}>No Device Connected</Text>
-                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: "#7A90A4", textAlign: "center", marginTop: 6, lineHeight: 20 }}>
+                  <Text style={{
+                    fontFamily: "Inter_700Bold", fontSize: 16,
+                    color: "#0D1F33", textAlign: "center",
+                  }}>
+                    No Device Connected
+                  </Text>
+                  <Text style={{
+                    fontFamily: "Inter_400Regular", fontSize: 13,
+                    color: "#7A90A4", textAlign: "center", marginTop: 6, lineHeight: 20,
+                  }}>
                     Connect Health Connect (Android), Apple HealthKit (iOS), or Samsung Health.
                   </Text>
-                  <TouchableOpacity onPress={() => setShowConnect(true)}
-                    style={{ backgroundColor: "#0077B6", borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 16 }}>
-                    <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>+ Connect Device</Text>
+                  <TouchableOpacity
+                    onPress={() => setShowConnect(true)}
+                    style={styles.connectBigBtn}
+                  >
+                    <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>
+                      + Connect Device
+                    </Text>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <View style={{ gap: 10 }}>
                   {activeConnections.map((conn) => (
                     <DeviceCard
-                      key={conn.id} conn={conn}
+                      key={conn.id}
+                      conn={conn}
                       onSync={() => syncProvider(conn.provider)}
                       onDisconnect={() => disconnectProvider(conn.provider)}
                       syncing={syncingProvider === conn.provider}
@@ -626,57 +700,77 @@ export default function WearableScreen() {
               )}
             </View>
 
-            {/* ─── TODAY'S METRICS ─── */}
+            {/* Latest Reading */}
             {latest && (
               <View style={styles.section}>
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <View style={{
+                  flexDirection: "row", alignItems: "center",
+                  justifyContent: "space-between", marginBottom: 12,
+                }}>
                   <Text style={styles.sectionTitle}>Latest Reading</Text>
                   <Text style={{ color: "#7A90A4", fontSize: 11, fontFamily: "Inter_400Regular" }}>
-                    {PROVIDER_META[latest.provider]?.emoji} {PROVIDER_META[latest.provider]?.name || latest.provider}
+                    {PROVIDER_META[latest.provider]?.emoji}{" "}
+                    {PROVIDER_META[latest.provider]?.name || latest.provider}
                   </Text>
                 </View>
-                <MetricCard icon="👟" label="Steps"      value={latest.steps?.toLocaleString() ?? null} color="#0077B6" />
-                <MetricCard icon="❤️" label="Heart Rate"  value={latest.heartRateAvg}                  unit="bpm"  color="#EF4444" />
+                <MetricCard icon="👟" label="Steps"       value={latest.steps?.toLocaleString() ?? null}                              color="#0077B6" />
+                <MetricCard icon="❤️" label="Heart Rate"  value={latest.heartRateAvg}                    unit="bpm"                   color="#EF4444" />
                 <MetricCard icon="🔥" label="Calories"    value={latest.caloriesBurned ? Math.round(parseFloat(latest.caloriesBurned)) : null} unit="kcal" color="#F97316" />
-                <MetricCard icon="😴" label="Sleep"       value={latest.sleepHours ? parseFloat(latest.sleepHours).toFixed(1) : null} unit="hrs" color="#8B5CF6" />
-                <MetricCard icon="🩸" label="SpO2"        value={latest.bloodOxygen ? parseFloat(latest.bloodOxygen).toFixed(1) : null} unit="%" color="#EC4899" />
-                <MetricCard icon="⚡" label="Active Min"  value={latest.activeMinutes} unit="min" color="#10B981" />
-                <MetricCard icon="🛤️" label="Distance"   value={latest.distanceKm ? parseFloat(latest.distanceKm).toFixed(2) : null} unit="km" color="#06B6D4" />
+                <MetricCard icon="😴" label="Sleep"       value={latest.sleepHours ? parseFloat(latest.sleepHours).toFixed(1) : null} unit="hrs"   color="#8B5CF6" />
+                <MetricCard icon="🩸" label="SpO2"        value={latest.bloodOxygen ? parseFloat(latest.bloodOxygen).toFixed(1) : null} unit="%"   color="#EC4899" />
+                <MetricCard icon="⚡" label="Active Min"  value={latest.activeMinutes}                   unit="min"                   color="#10B981" />
+                <MetricCard icon="🛤️" label="Distance"   value={latest.distanceKm ? parseFloat(latest.distanceKm).toFixed(2) : null} unit="km"   color="#06B6D4" />
               </View>
             )}
 
-            {/* ─── 7-DAY SUMMARY ─── */}
+            {/* 7-Day Summary */}
             {summary && summary.recordCount > 0 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { marginBottom: 14 }]}>7-Day Summary</Text>
                 <View style={styles.summaryGrid}>
                   {[
-                    { icon: "👟", label: "Avg Steps/Day", value: summary.avgSteps?.toLocaleString() ?? "—", color: "#0077B6" },
-                    { icon: "❤️", label: "Avg Heart Rate", value: summary.avgHr ? `${summary.avgHr} bpm` : "—", color: "#EF4444" },
-                    { icon: "🔥", label: "Total Calories", value: summary.totalCalories ? `${summary.totalCalories} kcal` : "—", color: "#F97316" },
-                    { icon: "⚡", label: "Total Active Min", value: `${summary.totalActiveMin || 0} min`, color: "#10B981" },
-                    { icon: "😴", label: "Avg Sleep", value: summary.avgSleep ? `${summary.avgSleep} hrs` : "—", color: "#8B5CF6" },
-                    { icon: "🩸", label: "Avg SpO2", value: summary.avgSpo2 ? `${summary.avgSpo2}%` : "—", color: "#EC4899" },
+                    { icon: "👟", label: "Avg Steps/Day",    value: summary.avgSteps?.toLocaleString() ?? "—",       color: "#0077B6" },
+                    { icon: "❤️", label: "Avg Heart Rate",   value: summary.avgHr ? `${summary.avgHr} bpm` : "—",    color: "#EF4444" },
+                    { icon: "🔥", label: "Total Calories",   value: summary.totalCalories ? `${summary.totalCalories} kcal` : "—", color: "#F97316" },
+                    { icon: "⚡", label: "Total Active Min", value: `${summary.totalActiveMin || 0} min`,             color: "#10B981" },
+                    { icon: "😴", label: "Avg Sleep",        value: summary.avgSleep ? `${summary.avgSleep} hrs` : "—", color: "#8B5CF6" },
+                    { icon: "🩸", label: "Avg SpO2",         value: summary.avgSpo2 ? `${summary.avgSpo2}%` : "—",   color: "#EC4899" },
                   ].map((s) => (
-                    <View key={s.label} style={[styles.summaryItem, { borderLeftColor: s.color, borderLeftWidth: 3 }]}>
+                    <View
+                      key={s.label}
+                      style={[styles.summaryItem, { borderLeftColor: s.color, borderLeftWidth: 3 }]}
+                    >
                       <Text style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</Text>
-                      <Text style={{ fontFamily: "Inter_700Bold", fontSize: 16, color: s.color }}>{s.value}</Text>
-                      <Text style={{ fontFamily: "Inter_400Regular", fontSize: 10, color: "#7A90A4", marginTop: 2 }}>{s.label}</Text>
+                      <Text style={{ fontFamily: "Inter_700Bold", fontSize: 16, color: s.color }}>
+                        {s.value}
+                      </Text>
+                      <Text style={{
+                        fontFamily: "Inter_400Regular", fontSize: 10,
+                        color: "#7A90A4", marginTop: 2,
+                      }}>
+                        {s.label}
+                      </Text>
                     </View>
                   ))}
                 </View>
               </View>
             )}
 
-            {/* ─── NO DATA YET ─── */}
+            {/* No Data */}
             {!latest && (
               <View style={styles.section}>
                 <View style={[styles.emptyCard, { paddingVertical: 32 }]}>
                   <Text style={{ fontSize: 48, marginBottom: 12 }}>📊</Text>
-                  <Text style={{ fontFamily: "Inter_700Bold", fontSize: 16, color: "#0D1F33", textAlign: "center" }}>
+                  <Text style={{
+                    fontFamily: "Inter_700Bold", fontSize: 16,
+                    color: "#0D1F33", textAlign: "center",
+                  }}>
                     {activeConnections.length > 0 ? "No Data Synced Yet" : "No Health Data Yet"}
                   </Text>
-                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: "#7A90A4", textAlign: "center", marginTop: 6, lineHeight: 20 }}>
+                  <Text style={{
+                    fontFamily: "Inter_400Regular", fontSize: 13,
+                    color: "#7A90A4", textAlign: "center", marginTop: 6, lineHeight: 20,
+                  }}>
                     {activeConnections.length > 0
                       ? "No activity data found for today. Open your wearable app, sync it to Health Connect, then tap Sync."
                       : "Connect a device or manually log your health data to see metrics here."}
@@ -685,50 +779,84 @@ export default function WearableScreen() {
                     <TouchableOpacity
                       onPress={() => syncProvider(activeConnections[0].provider)}
                       disabled={!!syncingProvider}
-                      style={{ backgroundColor: "#0077B6", borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 16, flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      {syncingProvider ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={{ fontSize: 16 }}>🔄</Text>}
-                      <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>Sync Now</Text>
+                      style={styles.syncBigBtn}
+                    >
+                      {syncingProvider
+                        ? <ActivityIndicator size="small" color="#FFF" />
+                        : <Text style={{ fontSize: 16 }}>🔄</Text>
+                      }
+                      <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>
+                        Sync Now
+                      </Text>
                     </TouchableOpacity>
                   )}
                   <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
-                    <TouchableOpacity onPress={() => setShowConnect(true)}
-                      style={{ backgroundColor: "#0077B6", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 }}>
-                      <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Connect Device</Text>
+                    <TouchableOpacity
+                      onPress={() => setShowConnect(true)}
+                      style={styles.connectMediumBtn}
+                    >
+                      <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                        Connect Device
+                      </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setShowManual(true)}
-                      style={{ backgroundColor: "rgba(0,119,182,0.1)", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: "rgba(0,119,182,0.3)" }}>
-                      <Text style={{ color: "#0077B6", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Log Manually</Text>
+                    <TouchableOpacity
+                      onPress={() => setShowManual(true)}
+                      style={styles.logManualBtn}
+                    >
+                      <Text style={{ color: "#0077B6", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                        Log Manually
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               </View>
             )}
 
-            {/* ─── HEALTH TARGETS ─── */}
+            {/* Health Targets */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Health Targets (WHO Guidelines)</Text>
+              <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>
+                Health Targets (WHO Guidelines)
+              </Text>
               <View style={{ gap: 8 }}>
                 {[
-                  { icon: "👟", target: "10,000", label: "Daily Steps", current: latest?.steps ?? null, unit: "steps", good: (v: number) => v >= 10000 },
-                  { icon: "❤️", target: "60–100", label: "Resting Heart Rate", current: latest?.heartRateAvg ?? null, unit: "bpm", good: (v: number) => v >= 60 && v <= 100 },
-                  { icon: "😴", target: "7–9", label: "Sleep Duration", current: latest?.sleepHours ? parseFloat(latest.sleepHours) : null, unit: "hours", good: (v: number) => v >= 7 && v <= 9 },
-                  { icon: "🩸", target: "≥95", label: "Blood Oxygen (SpO2)", current: latest?.bloodOxygen ? parseFloat(latest.bloodOxygen) : null, unit: "%", good: (v: number) => v >= 95 },
-                  { icon: "⚡", target: "150+", label: "Weekly Active Minutes", current: summary?.totalActiveMin ?? null, unit: "min", good: (v: number) => v >= 150 },
+                  { icon: "👟", target: "10,000", label: "Daily Steps",           current: latest?.steps ?? null,                                         unit: "steps", good: (v: number) => v >= 10000 },
+                  { icon: "❤️", target: "60–100", label: "Resting Heart Rate",    current: latest?.heartRateAvg ?? null,                                  unit: "bpm",   good: (v: number) => v >= 60 && v <= 100 },
+                  { icon: "😴", target: "7–9",    label: "Sleep Duration",        current: latest?.sleepHours ? parseFloat(latest.sleepHours) : null,     unit: "hours", good: (v: number) => v >= 7 && v <= 9 },
+                  { icon: "🩸", target: "≥95",    label: "Blood Oxygen (SpO2)",   current: latest?.bloodOxygen ? parseFloat(latest.bloodOxygen) : null,   unit: "%",     good: (v: number) => v >= 95 },
+                  { icon: "⚡", target: "150+",   label: "Weekly Active Minutes", current: summary?.totalActiveMin ?? null,                               unit: "min",   good: (v: number) => v >= 150 },
                 ].map((t) => {
                   const isGood = t.current !== null && t.good(t.current);
                   const hasData = t.current !== null;
                   return (
-                    <View key={t.label} style={[styles.targetRow, { backgroundColor: hasData ? (isGood ? "rgba(16,185,129,0.06)" : "rgba(239,68,68,0.06)") : "#F8FAFC" }]}>
+                    <View
+                      key={t.label}
+                      style={[styles.targetRow, {
+                        backgroundColor: hasData
+                          ? (isGood ? "rgba(16,185,129,0.06)" : "rgba(239,68,68,0.06)")
+                          : "#F8FAFC",
+                      }]}
+                    >
                       <Text style={{ fontSize: 18, width: 28 }}>{t.icon}</Text>
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontFamily: "Inter_500Medium", fontSize: 13, color: "#0D1F33" }}>{t.label}</Text>
-                        <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: "#7A90A4" }}>Target: {t.target} {t.unit}</Text>
+                        <Text style={{ fontFamily: "Inter_500Medium", fontSize: 13, color: "#0D1F33" }}>
+                          {t.label}
+                        </Text>
+                        <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: "#7A90A4" }}>
+                          Target: {t.target} {t.unit}
+                        </Text>
                       </View>
                       <View style={{ alignItems: "flex-end" }}>
-                        <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: hasData ? (isGood ? "#10B981" : "#EF4444") : "#D1D5DB" }}>
+                        <Text style={{
+                          fontFamily: "Inter_700Bold", fontSize: 14,
+                          color: hasData ? (isGood ? "#10B981" : "#EF4444") : "#D1D5DB",
+                        }}>
                           {hasData ? `${t.current} ${t.unit}` : "No data"}
                         </Text>
-                        {hasData && <Text style={{ fontSize: 10, color: isGood ? "#10B981" : "#EF4444" }}>{isGood ? "✓ Good" : "⚠ Improve"}</Text>}
+                        {hasData && (
+                          <Text style={{ fontSize: 10, color: isGood ? "#10B981" : "#EF4444" }}>
+                            {isGood ? "✓ Good" : "⚠ Improve"}
+                          </Text>
+                        )}
                       </View>
                     </View>
                   );
@@ -739,49 +867,79 @@ export default function WearableScreen() {
         )}
       </ScrollView>
 
-      {/* ─── CONNECT DEVICE MODAL ─── */}
+      {/* Connect Device Modal */}
       <Modal visible={showConnect} transparent animationType="slide">
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
-          <View style={{ backgroundColor: "#FFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 32 }}>
-            <View style={{ padding: 20, borderBottomWidth: 1, borderColor: "#E5EFF7", flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <Text style={{ fontFamily: "Inter_700Bold", fontSize: 18, color: "#0D1F33" }}>Connect a Device</Text>
-              <TouchableOpacity onPress={() => setShowConnect(false)}><Ionicons name="close" size={22} color="#7A90A4" /></TouchableOpacity>
+          <View style={{
+            backgroundColor: "#FFF", borderTopLeftRadius: 24,
+            borderTopRightRadius: 24, paddingBottom: 32,
+          }}>
+            <View style={{
+              padding: 20, borderBottomWidth: 1, borderColor: "#E5EFF7",
+              flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <Text style={{ fontFamily: "Inter_700Bold", fontSize: 18, color: "#0D1F33" }}>
+                Connect a Device
+              </Text>
+              <TouchableOpacity onPress={() => setShowConnect(false)}>
+                <Ionicons name="close" size={22} color="#7A90A4" />
+              </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
-              <View style={{ backgroundColor: "#FFF8E1", borderRadius: 12, padding: 12, marginBottom: 4, flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={{
+                backgroundColor: "#FFF8E1", borderRadius: 12, padding: 12,
+                marginBottom: 4, flexDirection: "row", alignItems: "center", gap: 8,
+              }}>
                 <Text style={{ fontSize: 18 }}>🚧</Text>
-                <Text style={{ flex: 1, fontFamily: "Inter_500Medium", fontSize: 12, color: "#92400E", lineHeight: 18 }}>
+                <Text style={{
+                  flex: 1, fontFamily: "Inter_500Medium",
+                  fontSize: 12, color: "#92400E", lineHeight: 18,
+                }}>
                   Wearable integrations are under development. Manual data entry is available right now.
                 </Text>
               </View>
               {providers.filter((p) => ALLOWED_PROVIDERS.includes(p.id)).map((p) => {
-                const meta = PROVIDER_META[p.id] ?? { emoji: "📱", name: p.name, color: "#0077B6", grad: ["#0077B6", "#1B998B"] as [string, string] };
-                
-                // Enable Health Connect only; keep Apple HealthKit and Samsung Health disabled
-                const comingSoon = p.id !== "health_connect"; 
-                
+                const meta = PROVIDER_META[p.id] ?? {
+                  emoji: "📱", name: p.name, color: "#0077B6",
+                  grad: ["#0077B6", "#1B998B"] as [string, string],
+                };
+                const comingSoon = p.id !== "health_connect";
                 return (
-                  <TouchableOpacity key={p.id}
-                    disabled={comingSoon}
-                    onPress={() => {
-                      if (p.id === "health_connect") {
-                        connectHealthConnect(); 
-                      }
-                    }}
+                  <TouchableOpacity
+                    key={p.id}
+                    disabled={connectingHC || comingSoon}
+                    onPress={() => { if (p.id === "health_connect") connectHealthConnect(); }}
                     style={[styles.providerBtn, { opacity: comingSoon ? 0.55 : 1 }]}
                   >
                     <LinearGradient
                       colors={comingSoon ? ["#D1D5DB", "#9CA3AF"] : meta.grad}
                       start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                      style={styles.providerBtnGrad}>
+                      style={styles.providerBtnGrad}
+                    >
                       <Text style={{ fontSize: 26 }}>{meta.emoji}</Text>
                       <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>{p.name}</Text>
-                        <Text style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 2 }}>
+                        <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>
+                          {p.name}
+                        </Text>
+                        <Text style={{
+                          color: "rgba(255,255,255,0.85)",
+                          fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 2,
+                        }}>
                           {comingSoon ? "Coming Soon" : "Tap to connect and sync data"}
                         </Text>
                       </View>
-                      {comingSoon && <Text style={{ color: "rgba(255,255,255,0.9)", fontFamily: "Inter_700Bold", fontSize: 10, backgroundColor: "rgba(0,0,0,0.15)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>SOON</Text>}
+                      {p.id === "health_connect" && connectingHC && (
+                        <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 10 }} />
+                      )}
+                      {comingSoon && (
+                        <Text style={{
+                          color: "rgba(255,255,255,0.9)", fontFamily: "Inter_700Bold",
+                          fontSize: 10, backgroundColor: "rgba(0,0,0,0.15)",
+                          paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+                        }}>
+                          SOON
+                        </Text>
+                      )}
                     </LinearGradient>
                   </TouchableOpacity>
                 );
@@ -791,54 +949,44 @@ export default function WearableScreen() {
         </View>
       </Modal>
 
-      {/* ─── MANUAL ENTRY MODAL ─── */}
-      <ManualEntryModal visible={showManual} onClose={() => setShowManual(false)} onSave={saveManualData} />
+      {/* Manual Entry Modal */}
+      <ManualEntryModal
+        visible={showManual}
+        onClose={() => setShowManual(false)}
+        onSave={saveManualData}
+      />
     </View>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  pageTitle: { color: "#0D1F33", fontFamily: "Inter_700Bold", fontSize: 22 },
-  pageSub: { color: "#7A90A4", fontSize: 12, fontFamily: "Inter_400Regular" },
-  section: {
-    backgroundColor: "rgba(255,255,255,0.75)",
-    borderRadius: 20, padding: 16, marginBottom: 16,
-    shadowColor: "#0077B6", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 10, elevation: 2,
-  },
-  sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 16, color: "#0D1F33" },
-  metricRow: {
-    flexDirection: "row", alignItems: "center",
-    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#F0F4F8",
-  },
-  metricRowIcon: {
-    width: 36, height: 36, borderRadius: 10,
-    alignItems: "center", justifyContent: "center", marginRight: 12,
-  },
-  metricRowLabel: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#374151" },
-  metricRowValue: { fontSize: 15, fontFamily: "Inter_700Bold" },
-  deviceCard: { borderRadius: 14, overflow: "hidden" },
-  deviceCardGrad: { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: "rgba(0,119,182,0.1)" },
-  deviceIcon: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  deviceName: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#0D1F33" },
-  deviceSync: { fontFamily: "Inter_400Regular", fontSize: 11, color: "#7A90A4", marginTop: 2 },
-  deviceBtn: { width: 32, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  emptyCard: {
-    alignItems: "center", paddingVertical: 24,
-    backgroundColor: "rgba(0,119,182,0.04)",
-    borderRadius: 16, borderWidth: 1.5, borderColor: "rgba(0,119,182,0.1)",
-    borderStyle: "dashed",
-  },
-  summaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  summaryItem: {
-    width: (W - 32 - 16 * 2 - 10) / 2,
-    backgroundColor: "#F8FAFC", borderRadius: 12, padding: 12, paddingLeft: 14,
-  },
-  targetRow: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    padding: 12, borderRadius: 12,
-  },
-  providerBtn: { borderRadius: 14, overflow: "hidden" },
+  pageTitle:       { color: "#0D1F33", fontFamily: "Inter_700Bold", fontSize: 22 },
+  pageSub:         { color: "#7A90A4", fontSize: 12, fontFamily: "Inter_400Regular" },
+  section:         { backgroundColor: "rgba(255,255,255,0.75)", borderRadius: 20, padding: 16, marginBottom: 16, shadowColor: "#0077B6", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2 },
+  sectionTitle:    { fontFamily: "Inter_700Bold", fontSize: 16, color: "#0D1F33" },
+  metricRow:       { flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#F0F4F8" },
+  metricRowIcon:   { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", marginRight: 12 },
+  metricRowLabel:  { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#374151" },
+  metricRowValue:  { fontSize: 15, fontFamily: "Inter_700Bold" },
+  deviceCard:      { borderRadius: 14, overflow: "hidden" },
+  deviceCardGrad:  { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: "rgba(0,119,182,0.1)" },
+  deviceIcon:      { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  deviceName:      { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#0D1F33" },
+  deviceSync:      { fontFamily: "Inter_400Regular", fontSize: 11, color: "#7A90A4", marginTop: 2 },
+  deviceBtn:       { width: 32, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  emptyCard:       { alignItems: "center", paddingVertical: 24, backgroundColor: "rgba(0,119,182,0.04)", borderRadius: 16, borderWidth: 1.5, borderColor: "rgba(0,119,182,0.1)", borderStyle: "dashed" },
+  summaryGrid:     { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  summaryItem:     { width: (W - 32 - 16 * 2 - 10) / 2, backgroundColor: "#F8FAFC", borderRadius: 12, padding: 12, paddingLeft: 14 },
+  targetRow:       { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 12 },
+  providerBtn:     { borderRadius: 14, overflow: "hidden" },
   providerBtnGrad: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 14 },
+  backBtn:         { width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 },
+  addBtn:          { backgroundColor: "#0077B6", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 5 },
+  addBtnText:      { color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 12 },
+  connectSmallBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(0,119,182,0.08)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  connectBigBtn:   { backgroundColor: "#0077B6", borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 16 },
+  syncBigBtn:      { backgroundColor: "#0077B6", borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 16, flexDirection: "row", alignItems: "center", gap: 8 },
+  connectMediumBtn:{ backgroundColor: "#0077B6", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
+  logManualBtn:    { backgroundColor: "rgba(0,119,182,0.1)", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: "rgba(0,119,182,0.3)" },
 });
