@@ -23,6 +23,7 @@ type HCModule = {
 };
 let _hc: HCModule | null = null;
 let _hcAttempted = false;
+
 function getHC(): HCModule | null {
   if (_hcAttempted) return _hc;
   _hcAttempted = true;
@@ -336,82 +337,75 @@ export default function WearableScreen() {
       Alert.alert("Android Only", "Health Connect is only available on Android devices.");
       return;
     }
+    
     setConnectingHC(true);
+    
     try {
-      // ── Guard 1: NativeModules check (prevents JVM crash) ───────────────────
-      // getHC() validates NativeModules.HealthConnect != null before returning.
-      // If null → native module not linked in this build → safe error, no crash.
       const hc = getHC();
       if (!hc) {
         Alert.alert(
-          "Health Connect Not Available",
-          "Health Connect module is not linked in this build.\n\nPlease install the latest APK from Codemagic.",
+          "Update Required",
+          "Health Connect module is not linked in this build. Please install the latest APK.",
           [{ text: "OK" }]
         );
-        setConnectingHC(false);
         return;
       }
 
-      // ── Guard 2: HC app installation check ──────────────────────────────────
-      // requestPermission() crashes if HC app is not installed (ActivityNotFoundException).
-      // Check BEFORE calling any native HC method.
-      const hcInstalled = await isHCAppInstalled();
-      if (!hcInstalled) {
+      // Step 1: Validate SDK Status
+      const sdkStatus = await hc.getSdkStatus();
+      
+      if (sdkStatus === hc.SdkAvailabilityStatus.SDK_UNAVAILABLE) {
+        Alert.alert("Not Supported", "Health Connect is not supported on this device.");
+        return;
+      }
+      
+      if (sdkStatus === hc.SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
         Alert.alert(
-          "Health Connect Not Installed",
-          "Please install the Health Connect app from Play Store first, then try again.",
+          "Update Required",
+          "Please update the Health Connect app from the Play Store to continue.",
           [
-            {
-              text: "Install from Play Store",
-              onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata"),
-            },
-            { text: "Cancel", style: "cancel" },
+            { text: "Update", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
+            { text: "Cancel", style: "cancel" }
           ]
         );
-        setConnectingHC(false);
         return;
       }
 
-      // ── Step 1: Initialize SDK ───────────────────────────────────────────────
+      // Step 2: Ensure Health Connect App is Actually Installed
+      const isInstalled = await isHCAppInstalled();
+      if (!isInstalled) {
+        Alert.alert(
+          "Health Connect Not Installed",
+          "Please install the Health Connect app from the Play Store first.",
+          [
+            { text: "Install", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
+            { text: "Cancel", style: "cancel" }
+          ]
+        );
+        return;
+      }
+
+      // Step 3: Initialize SDK
       let initialized = false;
       try {
         initialized = await hc.initialize();
       } catch (initErr) {
-        console.warn("[HC] initialize threw:", initErr);
-        Alert.alert(
-          "Health Connect Error",
-          "Could not initialize Health Connect.\n\nMake sure the app is updated from the Play Store.",
-          [
-            {
-              text: "Update HC",
-              onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata"),
-            },
-            { text: "Cancel", style: "cancel" },
-          ]
-        );
-        setConnectingHC(false);
-        return;
+        console.warn("[HC] Initialization failed:", initErr);
       }
 
       if (!initialized) {
         Alert.alert(
           "Health Connect Not Ready",
-          "Health Connect is installed but could not be initialized.\n\nOpen the Health Connect app once, then try again.",
+          "Initialization failed. Please open the Health Connect app once, then try again.",
           [
-            {
-              text: "Open HC",
-              onPress: () => Linking.openURL("healthconnect://").catch(() =>
-                Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")
-              ),
-            },
-            { text: "Cancel", style: "cancel" },
+            { text: "Open App", onPress: () => Linking.openURL("healthconnect://").catch(() => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")) },
+            { text: "Cancel", style: "cancel" }
           ]
         );
-        setConnectingHC(false);
         return;
       }
 
-      // ── Step 2: Request permissions ──────────────────────────────────────────
+      // Step 4: Request permissions
       let granted: Array<unknown> = [];
       try {
         granted = await hc.requestPermission([
@@ -424,44 +418,36 @@ export default function WearableScreen() {
           { accessType: "read", recordType: "ExerciseSession" },
         ]);
       } catch (permErr) {
-        console.warn("[HC] requestPermission threw:", permErr);
-        Alert.alert(
-          "Permission Error",
-          "Could not open Health Connect permissions.\n\nManually allow: Health Connect → App Permissions → AORANE → Allow All"
-        );
-        setConnectingHC(false);
+        console.warn("[HC] requestPermission failed:", permErr);
+        Alert.alert("Permission Error", "Could not open Health Connect permissions. Please allow them manually via Android Settings.");
         return;
       }
 
       if (!granted || granted.length === 0) {
-        Alert.alert(
-          "Permission Denied",
-          "No permissions granted.\n\nTo allow manually: Health Connect → App Permissions → AORANE → Allow All",
-          [{ text: "OK" }]
-        );
-        setConnectingHC(false);
+        Alert.alert("Permission Denied", "No permissions were granted. Data synchronization requires at least some permissions.");
         return;
       }
 
-      // ── Step 3: Initial data sync ────────────────────────────────────────────
+      // Step 5: Initial data sync
       const hasData = await syncHealthConnectNative();
       await loadAll();
       setShowConnect(false);
+      
       Alert.alert(
-        "Connected!",
+        "Connected Successfully",
         hasData
-          ? "Health Connect connected and today's data synced!"
-          : "Health Connect connected!\n\nNo activity data yet — open your wearable app, sync to HC, then tap Refresh."
+          ? "Health Connect is linked and today's data has been synchronized."
+          : "Health Connect is linked. No activity data found for today—ensure your wearable is syncing to Health Connect."
       );
+      
     } catch (e: unknown) {
       const msg = (e as Error)?.message ?? String(e) ?? "Unknown error";
-      console.error("[HC] connectHealthConnect error:", msg);
-      Alert.alert(
-        "Connection Failed",
-        `Could not connect Health Connect.\n\nMake sure:\n• Health Connect app is installed & updated\n• Your wearable has synced to it\n\nError: ${msg}`
-      );
+      console.error("[HC] Connection error:", msg);
+      Alert.alert("Connection Failed", `An unexpected error occurred during connection.\n\nError: ${msg}`);
+    } finally {
+      // Clean up loading state robustly in all scenarios
+      setConnectingHC(false);
     }
-    setConnectingHC(false);
   };
 
   // ─── Sync provider (called from device card Refresh button) ─────────────────
@@ -471,17 +457,35 @@ export default function WearableScreen() {
       if (provider === "health_connect") {
         if (Platform.OS !== "android") {
           Alert.alert("Android Only", "Health Connect sync is only available on Android.");
-          setSyncingProvider(null);
           return;
         }
-        // Guard: NativeModules check first (prevents JVM crash)
+        
+        // Guard 1: NativeModules check (prevents JVM crash)
         const hc = getHC();
         if (!hc) {
           Alert.alert("Update Required", "Health Connect module not linked in this build. Install the latest APK.");
-          setSyncingProvider(null);
           return;
         }
-        // Guard: HC app installed?
+
+        // Guard 2: SDK Status Check (Added for safety on every sync)
+        const sdkStatus = await hc.getSdkStatus();
+        if (sdkStatus === hc.SdkAvailabilityStatus.SDK_UNAVAILABLE) {
+          Alert.alert("Not Supported", "Health Connect is not supported on this device.");
+          return;
+        }
+        if (sdkStatus === hc.SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
+          Alert.alert(
+            "Update Required",
+            "Please update the Health Connect app from the Play Store.",
+            [
+              { text: "Update", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
+              { text: "Cancel", style: "cancel" }
+            ]
+          );
+          return;
+        }
+
+        // Guard 3: HC app installed?
         const installed = await isHCAppInstalled();
         if (!installed) {
           Alert.alert(
@@ -489,16 +493,16 @@ export default function WearableScreen() {
             "Install the Health Connect app from Play Store first.",
             [{ text: "Install", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") }, { text: "Cancel", style: "cancel" }]
           );
-          setSyncingProvider(null);
           return;
         }
+        
         let initialized = false;
         try { initialized = await hc.initialize(); } catch { initialized = false; }
         if (!initialized) {
           Alert.alert("Sync Failed", "Health Connect could not be initialized. Open the HC app once, then try again.");
-          setSyncingProvider(null);
           return;
         }
+        
         const hasData = await syncHealthConnectNative();
         await loadAll();
         Alert.alert(
@@ -510,8 +514,10 @@ export default function WearableScreen() {
       }
     } catch (err: unknown) {
       Alert.alert("Sync Failed", (err as Error)?.message || "Could not sync data. Please try again.");
+    } finally {
+      // Robust cleanup to stop the loading spinner
+      setSyncingProvider(null);
     }
-    setSyncingProvider(null);
   };
 
   const disconnectProvider = (provider: string) => {
@@ -630,7 +636,7 @@ export default function WearableScreen() {
                   </Text>
                 </View>
                 <MetricCard icon="👟" label="Steps"      value={latest.steps?.toLocaleString() ?? null} color="#0077B6" />
-                <MetricCard icon="❤️" label="Heart Rate"  value={latest.heartRateAvg}                   unit="bpm"  color="#EF4444" />
+                <MetricCard icon="❤️" label="Heart Rate"  value={latest.heartRateAvg}                  unit="bpm"  color="#EF4444" />
                 <MetricCard icon="🔥" label="Calories"    value={latest.caloriesBurned ? Math.round(parseFloat(latest.caloriesBurned)) : null} unit="kcal" color="#F97316" />
                 <MetricCard icon="😴" label="Sleep"       value={latest.sleepHours ? parseFloat(latest.sleepHours).toFixed(1) : null} unit="hrs" color="#8B5CF6" />
                 <MetricCard icon="🩸" label="SpO2"        value={latest.bloodOxygen ? parseFloat(latest.bloodOxygen).toFixed(1) : null} unit="%" color="#EC4899" />
@@ -750,25 +756,32 @@ export default function WearableScreen() {
               </View>
               {providers.filter((p) => ALLOWED_PROVIDERS.includes(p.id)).map((p) => {
                 const meta = PROVIDER_META[p.id] ?? { emoji: "📱", name: p.name, color: "#0077B6", grad: ["#0077B6", "#1B998B"] as [string, string] };
-                // All wearable providers are Coming Soon — disable connect for all
-                const comingSoon = true;
+                
+                // Enable Health Connect only; keep Apple HealthKit and Samsung Health disabled
+                const comingSoon = p.id !== "health_connect"; 
+                
                 return (
                   <TouchableOpacity key={p.id}
-                    disabled={true}
-                    style={[styles.providerBtn, { opacity: 0.55 }]}
+                    disabled={comingSoon}
+                    onPress={() => {
+                      if (p.id === "health_connect") {
+                        connectHealthConnect(); 
+                      }
+                    }}
+                    style={[styles.providerBtn, { opacity: comingSoon ? 0.55 : 1 }]}
                   >
                     <LinearGradient
-                      colors={["#D1D5DB", "#9CA3AF"]}
+                      colors={comingSoon ? ["#D1D5DB", "#9CA3AF"] : meta.grad}
                       start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                       style={styles.providerBtnGrad}>
                       <Text style={{ fontSize: 26 }}>{meta.emoji}</Text>
                       <View style={{ flex: 1, marginLeft: 12 }}>
                         <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>{p.name}</Text>
                         <Text style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 2 }}>
-                          {comingSoon ? "🔜 Coming Soon" : p.description}
+                          {comingSoon ? "Coming Soon" : "Tap to connect and sync data"}
                         </Text>
                       </View>
-                      <Text style={{ color: "rgba(255,255,255,0.9)", fontFamily: "Inter_700Bold", fontSize: 10, backgroundColor: "rgba(0,0,0,0.15)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>SOON</Text>
+                      {comingSoon && <Text style={{ color: "rgba(255,255,255,0.9)", fontFamily: "Inter_700Bold", fontSize: 10, backgroundColor: "rgba(0,0,0,0.15)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>SOON</Text>}
                     </LinearGradient>
                   </TouchableOpacity>
                 );
