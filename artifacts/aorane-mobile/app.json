@@ -2,7 +2,7 @@
   "expo": {
     "name": "AORANE",
     "slug": "aorane-mobile",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "owner": "mangeshaverma",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "in.aorane.app",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "AORANE uses your location to find nearby doctors, pharmacies and hospitals.",
         "NSFaceIDUsageDescription": "AORANE uses Face ID for quick and secure login.",
@@ -32,7 +32,7 @@
     "android": {
       "package": "in.aorane.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 1,
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon-foreground.png",
         "backgroundColor": "#FFFFFF"
@@ -44,7 +44,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "aorane.in",
+              "host": "aorane.com",
               "pathPrefix": "/"
             }
           ],
@@ -66,23 +66,19 @@
         "ACCESS_NETWORK_STATE",
         "ACTIVITY_RECOGNITION",
         "BODY_SENSORS",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.USE_BIOMETRIC",
-        "android.permission.USE_FINGERPRINT",
-        "android.permission.POST_NOTIFICATIONS",
-        "android.permission.SCHEDULE_EXACT_ALARM",
-        "android.permission.USE_EXACT_ALARM",
-        "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.health.READ_STEPS",
-        "android.permission.health.READ_HEART_RATE",
-        "android.permission.health.READ_TOTAL_CALORIES_BURNED",
-        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
-        "android.permission.health.READ_SLEEP",
-        "android.permission.health.READ_OXYGEN_SATURATION",
-        "android.permission.health.READ_DISTANCE",
-        "android.permission.health.READ_EXERCISE"
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM",
+        "USE_EXACT_ALARM",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "health.READ_STEPS",
+        "health.READ_HEART_RATE",
+        "health.READ_TOTAL_CALORIES_BURNED",
+        "health.READ_ACTIVE_CALORIES_BURNED",
+        "health.READ_SLEEP",
+        "health.READ_OXYGEN_SATURATION",
+        "health.READ_DISTANCE",
+        "health.READ_EXERCISE"
       ]
     },
     "web": {
@@ -93,7 +89,7 @@
       [
         "expo-router",
         {
-          "origin": "https://aorane.in"
+          "origin": "https://aorane.com"
         }
       ],
       [
@@ -106,8 +102,15 @@
             "buildToolsVersion": "35.0.0",
             "kotlinVersion": "2.0.21",
             "ndkVersion": "27.1.12297006",
-            "enableProguardInReleaseBuilds": false,
-            "enableShrinkResourcesInReleaseBuilds": false
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraAttributes": {
+              "android:queries": {
+                "package": [
+                  { "android:name": "com.google.android.apps.healthdata" }
+                ]
+              }
+            }
           }
         }
       ],
