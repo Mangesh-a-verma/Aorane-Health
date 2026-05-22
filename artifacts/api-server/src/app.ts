@@ -2,28 +2,43 @@ import express, { type Express } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
+import rateLimit from "express-rate-limit";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { pool } from "@workspace/db";
 
-
 const app: Express = express();
 
-const ALLOWED_ORIGINS = [
-  /\.vercel\.app$/,
-  /\.railway\.app$/,
-  /\.onrender\.com$/,
-  /localhost/,
-  /127\.0\.0\.1/,
-  /replit\.dev$/,
-  /replit\.app$/,
-  /aorane\.com$/,
-  /aorane\.in$/,
+// SECURITY-FIX: Strict whitelist of allowed domains to prevent unauthorized access.
+const ALLOWED_ORIGINS: string[] = [
+  "https://aorane.com",
+  "https://www.aorane.com",
+  "https://admin.aorane.com",
+  "https://business.aorane.com"
 ];
 
 if (process.env.ALLOWED_ORIGIN) {
-  ALLOWED_ORIGINS.push(new RegExp(process.env.ALLOWED_ORIGIN.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  ALLOWED_ORIGINS.push(process.env.ALLOWED_ORIGIN);
 }
+
+if (process.env.NODE_ENV !== "production") {
+  ALLOWED_ORIGINS.push("http://localhost:3000");
+  ALLOWED_ORIGINS.push("http://localhost:8081");
+  ALLOWED_ORIGINS.push("http://127.0.0.1:3000");
+}
+
+// SECURITY-FIX: Global Rate Limiting to prevent DDoS, brute-force, and API abuse.
+// Limits each IP to 300 requests per 15 minutes.
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300, // Limit each IP to 300 requests per windowMs
+  message: { error: "Too many requests from this IP, please try again after 15 minutes" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to all /api routes
+app.use("/api", globalLimiter);
 
 app.use(
   pinoHttp({
@@ -37,9 +52,7 @@ app.use(
         };
       },
       res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
+        return { statusCode: res.statusCode };
       },
     },
   }),
@@ -56,20 +69,31 @@ app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      const allowed = ALLOWED_ORIGINS.some((pattern) => pattern.test(origin));
-      if (allowed) return callback(null, true);
+      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+      if (process.env.NODE_ENV !== "production" && (origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com'))) {
+        return callback(null, true);
+      }
+      logger.warn({ origin }, "CORS blocked an unauthorized origin attempt");
       callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true,
   }),
 );
 
-// SECURITY-FIX C2: Capture raw body BEFORE JSON parsing for webhook signature verification.
-// Razorpay signs the original raw bytes — re-stringified JSON does not match.
+// SECURITY-FIX: Capture raw body BEFORE JSON parsing for Razorpay webhook signature verification.
 app.use("/api/webhooks/razorpay", express.raw({ type: "application/json", limit: "2mb" }));
 
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
+
+// SECURITY-FIX: Request Timeout Protection. Terminates requests taking longer than 30 seconds.
+app.use((req, res, next) => {
+  req.setTimeout(30000, () => {
+    logger.warn({ url: req.url }, "Request timed out");
+    res.status(408).json({ error: "Request timeout" });
+  });
+  next();
+});
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -140,17 +164,17 @@ if (process.env.NODE_ENV !== "production") {
 
 app.use("/api", router);
 
-// Render keep-alive: ping self every 10 min to prevent free-tier spin-down
+// PERFORMANCE-FIX: Render keep-alive ping is now disabled in production to save resources.
 const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
-if (RENDER_URL) {
+if (RENDER_URL && process.env.NODE_ENV !== "production") {
   setInterval(() => {
     fetch(`${RENDER_URL}/health`).catch(() => {});
   }, 10 * 60 * 1000);
   logger.info({ url: RENDER_URL }, "Keep-alive ping scheduled (every 10 min)");
 }
 
-// Blood request expiry cleanup — every hour
-// Marks status = 'expired' for all active requests past their expires_at
+// NOTE: This periodic cleanup is suitable for a single-instance MVP.
+// For multi-instance production environments, this should be migrated to a dedicated cron worker.
 setInterval(async () => {
   try {
     const result = await pool.query(
@@ -167,12 +191,10 @@ setInterval(async () => {
 }, 60 * 60 * 1000);
 logger.info("Blood request expiry cleanup scheduled (every 1 hr)");
 
-// 404 handler
 app.use((_req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-// Global error handler — never leaks internal details in production
 app.use((err: Error, _req: import("express").Request, res: import("express").Response, _next: import("express").NextFunction) => {
   logger.error({ err }, "Unhandled error");
   const message = process.env.NODE_ENV === "production" ? "Internal server error" : (err.message || "Internal server error");
