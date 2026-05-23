@@ -37,21 +37,29 @@ const withHealthConnect = (config) => {
       }
     }
 
-    // Add Health Connect <queries> block so app can open HC
+    // Add Health Connect <queries> block for BOTH Android 13 and Android 14+
     if (!manifest.queries) manifest.queries = [];
-    const hcQueryExists = manifest.queries.some(
-      (q) => q.package?.[0]?.$?.["android:name"] === "com.google.android.apps.healthdata"
-    );
-    if (!hcQueryExists) {
-      manifest.queries.push({
-        package: [{ $: { "android:name": "com.google.android.apps.healthdata" } }],
-        intent: [
-          {
-            action: [{ $: { "android:name": "androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" } }],
-          },
-        ],
-      });
-    }
+    
+    const hcPackages = [
+      "com.google.android.apps.healthdata", // Android 13 and below
+      "com.android.healthconnect.client"    // Android 14+
+    ];
+
+    hcPackages.forEach((pkgName) => {
+      const queryExists = manifest.queries.some(
+        (q) => q.package?.[0]?.$?.["android:name"] === pkgName
+      );
+      if (!queryExists) {
+        manifest.queries.push({
+          package: [{ $: { "android:name": pkgName } }],
+          intent: [
+            {
+              action: [{ $: { "android:name": "androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" } }],
+            },
+          ],
+        });
+      }
+    });
 
     // Also add healthconnect:// scheme to queries so Linking.canOpenURL works
     const hcSchemeExists = manifest.queries.some(

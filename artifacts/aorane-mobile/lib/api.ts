@@ -9,7 +9,7 @@ import { storage } from "./storage";
 const API_BASE =
   Platform.OS === "web"
     ? "/api"
-    : (process.env.EXPO_PUBLIC_API_URL || "https://aorane.onrender.com/api");
+    : (process.env.EXPO_PUBLIC_API_URL || "https://aorane-api.onrender.com/api");
 
 let _onUnauthorized: (() => void) | null = null;
 let _isRefreshing = false;
