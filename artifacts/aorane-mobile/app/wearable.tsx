@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Platform, Alert, Dimensions, ActivityIndicator, Modal,
-  TextInput, RefreshControl, Linking, InteractionManager,
+  TextInput, RefreshControl, Linking, InteractionManager, AppState,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -42,10 +42,7 @@ type ProviderConfig = {
   available: boolean; requiresCredentials: boolean;
 };
 
-// ─── HC Module — MODULE LEVEL CACHE ──────────────────────────────────────────
-// CRASH FIX 1: Prevent require() execution during button press.
-// Loading the module at runtime blocks the JS thread and causes native bridge crashes.
-// We load it once globally at initialization.
+// ─── HC Module Configuration ──────────────────────────────────────────────────
 let _hcSingleton: HCModule | null = null;
 let _hcLoadAttempted = false;
 
@@ -53,19 +50,19 @@ function _buildHCWrapper(mod: Record<string, unknown>): HCModule {
   return {
     initialize: async () => {
       try { return Boolean(await (mod.initialize as () => Promise<unknown>)()); }
-      catch (e) { console.warn("[HC] initialize():", e); return false; }
+      catch (e) { return false; }
     },
     requestPermission: async (perms) => {
       try { return ((await (mod.requestPermission as (p: unknown) => Promise<unknown>)(perms)) as Array<unknown>) ?? []; }
-      catch (e) { console.warn("[HC] requestPermission():", e); return []; }
+      catch (e) { return []; }
     },
     readRecords: async (type, opts) => {
       try { return (await (mod.readRecords as (t: string, o: unknown) => Promise<unknown>)(type, opts)) ?? { records: [] }; }
-      catch (e) { console.warn(`[HC] readRecords(${type}):`, e); return { records: [] }; }
+      catch (e) { return { records: [] }; }
     },
     getSdkStatus: async () => {
       try { return ((await (mod.getSdkStatus as () => Promise<unknown>)()) as number) ?? 1; }
-      catch (e) { console.warn("[HC] getSdkStatus():", e); return 1; }
+      catch (e) { return 1; }
     },
     SdkAvailabilityStatus: (mod.SdkAvailabilityStatus as HCModule["SdkAvailabilityStatus"]) ?? {
       SDK_UNAVAILABLE: 1,
@@ -75,32 +72,25 @@ function _buildHCWrapper(mod: Record<string, unknown>): HCModule {
   };
 }
 
-// Called ONCE at module load time — never on button press
+// OS Guard implemented: Safely prevent preload on unsupported platforms
 function preloadHC(): void {
-  if (_hcLoadAttempted) return;
+  if (_hcLoadAttempted || Platform.OS !== "android") return;
   _hcLoadAttempted = true;
   try {
     const raw = require("react-native-health-connect");
-    // Handle both ESM default export and CJS named exports
     const mod: Record<string, unknown> =
       (raw?.default && typeof (raw.default as Record<string, unknown>).initialize === "function")
         ? (raw.default as Record<string, unknown>)
         : (raw as Record<string, unknown>);
 
-    if (typeof mod?.initialize !== "function") {
-      console.warn("[HC] 'initialize' not found — library may not be linked in this build.");
-      _hcSingleton = null;
-      return;
+    if (typeof mod?.initialize === "function") {
+      _hcSingleton = _buildHCWrapper(mod);
     }
-    _hcSingleton = _buildHCWrapper(mod);
-    console.log("[HC] Module pre-loaded successfully at module init.");
   } catch (err) {
-    console.warn("[HC] require() failed at module init:", err);
     _hcSingleton = null;
   }
 }
 
-// Pre-load immediately when this JS file is evaluated — NOT on button press
 preloadHC();
 
 function getHC(): HCModule | null {
@@ -114,13 +104,14 @@ function openHCOrStore(): void {
   );
 }
 
-// CRASH FIX 2: Wait for UI interactions and animations to settle.
-// Calling native modules immediately upon press interrupts the animation thread and causes crashes.
+// Native interactions delayed slightly to avoid UI thread race conditions
 function waitForInteractions(): Promise<void> {
   return new Promise<void>((resolve) => {
     InteractionManager.runAfterInteractions(() => {
-      // Extra 50ms buffer for native bridge to be fully ready
-      setTimeout(resolve, 50);
+      const timer = setTimeout(() => {
+        resolve();
+        clearTimeout(timer);
+      }, 50);
     });
   });
 }
@@ -149,7 +140,7 @@ const HC_PERMISSIONS = [
   { accessType: "read", recordType: "ExerciseSession" },
 ];
 
-// ─── MetricCard ───────────────────────────────────────────────────────────────
+// ─── UI Components ────────────────────────────────────────────────────────────
 function MetricCard({ icon, label, value, unit, color }: {
   icon: string; label: string; value: string | number | null; unit?: string; color: string;
 }) {
@@ -167,7 +158,6 @@ function MetricCard({ icon, label, value, unit, color }: {
   );
 }
 
-// ─── DeviceCard ───────────────────────────────────────────────────────────────
 function DeviceCard({ conn, onSync, onDisconnect, syncing }: {
   conn: Connection; onSync: () => void; onDisconnect: () => void; syncing: boolean;
 }) {
@@ -176,7 +166,7 @@ function DeviceCard({ conn, onSync, onDisconnect, syncing }: {
     grad: ["#0077B6", "#1B998B"] as [string, string],
   };
   const lastSync = conn.lastSyncedAt
-    ? new Date(conn.lastSyncedAt).toLocaleString("en-IN", {
+    ? new Date(conn.lastSyncedAt).toLocaleString(undefined, {
         day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
       })
     : "Never synced";
@@ -210,7 +200,6 @@ function DeviceCard({ conn, onSync, onDisconnect, syncing }: {
   );
 }
 
-// ─── ManualEntryModal ─────────────────────────────────────────────────────────
 function ManualEntryModal({ visible, onClose, onSave }: {
   visible: boolean; onClose: () => void; onSave: (data: Record<string, string>) => void;
 }) {
@@ -288,35 +277,53 @@ export default function WearableScreen() {
   const [showManual, setShowManual]   = useState(false);
   const [showConnect, setShowConnect] = useState(false);
   const [connectingHC, setConnectingHC] = useState(false);
+  
   const isMounted = useRef(true);
+  const appState = useRef(AppState.currentState);
   const topPad = insets.top;
+
+  const loadAll = useCallback(async () => {
+    try {
+      const [wearableResult, connectionsResult, providersResult] = await Promise.allSettled([
+        api.getWearableData(),
+        api.getWearableConnections(),
+        api.getWearableProviders(),
+      ]);
+      if (!isMounted.current) return;
+      if (wearableResult.status === "fulfilled") setData(wearableResult.value as typeof data);
+      if (connectionsResult.status === "fulfilled") setConnections((connectionsResult.value as { connections: Connection[] }).connections);
+      if (providersResult.status === "fulfilled") setProviders((providersResult.value as { providers: ProviderConfig[] }).providers);
+    } catch (err) {
+      console.warn("Error loading wearable data:", err);
+    } finally {
+      if (isMounted.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }
+  }, [data]);
 
   useEffect(() => {
     isMounted.current = true;
     loadAll();
-    return () => { isMounted.current = false; };
-  }, []);
+    
+    // AppState Recovery: Refreshes data if user installed Health Connect and returns to the app
+    const subscription = AppState.addEventListener("change", nextAppState => {
+      if (appState.current.match(/inactive|background/) && nextAppState === "active") {
+        if (!loading) loadAll();
+      }
+      appState.current = nextAppState;
+    });
 
-  const loadAll = async () => {
-    const [wearableResult, connectionsResult, providersResult] = await Promise.allSettled([
-      api.getWearableData(),
-      api.getWearableConnections(),
-      api.getWearableProviders(),
-    ]);
-    if (!isMounted.current) return;
-    if (wearableResult.status === "fulfilled")
-      setData(wearableResult.value as typeof data);
-    if (connectionsResult.status === "fulfilled")
-      setConnections((connectionsResult.value as { connections: Connection[] }).connections);
-    if (providersResult.status === "fulfilled")
-      setProviders((providersResult.value as { providers: ProviderConfig[] }).providers);
-    setLoading(false);
-    setRefreshing(false);
-  };
+    return () => {
+      isMounted.current = false;
+      subscription.remove();
+    };
+  }, [loadAll, loading]);
 
-  const onRefresh = useCallback(() => { setRefreshing(true); loadAll(); }, []);
+  const onRefresh = useCallback(() => { setRefreshing(true); loadAll(); }, [loadAll]);
 
-  // ─── HC: Native data sync ─────────────────────────────────────────────────
+  // ─── Native Sync Logic ──────────────────────────────────────────────────────
   const syncHealthConnectNative = async (): Promise<boolean> => {
     const hc = getHC();
     if (!hc) throw new Error("Health Connect module unavailable.");
@@ -411,27 +418,25 @@ export default function WearableScreen() {
     return (result as { hasData: boolean }).hasData;
   };
 
-  // ─── HC: Full connect flow ────────────────────────────────────────────────
+  // ─── Connection Flow ────────────────────────────────────────────────────────
   const runHCFlow = async (): Promise<"connected" | "no_data" | "failed"> => {
     const hc = getHC();
     if (!hc) {
       Alert.alert(
         "Module Not Linked",
-        "Health Connect native module is not linked in this build.\n\nPlease run a fresh native build:\n• npx expo prebuild --clean\n• eas build --platform android",
+        "Health Connect native module is not linked in this build.\n\nPlease ensure your configuration plugin is applied and run a fresh native build.",
         [{ text: "OK" }]
       );
       return "failed";
     }
 
-    // Wait for all interactions/animations to settle before making native calls
     await waitForInteractions();
 
-    let sdkStatus = 3; // default: SDK_AVAILABLE
+    let sdkStatus = 3; 
     try {
       sdkStatus = await hc.getSdkStatus();
-      console.log("[HC] SDK Status:", sdkStatus);
     } catch (e) {
-      console.warn("[HC] getSdkStatus() failed, assuming available:", e);
+      // Graceful fallback
     }
 
     const STATUS = hc.SdkAvailabilityStatus;
@@ -439,7 +444,7 @@ export default function WearableScreen() {
     if (sdkStatus === STATUS.SDK_UNAVAILABLE) {
       Alert.alert(
         "Not Supported",
-        "Health Connect is not supported on this device.\n\nRequires Android 9 (API 28) or higher.",
+        "Health Connect requires Android 9 (API 28) or higher.",
         [{ text: "OK" }]
       );
       return "failed";
@@ -448,7 +453,7 @@ export default function WearableScreen() {
     if (sdkStatus === STATUS.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
       Alert.alert(
         "Update Required",
-        "The Health Connect app needs to be updated from the Play Store.",
+        "The Health Connect app needs to be updated from the Google Play Store.",
         [
           { text: "Update Now", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
           { text: "Cancel", style: "cancel" },
@@ -460,17 +465,16 @@ export default function WearableScreen() {
     let initialized = false;
     try {
       initialized = await hc.initialize();
-      console.log("[HC] Initialized:", initialized);
     } catch (e) {
-      console.warn("[HC] initialize() threw:", e);
+      // Handled internally
     }
 
     if (!initialized) {
       Alert.alert(
-        "Health Connect Not Ready",
-        "Please open the Health Connect app once to finish setup, then try connecting again.",
+        "Configuration Required",
+        "Please open the Health Connect app to complete initial setup, then try connecting again.",
         [
-          { text: "Open / Install", onPress: openHCOrStore },
+          { text: "Open App", onPress: openHCOrStore },
           { text: "Cancel", style: "cancel" },
         ]
       );
@@ -480,12 +484,10 @@ export default function WearableScreen() {
     let granted: Array<unknown> = [];
     try {
       granted = await hc.requestPermission(HC_PERMISSIONS);
-      console.log("[HC] Permissions granted count:", granted?.length);
     } catch (e) {
-      console.warn("[HC] requestPermission() threw:", e);
       Alert.alert(
         "Permission Error",
-        "Could not open the Health Connect permissions screen.\n\nPlease grant permissions manually:\nSettings → Apps → Health Connect → Permissions",
+        "Unable to present the Health Connect permissions screen.\n\nPlease verify Android configuration.",
         [{ text: "OK" }]
       );
       return "failed";
@@ -493,8 +495,8 @@ export default function WearableScreen() {
 
     if (!granted || granted.length === 0) {
       Alert.alert(
-        "No Permissions Granted",
-        "Please allow at least one Health Connect permission to enable data sync.",
+        "Action Required",
+        "At least one Health Connect permission must be granted to synchronize data.",
         [{ text: "OK" }]
       );
       return "failed";
@@ -504,15 +506,13 @@ export default function WearableScreen() {
       const hasData = await syncHealthConnectNative();
       return hasData ? "connected" : "no_data";
     } catch (syncErr) {
-      console.warn("[HC] Initial sync failed (non-fatal — connection still succeeded):", syncErr);
       return "no_data";
     }
   };
 
-  // ─── Connect Handler ──────────────────────────────────────────────────────
   const connectHealthConnect = async () => {
     if (Platform.OS !== "android") {
-      Alert.alert("Android Only", "Health Connect is only available on Android devices.");
+      Alert.alert("Android Only", "Health Connect integration is strictly available on Android devices.");
       return;
     }
     setConnectingHC(true);
@@ -525,112 +525,67 @@ export default function WearableScreen() {
       if (!isMounted.current) return;
       setShowConnect(false);
       Alert.alert(
-        "✅ Connected!",
+        "Connection Established",
         result === "connected"
-          ? "Health Connect is linked and today's data has been synced."
-          : "Health Connect is now linked.\n\nNo activity data found for today — make sure your wearable is syncing to Health Connect."
+          ? "Health Connect is successfully linked and recent data has been synchronized."
+          : "Health Connect is linked, but no activity data was found for today."
       );
     } catch (e: unknown) {
-      console.error("[HC] Unexpected error in connectHealthConnect:", e);
       if (!isMounted.current) return;
-      Alert.alert(
-        "Connection Failed",
-        `An unexpected error occurred.\n\nError: ${(e as Error)?.message || String(e)}\n\nTry rebuilding the app with a fresh native build.`,
-        [{ text: "OK" }]
-      );
+      Alert.alert("Error", "An unexpected error occurred during connection.");
     } finally {
       if (isMounted.current) setConnectingHC(false);
     }
   };
 
-  // ─── Sync Handler ─────────────────────────────────────────────────────────
   const syncProvider = async (provider: string) => {
     setSyncingProvider(provider);
     try {
       if (provider === "health_connect") {
-        if (Platform.OS !== "android") {
-          Alert.alert("Android Only", "Health Connect sync is only available on Android.");
-          return;
-        }
-
+        if (Platform.OS !== "android") return;
+        
         const hc = getHC();
-        if (!hc) {
-          Alert.alert("Module Error", "Health Connect module not found. Please rebuild the app.");
-          return;
-        }
+        if (!hc) return;
 
         await waitForInteractions();
-
-        let sdkStatus = 3;
-        try { sdkStatus = await hc.getSdkStatus(); } catch { /* assume available */ }
-
-        const STATUS = hc.SdkAvailabilityStatus;
-        if (sdkStatus === STATUS.SDK_UNAVAILABLE) {
-          Alert.alert("Not Supported", "Health Connect is not supported on this device.");
-          return;
-        }
-        if (sdkStatus === STATUS.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
-          Alert.alert("Update Required", "Please update the Health Connect app.", [
-            { text: "Update", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
-            { text: "Cancel", style: "cancel" },
-          ]);
-          return;
-        }
-
-        let initialized = false;
-        try { initialized = await hc.initialize(); } catch { initialized = false; }
-        if (!initialized) {
-          Alert.alert(
-            "Sync Failed",
-            "Health Connect could not initialize. Open the HC app once, then try syncing again.",
-            [
-              { text: "Open App", onPress: openHCOrStore },
-              { text: "Cancel", style: "cancel" },
-            ]
-          );
-          return;
-        }
-
         const hasData = await syncHealthConnectNative();
+        
         if (!isMounted.current) return;
         await loadAll();
         Alert.alert(
-          hasData ? "✅ Synced!" : "Sync Complete",
+          hasData ? "Synchronization Complete" : "No New Data",
           hasData
-            ? "Health Connect data has been updated successfully."
-            : "Sync complete, but no new data was found for today.\n\nMake sure your wearable is actively syncing to the Health Connect app."
+            ? "Your Health Connect data has been successfully updated."
+            : "Synchronization finished, but no recent data was located."
         );
       } else {
-        Alert.alert("Coming Soon", `${PROVIDER_META[provider]?.name || provider} sync is not yet available.`);
+        Alert.alert("Notice", `${PROVIDER_META[provider]?.name || provider} synchronization is currently unavailable.`);
       }
     } catch (err: unknown) {
-      console.error("[HC] syncProvider error:", err);
       if (!isMounted.current) return;
-      Alert.alert("Sync Failed", (err as Error)?.message || "Could not sync data. Please try again.");
+      Alert.alert("Synchronization Failed", "Unable to retrieve data. Please try again later.");
     } finally {
       if (isMounted.current) setSyncingProvider(null);
     }
   };
 
-  // ─── Disconnect ───────────────────────────────────────────────────────────
   const disconnectProvider = (provider: string) => {
     Alert.alert(
-      "Disconnect Device",
-      `Disconnect ${PROVIDER_META[provider]?.name || provider}?\n\nYour existing data won't be deleted.`,
+      "Confirm Disconnect",
+      `Are you sure you want to disconnect ${PROVIDER_META[provider]?.name || provider}? Historical data will be preserved.`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Disconnect", style: "destructive",
           onPress: async () => {
             try { await api.disconnectWearable(provider); await loadAll(); }
-            catch { Alert.alert("Error", "Failed to disconnect. Please try again."); }
+            catch { Alert.alert("Error", "Disconnection failed. Please try again."); }
           },
         },
       ]
     );
   };
 
-  // ─── Manual Save ──────────────────────────────────────────────────────────
   const saveManualData = async (fields: Record<string, string>) => {
     const payload: Record<string, number | undefined> = {};
     if (fields.steps)          payload.steps          = parseInt(fields.steps);
@@ -646,9 +601,9 @@ export default function WearableScreen() {
       await api.addManualWearableData(payload);
       await loadAll();
       setShowManual(false);
-      Alert.alert("✅ Saved!", "Health data logged successfully.");
+      Alert.alert("Success", "Manual data entry has been securely recorded.");
     } catch {
-      Alert.alert("Error", "Failed to save data. Please try again.");
+      Alert.alert("Error", "Failed to process manual entry.");
     }
   };
 
@@ -662,11 +617,8 @@ export default function WearableScreen() {
 
       <ScrollView
         contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: 100, paddingHorizontal: 16 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0077B6"]} tintColor="#0077B6" />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0077B6"]} tintColor="#0077B6" />}
       >
-        {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={20} color="#0077B6" />
@@ -685,12 +637,11 @@ export default function WearableScreen() {
           <View style={{ alignItems: "center", paddingTop: 60 }}>
             <ActivityIndicator size="large" color="#0077B6" />
             <Text style={{ color: "#7A90A4", marginTop: 12, fontFamily: "Inter_400Regular" }}>
-              Loading health data...
+              Loading health synchronization data...
             </Text>
           </View>
         ) : (
           <>
-            {/* Connected Devices */}
             <View style={styles.section}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <Text style={styles.sectionTitle}>Connected Devices</Text>
@@ -707,7 +658,7 @@ export default function WearableScreen() {
                     No Device Connected
                   </Text>
                   <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: "#7A90A4", textAlign: "center", marginTop: 6, lineHeight: 20 }}>
-                    Connect Health Connect (Android), Apple HealthKit (iOS), or Samsung Health.
+                    Link Health Connect (Android), Apple HealthKit (iOS), or Samsung Health.
                   </Text>
                   <TouchableOpacity onPress={() => setShowConnect(true)} style={styles.connectBigBtn}>
                     <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>+ Connect Device</Text>
@@ -727,7 +678,6 @@ export default function WearableScreen() {
               )}
             </View>
 
-            {/* Latest Reading */}
             {latest && (
               <View style={styles.section}>
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
@@ -746,7 +696,6 @@ export default function WearableScreen() {
               </View>
             )}
 
-            {/* 7-Day Summary */}
             {summary && summary.recordCount > 0 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { marginBottom: 14 }]}>7-Day Summary</Text>
@@ -769,18 +718,17 @@ export default function WearableScreen() {
               </View>
             )}
 
-            {/* No Data */}
             {!latest && (
               <View style={styles.section}>
                 <View style={[styles.emptyCard, { paddingVertical: 32 }]}>
                   <Text style={{ fontSize: 48, marginBottom: 12 }}>📊</Text>
                   <Text style={{ fontFamily: "Inter_700Bold", fontSize: 16, color: "#0D1F33", textAlign: "center" }}>
-                    {activeConnections.length > 0 ? "No Data Synced Yet" : "No Health Data Yet"}
+                    {activeConnections.length > 0 ? "Data Pending" : "No Health Data"}
                   </Text>
                   <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: "#7A90A4", textAlign: "center", marginTop: 6, lineHeight: 20 }}>
                     {activeConnections.length > 0
-                      ? "No activity data found for today. Open your wearable app, sync it to Health Connect, then tap Sync."
-                      : "Connect a device or manually log your health data to see metrics here."}
+                      ? "Awaiting data synchronization. Ensure your wearable app is correctly pushing data to Health Connect."
+                      : "Establish a connection with a device or use manual entry to record your health metrics."}
                   </Text>
                   {activeConnections.length > 0 && (
                     <TouchableOpacity
@@ -789,7 +737,7 @@ export default function WearableScreen() {
                       style={styles.syncBigBtn}
                     >
                       {syncingProvider ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={{ fontSize: 16 }}>🔄</Text>}
-                      <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>Sync Now</Text>
+                      <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>Force Sync</Text>
                     </TouchableOpacity>
                   )}
                   <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
@@ -797,14 +745,13 @@ export default function WearableScreen() {
                       <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Connect Device</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowManual(true)} style={styles.logManualBtn}>
-                      <Text style={{ color: "#0077B6", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Log Manually</Text>
+                      <Text style={{ color: "#0077B6", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Manual Log</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               </View>
             )}
 
-            {/* Health Targets */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Health Targets (WHO Guidelines)</Text>
               <View style={{ gap: 8 }}>
@@ -846,7 +793,6 @@ export default function WearableScreen() {
         )}
       </ScrollView>
 
-      {/* Connect Device Modal */}
       <Modal visible={showConnect} transparent animationType="slide">
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
           <View style={{ backgroundColor: "#FFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 32 }}>
@@ -860,7 +806,7 @@ export default function WearableScreen() {
               <View style={{ backgroundColor: "#FFF8E1", borderRadius: 12, padding: 12, marginBottom: 4, flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <Text style={{ fontSize: 18 }}>🚧</Text>
                 <Text style={{ flex: 1, fontFamily: "Inter_500Medium", fontSize: 12, color: "#92400E", lineHeight: 18 }}>
-                  Wearable integrations are under development. Manual data entry is available right now.
+                  Direct wearable integrations remain under active development.
                 </Text>
               </View>
 
@@ -886,7 +832,7 @@ export default function WearableScreen() {
                       <View style={{ flex: 1, marginLeft: 12 }}>
                         <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>{meta.name}</Text>
                         <Text style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 2 }}>
-                          {comingSoon ? "Coming Soon" : connectingHC ? "Connecting..." : "Tap to connect and sync data"}
+                          {comingSoon ? "Coming Soon" : connectingHC ? "Connecting..." : "Tap to authorize Health Connect"}
                         </Text>
                       </View>
                       {isHC && connectingHC && (
@@ -906,7 +852,6 @@ export default function WearableScreen() {
         </View>
       </Modal>
 
-      {/* Manual Entry Modal */}
       <ManualEntryModal visible={showManual} onClose={() => setShowManual(false)} onSave={saveManualData} />
     </View>
   );
