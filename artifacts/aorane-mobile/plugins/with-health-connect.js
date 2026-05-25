@@ -1,4 +1,4 @@
-const { withAndroidManifest } = require("@expo/config-plugins");
+const { withAndroidManifest, withMainActivity } = require("@expo/config-plugins");
 
 const HC_PERMISSIONS = [
   "Steps",
@@ -11,11 +11,12 @@ const HC_PERMISSIONS = [
   "ExerciseSession",
 ];
 
-const withHealthConnect = (config) => {
+// 1. AndroidManifest.xml Modifications
+const modifyAndroidManifest = (config) => {
   return withAndroidManifest(config, (config) => {
     const manifest = config.modResults.manifest;
 
-    // 1. Find MainActivity safely (prevent matching test activities)
+    // Securely find MainActivity
     const activities = manifest.application?.[0]?.activity ?? [];
     const mainActivity = activities.find((a) => {
       const name = a.$?.["android:name"];
@@ -39,7 +40,7 @@ const withHealthConnect = (config) => {
       }
     }
 
-    // 2. Safe queries merge (prevent overwriting other plugins)
+    // Securely merge queries block
     if (!manifest.queries || !Array.isArray(manifest.queries)) {
       manifest.queries = [];
     }
@@ -63,7 +64,7 @@ const withHealthConnect = (config) => {
       });
     }
 
-    // 3. Permissions mapping (ensuring proper standard Android manifest names)
+    // Inject exact Android permission strings
     if (!Array.isArray(manifest["uses-permission"])) {
       manifest["uses-permission"] = [];
     }
@@ -88,6 +89,64 @@ const withHealthConnect = (config) => {
 
     return config;
   });
+};
+
+// 2. MainActivity Modifications for Expo SDK 54 / RN 0.81
+const modifyMainActivity = (config) => {
+  return withMainActivity(config, (config) => {
+    let contents = config.modResults.contents;
+    const isKt = config.modResults.language === "kt";
+
+    if (isKt) {
+      // Ensure Bundle import exists
+      if (!contents.includes("import android.os.Bundle")) {
+        contents = contents.replace(
+          /import android\.content\.Intent/g,
+          "import android.content.Intent\nimport android.os.Bundle"
+        );
+      }
+
+      // Inject Health Connect Delegate Import
+      if (!contents.includes("dev.matinzd.healthconnect.permissions.HealthConnectPermissionDelegate")) {
+        contents = contents.replace(
+          /import android\.os\.Bundle/g,
+          "import android.os.Bundle\nimport dev.matinzd.healthconnect.permissions.HealthConnectPermissionDelegate"
+        );
+      }
+      
+      // Inject Delegate Initialization EXACTLY after super.onCreate
+      if (!contents.includes("HealthConnectPermissionDelegate.setPermissionDelegate(this)")) {
+        contents = contents.replace(
+          /(super\.onCreate\(.*?\))/g,
+          "$1\n    HealthConnectPermissionDelegate.setPermissionDelegate(this)"
+        );
+      }
+    } else {
+      // Fallback for Java
+      if (!contents.includes("dev.matinzd.healthconnect.permissions.HealthConnectPermissionDelegate")) {
+        contents = contents.replace(
+          /import android\.os\.Bundle;/g,
+          "import android.os.Bundle;\nimport dev.matinzd.healthconnect.permissions.HealthConnectPermissionDelegate;"
+        );
+      }
+      
+      if (!contents.includes("setPermissionDelegate")) {
+        contents = contents.replace(
+          /(super\.onCreate\(.*?\);)/g,
+          "$1\n    HealthConnectPermissionDelegate.INSTANCE.setPermissionDelegate(this, \"com.google.android.apps.healthdata\");"
+        );
+      }
+    }
+
+    config.modResults.contents = contents;
+    return config;
+  });
+};
+
+const withHealthConnect = (config) => {
+  config = modifyAndroidManifest(config);
+  config = modifyMainActivity(config);
+  return config;
 };
 
 module.exports = withHealthConnect;
