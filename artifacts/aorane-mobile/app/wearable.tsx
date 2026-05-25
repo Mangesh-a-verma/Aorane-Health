@@ -72,7 +72,6 @@ function _buildHCWrapper(mod: Record<string, unknown>): HCModule {
   };
 }
 
-// OS Guard implemented: Safely prevent preload on unsupported platforms
 function preloadHC(): void {
   if (_hcLoadAttempted || Platform.OS !== "android") return;
   _hcLoadAttempted = true;
@@ -104,7 +103,6 @@ function openHCOrStore(): void {
   );
 }
 
-// Native interactions delayed slightly to avoid UI thread race conditions
 function waitForInteractions(): Promise<void> {
   return new Promise<void>((resolve) => {
     InteractionManager.runAfterInteractions(() => {
@@ -119,9 +117,7 @@ function waitForInteractions(): Promise<void> {
 // ─── Constants ────────────────────────────────────────────────────────────────
 const { width: W } = Dimensions.get("window");
 
-const PROVIDER_META: Record<string, {
-  emoji: string; name: string; color: string; grad: [string, string];
-}> = {
+const PROVIDER_META: Record<string, { emoji: string; name: string; color: string; grad: [string, string]; }> = {
   health_connect:  { emoji: "🤖", name: "Health Connect",        color: "#0B6E4F", grad: ["#0B6E4F", "#1B998B"] },
   apple_healthkit: { emoji: "🍎", name: "Apple HealthKit (iOS)", color: "#FF3B30", grad: ["#FF3B30", "#FF6B6B"] },
   samsung_health:  { emoji: "💙", name: "Samsung Health",        color: "#1428A0", grad: ["#1428A0", "#00A8E0"] },
@@ -280,48 +276,80 @@ export default function WearableScreen() {
   
   const isMounted = useRef(true);
   const appState = useRef(AppState.currentState);
+  const isLoadingRef = useRef(false); // API Concurrency Lock
   const topPad = insets.top;
 
   const loadAll = useCallback(async () => {
+    // Prevent duplicate concurrent requests (Stops 429 Errors)
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
+
     try {
-      const [wearableResult, connectionsResult, providersResult] = await Promise.allSettled([
-        api.getWearableData(),
-        api.getWearableConnections(),
-        api.getWearableProviders(),
-      ]);
+      const [wearableResult, connectionsResult, providersResult] =
+        await Promise.allSettled([
+          api.getWearableData(),
+          api.getWearableConnections(),
+          api.getWearableProviders(),
+        ]);
+
       if (!isMounted.current) return;
-      if (wearableResult.status === "fulfilled") setData(wearableResult.value as typeof data);
-      if (connectionsResult.status === "fulfilled") setConnections((connectionsResult.value as { connections: Connection[] }).connections);
-      if (providersResult.status === "fulfilled") setProviders((providersResult.value as { providers: ProviderConfig[] }).providers);
+
+      if (wearableResult.status === "fulfilled") {
+        setData(wearableResult.value as typeof data);
+      }
+      if (connectionsResult.status === "fulfilled") {
+        setConnections((connectionsResult.value as { connections: Connection[] }).connections);
+      }
+      if (providersResult.status === "fulfilled") {
+        setProviders((providersResult.value as { providers: ProviderConfig[] }).providers);
+      }
     } catch (err) {
       console.warn("Error loading wearable data:", err);
     } finally {
+      isLoadingRef.current = false;
       if (isMounted.current) {
         setLoading(false);
         setRefreshing(false);
       }
     }
-  }, [data]);
+  }, []); // Strictly empty dependency array
 
   useEffect(() => {
     isMounted.current = true;
+
     loadAll();
-    
-    // AppState Recovery: Refreshes data if user installed Health Connect and returns to the app
-    const subscription = AppState.addEventListener("change", nextAppState => {
-      if (appState.current.match(/inactive|background/) && nextAppState === "active") {
-        if (!loading) loadAll();
+
+    const subscription = AppState.addEventListener(
+      "change",
+      (nextAppState) => {
+        if (
+          appState.current.match(/inactive|background/) &&
+          nextAppState === "active" &&
+          !isLoadingRef.current
+        ) {
+          loadAll();
+        }
+        appState.current = nextAppState;
       }
-      appState.current = nextAppState;
-    });
+    );
 
     return () => {
       isMounted.current = false;
       subscription.remove();
     };
-  }, [loadAll, loading]);
+  }, [loadAll]);
 
-  const onRefresh = useCallback(() => { setRefreshing(true); loadAll(); }, [loadAll]);
+  const onRefresh = useCallback(async () => {
+    if (isLoadingRef.current) return;
+    setRefreshing(true);
+    try {
+      await loadAll();
+    } finally {
+      if (isMounted.current) {
+        setRefreshing(false);
+      }
+    }
+  }, [loadAll]);
 
   // ─── Native Sync Logic ──────────────────────────────────────────────────────
   const syncHealthConnectNative = async (): Promise<boolean> => {
