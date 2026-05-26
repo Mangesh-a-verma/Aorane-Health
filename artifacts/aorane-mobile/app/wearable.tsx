@@ -114,6 +114,16 @@ function waitForInteractions(): Promise<void> {
   });
 }
 
+// Robust data extraction utility to handle both Array and Object responses from SDK
+const extractRecords = (res: PromiseSettledResult<unknown>): any[] => {
+  if (res.status !== "fulfilled") return [];
+  const val = res.value as any;
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (val.records && Array.isArray(val.records)) return val.records;
+  return [];
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 const { width: W } = Dimensions.get("window");
 
@@ -354,8 +364,6 @@ export default function WearableScreen() {
     const hc = getHC();
     if (!hc) throw new Error("Health Connect module unavailable.");
 
-    // FIX 1: Modified time range logic to fetch strictly "Today's" data.
-    // Previously it fetched the last 24 rolling hours, which creates overlap issues in the backend DB.
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     
@@ -387,63 +395,73 @@ export default function WearableScreen() {
     let distanceKm: number | null    = null;
     let activeMinutes: number | null = null;
 
-    if (stepsRes.status === "fulfilled") {
-      const recs = (stepsRes.value as { records: Array<{ count: number }> }).records ?? [];
-      steps = recs.reduce((s, r) => s + (r.count || 0), 0);
+    // Secure Data Extraction
+    const stepRecs = extractRecords(stepsRes);
+    if (stepRecs.length > 0) {
+      steps = stepRecs.reduce((s, r) => s + (r.count || 0), 0);
     }
-    if (hrRes.status === "fulfilled") {
-      const recs = (hrRes.value as { records: Array<{ samples: Array<{ beatsPerMinute: number }> }> }).records ?? [];
-      const all  = recs.flatMap((r) => r.samples ?? []);
-      if (all.length > 0) {
-        const bpms = all.map((r) => r.beatsPerMinute).filter(Boolean);
-        if (bpms.length > 0) {
-          heartRateAvg = Math.round(bpms.reduce((s, v) => s + v, 0) / bpms.length);
-          heartRateMin = Math.min(...bpms);
-          heartRateMax = Math.max(...bpms);
-        }
-      }
-    }
-    if (calRes.status === "fulfilled") {
-      const recs  = (calRes.value as { records: Array<{ energy: { inKilocalories: number } }> }).records ?? [];
-      const total = recs.reduce((s, r) => s + (r.energy?.inKilocalories || 0), 0);
-      if (total > 0) caloriesBurned = Math.round(total);
-    }
-    if (caloriesBurned === null && activeCalRes.status === "fulfilled") {
-      const recs  = (activeCalRes.value as { records: Array<{ energy: { inKilocalories: number } }> }).records ?? [];
-      const total = recs.reduce((s, r) => s + (r.energy?.inKilocalories || 0), 0);
-      if (total > 0) caloriesBurned = Math.round(total);
-    }
-    if (sleepRes.status === "fulfilled") {
-      const recs = (sleepRes.value as { records: Array<{ startTime: string; endTime: string }> }).records ?? [];
-      if (recs.length > 0) {
-        const ms = recs.reduce((s, r) =>
-          s + (new Date(r.endTime).getTime() - new Date(r.startTime).getTime()), 0);
-        sleepHours = Math.round((ms / 3_600_000) * 10) / 10;
-      }
-    }
-    if (spo2Res.status === "fulfilled") {
-      const recs = (spo2Res.value as { records: Array<{ percentage: number }> }).records ?? [];
-      if (recs.length > 0)
-        bloodOxygen = Math.round(recs.reduce((s, r) => s + r.percentage, 0) / recs.length * 10) / 10;
-    }
-    if (distRes.status === "fulfilled") {
-      const recs   = (distRes.value as { records: Array<{ distance: { inMeters: number } }> }).records ?? [];
-      const totalM = recs.reduce((s, r) => s + (r.distance?.inMeters || 0), 0);
-      if (totalM > 0) distanceKm = Math.round(totalM / 1000 * 100) / 100;
-    }
-    if (exerciseRes.status === "fulfilled") {
-      const recs = (exerciseRes.value as { records: Array<{ startTime: string; endTime: string }> }).records ?? [];
-      if (recs.length > 0) {
-        const totalMs = recs.reduce((s, r) =>
-          s + (new Date(r.endTime).getTime() - new Date(r.startTime).getTime()), 0);
-        activeMinutes = Math.round(totalMs / 60_000);
+
+    const hrRecs = extractRecords(hrRes);
+    const allSamples = hrRecs.flatMap((r) => r.samples ?? []);
+    if (allSamples.length > 0) {
+      const bpms = allSamples.map((r) => r.beatsPerMinute).filter(Boolean);
+      if (bpms.length > 0) {
+        heartRateAvg = Math.round(bpms.reduce((s, v) => s + v, 0) / bpms.length);
+        heartRateMin = Math.min(...bpms);
+        heartRateMax = Math.max(...bpms);
       }
     }
 
-    const result = await api.syncHealthConnect({
+    const calRecs = extractRecords(calRes);
+    const totalCals = calRecs.reduce((s, r) => s + (r.energy?.inKilocalories || 0), 0);
+    if (totalCals > 0) {
+      caloriesBurned = Math.round(totalCals);
+    } else {
+      const activeCalRecs = extractRecords(activeCalRes);
+      const totalActive = activeCalRecs.reduce((s, r) => s + (r.energy?.inKilocalories || 0), 0);
+      if (totalActive > 0) caloriesBurned = Math.round(totalActive);
+    }
+
+    const sleepRecs = extractRecords(sleepRes);
+    if (sleepRecs.length > 0) {
+      const ms = sleepRecs.reduce((s, r) => {
+        const start = new Date(r.startTime).getTime();
+        const end = new Date(r.endTime).getTime();
+        return s + (end > start ? end - start : 0);
+      }, 0);
+      if (ms > 0) sleepHours = Math.round((ms / 3_600_000) * 10) / 10;
+    }
+
+    const spo2Recs = extractRecords(spo2Res);
+    if (spo2Recs.length > 0) {
+      bloodOxygen = Math.round(spo2Recs.reduce((s, r) => s + (r.percentage || 0), 0) / spo2Recs.length * 10) / 10;
+    }
+
+    const distRecs = extractRecords(distRes);
+    if (distRecs.length > 0) {
+      const totalM = distRecs.reduce((s, r) => s + (r.distance?.inMeters || 0), 0);
+      if (totalM > 0) distanceKm = Math.round(totalM / 1000 * 100) / 100;
+    }
+
+    const exRecs = extractRecords(exerciseRes);
+    if (exRecs.length > 0) {
+      const totalMs = exRecs.reduce((s, r) => {
+        const start = new Date(r.startTime).getTime();
+        const end = new Date(r.endTime).getTime();
+        return s + (end > start ? end - start : 0);
+      }, 0);
+      if (totalMs > 0) activeMinutes = Math.round(totalMs / 60_000);
+    }
+
+    const payload = {
       steps, heartRateAvg, heartRateMin, heartRateMax,
       caloriesBurned, sleepHours, bloodOxygen, distanceKm, activeMinutes,
-    });
+    };
+    
+    // Logs the actual payload to console so you can debug what is being sent to backend
+    console.log("Sending to Backend:", payload);
+
+    const result = await api.syncHealthConnect(payload);
     return (result as { hasData: boolean }).hasData;
   };
 
@@ -531,14 +549,10 @@ export default function WearableScreen() {
       return "failed";
     }
 
-    // FIX 2: Removed the silent error masking. 
-    // If the backend API rejects the data (e.g., 500 error or validation error), 
-    // it will now properly show an alert instead of silently returning "no_data".
     try {
       const hasData = await syncHealthConnectNative();
       return hasData ? "connected" : "no_data";
     } catch (syncErr: any) {
-      console.error("[HC] API Sync Error:", syncErr);
       Alert.alert(
         "Server Sync Error",
         `Failed to save Health Connect data to the server.\n\nDetails: ${syncErr?.message || "Unknown API Error"}`
@@ -585,8 +599,6 @@ export default function WearableScreen() {
         if (!hc) return;
 
         await waitForInteractions();
-        
-        // Similarly, ensure manual sync doesn't silently swallow backend errors
         const hasData = await syncHealthConnectNative();
         
         if (!isMounted.current) return;
@@ -601,7 +613,6 @@ export default function WearableScreen() {
         Alert.alert("Notice", `${PROVIDER_META[provider]?.name || provider} synchronization is currently unavailable.`);
       }
     } catch (err: any) {
-      console.error("[HC] Manual Sync Error:", err);
       if (!isMounted.current) return;
       Alert.alert("Synchronization Failed", `Unable to sync data to the server.\n\nError: ${err?.message || "Unknown API error"}`);
     } finally {
