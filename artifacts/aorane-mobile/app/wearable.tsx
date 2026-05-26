@@ -276,11 +276,10 @@ export default function WearableScreen() {
   
   const isMounted = useRef(true);
   const appState = useRef(AppState.currentState);
-  const isLoadingRef = useRef(false); // API Concurrency Lock
+  const isLoadingRef = useRef(false);
   const topPad = insets.top;
 
   const loadAll = useCallback(async () => {
-    // Prevent duplicate concurrent requests (Stops 429 Errors)
     if (isLoadingRef.current) return;
     isLoadingRef.current = true;
 
@@ -312,11 +311,10 @@ export default function WearableScreen() {
         setRefreshing(false);
       }
     }
-  }, []); // Strictly empty dependency array
+  }, []);
 
   useEffect(() => {
     isMounted.current = true;
-
     loadAll();
 
     const subscription = AppState.addEventListener(
@@ -356,11 +354,14 @@ export default function WearableScreen() {
     const hc = getHC();
     if (!hc) throw new Error("Health Connect module unavailable.");
 
-    const now       = new Date();
-    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const range     = {
+    // FIX 1: Modified time range logic to fetch strictly "Today's" data.
+    // Previously it fetched the last 24 rolling hours, which creates overlap issues in the backend DB.
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    
+    const range = {
       operator: "between" as const,
-      startTime: yesterday.toISOString(),
+      startTime: startOfToday.toISOString(),
       endTime:   now.toISOString(),
     };
 
@@ -530,11 +531,19 @@ export default function WearableScreen() {
       return "failed";
     }
 
+    // FIX 2: Removed the silent error masking. 
+    // If the backend API rejects the data (e.g., 500 error or validation error), 
+    // it will now properly show an alert instead of silently returning "no_data".
     try {
       const hasData = await syncHealthConnectNative();
       return hasData ? "connected" : "no_data";
-    } catch (syncErr) {
-      return "no_data";
+    } catch (syncErr: any) {
+      console.error("[HC] API Sync Error:", syncErr);
+      Alert.alert(
+        "Server Sync Error",
+        `Failed to save Health Connect data to the server.\n\nDetails: ${syncErr?.message || "Unknown API Error"}`
+      );
+      return "failed";
     }
   };
 
@@ -576,6 +585,8 @@ export default function WearableScreen() {
         if (!hc) return;
 
         await waitForInteractions();
+        
+        // Similarly, ensure manual sync doesn't silently swallow backend errors
         const hasData = await syncHealthConnectNative();
         
         if (!isMounted.current) return;
@@ -589,9 +600,10 @@ export default function WearableScreen() {
       } else {
         Alert.alert("Notice", `${PROVIDER_META[provider]?.name || provider} synchronization is currently unavailable.`);
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
+      console.error("[HC] Manual Sync Error:", err);
       if (!isMounted.current) return;
-      Alert.alert("Synchronization Failed", "Unable to retrieve data. Please try again later.");
+      Alert.alert("Synchronization Failed", `Unable to sync data to the server.\n\nError: ${err?.message || "Unknown API error"}`);
     } finally {
       if (isMounted.current) setSyncingProvider(null);
     }
