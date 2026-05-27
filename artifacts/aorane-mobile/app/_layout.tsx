@@ -28,6 +28,10 @@ import {
   scheduleMedicineReminders,
 } from "@/lib/notifications";
 
+// --- NEW ADDITION FOR SMART AUTO SYNC ---
+import { useHealthSync } from "@/hooks/useHealthSync";
+// ----------------------------------------
+
 // ── Must be at module level so ALL notifications show alert/sound from app start ──
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -135,10 +139,6 @@ async function registerPushToken() {
 }
 
 // ── Auto-restore all scheduled notifications on every app launch ──────────────
-// Called after login. Fetches saved settings + active medicines from server
-// and re-schedules local notifications. Fixes the "notifications gone after
-// reinstall / app update" problem because expo-notifications scheduled jobs
-// are stored on-device and wiped on fresh install.
 async function restoreAllNotifications() {
   if (Platform.OS === "web") return;
   try {
@@ -202,6 +202,11 @@ function PushNotificationRegistrar() {
 
 function AppShell() {
   const { isOnline, pendingCount, syncing } = useNetworkSync();
+
+  // --- NEW ADDITION FOR SMART AUTO SYNC ---
+  // Activate background health syncing when app shell loads
+  useHealthSync();
+  // ----------------------------------------
 
   return (
     <View style={{ flex: 1 }}>
