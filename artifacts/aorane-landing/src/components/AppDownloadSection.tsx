@@ -111,8 +111,10 @@ export default function AppDownloadSection() {
 
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
               <motion.a
-                href="https://github.com/Mangesh-a-verma/Health-Data-Hub/releases/download/v2.0/Aorane.v2.apk"
-                download="Aorane.v2.apk"
+                href="https://github.com/Mangesh-a-verma/Health-Data-Hub/releases/download/v2.1/Aorane.v2.1.apk"
+                download="Aorane.v2.1.apk"
+                target="_blank"
+                rel="noopener noreferrer"
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
                 className="flex items-center gap-3 bg-white rounded-2xl px-5 py-3.5 shadow-lg hover:bg-gray-50 transition-colors"
