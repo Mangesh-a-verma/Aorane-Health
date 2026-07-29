@@ -1,0 +1,32 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+.replit
+replit.nix
+.upm/
+.cache/
+.config/
+.local/
+coverage/
+.turbo/
+.github/workflows/eas-build-android.yml
+
+# Environment and credential files
+.env
+.env.*
+!.env.example
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
+
+# FIX SEC-2: real Firebase service configs must never be committed.
+# Only the *.json.example templates (see artifacts/aorane-mobile) are tracked.
+google-services*.json
+!google-services.json.example
+attached_assets/google-services*.json

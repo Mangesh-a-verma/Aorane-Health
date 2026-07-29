@@ -1,0 +1,38 @@
+// FIX C5 — TEMPLATE / STRUCTURE REFERENCE ONLY.
+// Do NOT put real Firebase keys here. The actual google-services.json must be
+// injected at build time via EAS Build secret file (set as type "file" in
+// `eas.json`), or via Codemagic encrypted variable `CM_GOOGLE_SERVICES_JSON`,
+// and copied to ./google-services.json before `expo prebuild` runs.
+//
+// Local dev: copy this file to `google-services.json` and replace the
+// REDACTED values with your dev Firebase project's config (still keep that
+// file ignored by git — see .gitignore).
+{
+  "project_info": {
+    "project_number": "REDACTED",
+    "project_id": "REDACTED",
+    "storage_bucket": "REDACTED.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "REDACTED",
+        "android_client_info": {
+          "package_name": "in.aorane.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "REDACTED"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,224 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-border: var(--primary-border);
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-border: var(--secondary-border);
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted-border: var(--muted-border);
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-border: var(--accent-border);
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-border: var(--destructive-border);
+
+  --font-sans: var(--app-font-sans);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: 210 40% 98%;
+  --foreground: 215 40% 10%;
+  --border: 215 20% 88%;
+  --input: 215 20% 88%;
+  --ring: 215 91% 34%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 215 40% 10%;
+  --card-border: 215 20% 90%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 215 40% 10%;
+  --popover-border: 215 20% 88%;
+
+  --primary: 215 91% 34%;
+  --primary-foreground: 0 0% 100%;
+  --primary-border: hsl(215 91% 28%);
+
+  --secondary: 161 95% 37%;
+  --secondary-foreground: 0 0% 100%;
+  --secondary-border: hsl(161 95% 30%);
+
+  --muted: 210 30% 94%;
+  --muted-foreground: 215 20% 45%;
+  --muted-border: hsl(210 30% 88%);
+
+  --accent: 161 95% 37%;
+  --accent-foreground: 0 0% 100%;
+  --accent-border: hsl(161 95% 30%);
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --destructive-border: hsl(0 84% 53%);
+
+  --app-font-sans: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  --app-font-display: 'Fraunces', serif;
+  --app-font-mono: 'JetBrains Mono', monospace;
+  --radius: 0.75rem;
+
+  --shadow-card: 0 1px 3px rgba(7,71,166,0.06), 0 4px 16px rgba(7,71,166,0.08);
+  --shadow-card-hover: 0 4px 12px rgba(7,71,166,0.12), 0 12px 40px rgba(7,71,166,0.14);
+
+  /* v2 glass design system — see docs/design/landing-redesign.md */
+  --teal-deep: #05473C;
+  --teal-bright: #00C79A;
+  --gold-accent: #E8B84B;
+  --coral-accent: #FF7A5C;
+  --glass-hi: rgba(255,255,255,0.62);
+  --glass-lo: rgba(255,255,255,0.32);
+  --glass-edge: rgba(255,255,255,0.95);
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  .font-display { font-family: var(--app-font-display); }
+  .font-mono-num { font-family: var(--app-font-mono); }
+  .glass {
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.5);
+  }
+  .glass-dark {
+    background: rgba(7,71,166,0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(7,71,166,0.12);
+  }
+  /* v2: multi-layer glass with inset edge highlight + saturation boost,
+     used for the redesigned hero / feature / business cards */
+  .glass-panel {
+    background: var(--glass-hi);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    border: 1px solid var(--glass-edge);
+    box-shadow: 0 30px 80px -24px rgba(8,19,15,0.28), inset 0 1px 0 rgba(255,255,255,0.6);
+  }
+  .glass-panel-soft {
+    background: var(--glass-lo);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.55);
+    box-shadow: 0 20px 50px -28px rgba(8,19,15,0.18);
+  }
+  .mesh-blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(70px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  @keyframes meshDrift1 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(-30px,40px) scale(1.08); }
+  }
+  @keyframes meshDrift2 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(25px,-30px) scale(1.05); }
+  }
+  .mesh-drift-1 { animation: meshDrift1 22s ease-in-out infinite; }
+  .mesh-drift-2 { animation: meshDrift2 26s ease-in-out infinite; }
+  .card-hover {
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+    box-shadow: var(--shadow-card);
+  }
+  .card-hover:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+  }
+  .gradient-text {
+    background: linear-gradient(135deg, #0747A6 0%, #10B981 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .gradient-text-teal {
+    background: linear-gradient(120deg, var(--teal-deep), var(--teal-bright));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-gradient {
+    background: linear-gradient(135deg, #EEF4FF 0%, #F0FDF9 50%, #F8FAFC 100%);
+  }
+  .blue-gradient {
+    background: linear-gradient(135deg, #0747A6 0%, #1565C0 100%);
+  }
+  .green-gradient {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  }
+  .teal-deep-gradient {
+    background: linear-gradient(135deg, var(--teal-deep), #082F28);
+  }
+  .ecg-line {
+    animation: ecgMove 3s linear infinite;
+  }
+  @keyframes ecgMove {
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: -600; }
+  }
+  .pulse-ring {
+    animation: pulseRing 2s ease-in-out infinite;
+  }
+  @keyframes pulseRing {
+    0%, 100% { opacity: 0.2; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.08); }
+  }
+  .float-card {
+    animation: floatCard 6s ease-in-out infinite;
+  }
+  @keyframes floatCard {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+  .float-chip {
+    animation: floatChip 5s ease-in-out infinite;
+  }
+  @keyframes floatChip {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-12px) rotate(-1deg); }
+  }
+  @keyframes ringFill {
+    to { stroke-dashoffset: var(--ring-offset, 88); }
+  }
+  .ring-fg-animated {
+    animation: ringFill 2s cubic-bezier(.22,1,.36,1) 0.4s forwards;
+  }
+}

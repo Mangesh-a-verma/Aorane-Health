@@ -1,0 +1,22 @@
+title = "aorane gitleaks config"
+
+# Use gitleaks' default, well-maintained rule set (detects AWS keys, Google API
+# keys, Stripe/Razorpay-style keys, private keys, JWTs, Slack tokens, generic
+# high-entropy secrets, etc.) and only add allowlist exceptions on top.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Files that intentionally contain placeholder values or a documented/rotated historical key"
+paths = [
+  # .env.example files only ever contain empty placeholders, never real values
+  '''.*\.env\.example$''',
+  # This doc intentionally references the OLD, already-rotated/restricted
+  # Firebase key as a record of the incident — see docs/SECURITY_ACTIONS.md
+  '''docs/SECURITY_ACTIONS\.md$''',
+]
+
+# If gitleaks ever flags something here that is a genuine false positive
+# (e.g. a test fixture UUID that looks like a key), add a narrow allowlist
+# rule scoped to that exact file + regex rather than disabling scanning
+# broadly. Do not add real secrets to this file.

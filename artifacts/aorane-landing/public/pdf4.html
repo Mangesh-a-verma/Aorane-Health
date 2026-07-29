@@ -1,0 +1,83 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1240px;height:1754px;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;}
+.page{width:1240px;height:1754px;background:#fff;position:relative;display:flex;flex-direction:column;}
+.top-bar{height:8px;background:linear-gradient(90deg,#f97316,#1e3a8a,#22c55e);}
+.header{padding:40px 72px 0;display:flex;align-items:center;justify-content:space-between;}
+.header-logo img{height:44px;}
+.header-title{font-size:13px;font-weight:600;color:#94a3b8;letter-spacing:2px;text-transform:uppercase;}
+.content{flex:1;padding:32px 72px 36px;}
+.section-tag{display:inline-block;background:#eff6ff;color:#1e3a8a;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;border-radius:99px;margin-bottom:14px;}
+h2{font-size:44px;font-weight:900;color:#1e3a8a;margin-bottom:8px;line-height:1.1;}
+h2 span{color:#f97316;}
+.intro{font-size:16px;color:#475569;max-width:900px;line-height:1.6;margin-bottom:28px;}
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:28px;}
+.feat-card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:22px;transition:all 0.2s;}
+.feat-icon{font-size:32px;margin-bottom:12px;}
+.feat-title{font-size:15px;font-weight:800;color:#1e3a8a;margin-bottom:6px;}
+.feat-desc{font-size:13px;color:#64748b;line-height:1.5;}
+.feat-badge{display:inline-block;margin-top:8px;background:#eff6ff;color:#1e3a8a;font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:0.5px;}
+.portal-preview{background:linear-gradient(135deg,#1e3a8a,#1d4ed8);border-radius:20px;padding:28px 32px;display:flex;gap:24px;}
+.pp-left{flex:1;}
+.pp-title{font-size:18px;font-weight:800;color:#fff;margin-bottom:16px;}
+.pp-items{display:flex;flex-direction:column;gap:10px;}
+.pp-item{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.1);border-radius:12px;padding:10px 14px;}
+.pp-dot{width:8px;height:8px;border-radius:50%;background:#fbbf24;flex-shrink:0;}
+.pp-text{font-size:13px;color:rgba(255,255,255,0.9);font-weight:500;}
+.pp-right{width:300px;background:rgba(255,255,255,0.08);border-radius:14px;padding:16px;}
+.pp-stat-title{font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;font-weight:600;}
+.pp-stat-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.pp-stat-label{font-size:12px;color:rgba(255,255,255,0.7);}
+.pp-stat-val{font-size:14px;font-weight:700;color:#fbbf24;}
+.pp-bar-bg{height:6px;background:rgba(255,255,255,0.15);border-radius:99px;overflow:hidden;margin-bottom:12px;}
+.pp-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#22c55e,#16a34a);}
+.bottom-bar{height:6px;background:linear-gradient(90deg,#f97316,#1e3a8a,#22c55e);}
+.page-num{position:absolute;bottom:24px;right:60px;font-size:12px;color:#94a3b8;font-weight:500;}
+</style></head><body>
+<div class="page">
+  <div class="top-bar"></div>
+  <div class="header"><div class="header-logo"><img src="logo-p.png"/></div><div class="header-title">Business Admin Portal</div></div>
+  <div class="content">
+    <div class="section-tag">Admin Portal Features</div>
+    <h2>Powerful <span>Business Dashboard</span><br>for HR &amp; Admin Teams</h2>
+    <div class="intro">Your HR team gets a dedicated web portal at business.aorane.com — manage all employees, track health trends, send communications, and handle billing — all from one screen.</div>
+    <div class="features-grid">
+      <div class="feat-card"><div class="feat-icon">📊</div><div class="feat-title">Real-time Health Dashboard</div><div class="feat-desc">See live health scores, BMI distribution, stress levels, and activity stats of your entire workforce at a glance.</div><div class="feat-badge">Live Data</div></div>
+      <div class="feat-card"><div class="feat-icon">👥</div><div class="feat-title">Member Management</div><div class="feat-desc">Search, view, suspend, or remove members. CSV export. View individual employee health details with DPDPA consent.</div><div class="feat-badge">Full Control</div></div>
+      <div class="feat-card"><div class="feat-icon">🔑</div><div class="feat-title">Enrollment Code System</div><div class="feat-desc">Generate unique enrollment codes for departments or batches. Track usage, expiry, and seat capacity per code.</div><div class="feat-badge">Smart Onboarding</div></div>
+      <div class="feat-card"><div class="feat-icon">📣</div><div class="feat-title">Team Communications</div><div class="feat-desc">Send announcements, alerts, and reminders to all employees or specific groups directly through the Aorane app.</div><div class="feat-badge">Push Notifications</div></div>
+      <div class="feat-card"><div class="feat-icon">🧠</div><div class="feat-title">Stress Level Lookup</div><div class="feat-desc">Search any employee by Aorane ID to view their stress history, risk level (high/moderate/low), and patterns over time.</div><div class="feat-badge">Mental Health</div></div>
+      <div class="feat-card"><div class="feat-icon">🏥</div><div class="feat-title">Health Risk Distribution</div><div class="feat-desc">See how many employees are Healthy vs At-Risk vs Inactive. Pie charts, bar graphs, and trend lines included.</div><div class="feat-badge">AI Analytics</div></div>
+      <div class="feat-card"><div class="feat-icon">💳</div><div class="feat-title">Billing &amp; Invoices</div><div class="feat-desc">Razorpay-powered billing. Monthly/yearly subscriptions. GST invoices. Upgrade seats anytime. Auto-renewal.</div><div class="feat-badge">GST Ready</div></div>
+      <div class="feat-card"><div class="feat-icon">🔐</div><div class="feat-title">Secure Multi-Admin</div><div class="feat-desc">Multiple admin roles (owner/admin). Password-protected with JWT tokens. Brute-force protection. OTP login.</div><div class="feat-badge">Enterprise Auth</div></div>
+      <div class="feat-card"><div class="feat-icon">📈</div><div class="feat-title">Weekly &amp; Monthly Reports</div><div class="feat-desc">Automated health trend reports for your organization. Export data as CSV. Track improvement over months.</div><div class="feat-badge">Auto Reports</div></div>
+    </div>
+    <div class="portal-preview">
+      <div class="pp-left">
+        <div class="pp-title">What HR Sees on Dashboard</div>
+        <div class="pp-items">
+          <div class="pp-item"><div class="pp-dot"></div><div class="pp-text">Total enrolled employees + active count</div></div>
+          <div class="pp-item"><div class="pp-dot"></div><div class="pp-text">Average org health score &amp; BMI trend</div></div>
+          <div class="pp-item"><div class="pp-dot"></div><div class="pp-text">Stress distribution: High / Moderate / Low</div></div>
+          <div class="pp-item"><div class="pp-dot"></div><div class="pp-text">Top health risks in the organization</div></div>
+          <div class="pp-item"><div class="pp-dot"></div><div class="pp-text">Activity &amp; hydration compliance rates</div></div>
+          <div class="pp-item"><div class="pp-dot"></div><div class="pp-text">Recent announcements &amp; responses</div></div>
+        </div>
+      </div>
+      <div class="pp-right">
+        <div class="pp-stat-title">Sample Org — 150 Employees</div>
+        <div class="pp-stat-row"><div class="pp-stat-label">Avg Health Score</div><div class="pp-stat-val">76/100</div></div>
+        <div class="pp-bar-bg"><div class="pp-bar-fill" style="width:76%"></div></div>
+        <div class="pp-stat-row"><div class="pp-stat-label">Active Trackers</div><div class="pp-stat-val">84%</div></div>
+        <div class="pp-bar-bg"><div class="pp-bar-fill" style="width:84%;background:linear-gradient(90deg,#3b82f6,#1d4ed8)"></div></div>
+        <div class="pp-stat-row"><div class="pp-stat-label">Low Stress</div><div class="pp-stat-val">61%</div></div>
+        <div class="pp-bar-bg"><div class="pp-bar-fill" style="width:61%;background:linear-gradient(90deg,#a855f7,#7c3aed)"></div></div>
+        <div class="pp-stat-row"><div class="pp-stat-label">At-Risk Employees</div><div class="pp-stat-val" style="color:#ef4444">12</div></div>
+        <div class="pp-bar-bg"><div class="pp-bar-fill" style="width:8%;background:linear-gradient(90deg,#ef4444,#dc2626)"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-bar"></div>
+  <div class="page-num">Page 4 of 10</div>
+</div>
+</body></html>

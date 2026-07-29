@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1200px; height: 628px; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; background: #fff; }
+
+  .banner {
+    width: 1200px;
+    height: 628px;
+    background: linear-gradient(135deg, #f8faff 0%, #eef4ff 40%, #fff8f2 100%);
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Background decorative circles */
+  .circle1 {
+    position: absolute;
+    width: 480px; height: 480px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(249,115,22,0.08), rgba(249,115,22,0.03));
+    right: -80px; top: -120px;
+    border: 2px solid rgba(249,115,22,0.1);
+  }
+  .circle2 {
+    position: absolute;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(30,58,138,0.06), rgba(30,58,138,0.02));
+    right: 100px; bottom: -100px;
+    border: 2px solid rgba(30,58,138,0.08);
+  }
+  .circle3 {
+    position: absolute;
+    width: 150px; height: 150px;
+    border-radius: 50%;
+    background: rgba(34,197,94,0.08);
+    left: 380px; top: -50px;
+    border: 2px solid rgba(34,197,94,0.12);
+  }
+  .dot1 {
+    position: absolute;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #22c55e;
+    left: 340px; bottom: 80px;
+    opacity: 0.5;
+  }
+  .dot2 {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #f97316;
+    left: 300px; top: 100px;
+    opacity: 0.4;
+  }
+
+  /* Left content */
+  .left {
+    flex: 1;
+    padding: 52px 40px 52px 72px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    z-index: 2;
+  }
+
+  .logo img {
+    height: 68px;
+    object-fit: contain;
+  }
+
+  .tagline {
+    margin-top: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #f97316;
+  }
+
+  .headline {
+    margin-top: 10px;
+    font-size: 38px;
+    font-weight: 800;
+    color: #1e3a8a;
+    line-height: 1.15;
+  }
+
+  .headline span {
+    color: #f97316;
+  }
+
+  .sub {
+    margin-top: 14px;
+    font-size: 16px;
+    color: #475569;
+    line-height: 1.6;
+    max-width: 420px;
+  }
+
+  .features {
+    margin-top: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .feature-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e3a8a;
+  }
+
+  .feature-icon {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f97316, #fb923c);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  .cta-row {
+    margin-top: 26px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .cta-btn {
+    background: linear-gradient(135deg, #f97316, #ea6c10);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 13px 28px;
+    border-radius: 30px;
+    letter-spacing: 0.3px;
+    box-shadow: 0 6px 20px rgba(249,115,22,0.35);
+  }
+
+  .url {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+  }
+
+  /* Right visual */
+  .right {
+    width: 380px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
+  }
+
+  .phone-mockup {
+    width: 200px;
+    height: 390px;
+    background: #fff;
+    border-radius: 36px;
+    box-shadow: 0 24px 60px rgba(30,58,138,0.18), 0 4px 16px rgba(0,0,0,0.08);
+    border: 3px solid #e2e8f0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .phone-top {
+    background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+    padding: 18px 16px 14px;
+    text-align: center;
+  }
+
+  .phone-top .p-greeting {
+    font-size: 10px;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 2px;
+  }
+
+  .phone-top .p-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .phone-score-box {
+    background: rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 8px;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .score-num {
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  .score-label {
+    font-size: 9px;
+    color: rgba(255,255,255,0.8);
+    font-weight: 600;
+    text-align: left;
+    line-height: 1.3;
+  }
+
+  .phone-body {
+    flex: 1;
+    padding: 10px 12px;
+    background: #f8faff;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .stat-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .stat-card {
+    flex: 1;
+    background: #fff;
+    border-radius: 10px;
+    padding: 7px 8px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    text-align: center;
+  }
+
+  .stat-emoji { font-size: 14px; }
+  .stat-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e3a8a;
+    margin-top: 2px;
+  }
+  .stat-name {
+    font-size: 8px;
+    color: #94a3b8;
+    font-weight: 500;
+    margin-top: 1px;
+  }
+
+  .activity-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 8px 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  }
+
+  .act-title {
+    font-size: 9px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .act-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  .act-label {
+    font-size: 8px;
+    color: #94a3b8;
+    width: 38px;
+    flex-shrink: 0;
+  }
+
+  .act-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .act-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+  }
+
+  .nutrition-card {
+    background: linear-gradient(135deg, #fff7ed, #fff);
+    border-radius: 10px;
+    padding: 8px 10px;
+    box-shadow: 0 1px 6px rgba(249,115,22,0.08);
+    border: 1px solid rgba(249,115,22,0.12);
+  }
+
+  .nut-title {
+    font-size: 9px;
+    font-weight: 700;
+    color: #f97316;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .nut-row {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .nut-item {
+    text-align: center;
+  }
+
+  .nut-val {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e3a8a;
+  }
+
+  .nut-unit {
+    font-size: 7px;
+    color: #94a3b8;
+  }
+
+  /* Badge */
+  .india-badge {
+    position: absolute;
+    top: 28px;
+    right: 28px;
+    background: linear-gradient(135deg, #ff9933, #fff, #138808);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #1e3a8a;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    letter-spacing: 0.5px;
+    z-index: 10;
+  }
+
+  .bottom-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #f97316, #1e3a8a, #22c55e);
+  }
+</style>
+</head>
+<body>
+<div class="banner">
+  <div class="circle1"></div>
+  <div class="circle2"></div>
+  <div class="circle3"></div>
+  <div class="dot1"></div>
+  <div class="dot2"></div>
+
+  <div class="india-badge">🇮🇳 Made in India</div>
+
+  <div class="left">
+    <div class="logo">
+      <img src="logo.png" alt="Aorane" />
+    </div>
+
+    <div class="tagline">India's Health Intelligence Platform</div>
+
+    <div class="headline">
+      Your Health.<br>
+      <span>Your Data.</span><br>
+      Your Control.
+    </div>
+
+    <div class="sub">
+      Track nutrition, fitness, medicines &amp; family health — all in one secure Indian app.
+    </div>
+
+    <div class="features">
+      <div class="feature-item">
+        <div class="feature-icon">🥗</div>
+        AI-powered Indian food nutrition tracking
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">👨‍👩‍👧</div>
+        Family health monitoring in one account
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">🔒</div>
+        100% private · DPDPA 2023 compliant
+      </div>
+    </div>
+
+    <div class="cta-row">
+      <div class="cta-btn">Download Free →</div>
+      <div class="url">aorane.com</div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="phone-mockup">
+      <div class="phone-top">
+        <div class="p-greeting">Good Morning 👋</div>
+        <div class="p-name">Rahul Sharma</div>
+        <div class="phone-score-box">
+          <div class="score-num">84</div>
+          <div class="score-label">Health<br>Score</div>
+        </div>
+      </div>
+      <div class="phone-body">
+        <div class="stat-row">
+          <div class="stat-card">
+            <div class="stat-emoji">🔥</div>
+            <div class="stat-val">1,840</div>
+            <div class="stat-name">Calories</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-emoji">💧</div>
+            <div class="stat-val">2.4L</div>
+            <div class="stat-name">Water</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-emoji">👣</div>
+            <div class="stat-val">7.2K</div>
+            <div class="stat-name">Steps</div>
+          </div>
+        </div>
+
+        <div class="activity-card">
+          <div class="act-title">Weekly Progress</div>
+          <div class="act-bar-row">
+            <div class="act-label">Protein</div>
+            <div class="act-bar-bg"><div class="act-bar-fill" style="width:78%;background:#1d4ed8"></div></div>
+          </div>
+          <div class="act-bar-row">
+            <div class="act-label">Fibre</div>
+            <div class="act-bar-bg"><div class="act-bar-fill" style="width:55%;background:#22c55e"></div></div>
+          </div>
+          <div class="act-bar-row">
+            <div class="act-label">Vitamin C</div>
+            <div class="act-bar-bg"><div class="act-bar-fill" style="width:90%;background:#f97316"></div></div>
+          </div>
+        </div>
+
+        <div class="nutrition-card">
+          <div class="nut-title">Today's Nutrition</div>
+          <div class="nut-row">
+            <div class="nut-item">
+              <div class="nut-val">62g</div>
+              <div class="nut-unit">Protein</div>
+            </div>
+            <div class="nut-item">
+              <div class="nut-val">210g</div>
+              <div class="nut-unit">Carbs</div>
+            </div>
+            <div class="nut-item">
+              <div class="nut-val">44g</div>
+              <div class="nut-unit">Fat</div>
+            </div>
+            <div class="nut-item">
+              <div class="nut-val">820mg</div>
+              <div class="nut-unit">Calcium</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-bar"></div>
+</div>
+</body>
+</html>

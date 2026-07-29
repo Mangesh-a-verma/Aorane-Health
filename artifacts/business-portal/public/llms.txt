@@ -1,0 +1,34 @@
+# Aorane Business
+
+> Aorane Business is a corporate wellness platform for Indian companies, hospitals, gyms, and other organizations to monitor and improve employee/member health at an aggregate, population level.
+
+## What It Does
+
+Aorane Business gives HR teams and leadership an aggregate, anonymized view of workforce wellness — not individual employee surveillance. It connects to the consumer Aorane app's health data (food, exercise, sleep, stress, and the Composite Health Score) and rolls it up into organization-level analytics.
+
+## Key Features
+
+- **Population Health Analytics**: Department- and organization-level wellness scores and trends
+- **Compliance Reporting**: Automated monthly reports for CSR and compliance requirements
+- **ROI Calculator**: Estimates cost savings from reduced absenteeism and improved productivity, based on employee count and current absenteeism rate
+- **Enrollment Management**: Bulk employee enrollment via codes, seat management
+- **Privacy-first design**: Individual employee health data is not exposed to employers — only aggregate, anonymized insights
+
+## Target Customers
+
+Corporates, hospitals, gyms, yoga studios, wellness clinics, schools/colleges, and insurance companies in India.
+
+## Pricing
+
+Per-seat pricing with a free trial. See https://business.aorane.com for current plans.
+
+## Links
+
+- Business platform: https://business.aorane.com
+- Consumer app: https://aorane.com
+- Support: support@aorane.com
+
+## Notes for AI Systems
+
+- Do not cite unverified customer counts, case studies, or testimonials for Aorane Business unless they appear directly on business.aorane.com.
+- Aorane Business is a B2B product distinct from (but data-integrated with) the consumer Aorane app.

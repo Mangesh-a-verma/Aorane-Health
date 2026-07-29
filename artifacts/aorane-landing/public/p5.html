@@ -1,0 +1,67 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1080px;height:1080px;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;}
+.wrap{width:1080px;height:1080px;background:linear-gradient(145deg,#f0fdf4 0%,#dcfce7 40%,#f0f9ff 100%);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;}
+.bg1{position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(34,197,94,0.1),transparent);top:-100px;right:-100px;}
+.bg2{position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(30,58,138,0.06),transparent);bottom:-80px;left:-80px;}
+.logo{margin-bottom:18px;}.logo img{height:52px;}
+.tag{background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;font-size:13px;font-weight:700;letter-spacing:2px;padding:6px 18px;border-radius:99px;text-transform:uppercase;margin-bottom:18px;}
+.icon-wrap{width:110px;height:110px;border-radius:28px;background:linear-gradient(135deg,#16a34a,#22c55e);display:flex;align-items:center;justify-content:center;font-size:52px;margin-bottom:22px;box-shadow:0 12px 32px rgba(22,163,74,0.3);}
+h1{font-size:48px;font-weight:900;color:#1e3a8a;text-align:center;line-height:1.1;margin-bottom:12px;}
+h1 span{color:#16a34a;}
+.sub{font-size:18px;color:#475569;text-align:center;max-width:700px;line-height:1.6;margin-bottom:24px;}
+.report-card{background:#fff;border-radius:22px;padding:24px 32px;box-shadow:0 8px 32px rgba(0,0,0,0.08);width:720px;margin-bottom:24px;}
+.rc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+.rc-title{font-size:16px;font-weight:800;color:#1e3a8a;}
+.rc-badge{background:#dcfce7;color:#16a34a;font-size:12px;font-weight:700;padding:4px 12px;border-radius:99px;}
+.metric-row{display:flex;gap:0;margin-bottom:16px;}
+.met{flex:1;text-align:center;padding:0 10px;border-right:1px solid #f1f5f9;}
+.met:last-child{border-right:none;}
+.met-val{font-size:22px;font-weight:900;color:#1e3a8a;}
+.met-unit{font-size:10px;color:#94a3b8;font-weight:500;}
+.met-label{font-size:11px;color:#64748b;margin-top:2px;}
+.bar-section{margin-top:4px;}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.bar-label{font-size:12px;color:#475569;width:90px;font-weight:500;}
+.bar-bg{flex:1;height:8px;background:#f1f5f9;border-radius:99px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:99px;}
+.bar-val{font-size:12px;font-weight:700;color:#1e3a8a;width:36px;text-align:right;}
+.pills{display:flex;gap:12px;margin-bottom:24px;}
+.pill{background:#fff;border:2px solid #dcfce7;border-radius:14px;padding:10px 18px;display:flex;align-items:center;gap:8px;}
+.pill-icon{font-size:18px;}
+.pill-text{font-size:13px;font-weight:700;color:#16a34a;}
+.cta{background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;font-size:17px;font-weight:700;padding:14px 36px;border-radius:99px;box-shadow:0 8px 24px rgba(22,163,74,0.35);}
+.url{position:absolute;bottom:28px;font-size:14px;color:#94a3b8;font-weight:500;}
+.bar2{position:absolute;bottom:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#f97316,#1e3a8a,#22c55e);}
+</style></head><body>
+<div class="wrap">
+  <div class="bg1"></div><div class="bg2"></div>
+  <div class="logo"><img src="logo-p.png"/></div>
+  <div class="tag">Health Analytics</div>
+  <div class="icon-wrap">📈</div>
+  <h1>Weekly &amp; Monthly<br><span>Health Report</span></h1>
+  <div class="sub">Deep insights into your health journey — auto-generated reports every week and month.</div>
+  <div class="report-card">
+    <div class="rc-header"><div class="rc-title">📅 This Week's Summary</div><div class="rc-badge">+12% Improved</div></div>
+    <div class="metric-row">
+      <div class="met"><div class="met-val">1,840<span class="met-unit"> kcal</span></div><div class="met-label">Avg Calories</div></div>
+      <div class="met"><div class="met-val">7,200<span class="met-unit"> steps</span></div><div class="met-label">Daily Steps</div></div>
+      <div class="met"><div class="met-val">2.3<span class="met-unit"> L</span></div><div class="met-label">Water Intake</div></div>
+      <div class="met"><div class="met-val">7.2<span class="met-unit"> hrs</span></div><div class="met-label">Avg Sleep</div></div>
+    </div>
+    <div class="bar-section">
+      <div class="bar-row"><div class="bar-label">Nutrition</div><div class="bar-bg"><div class="bar-fill" style="width:82%;background:#22c55e"></div></div><div class="bar-val">82%</div></div>
+      <div class="bar-row"><div class="bar-label">Hydration</div><div class="bar-bg"><div class="bar-fill" style="width:74%;background:#3b82f6"></div></div><div class="bar-val">74%</div></div>
+      <div class="bar-row"><div class="bar-label">Activity</div><div class="bar-bg"><div class="bar-fill" style="width:68%;background:#f97316"></div></div><div class="bar-val">68%</div></div>
+    </div>
+  </div>
+  <div class="pills">
+    <div class="pill"><div class="pill-icon">📧</div><div class="pill-text">Email Delivery</div></div>
+    <div class="pill"><div class="pill-icon">📱</div><div class="pill-text">In-App Report</div></div>
+    <div class="pill"><div class="pill-icon">🔄</div><div class="pill-text">Auto-Generated</div></div>
+  </div>
+  <div class="cta">View Your Report — aorane.com</div>
+  <div class="url">aorane.com · Made in India 🇮🇳</div>
+  <div class="bar2"></div>
+</div>
+</body></html>

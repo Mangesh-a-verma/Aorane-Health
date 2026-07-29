@@ -1,0 +1,249 @@
+import {
+  pgTable,
+  text,
+  integer,
+  boolean,
+  timestamp,
+  uuid,
+  decimal,
+  jsonb,
+  pgEnum,
+} from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
+import { usersTable } from "./users";
+
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "medicine_reminder",
+  "water_reminder",
+  "blood_emergency",
+  "broadcast",
+  "announcement",
+  "report_ready",
+  "system",
+]);
+
+export const adTypeEnum = pgEnum("ad_type", ["google", "direct"]);
+export const adStatusEnum = pgEnum("ad_status", ["active", "paused", "expired", "pending"]);
+
+export const pushTokensTable = pgTable("push_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  token: text("token").notNull(),
+  platform: text("platform").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (t) => [{ name: "push_tokens_user_token_unique", columns: [t.userId, t.token], unique: true }]);
+
+export const notificationsTable = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  type: notificationTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  data: jsonb("data"),
+  isRead: boolean("is_read").notNull().default(false),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const announcementsTable = pgTable("announcements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  imageUrl: text("image_url"),
+  linkUrl: text("link_url"),
+  targetPlans: text("target_plans").array(),
+  isActive: boolean("is_active").notNull().default(true),
+  startsAt: timestamp("starts_at", { withTimezone: true }),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const featureFlagsTable = pgTable("feature_flags", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull().unique(),
+  label: text("label").notNull(),
+  description: text("description"),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  enabledForPlans: text("enabled_for_plans").array(),
+  config: jsonb("config"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const adCampaignsTable = pgTable("ad_campaigns", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  adType: adTypeEnum("ad_type").notNull(),
+  title: text("title").notNull(),
+  advertiserName: text("advertiser_name"),
+  bannerUrl: text("banner_url"),
+  linkUrl: text("link_url"),
+  targetPlans: text("target_plans").array(),
+  targetCities: text("target_cities").array(),
+  targetAgeMin: integer("target_age_min"),
+  targetAgeMax: integer("target_age_max"),
+  status: adStatusEnum("status").notNull().default("active"),
+  priority: integer("priority").notNull().default(1),
+  dealAmount: decimal("deal_amount", { precision: 10, scale: 2 }),
+  impressionCount: integer("impression_count").notNull().default(0),
+  clickCount: integer("click_count").notNull().default(0),
+  startsAt: timestamp("starts_at", { withTimezone: true }),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  // ── Slider control fields ──────────────────────────────────────────
+  slidePosition: integer("slide_position").default(1),      // 1-5: kaunsa slot
+  targetScreen: text("target_screen").default("dashboard"), // dashboard | all
+  googleAdCode: text("google_ad_code"),                     // Google AdSense HTML (type=google)
+  // ──────────────────────────────────────────────────────────────────
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const adImpressionsTable = pgTable("ad_impressions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  campaignId: uuid("campaign_id").notNull().references(() => adCampaignsTable.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => usersTable.id, { onDelete: "set null" }),
+  userPlan: text("user_plan"),
+  platform: text("platform"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const adClicksTable = pgTable("ad_clicks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  campaignId: uuid("campaign_id").notNull().references(() => adCampaignsTable.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => usersTable.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const adminUsersTable = pgTable("admin_users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  fullName: text("full_name").notNull(),
+  role: text("role").notNull().default("admin"),
+  isActive: boolean("is_active").notNull().default(true),
+  lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const adminAuditLogsTable = pgTable("admin_audit_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  adminId: uuid("admin_id").notNull().references(() => adminUsersTable.id),
+  action: text("action").notNull(),
+  targetType: text("target_type"),
+  targetId: text("target_id"),
+  details: jsonb("details"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const aiConfigTable = pgTable("ai_config", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  feature: text("feature").notNull().unique(),
+  label: text("label").notNull(),
+  provider: text("provider").notNull().default("gemini"),
+  model: text("model").notNull().default("gemini-2.0-flash"),
+  apiKey: text("api_key"),
+  systemPrompt: text("system_prompt"),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type AiConfig = typeof aiConfigTable.$inferSelect;
+
+export type PushToken = typeof pushTokensTable.$inferSelect;
+export type Notification = typeof notificationsTable.$inferSelect;
+export type FeatureFlag = typeof featureFlagsTable.$inferSelect;
+export type AdCampaign = typeof adCampaignsTable.$inferSelect;
+export type AdminUser = typeof adminUsersTable.$inferSelect;
+
+// ─── Company Settings (singleton row) ────────────────────────────────────────
+export const companySettingsTable = pgTable("company_settings", {
+  id: integer("id").primaryKey().default(1),
+  companyName: text("company_name").notNull().default("AORANE Health"),
+  companyLogoUrl: text("company_logo_url"),
+  tagline: text("tagline").default("Your Health, In Your Hands"),
+  website: text("website").default("aorane.com"),
+  supportPhone: text("support_phone"),
+  supportEmail: text("support_email"),
+  address: text("address"),
+  primaryColor: text("primary_color").default("#0077B6"),
+  accentColor: text("accent_color").default("#00B896"),
+  // Scorecard customization
+  scorecardShowQr: boolean("scorecard_show_qr").default(true),
+  scorecardShowBloodGroup: boolean("scorecard_show_blood_group").default(true),
+  scorecardShowBmi: boolean("scorecard_show_bmi").default(true),
+  scorecardShowActivePercent: boolean("scorecard_show_active_percent").default(true),
+  scorecardBgGradientFrom: text("scorecard_bg_gradient_from").default("#023E8A"),
+  scorecardBgGradientTo: text("scorecard_bg_gradient_to").default("#1B998B"),
+  // Company / Legal registration details
+  gstin: text("gstin"),
+  cin: text("cin"),
+  pan: text("pan"),
+  city: text("city"),
+  state: text("state"),
+  pincode: text("pincode"),
+  country: text("country").default("India"),
+  registeredAddress: text("registered_address"),
+  // Report settings
+  reportHeaderText: text("report_header_text"),
+  reportFooterText: text("report_footer_text"),
+  reportLogoUrl: text("report_logo_url"),
+  weeklyReportEnabled: boolean("weekly_report_enabled").default(true),
+  monthlyReportEnabled: boolean("monthly_report_enabled").default(true),
+  // Social media URLs (public — used on landing/business footer)
+  socialTwitter: text("social_twitter"),
+  socialLinkedin: text("social_linkedin"),
+  socialInstagram: text("social_instagram"),
+  socialYoutube: text("social_youtube"),
+  socialFacebook: text("social_facebook"),
+  // Investor / Marketing assets
+  investorDeckUrl: text("investor_deck_url"),
+  // Mobile install URLs
+  androidPlayStoreUrl: text("android_play_store_url").default("https://play.google.com/store/apps/details?id=in.aorane.app"),
+  iosAppStoreUrl: text("ios_app_store_url"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type CompanySettings = typeof companySettingsTable.$inferSelect;
+
+// ─── Enquiries (lead capture from landing/business portal) ───────────────────
+export const enquiriesTable = pgTable("enquiries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  type: text("type").notNull(),                    // 'expert' | 'investor_deck' | 'general'
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  mobile: text("mobile"),
+  city: text("city"),
+  accountType: text("account_type"),               // 'individual' | 'company'
+  companyName: text("company_name"),
+  message: text("message"),
+  source: text("source"),                          // 'landing' | 'business' | etc.
+  status: text("status").notNull().default("new"), // 'new' | 'contacted' | 'closed'
+  adminNotes: text("admin_notes"),
+  notifiedAt: timestamp("notified_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Enquiry = typeof enquiriesTable.$inferSelect;
+
+// ─── App Sessions — DAU/MAU tracking ─────────────────────────────────────────
+export const appSessionsTable = pgTable("app_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  sessionId: text("session_id").notNull().unique(),
+  deviceType: text("device_type").default("mobile"),   // android | ios | web
+  deviceModel: text("device_model"),
+  appVersion: text("app_version"),
+  platform: text("platform"),                          // expo | web
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+  isActive: boolean("is_active").notNull().default(true),
+  durationSeconds: integer("duration_seconds"),
+  screenCount: integer("screen_count").default(0),
+});
+
+export type AppSession = typeof appSessionsTable.$inferSelect;

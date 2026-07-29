@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1080" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1080px; height: 1080px; overflow: hidden;
+    font-family: 'Inter', sans-serif;
+    background: #060c1a;
+    color: #fff;
+  }
+
+  .bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 700px 500px at 10% 0%, rgba(0,119,182,0.22) 0%, transparent 65%),
+      radial-gradient(ellipse 600px 600px at 90% 100%, rgba(27,153,139,0.18) 0%, transparent 65%),
+      radial-gradient(ellipse 400px 400px at 50% 50%, rgba(0,119,182,0.07) 0%, transparent 70%);
+  }
+
+  .grid-overlay {
+    position: absolute; inset: 0; opacity: 0.035;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .container {
+    position: relative; z-index: 2;
+    width: 1080px; height: 1080px;
+    padding: 56px 60px 48px;
+    display: flex; flex-direction: column;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 40px;
+  }
+  .logo-area { display: flex; align-items: center; gap: 14px; }
+  .logo-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: linear-gradient(135deg, #0077B6, #1B998B);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; font-weight: 900; color: #fff;
+    box-shadow: 0 8px 32px rgba(0,119,182,0.4);
+  }
+  .logo-text { font-size: 28px; font-weight: 800; letter-spacing: 0.06em; color: #fff; }
+  .logo-sub  { font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.4); letter-spacing: 0.18em; text-transform: uppercase; margin-top: 1px; }
+
+  .badge-who {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(27,153,139,0.15); border: 1px solid rgba(27,153,139,0.35);
+    border-radius: 100px; padding: 8px 18px;
+    font-size: 12px; font-weight: 600; color: #1B998B; letter-spacing: 0.06em;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #1B998B; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── Headline ── */
+  .headline-block { margin-bottom: 36px; }
+  .eyebrow {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+    color: #0077B6; margin-bottom: 10px;
+  }
+  .headline {
+    font-size: 56px; font-weight: 900; line-height: 1.08;
+    background: linear-gradient(135deg, #ffffff 30%, rgba(255,255,255,0.7));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+  }
+  .headline span {
+    background: linear-gradient(135deg, #0077B6, #1B998B);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .sub-headline {
+    font-size: 18px; font-weight: 400; color: rgba(255,255,255,0.52); line-height: 1.5;
+    max-width: 640px;
+  }
+
+  /* ── Score ring ── */
+  .score-showcase {
+    display: flex; align-items: center; gap: 40px;
+    margin-bottom: 36px;
+  }
+  .score-ring {
+    position: relative; width: 140px; height: 140px; flex-shrink: 0;
+  }
+  .score-ring svg { transform: rotate(-90deg); }
+  .score-center {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .score-num { font-size: 40px; font-weight: 900; color: #fff; line-height: 1; }
+  .score-label { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.4); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 2px; }
+  .grade-badge {
+    background: linear-gradient(135deg, #0077B6, #1B998B);
+    border-radius: 100px; padding: 6px 18px;
+    font-size: 16px; font-weight: 800; color: #fff; letter-spacing: 0.04em;
+    box-shadow: 0 4px 20px rgba(0,119,182,0.35);
+    margin-top: 10px;
+  }
+  .score-desc { flex: 1; }
+  .score-desc-title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+  .score-desc-text { font-size: 15px; color: rgba(255,255,255,0.5); line-height: 1.6; }
+
+  /* ── Components grid ── */
+  .components-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.18em; color: rgba(255,255,255,0.3);
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+  .components-grid {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
+    margin-bottom: 36px;
+  }
+  .comp-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px; padding: 14px 10px;
+    text-align: center; position: relative; overflow: hidden;
+    transition: all 0.2s;
+  }
+  .comp-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--c);
+  }
+  .comp-icon { font-size: 22px; margin-bottom: 6px; }
+  .comp-name { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.6); margin-bottom: 6px; letter-spacing: 0.03em; }
+  .comp-pct {
+    font-size: 24px; font-weight: 900; color: var(--c);
+    line-height: 1;
+  }
+  .comp-pct-label { font-size: 9px; color: rgba(255,255,255,0.3); margin-top: 2px; font-weight: 500; letter-spacing: 0.1em; }
+
+  .comp-bar-wrap {
+    height: 3px; background: rgba(255,255,255,0.07); border-radius: 10px;
+    margin-top: 8px; overflow: hidden;
+  }
+  .comp-bar {
+    height: 100%; border-radius: 10px;
+    background: var(--c); width: var(--w);
+  }
+
+  /* ── Features strip ── */
+  .features-strip {
+    display: flex; gap: 12px; margin-bottom: 32px;
+  }
+  .feat {
+    flex: 1; background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .feat-icon {
+    width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+  }
+  .feat-text { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.65); line-height: 1.4; }
+  .feat-text span { display: block; font-size: 10px; font-weight: 400; color: rgba(255,255,255,0.32); margin-top: 2px; }
+
+  /* ── Bottom ── */
+  .bottom-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+  }
+  .refs {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .ref-tag {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+    padding: 4px 10px; border-radius: 100px;
+    background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.35);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .download-cta {
+    background: linear-gradient(135deg, #0077B6, #1B998B);
+    border-radius: 100px; padding: 12px 28px;
+    font-size: 14px; font-weight: 700; color: #fff;
+    box-shadow: 0 6px 24px rgba(0,119,182,0.35);
+    letter-spacing: 0.03em;
+  }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="grid-overlay"></div>
+<div class="container">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="logo-area">
+      <div class="logo-icon">A</div>
+      <div>
+        <div class="logo-text">AORANE</div>
+        <div class="logo-sub">Indian Health Platform</div>
+      </div>
+    </div>
+    <div class="badge-who">
+      <div class="dot"></div>
+      WHO · ICMR 2024 Backed
+    </div>
+  </div>
+
+  <!-- Headline -->
+  <div class="headline-block">
+    <div class="eyebrow">Scientific Health Scoring Engine</div>
+    <div class="headline">Aapki Health ka<br/><span>Scientific Score</span></div>
+    <div class="sub-headline">6 real health parameters — WHO & ICMR guidelines ke hisaab se — ek accurate daily score mein</div>
+  </div>
+
+  <!-- Score showcase -->
+  <div class="score-showcase">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+      <div class="score-ring">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r="58" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+          <circle cx="70" cy="70" r="58" fill="none" stroke="url(#scoreGrad)" stroke-width="10"
+            stroke-linecap="round" stroke-dasharray="364.4" stroke-dashoffset="72.9"/>
+          <defs>
+            <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#0077B6"/>
+              <stop offset="100%" stop-color="#1B998B"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="score-center">
+          <div class="score-num">82</div>
+          <div class="score-label">/ 100</div>
+        </div>
+      </div>
+      <div class="grade-badge">Grade A — Very Good</div>
+    </div>
+    <div class="score-desc">
+      <div class="score-desc-title">Har roz aapki health track hoti hai</div>
+      <div class="score-desc-text">Khana, exercise, paani, medicine, neend aur BMI — sab ko milake ek scientific daily score banata hai jo aapki actual health reflect karta hai.</div>
+    </div>
+  </div>
+
+  <!-- Components -->
+  <div class="components-label">Score Breakdown — 6 Scientific Parameters</div>
+  <div class="components-grid">
+    <div class="comp-card" style="--c:#0077B6;--w:30%">
+      <div class="comp-icon">🍽️</div>
+      <div class="comp-name">Nutrition</div>
+      <div class="comp-pct">30%</div>
+      <div class="comp-pct-label">WEIGHT</div>
+      <div class="comp-bar-wrap"><div class="comp-bar"></div></div>
+    </div>
+    <div class="comp-card" style="--c:#1B998B;--w:25%">
+      <div class="comp-icon">💪</div>
+      <div class="comp-name">Exercise</div>
+      <div class="comp-pct">25%</div>
+      <div class="comp-pct-label">WEIGHT</div>
+      <div class="comp-bar-wrap"><div class="comp-bar"></div></div>
+    </div>
+    <div class="comp-card" style="--c:#38BDF8;--w:15%">
+      <div class="comp-icon">💧</div>
+      <div class="comp-name">Hydration</div>
+      <div class="comp-pct">15%</div>
+      <div class="comp-pct-label">WEIGHT</div>
+      <div class="comp-bar-wrap"><div class="comp-bar"></div></div>
+    </div>
+    <div class="comp-card" style="--c:#A78BFA;--w:15%">
+      <div class="comp-icon">💊</div>
+      <div class="comp-name">Medicine</div>
+      <div class="comp-pct">15%</div>
+      <div class="comp-pct-label">WEIGHT</div>
+      <div class="comp-bar-wrap"><div class="comp-bar"></div></div>
+    </div>
+    <div class="comp-card" style="--c:#F59E0B;--w:10%">
+      <div class="comp-icon">😴</div>
+      <div class="comp-name">Sleep</div>
+      <div class="comp-pct">10%</div>
+      <div class="comp-pct-label">WEIGHT</div>
+      <div class="comp-bar-wrap"><div class="comp-bar"></div></div>
+    </div>
+    <div class="comp-card" style="--c:#34D399;--w:5%">
+      <div class="comp-icon">⚖️</div>
+      <div class="comp-name">BMI</div>
+      <div class="comp-pct">5%</div>
+      <div class="comp-pct-label">WEIGHT</div>
+      <div class="comp-bar-wrap"><div class="comp-bar"></div></div>
+    </div>
+  </div>
+
+  <!-- Features strip -->
+  <div class="features-strip">
+    <div class="feat">
+      <div class="feat-icon" style="background:rgba(0,119,182,0.15);">🎯</div>
+      <div class="feat-text">Personalised Goals
+        <span>Harris-Benedict BMR formula se calculated</span>
+      </div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon" style="background:rgba(27,153,139,0.15);">🇮🇳</div>
+      <div class="feat-text">India-Specific
+        <span>ICMR RDA + Asia-Pacific BMI standards</span>
+      </div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon" style="background:rgba(56,189,248,0.15);">📊</div>
+      <div class="feat-text">Real-time Tracking
+        <span>IST timezone ke saath accurate daily scoring</span>
+      </div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon" style="background:rgba(167,139,250,0.15);">🔬</div>
+      <div class="feat-text">Micronutrients
+        <span>Calcium, Iron, B12, Vitamin C & D tracked</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom -->
+  <div class="bottom-bar">
+    <div class="refs">
+      <div class="ref-tag">WHO 2020</div>
+      <div class="ref-tag">ICMR 2024</div>
+      <div class="ref-tag">Harris-Benedict</div>
+      <div class="ref-tag">CDC Sleep</div>
+      <div class="ref-tag">Asia-Pacific BMI</div>
+    </div>
+    <div class="download-cta">Download AORANE →</div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1240px;height:1754px;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;}
+.page{width:1240px;height:1754px;background:#fff;position:relative;display:flex;flex-direction:column;}
+.top-bar{height:8px;background:linear-gradient(90deg,#f97316,#1e3a8a,#22c55e);}
+.header{padding:40px 72px 0;display:flex;align-items:center;justify-content:space-between;}
+.header-logo img{height:44px;}
+.header-title{font-size:13px;font-weight:600;color:#94a3b8;letter-spacing:2px;text-transform:uppercase;}
+.content{flex:1;padding:32px 72px 36px;}
+.section-tag{display:inline-block;background:#fff7ed;color:#f97316;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;border-radius:99px;margin-bottom:14px;}
+h2{font-size:44px;font-weight:900;color:#1e3a8a;margin-bottom:8px;line-height:1.1;}
+h2 span{color:#f97316;}
+.intro{font-size:16px;color:#475569;line-height:1.6;margin-bottom:28px;}
+.steps-timeline{display:flex;flex-direction:column;gap:0;margin-bottom:28px;}
+.tl-step{display:flex;gap:24px;position:relative;}
+.tl-step:not(:last-child)::after{content:'';position:absolute;left:28px;top:60px;bottom:-10px;width:2px;background:linear-gradient(180deg,#f97316,#e2e8f0);}
+.tl-left{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+.tl-num{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#1d4ed8);color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(30,58,138,0.3);}
+.tl-right{flex:1;background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:20px 24px;margin-bottom:16px;}
+.tl-title{font-size:17px;font-weight:800;color:#1e3a8a;margin-bottom:6px;}
+.tl-sub{font-size:13px;color:#475569;line-height:1.5;}
+.tl-badge{display:inline-block;margin-top:8px;background:#f0f7ff;color:#1e3a8a;font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;}
+.why-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;}
+.why-card{background:linear-gradient(135deg,#f0f7ff,#fff);border:1px solid #dbeafe;border-radius:16px;padding:20px;text-align:center;}
+.why-icon{font-size:28px;margin-bottom:10px;}
+.why-title{font-size:14px;font-weight:800;color:#1e3a8a;margin-bottom:5px;}
+.why-sub{font-size:12px;color:#64748b;line-height:1.4;}
+.bottom-bar{height:6px;background:linear-gradient(90deg,#f97316,#1e3a8a,#22c55e);}
+.page-num{position:absolute;bottom:24px;right:60px;font-size:12px;color:#94a3b8;font-weight:500;}
+</style></head><body>
+<div class="page">
+  <div class="top-bar"></div>
+  <div class="header"><div class="header-logo"><img src="logo-p.png"/></div><div class="header-title">Getting Started</div></div>
+  <div class="content">
+    <div class="section-tag">Onboarding Process</div>
+    <h2>Get Your Organization Live<br>in <span>Less Than a Week</span></h2>
+    <div class="intro">Aorane's onboarding is completely self-serve — no IT infrastructure needed, no installation required. Sign up, configure, share codes, and your employees are tracking health within days.</div>
+    <div class="steps-timeline">
+      <div class="tl-step">
+        <div class="tl-left"><div class="tl-num">1</div></div>
+        <div class="tl-right"><div class="tl-title">Day 1 — Register Your Organization (5 minutes)</div><div class="tl-sub">Visit business.aorane.com → Register with org name, type (corporate/hospital/gym etc.), contact email, GSTIN, and admin password. Receive welcome email with org code immediately.</div><div class="tl-badge">⏱️ 5 minutes</div></div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-left"><div class="tl-num">2</div></div>
+        <div class="tl-right"><div class="tl-title">Day 1 — Choose Your Plan &amp; Pay</div><div class="tl-sub">Select Max (₹199/seat) or Pro (₹249/seat) plan. Pay securely via Razorpay — UPI, credit card, net banking all accepted. Get GST invoice instantly.</div><div class="tl-badge">💳 Razorpay Secure Payment</div></div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-left"><div class="tl-num">3</div></div>
+        <div class="tl-right"><div class="tl-title">Day 2 — Generate Enrollment Codes</div><div class="tl-sub">From your dashboard, create enrollment codes for each department or batch. Set expiry dates and seat limits per code. Share via email, WhatsApp, or printed QR code.</div><div class="tl-badge">🔑 Unlimited Codes</div></div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-left"><div class="tl-num">4</div></div>
+        <div class="tl-right"><div class="tl-title">Day 2–4 — Employee Enrollment</div><div class="tl-sub">Employees download Aorane app (iOS/Android), register with their mobile number, and enter the enrollment code. They're automatically linked to your organization. No IT setup needed.</div><div class="tl-badge">📱 Self-serve by employees</div></div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-left"><div class="tl-num">5</div></div>
+        <div class="tl-right"><div class="tl-title">Day 5+ — Monitor &amp; Engage</div><div class="tl-sub">Your dashboard starts showing real data as employees track. Send your first announcement. View health score distribution. Identify any high-stress employees for support.</div><div class="tl-badge">📊 Live from Day 1</div></div>
+      </div>
+    </div>
+    <div class="why-grid">
+      <div class="why-card"><div class="why-icon">🚀</div><div class="why-title">No IT Setup Required</div><div class="why-sub">100% cloud-based. No servers, no VPN, no enterprise software to install.</div></div>
+      <div class="why-card"><div class="why-icon">🤝</div><div class="why-title">Dedicated Onboarding Support</div><div class="why-sub">Our team helps with employee communication templates and enrollment strategy.</div></div>
+      <div class="why-card"><div class="why-icon">📖</div><div class="why-title">Employee Training Materials</div><div class="why-sub">Ready-made onboarding guides, app walkthrough videos, and FAQ documents provided.</div></div>
+    </div>
+  </div>
+  <div class="bottom-bar"></div>
+  <div class="page-num">Page 9 of 10</div>
+</div>
+</body></html>
