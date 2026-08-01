@@ -21,7 +21,7 @@ const milestones = [
   { year: "Jun 2025", event: "Business Portal launched — first version of corporate wellness" },
   { year: "Sep 2025", event: "AI health intelligence integration — Aorane AI" },
   { year: "Dec 2025", event: "Admin Panel + full platform ready" },
-  { year: "Apr 2026", event: "Public beta launch — Available on Play Store" },
+  { year: "2026", event: "Play Store launch — coming soon" },
 ];
 
 export default function AboutPage() {
@@ -73,12 +73,12 @@ export default function AboutPage() {
                 className="rounded-3xl p-8 text-center"
                 style={{ background: "linear-gradient(135deg, #EEF4FF 0%, #F0FDF9 100%)", border: "1px solid #BFDBFE" }}
               >
-                <div className="text-5xl font-extrabold text-[#0747A6] mb-2">2L+</div>
-                <p className="text-gray-600 text-sm font-medium mb-6">Indians using Aorane</p>
+                <div className="text-5xl font-extrabold text-[#0747A6] mb-2">1.4B+</div>
+                <p className="text-gray-600 text-sm font-medium mb-6">Indians we're building for</p>
                 <div className="text-5xl font-extrabold text-[#10B981] mb-2">500+</div>
                 <p className="text-gray-600 text-sm font-medium mb-6">Indian foods in AI database</p>
-                <div className="text-5xl font-extrabold text-[#7C3AED] mb-2">89%</div>
-                <p className="text-gray-600 text-sm font-medium">User retention at 30 days</p>
+                <div className="text-5xl font-extrabold text-[#7C3AED] mb-2">2</div>
+                <p className="text-gray-600 text-sm font-medium">Languages supported (Hindi + English)</p>
               </motion.div>
             </div>
           </div>

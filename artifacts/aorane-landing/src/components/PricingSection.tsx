@@ -5,6 +5,7 @@ import {
   Clock, ArrowRight, MessageCircle, ChevronRight,
 } from "lucide-react";
 import { useSiteSettings } from "@/lib/useSiteSettings";
+import { ACTIVE_MARKET, formatPrice, taxDisclaimer } from "@/lib/market";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface PlanFeature {
@@ -242,7 +243,7 @@ function IndividualCard({
           {isFree ? (
             <div>
               <p className="text-4xl font-extrabold text-gray-900">
-                ₹0
+                {formatPrice(0)}
                 <span className="text-base font-normal text-gray-400">/month</span>
               </p>
               <p className="text-xs text-gray-400 mt-1">Forever free · no credit card</p>
@@ -250,23 +251,23 @@ function IndividualCard({
           ) : (
             <div>
               <div className="flex items-baseline gap-1">
-                <span className="text-sm font-semibold text-gray-400">₹</span>
+                <span className="text-sm font-semibold text-gray-400">{ACTIVE_MARKET.currencySymbol}</span>
                 <span className="text-4xl font-extrabold text-gray-900">{displayPrice}</span>
                 <span className="text-sm text-gray-400">/month</span>
               </div>
               {isYearly ? (
                 <div className="mt-1.5 flex items-center gap-2">
-                  <span className="text-xs text-gray-400">₹{plan.yearlyPrice}/year</span>
+                  <span className="text-xs text-gray-400">{formatPrice(plan.yearlyPrice)}/year</span>
                   <span
                     className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
                     style={{ background: plan.accentColor }}
                   >
-                    Save ₹{savings}
+                    Save {formatPrice(savings)}
                   </span>
                 </div>
               ) : (
                 <p className="text-xs text-gray-400 mt-1.5">
-                  ₹{plan.yearlyPrice}/year · save ₹{savings}
+                  {formatPrice(plan.yearlyPrice)}/year · save {formatPrice(savings)}
                 </p>
               )}
             </div>
@@ -445,26 +446,26 @@ function BusinessCard({
         {/* Price */}
         <div className="mb-4 pb-4 border-b border-gray-100">
           <div className="flex items-baseline gap-1">
-            <span className="text-sm font-semibold text-gray-400">₹</span>
+            <span className="text-sm font-semibold text-gray-400">{ACTIVE_MARKET.currencySymbol}</span>
             <span className="text-4xl font-extrabold text-gray-900">{effectivePerSeat}</span>
             <span className="text-sm text-gray-400">/seat/month</span>
           </div>
           <p className="text-xs text-gray-500 mt-1.5">
             Min {plan.minSeats} seats =&nbsp;
             <span className="font-bold text-gray-700">
-              ₹{minMonthly.toLocaleString("en-IN")}/month min
+              {formatPrice(minMonthly)}/month min
             </span>
           </p>
           {isYearly && yearlySavings > 0 && (
             <div className="mt-1.5 flex items-center gap-2">
               <span className="text-xs text-gray-400">
-                ₹{yearlyTotal.toLocaleString("en-IN")}/year
+                {formatPrice(yearlyTotal)}/year
               </span>
               <span
                 className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
                 style={{ background: plan.accentColor }}
               >
-                Save ₹{yearlySavings.toLocaleString("en-IN")}
+                Save {formatPrice(yearlySavings)}
               </span>
             </div>
           )}
@@ -485,7 +486,7 @@ function BusinessCard({
             </span>
           ) : (
             <span className="text-xs font-bold text-blue-700">
-              ₹{plan.crmPrice}/month add-on
+              {formatPrice(plan.crmPrice as number)}/month add-on
             </span>
           )}
         </div>
@@ -739,7 +740,7 @@ export default function PricingSection({
           viewport={{ once: true }}
           className="mt-10 text-center text-sm text-gray-400"
         >
-          Prices in INR. GST @18% extra on paid plans.
+          {taxDisclaimer()}
           {tab === "individual" && (
             <> &nbsp;·&nbsp; 30-day money-back guarantee. Secure payments via Razorpay.</>
           )}

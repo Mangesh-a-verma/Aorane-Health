@@ -21,11 +21,11 @@ export default function LandingPage() {
   return (
     <>
       <Helmet>
-        <title>AORANE — India's AI Health Intelligence Platform | Free App</title>
-        <meta name="description" content="Track meals with AI food scanner, monitor stress, sleep & vitals. AI-powered health insights. Free app for individuals. Business wellness solutions for corporates. Download on Play Store." />
+        <title>AORANE — India's AI Health Intelligence Platform | Hindi Mein AI Health Coach</title>
+        <meta name="description" content="Track meals with AI food scanner, monitor stress, sleep & vitals. AI-powered health insights. Free forever plan for individuals. Business wellness solutions for corporates. Launching soon on Google Play Store." />
         <link rel="canonical" href="https://aorane.com/" />
         <meta property="og:title" content="AORANE — India's AI Health Intelligence Platform" />
-        <meta property="og:description" content="AI food scanning, stress tracking, AI-powered health insights & corporate wellness. India's most comprehensive health companion. Free on Play Store." />
+        <meta property="og:description" content="AI food scanning, stress tracking, AI-powered health insights & corporate wellness. India's most comprehensive health companion. Launching soon on Google Play Store." />
         <meta property="og:url" content="https://aorane.com/" />
       </Helmet>
       <div className="min-h-screen overflow-x-hidden">

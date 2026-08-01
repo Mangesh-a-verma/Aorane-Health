@@ -29,7 +29,7 @@ const faqs = [
   },
   {
     q: "Is Aorane available on iOS?",
-    a: "Aorane is currently available for Android via Google Play Store. An iOS version is planned for a future release.",
+    a: "Aorane's Android app is launching soon on the Google Play Store (in.aorane.app). An iOS version is planned for a future release.",
   },
   {
     q: "Is Aorane a substitute for a doctor?",

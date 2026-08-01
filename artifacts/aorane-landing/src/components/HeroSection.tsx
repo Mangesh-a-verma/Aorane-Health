@@ -183,7 +183,7 @@ export default function HeroSection({ audience, onSignUp }: HeroSectionProps) {
     cta2: { label: "Watch Demo", href: "#dashboard" },
   };
   const b2bContent = {
-    badge: "Trusted by 500+ Indian enterprises",
+    badge: "Built for Indian enterprises",
     headline: "Population Health\nManagement for\nYour Organization",
     sub: "Monitor workforce wellness at scale. Reduce absenteeism by 31%, cut healthcare costs, and boost productivity with real-time population health analytics.",
     cta1: { label: "Start Free Trial", href: "#pricing", icon: Building2 },

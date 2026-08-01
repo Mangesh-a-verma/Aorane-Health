@@ -40,6 +40,9 @@ if (!existsSync(baseHtmlPath)) {
 const baseHtml = readFileSync(baseHtmlPath, "utf-8");
 
 // Route -> meta overrides. Keep these in sync with each page's <Helmet> block.
+// Currency/price figures below must also stay in sync with src/lib/market.ts
+// (ACTIVE_MARKET) — that file is the single source of truth for the app's
+// active region/currency. When a new market launches, update market.ts first.
 const routes = {
   "features": {
     title: "Features — AI Food Scanner, Stress & Vitals Tracking | AORANE",
@@ -49,9 +52,9 @@ const routes = {
   },
   "pricing": {
     title: "Pricing — Free & Premium Health Plans | AORANE",
-    description: "AORANE pricing plans made for India. Free forever plan + Max ₹199/mo + Pro ₹249/mo + Family ₹499/mo. AI food scanner, diet plans, health insights. No hidden fees. GST extra.",
+    description: "AORANE pricing plans made for India. Free forever plan + Pro ₹199/mo + Max ₹249/mo + Family ₹499/mo. AI food scanner, diet plans, health insights. No hidden fees. GST extra.",
     ogTitle: "AORANE Pricing — Affordable Health Plans for India",
-    ogDescription: "Free forever + Max ₹199/mo + Pro ₹249/mo + Family ₹499/mo. AI features, offline logging & more. Start free, upgrade anytime.",
+    ogDescription: "Free forever + Pro ₹199/mo + Max ₹249/mo + Family ₹499/mo. AI features, offline logging & more. Start free, upgrade anytime.",
   },
   "about": {
     title: "About Aorane — India's AI Health Platform | Built for Bharat",

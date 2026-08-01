@@ -5,6 +5,7 @@ import { Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PricingSection from "@/components/PricingSection";
+import { formatPrice } from "@/lib/market";
 
 type CompRow =
   | { section: true; feature: string; free?: never; max?: never; pro?: never; family?: never }
@@ -129,10 +130,10 @@ export default function PricingPage() {
                     {(["Free", "Max", "Pro", "Family"] as const).map((plan) => (
                       <th key={plan} className={`px-4 py-4 text-center text-sm font-bold ${plan === "Max" ? "text-[#0747A6] bg-[#EEF4FF]" : "text-gray-700"}`}>
                         {plan}
-                        {plan === "Max" && <span className="block text-xs font-normal text-[#0747A6] mt-0.5">₹249/mo</span>}
-                        {plan === "Pro" && <span className="block text-xs font-normal text-purple-600 mt-0.5">₹199/mo</span>}
-                        {plan === "Family" && <span className="block text-xs font-normal text-emerald-600 mt-0.5">₹499/mo</span>}
-                        {plan === "Free" && <span className="block text-xs font-normal text-gray-400 mt-0.5">₹0/mo</span>}
+                        {plan === "Max" && <span className="block text-xs font-normal text-[#0747A6] mt-0.5">{formatPrice(249)}/mo</span>}
+                        {plan === "Pro" && <span className="block text-xs font-normal text-purple-600 mt-0.5">{formatPrice(199)}/mo</span>}
+                        {plan === "Family" && <span className="block text-xs font-normal text-emerald-600 mt-0.5">{formatPrice(499)}/mo</span>}
+                        {plan === "Free" && <span className="block text-xs font-normal text-gray-400 mt-0.5">{formatPrice(0)}/mo</span>}
                       </th>
                     ))}
                   </tr>

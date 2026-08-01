@@ -110,7 +110,7 @@ export default function AppDownloadSection() {
               <span className="italic text-[#00C79A]">Free forever</span>
             </h2>
             <p className="text-lg text-white/70 leading-relaxed mb-8 max-w-lg">
-              Join 2 lakh+ Indians transforming their health. Start free — no credit card, no hidden charges. India's most comprehensive health companion in your pocket.
+              Be among the first to transform your health with Aorane. Start free — no credit card, no hidden charges. India's most comprehensive health companion in your pocket.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
