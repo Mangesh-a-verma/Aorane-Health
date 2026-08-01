@@ -14,6 +14,7 @@ import * as Crypto from "expo-crypto";
 import { router, useFocusEffect } from "expo-router";
 import * as FileSystem from "expo-file-system";
 import { api } from "@/lib/api";
+import { smartSync } from "@/lib/health/syncManager";
 import { buildHealthReport } from "@/lib/reports/buildHealthReport";
 import { ReportData, ReportType } from "@/lib/reports/reportTypes";
 import { HealthReportSummary } from "@/components/HealthReportSummary";
@@ -591,6 +592,12 @@ export default function HealthReportScreen() {
         hasMountedRef.current = true;
         return;
       }
+      // Cooldown-respecting sync (no-op if synced within the last 4h) so the
+      // report reflects the freshest Health Connect data without the user
+      // ever needing a manual sync button. Fire-and-forget — loadData()
+      // below reads whatever the backend already has; if this sync lands
+      // new data, the next focus/regeneration will pick it up.
+      smartSync().catch(() => {});
       // silent revalidation — cache milne par kuch nahi hoga (isCached=true wala branch)
       // Sirf tab fresh fetch hogi jab is week/month ki report cache mein nahi ho
       loadData(false, true); // forceRefresh=false (respect cache), silent=true (no loading flash)

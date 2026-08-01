@@ -1,4 +1,4 @@
-const { withAndroidManifest, withMainActivity } = require("@expo/config-plugins");
+const { withAndroidManifest, withMainActivity } = require("expo/config-plugins");
 
 const HC_PERMISSIONS = [
   "Steps",

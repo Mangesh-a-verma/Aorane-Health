@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Platform, Alert, Dimensions, ActivityIndicator, Modal,
-  TextInput, RefreshControl, Linking, InteractionManager, AppState,
+  TextInput, RefreshControl, Linking, AppState,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,20 +10,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/lib/api";
 import { logSilentError } from "@/lib/silentCatch";
+import { checkConnectionStatus, connectAndSync, forceSync } from "@/lib/health/syncManager";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type HCModule = {
-  initialize: () => Promise<boolean>;
-  requestPermission: (perms: Array<{ accessType: string; recordType: string }>) => Promise<Array<unknown>>;
-  readRecords: (type: string, opts: unknown) => Promise<unknown>;
-  getSdkStatus: () => Promise<number>;
-  SdkAvailabilityStatus: {
-    SDK_UNAVAILABLE: number;
-    SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED: number;
-    SDK_AVAILABLE: number;
-  };
-};
-
 type WearableData = {
   steps: number | null; heartRateAvg: number | null; heartRateMin: number | null;
   heartRateMax: number | null; caloriesBurned: string | null; sleepHours: string | null;
@@ -43,94 +32,12 @@ type ProviderConfig = {
   available: boolean; requiresCredentials: boolean;
 };
 
-// ─── HC Module Configuration ──────────────────────────────────────────────────
-let _hcSingleton: HCModule | null = null;
-let _hcLoadAttempted = false;
-
-function _buildHCWrapper(mod: Record<string, unknown>): HCModule {
-  return {
-    initialize: async () => {
-      try { return Boolean(await (mod.initialize as () => Promise<unknown>)()); }
-      catch (e) { return false; }
-    },
-    requestPermission: async (perms) => {
-      try { return ((await (mod.requestPermission as (p: unknown) => Promise<unknown>)(perms)) as Array<unknown>) ?? []; }
-      catch (e) { return []; }
-    },
-    readRecords: async (type, opts) => {
-      try { return (await (mod.readRecords as (t: string, o: unknown) => Promise<unknown>)(type, opts)) ?? { records: [] }; }
-      catch (e) { return { records: [] }; }
-    },
-    getSdkStatus: async () => {
-      try { return ((await (mod.getSdkStatus as () => Promise<unknown>)()) as number) ?? 1; }
-      catch (e) { return 1; }
-    },
-    SdkAvailabilityStatus: (mod.SdkAvailabilityStatus as HCModule["SdkAvailabilityStatus"]) ?? {
-      SDK_UNAVAILABLE: 1,
-      SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED: 2,
-      SDK_AVAILABLE: 3,
-    },
-  };
-}
-
-function preloadHC(): void {
-  if (_hcLoadAttempted || Platform.OS !== "android") {
-    console.log("[Phase0-Diagnostic] preloadHC() skipped — Platform:", Platform.OS, "alreadyAttempted:", _hcLoadAttempted);
-    return;
-  }
-  _hcLoadAttempted = true;
-  try {
-    const raw = require("react-native-health-connect");
-    const mod: Record<string, unknown> =
-      (raw?.default && typeof (raw.default as Record<string, unknown>).initialize === "function")
-        ? (raw.default as Record<string, unknown>)
-        : (raw as Record<string, unknown>);
-
-    if (typeof mod?.initialize === "function") {
-      _hcSingleton = _buildHCWrapper(mod);
-      console.log("[Phase0-Diagnostic] preloadHC() SUCCESS — native module linked correctly.");
-    } else {
-      console.log("[Phase0-Diagnostic] preloadHC() FAILED — module loaded but no initialize() found. Raw module keys:", raw ? Object.keys(raw) : "raw is null/undefined");
-    }
-  } catch (err) {
-    console.log("[Phase0-Diagnostic] preloadHC() THREW (module not linked — likely Expo Go or missing native build):", err);
-    _hcSingleton = null;
-  }
-}
-
-preloadHC();
-
-function getHC(): HCModule | null {
-  return _hcSingleton;
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function openHCOrStore(): void {
   Linking.openURL("healthconnect://").catch(() =>
     Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")
   );
 }
-
-function waitForInteractions(): Promise<void> {
-  return new Promise<void>((resolve) => {
-    InteractionManager.runAfterInteractions(() => {
-      const timer = setTimeout(() => {
-        resolve();
-        clearTimeout(timer);
-      }, 50);
-    });
-  });
-}
-
-// Robust data extraction utility to handle both Array and Object responses from SDK
-const extractRecords = (res: PromiseSettledResult<unknown>): any[] => {
-  if (res.status !== "fulfilled") return [];
-  const val = res.value as any;
-  if (!val) return [];
-  if (Array.isArray(val)) return val;
-  if (val.records && Array.isArray(val.records)) return val.records;
-  return [];
-};
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const { width: W } = Dimensions.get("window");
@@ -154,17 +61,6 @@ const ALLOWED_PROVIDERS: string[] = Platform.select({
   ios:     ["apple_healthkit"],    // 🔜 Ready karna hai — HealthKit package pending
   default: ["health_connect"],
 }) ?? ["health_connect"];
-
-const HC_PERMISSIONS = [
-  { accessType: "read", recordType: "Steps" },
-  { accessType: "read", recordType: "HeartRate" },
-  { accessType: "read", recordType: "TotalCaloriesBurned" },
-  { accessType: "read", recordType: "ActiveCaloriesBurned" },
-  { accessType: "read", recordType: "SleepSession" },
-  { accessType: "read", recordType: "OxygenSaturation" },
-  { accessType: "read", recordType: "Distance" },
-  { accessType: "read", recordType: "ExerciseSession" },
-];
 
 // ─── UI Components ────────────────────────────────────────────────────────────
 function MetricCard({ icon, label, value, unit, color }: {
@@ -379,225 +275,9 @@ export default function WearableScreen() {
     }
   }, [loadAll]);
 
-  // ─── Native Sync Logic ──────────────────────────────────────────────────────
-  const syncHealthConnectNative = async (): Promise<boolean> => {
-    const hc = getHC();
-    if (!hc) throw new Error("Health Connect module unavailable.");
-
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    
-    const range = {
-      operator: "between" as const,
-      startTime: startOfToday.toISOString(),
-      endTime:   now.toISOString(),
-    };
-
-    const [stepsRes, hrRes, calRes, activeCalRes, sleepRes, spo2Res, distRes, exerciseRes] =
-      await Promise.allSettled([
-        hc.readRecords("Steps",                { timeRangeFilter: range }),
-        hc.readRecords("HeartRate",            { timeRangeFilter: range }),
-        hc.readRecords("TotalCaloriesBurned",  { timeRangeFilter: range }),
-        hc.readRecords("ActiveCaloriesBurned", { timeRangeFilter: range }),
-        hc.readRecords("SleepSession",         { timeRangeFilter: range }),
-        hc.readRecords("OxygenSaturation",     { timeRangeFilter: range }),
-        hc.readRecords("Distance",             { timeRangeFilter: range }),
-        hc.readRecords("ExerciseSession",      { timeRangeFilter: range }),
-      ]);
-
-    let steps: number | null         = null;
-    let heartRateAvg: number | null  = null;
-    let heartRateMin: number | null  = null;
-    let heartRateMax: number | null  = null;
-    let caloriesBurned: number | null = null;
-    let sleepHours: number | null    = null;
-    let bloodOxygen: number | null   = null;
-    let distanceKm: number | null    = null;
-    let activeMinutes: number | null = null;
-
-    // Secure Data Extraction
-    const stepRecs = extractRecords(stepsRes);
-    if (stepRecs.length > 0) {
-      steps = stepRecs.reduce((s, r) => s + (r.count || 0), 0);
-    }
-
-    const hrRecs = extractRecords(hrRes);
-    const allSamples = hrRecs.flatMap((r) => r.samples ?? []);
-    if (allSamples.length > 0) {
-      const bpms = allSamples.map((r) => r.beatsPerMinute).filter(Boolean);
-      if (bpms.length > 0) {
-        heartRateAvg = Math.round(bpms.reduce((s, v) => s + v, 0) / bpms.length);
-        heartRateMin = Math.min(...bpms);
-        heartRateMax = Math.max(...bpms);
-      }
-    }
-
-    const calRecs = extractRecords(calRes);
-    const totalCals = calRecs.reduce((s, r) => s + (r.energy?.inKilocalories || 0), 0);
-    if (totalCals > 0) {
-      caloriesBurned = Math.round(totalCals);
-    } else {
-      const activeCalRecs = extractRecords(activeCalRes);
-      const totalActive = activeCalRecs.reduce((s, r) => s + (r.energy?.inKilocalories || 0), 0);
-      if (totalActive > 0) caloriesBurned = Math.round(totalActive);
-    }
-
-    const sleepRecs = extractRecords(sleepRes);
-    if (sleepRecs.length > 0) {
-      const ms = sleepRecs.reduce((s, r) => {
-        const start = new Date(r.startTime).getTime();
-        const end = new Date(r.endTime).getTime();
-        return s + (end > start ? end - start : 0);
-      }, 0);
-      if (ms > 0) sleepHours = Math.round((ms / 3_600_000) * 10) / 10;
-    }
-
-    const spo2Recs = extractRecords(spo2Res);
-    if (spo2Recs.length > 0) {
-      bloodOxygen = Math.round(spo2Recs.reduce((s, r) => s + (r.percentage || 0), 0) / spo2Recs.length * 10) / 10;
-    }
-
-    const distRecs = extractRecords(distRes);
-    if (distRecs.length > 0) {
-      const totalM = distRecs.reduce((s, r) => s + (r.distance?.inMeters || 0), 0);
-      if (totalM > 0) distanceKm = Math.round(totalM / 1000 * 100) / 100;
-    }
-
-    const exRecs = extractRecords(exerciseRes);
-    if (exRecs.length > 0) {
-      const totalMs = exRecs.reduce((s, r) => {
-        const start = new Date(r.startTime).getTime();
-        const end = new Date(r.endTime).getTime();
-        return s + (end > start ? end - start : 0);
-      }, 0);
-      if (totalMs > 0) activeMinutes = Math.round(totalMs / 60_000);
-    }
-
-    const payload = {
-      steps, heartRateAvg, heartRateMin, heartRateMax,
-      caloriesBurned, sleepHours, bloodOxygen, distanceKm, activeMinutes,
-    };
-    
-    // Logs the actual payload to console so you can debug what is being sent to backend
-    console.log("Sending to Backend:", payload);
-
-    const result = await api.syncHealthConnect(payload);
-    return (result as { hasData: boolean }).hasData;
-  };
-
   // ─── Connection Flow ────────────────────────────────────────────────────────
-  const runHCFlow = async (): Promise<"connected" | "no_data" | "failed"> => {
-    console.log("[Phase0-Diagnostic] runHCFlow() started");
-    const hc = getHC();
-    console.log("[Phase0-Diagnostic] getHC() returned:", hc ? "module present" : "NULL (not linked)");
-    if (!hc) {
-      Alert.alert(
-        "Module Not Linked",
-        "Health Connect native module is not linked in this build.\n\nPlease ensure your configuration plugin is applied and run a fresh native build.",
-        [{ text: "OK" }]
-      );
-      return "failed";
-    }
-
-    await waitForInteractions();
-
-    let sdkStatus = 3; 
-    try {
-      sdkStatus = await hc.getSdkStatus();
-      console.log("[Phase0-Diagnostic] getSdkStatus() =", sdkStatus, "(SDK_AVAILABLE =", hc.SdkAvailabilityStatus.SDK_AVAILABLE, ")");
-    } catch (e) {
-      // Graceful fallback — sdkStatus stays at default (3), but log it
-      // so we can tell "genuinely no Health Connect" apart from "the
-      // getSdkStatus() call itself is broken" in future debugging.
-      logSilentError("health-connect-sdk-status", e);
-    }
-
-    const STATUS = hc.SdkAvailabilityStatus;
-
-    if (sdkStatus === STATUS.SDK_UNAVAILABLE) {
-      Alert.alert(
-        "Not Supported",
-        "Health Connect requires Android 9 (API 28) or higher.",
-        [{ text: "OK" }]
-      );
-      return "failed";
-    }
-
-    if (sdkStatus === STATUS.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
-      Alert.alert(
-        "Update Required",
-        "The Health Connect app needs to be updated from the Google Play Store.",
-        [
-          { text: "Update Now", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
-          { text: "Cancel", style: "cancel" },
-        ]
-      );
-      return "failed";
-    }
-
-    let initialized = false;
-    try {
-      initialized = await hc.initialize();
-      console.log("[Phase0-Diagnostic] initialize() =", initialized);
-    } catch (e) {
-      // Handled internally — initialized stays false, but log so a
-      // recurring native-init failure is visible instead of just
-      // quietly falling through to "not initialized" every time.
-      logSilentError("health-connect-initialize", e);
-    }
-
-    if (!initialized) {
-      Alert.alert(
-        "Configuration Required",
-        "Please open the Health Connect app to complete initial setup, then try connecting again.",
-        [
-          { text: "Open App", onPress: openHCOrStore },
-          { text: "Cancel", style: "cancel" },
-        ]
-      );
-      return "failed";
-    }
-
-    let granted: Array<unknown> = [];
-    try {
-      console.log("[Phase0-Diagnostic] Calling requestPermission() with:", JSON.stringify(HC_PERMISSIONS));
-      granted = await hc.requestPermission(HC_PERMISSIONS);
-      console.log("[Phase0-Diagnostic] requestPermission() returned:", JSON.stringify(granted));
-    } catch (e) {
-      console.log("[Phase0-Diagnostic] requestPermission() THREW:", e);
-      Alert.alert(
-        "Permission Error",
-        "Unable to present the Health Connect permissions screen.\n\nPlease verify Android configuration.",
-        [{ text: "OK" }]
-      );
-      return "failed";
-    }
-
-    if (!granted || granted.length === 0) {
-      console.log("[Phase0-Diagnostic] No permissions granted — user denied or dialog dismissed.");
-      Alert.alert(
-        "Action Required",
-        "At least one Health Connect permission must be granted to synchronize data.",
-        [{ text: "OK" }]
-      );
-      return "failed";
-    }
-
-    try {
-      console.log("[Phase0-Diagnostic] Permission granted, calling syncHealthConnectNative()...");
-      const hasData = await syncHealthConnectNative();
-      console.log("[Phase0-Diagnostic] syncHealthConnectNative() hasData =", hasData);
-      return hasData ? "connected" : "no_data";
-    } catch (syncErr: any) {
-      console.log("[Phase0-Diagnostic] syncHealthConnectNative() THREW:", syncErr?.message, syncErr);
-      Alert.alert(
-        "Server Sync Error",
-        `Failed to save Health Connect data to the server.\n\nDetails: ${syncErr?.message || "Unknown API Error"}`
-      );
-      return "failed";
-    }
-  };
-
+  // All native module handling, permission requests, record reading and
+  // aggregation live in lib/health/* — this screen only orchestrates the UI.
   const connectHealthConnect = async () => {
     if (Platform.OS !== "android") {
       Alert.alert("Android Only", "Health Connect integration is strictly available on Android devices.");
@@ -605,21 +285,59 @@ export default function WearableScreen() {
     }
     setConnectingHC(true);
     try {
-      const result = await runHCFlow();
+      const status = await checkConnectionStatus();
+
+      if (status === "not_supported") {
+        Alert.alert("Not Supported", "Health Connect requires Android 9 (API 28) or higher.");
+        return;
+      }
+      if (status === "needs_update") {
+        Alert.alert(
+          "Update Required",
+          "The Health Connect app needs to be updated from the Google Play Store.",
+          [
+            { text: "Update Now", onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata") },
+            { text: "Cancel", style: "cancel" },
+          ]
+        );
+        return;
+      }
+      if (status === "not_installed" || status === "error") {
+        Alert.alert(
+          "Configuration Required",
+          "Please open the Health Connect app to complete initial setup, then try connecting again.",
+          [
+            { text: "Open App", onPress: openHCOrStore },
+            { text: "Cancel", style: "cancel" },
+          ]
+        );
+        return;
+      }
+
+      const { granted, sync } = await connectAndSync();
       if (!isMounted.current) return;
-      if (result === "failed") return;
+
+      if (!granted) {
+        Alert.alert("Action Required", "At least one Health Connect permission must be granted to synchronize data.");
+        return;
+      }
+      if (sync.outcome === "error") {
+        Alert.alert("Server Sync Error", `Failed to save Health Connect data to the server.\n\nDetails: ${sync.message}`);
+        return;
+      }
 
       await loadAll();
       if (!isMounted.current) return;
       setShowConnect(false);
       Alert.alert(
         "Connection Established",
-        result === "connected"
+        sync.outcome === "synced" && sync.hasData
           ? "Health Connect is successfully linked and recent data has been synchronized."
           : "Health Connect is linked, but no activity data was found for today."
       );
     } catch (e: unknown) {
       if (!isMounted.current) return;
+      logSilentError("health-connect-ui", e);
       Alert.alert("Error", "An unexpected error occurred during connection.");
     } finally {
       if (isMounted.current) setConnectingHC(false);
@@ -631,15 +349,21 @@ export default function WearableScreen() {
     try {
       if (provider === "health_connect") {
         if (Platform.OS !== "android") return;
-        
-        const hc = getHC();
-        if (!hc) return;
 
-        await waitForInteractions();
-        const hasData = await syncHealthConnectNative();
-        
+        const result = await forceSync();
         if (!isMounted.current) return;
+
+        if (result.outcome === "error") {
+          Alert.alert("Synchronization Failed", `Unable to sync data to the server.\n\nError: ${result.message}`);
+          return;
+        }
+        if (result.outcome === "not_connected") {
+          Alert.alert("Not Connected", "Please connect Health Connect first.");
+          return;
+        }
+
         await loadAll();
+        const hasData = result.outcome === "synced" && result.hasData;
         Alert.alert(
           hasData ? "Synchronization Complete" : "No New Data",
           hasData
@@ -651,6 +375,7 @@ export default function WearableScreen() {
       }
     } catch (err: any) {
       if (!isMounted.current) return;
+      logSilentError("health-connect-manual-sync", err);
       Alert.alert("Synchronization Failed", `Unable to sync data to the server.\n\nError: ${err?.message || "Unknown API error"}`);
     } finally {
       if (isMounted.current) setSyncingProvider(null);

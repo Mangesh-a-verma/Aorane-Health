@@ -34,21 +34,8 @@ import {
   getScheduledNotificationSummary,
 } from "@/lib/notifications";
 
-// ── Direct smartSync import — called with a 4s delay after UI settles ──
-import { smartSync } from "@/lib/healthSyncManager";
+import { useHealthSync } from "@/hooks/useHealthSync";
 import { logSilentError } from "@/lib/silentCatch";
-
-// ── DIAGNOSTIC TOGGLE (Phase 0) ──────────────────────────────────────────
-// Health Connect ka manual "Connect" flow (app/wearable.tsx) aur ye background
-// auto-sync (lib/healthSyncManager.ts) dono independently same native module
-// (react-native-health-connect) ko call karte hain. Agar dono ek saath
-// (app open hote hi) chal jaate hain, ho sakta hai native side pe collide
-// karke manual Connect flow ko break kar rahe hon.
-//
-// TEST KARNE KE LIYE: isse `true` kar do, app rebuild karo, aur Wearable
-// screen se "Connect Health Connect" try karo. Agar ab connect ho jaata hai,
-// toh iska matlab background auto-sync hi genuine culprit hai.
-const HC_DISABLE_BACKGROUND_SYNC_FOR_TESTING = false;
 
 // ── Must be at module level so ALL notifications show alert/sound from app start ──
 Notifications.setNotificationHandler({
@@ -450,24 +437,13 @@ function PushNotificationRegistrar() {
 function AppShell() {
   const { isOnline, pendingCount, syncing } = useNetworkSync();
 
-  // ── FIX STARTUP DELAY: Health sync is deferred by 4 seconds after mount.
-  // Previously `useHealthSync()` ran immediately inside AppShell, which meant
-  // `initializeHealthConnect()` (an Android IPC call) was competing with auth
-  // init and font loading on the critical startup path — adding 1–3s of
-  // perceived delay. Now it fires after the UI has fully settled.
-  useEffect(() => {
-    if (HC_DISABLE_BACKGROUND_SYNC_FOR_TESTING) {
-      console.log("[Phase0-Diagnostic] Background smartSync() is DISABLED for testing.");
-      return;
-    }
-    const id = setTimeout(() => {
-      console.log("[Phase0-Diagnostic] Background smartSync() firing now (4s after mount)...");
-      smartSync()
-        .then((r) => console.log("[Phase0-Diagnostic] smartSync() result:", JSON.stringify(r)))
-        .catch((e) => logSilentError('background-sync', e)); // fire-and-forget, silent fail
-    }, 4000);
-    return () => clearTimeout(id);
-  }, []);
+  // Auto-syncs Health Connect data on app open, and again whenever the app
+  // returns to the foreground — the user never needs a manual sync button.
+  // The hook itself defers the first sync so it never competes with auth
+  // init / font loading on the critical startup path, and every sync goes
+  // through a 4-hour cooldown (see lib/syncStorage.ts) so it's cheap to
+  // call often.
+  useHealthSync();
 
   return (
     <View style={{ flex: 1 }}>

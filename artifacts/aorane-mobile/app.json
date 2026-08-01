@@ -70,15 +70,7 @@
         "SCHEDULE_EXACT_ALARM",
         "USE_EXACT_ALARM",
         "READ_MEDIA_IMAGES",
-        "READ_MEDIA_VIDEO",
-        "health.READ_STEPS",
-        "health.READ_HEART_RATE",
-        "health.READ_TOTAL_CALORIES_BURNED",
-        "health.READ_ACTIVE_CALORIES_BURNED",
-        "health.READ_SLEEP",
-        "health.READ_OXYGEN_SATURATION",
-        "health.READ_DISTANCE",
-        "health.READ_EXERCISE"
+        "READ_MEDIA_VIDEO"
       ]
     },
     "web": {
