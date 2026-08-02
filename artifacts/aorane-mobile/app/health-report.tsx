@@ -323,7 +323,7 @@ export default function HealthReportScreen() {
       }
 
       const [
-        rScorecard, rProfile, rDailyScores, rNut, rStress, rCompany,
+        rScorecard, rProfile, rDailyScores, rNut, rStress, rCompany, rWearable,
       ] = await Promise.allSettled([
         api.getScorecard(),
         api.getProfile(),
@@ -340,6 +340,12 @@ export default function HealthReportScreen() {
         // days within the period (see "Known limitation" below this block).
         api.getStressWeekly(),
         api.getCompanySettings(),
+        // Health Connect vitals (Heart Rate, SpO2, Active Minutes), averaged
+        // over the same period as the rest of this report. Purely additive —
+        // does NOT feed into periodAvgScore or any pillar %, so a user with
+        // no wearable connected just gets an empty wearableVitals (all
+        // nulls) and every existing calculation is unaffected.
+        api.getWearableData({ days: numDays }),
       ]);
 
       const sc  = rScorecard.status === "fulfilled" ? (rScorecard.value as any) : null;
@@ -361,6 +367,15 @@ export default function HealthReportScreen() {
       const nut = rNut.status       === "fulfilled" ? (rNut.value as any) : null;
       const str = rStress.status    === "fulfilled" ? (rStress.value as any) : null;
       const co  = rCompany.status   === "fulfilled" ? ((rCompany.value as any)?.settings ?? null) : null;
+      const wd  = rWearable.status  === "fulfilled" ? (rWearable.value as any) : null;
+      const wearableVitals = wd?.summary
+        ? {
+            avgHeartRate:       typeof wd.summary.avgHr === "number" ? wd.summary.avgHr : null,
+            avgSpo2:            typeof wd.summary.avgSpo2 === "number" ? wd.summary.avgSpo2 : null,
+            totalActiveMinutes: typeof wd.summary.totalActiveMin === "number" ? wd.summary.totalActiveMin : null,
+            windowDays:         typeof wd.summary.windowDays === "number" ? wd.summary.windowDays : numDays,
+          }
+        : undefined;
       const stressByDate = new Map<string, number>(
         (str?.days || []).map((d: any) => [d.date, d.avgScore])
       );
@@ -557,6 +572,7 @@ export default function HealthReportScreen() {
         companyName:  co?.companyName  ?? "Aorane Health",
         primaryColor: co?.primaryColor ?? "#0077B6",
         accentColor:  co?.accentColor  ?? "#00B896",
+        wearableVitals,
       };
 
       // ── Cache the generated report ────────────────────────────────────

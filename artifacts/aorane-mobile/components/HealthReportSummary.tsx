@@ -270,6 +270,9 @@ export function HealthReportSummary({
         <VitalChip icon="flame-outline" label="Calories" value={avgCalories ? `${avgCalories}` : "—"} sub="kcal avg" color="#F97316" />
         <VitalChip icon="moon-outline" label="Sleep" value={sleepDisplay} sub={sleepIsFromWearable ? "last night" : "avg/night"} color="#8B5CF6" />
         <VitalChip icon="footsteps-outline" label="Steps" value={steps !== null ? steps.toLocaleString() : "…"} sub={Platform.OS === "ios" ? "Apple Health soon" : "today"} color="#3B82F6" />
+        {/* Health Connect period vitals — undefined/null-safe, shows "—" until a wearable is connected and has synced data */}
+        <VitalChip icon="heart-outline" label="Heart Rate" value={data.wearableVitals?.avgHeartRate != null ? `${data.wearableVitals.avgHeartRate}` : "—"} sub={data.wearableVitals?.avgHeartRate != null ? "bpm avg" : "not synced"} color="#DC2626" />
+        <VitalChip icon="pulse-outline" label="SpO2" value={data.wearableVitals?.avgSpo2 != null ? `${data.wearableVitals.avgSpo2}%` : "—"} sub={data.wearableVitals?.avgSpo2 != null ? "avg" : "not synced"} color="#0EA5E9" />
       </View>
 
       {/* ── Trends ── */}

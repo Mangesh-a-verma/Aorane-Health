@@ -120,15 +120,16 @@ router.post("/wearable/sync/health_connect", requireAuth, async (req: AuthReques
 // Get wearable data (latest or date range)
 router.get("/wearable/data", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { limit = "30" } = req.query as Record<string, string>;
+    const { limit = "30", days = "7" } = req.query as Record<string, string>;
+    const windowDays = Math.min(90, Math.max(1, parseInt(days) || 7));
     const data = await db.select().from(wearableDataTable)
       .where(eq(wearableDataTable.userId, req.userId!))
       .orderBy(desc(wearableDataTable.recordedAt))
       .limit(parseInt(limit));
 
     const latest = data[0] || null;
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const recent = data.filter((d: any) => d.recordedAt >= sevenDaysAgo);
+    const windowStart = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+    const recent = data.filter((d: any) => d.recordedAt >= windowStart);
     const withHr = recent.filter((d: any) => d.heartRateAvg);
     const withSleep = recent.filter((d: any) => d.sleepHours);
     const withSpo2 = recent.filter((d: any) => d.bloodOxygen);
@@ -142,7 +143,7 @@ router.get("/wearable/data", requireAuth, async (req: AuthRequest, res) => {
 
     res.json({
       latest, history: data,
-      summary: { avgSteps, avgHr, totalCalories: Math.round(totalCalories), totalActiveMin, avgSleep, avgSpo2, recordCount: data.length },
+      summary: { avgSteps, avgHr, totalCalories: Math.round(totalCalories), totalActiveMin, avgSleep, avgSpo2, recordCount: data.length, windowDays },
     });
   } catch {
     res.status(500).json({ error: "Failed to fetch wearable data" });

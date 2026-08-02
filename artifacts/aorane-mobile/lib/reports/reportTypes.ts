@@ -91,6 +91,13 @@ export type WeatherData = {
   city: string | null;
 };
 
+export type WearableVitals = {
+  avgHeartRate: number | null;   // bpm, period average
+  avgSpo2: number | null;        // %, period average
+  totalActiveMinutes: number | null; // sum across the period
+  windowDays: number;            // actual days the averages cover (may be less than periodDays if data is sparse)
+};
+
 export type ReportData = {
   generatedAt: Date;
   reportId: string;
@@ -109,4 +116,5 @@ export type ReportData = {
   primaryColor: string;
   accentColor: string;
   logoBase64?: string;          // Optional base64 logo for PDF header
+  wearableVitals?: WearableVitals; // Optional — Health Connect period averages (undefined if never synced)
 };

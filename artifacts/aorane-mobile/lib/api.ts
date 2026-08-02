@@ -734,8 +734,18 @@ export const api = {
     request<{ providers: unknown[] }>("GET", "/wearable/providers"),
   getWearableConnections: () =>
     request<{ connections: unknown[] }>("GET", "/wearable/connections"),
-  getWearableData: (params?: { provider?: string; limit?: number }) =>
-    request<{ latest: unknown; history: unknown[]; summary: unknown }>("GET", `/wearable/data${params?.limit ? `?limit=${params.limit}` : ""}`),
+  getWearableData: (params?: { provider?: string; limit?: number; days?: number }) =>
+    request<{ latest: unknown; history: unknown[]; summary: unknown }>(
+      "GET",
+      `/wearable/data${
+        params?.limit || params?.days
+          ? `?${[
+              params?.limit ? `limit=${params.limit}` : null,
+              params?.days ? `days=${params.days}` : null,
+            ].filter(Boolean).join("&")}`
+          : ""
+      }`
+    ),
   syncHealthConnect: (data: {
     steps?: number | null; heartRateAvg?: number | null; caloriesBurned?: number | null;
     sleepHours?: number | null; bloodOxygen?: number | null; distanceKm?: number | null;
