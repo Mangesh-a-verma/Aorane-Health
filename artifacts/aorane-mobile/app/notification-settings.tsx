@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, ScrollView, Switch, TouchableOpacity,
-  StyleSheet, Platform, ActivityIndicator, Alert, Linking,
+  StyleSheet, Platform, ActivityIndicator, Alert,
 } from "react-native";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -9,8 +9,11 @@ import {
   scheduleWaterReminders, cancelWaterReminders,
   scheduleFoodReminders, cancelFoodReminders,
   schedulePeriodReminders, cancelPeriodReminders,
+  scheduleMedicineReminders, cancelMedicineReminders,
   requestNotificationPermissions,
   setupNotificationChannels,
+  requestExactAlarmPermission,
+  requestIgnoreBatteryOptimizations,
 } from "@/lib/notifications";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -34,6 +37,12 @@ type Settings = {
   waterReminders: boolean;
   foodReminders: boolean;
   periodReminders: boolean;
+  // NOTE: kept for backend schema compatibility only — there is no working
+  // "AI Suggestions" feature behind this yet (no scheduling/push logic
+  // anywhere). Intentionally NOT shown in the UI to avoid shipping a
+  // placeholder/non-functional toggle to Play Store users. Wire this up
+  // properly (or remove from the backend schema too) before re-adding a
+  // UI control for it.
   suggestionNotifications: boolean;
   wakeUpTime: string;
   bedTime: string;
@@ -212,6 +221,40 @@ export default function NotificationSettingsScreen() {
         } catch { }
       }
 
+      // ✅ BUG FIX: "Medicine Reminders" toggle used to be saved to the
+      // backend but never actually enforced on-device — turning it off did
+      // nothing, and turning it back on didn't reschedule anything. Now:
+      // OFF → cancel all medicine notifications. ON → cancel any stale ones
+      // and reschedule fresh reminders for every currently-active medicine.
+      if (!notifEnabled || !settings.medicineReminders) {
+        await cancelMedicineReminders();
+      } else {
+        try {
+          const medRes = await api.getMedicineSchedules();
+          const medicines = (medRes.schedules || []) as Array<{
+            id: string; medicineName: string; dosage?: string;
+            reminderTimes: string[]; mealTiming?: string; isActive: boolean;
+          }>;
+          const active = medicines.filter(
+            (m) => m.isActive && (m.reminderTimes?.length ?? 0) > 0
+          );
+          await Promise.allSettled(
+            active.map((m) =>
+              scheduleMedicineReminders({
+                medicineId:   `medicine_${m.id}`,
+                medicineName: m.medicineName,
+                dosage:       m.dosage,
+                times:        m.reminderTimes,
+                mealTiming:   m.mealTiming,
+              })
+            )
+          );
+        } catch (medErr) {
+          logSilentError("medicine-reminder-resave", medErr as Error);
+          // Non-fatal — water/food/period settings above already saved fine.
+        }
+      }
+
       Alert.alert("Saved! ✅",
         "Notification settings saved. Reminders are now active."
       );
@@ -273,6 +316,30 @@ export default function NotificationSettingsScreen() {
           />
         </View>
 
+        {/* Android Delivery Reliability — helps on Xiaomi/Vivo/Oppo etc. */}
+        {Platform.OS === "android" && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>⚡ Fix Delayed Notifications</Text>
+            <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, marginBottom: 12, lineHeight: 17 }}>
+              Some phones (Xiaomi, Vivo, Oppo, Realme) delay or batch reminders to save battery. Tap below to allow Aorane to send reminders exactly on time.
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); requestExactAlarmPermission(); }}
+                style={{ flex: 1, borderRadius: 12, borderWidth: 1.5, borderColor: C.primary, paddingVertical: 10, alignItems: "center" }}
+              >
+                <Text style={{ color: C.primary, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>Allow Exact Alarms</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); requestIgnoreBatteryOptimizations(); }}
+                style={{ flex: 1, borderRadius: 12, borderWidth: 1.5, borderColor: C.primary, paddingVertical: 10, alignItems: "center" }}
+              >
+                <Text style={{ color: C.primary, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>Disable Battery Optimization</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Health Reminders */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>💊 Health Reminders</Text>
@@ -309,15 +376,6 @@ export default function NotificationSettingsScreen() {
             subtitle="Monthly cycle alerts (for women)"
             value={settings.periodReminders}
             onToggle={(v) => update("periodReminders", v)}
-            disabled={!settings.notificationsEnabled}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="🤖" iconBg="#F5F3FF"
-            title="AI Suggestions"
-            subtitle="Daily AI health coach suggestions"
-            value={settings.suggestionNotifications}
-            onToggle={(v) => update("suggestionNotifications", v)}
             disabled={!settings.notificationsEnabled}
           />
         </View>

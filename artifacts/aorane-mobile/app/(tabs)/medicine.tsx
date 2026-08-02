@@ -13,7 +13,7 @@ import { useFocusEffect } from "expo-router";
 import { api } from "@/lib/api";
 import { DS } from "@/lib/theme";
 import { exportMedicalReportPDF } from "@/lib/pdfExport";
-import { scheduleMedicineReminders, cancelMedicineById, requestNotificationPermissions, checkNotificationPermissions } from "@/lib/notifications";
+import { scheduleMedicineReminders, cancelMedicineById, requestNotificationPermissions, checkNotificationPermissions, improveAndroidNotificationReliability } from "@/lib/notifications";
 import { Plus, X, ScanLine, Pill, Sparkles, Camera, Image as ImageIcon, FileText, AlertTriangle, ChevronRight, Trash2 } from "lucide-react-native";
 
 const P = DS.color.primary;
@@ -130,11 +130,27 @@ export default function MedicineScreen() {
       try {
         const granted = await requestNotificationPermissions();
         if (granted) {
-          await scheduleMedicineReminders({
-            medicineId: `medicine_${savedName.toLowerCase().replace(/\s+/g, "_")}`,
-            medicineName: savedName, dosage, times: [reminderTime], mealTiming,
-          });
+          // BUG FIX: medicineId MUST match the id used everywhere else
+          // (delete, app-restart restore, banner re-enable all use
+          // `medicine_${med.id}`). Previously this used a name-derived slug
+          // instead, so cancellation never matched and old copies of the
+          // reminder were never removed — they just kept stacking up on
+          // every app restart, which is what caused the 40-50 notification
+          // burst users were seeing.
+          if (savedId) {
+            await scheduleMedicineReminders({
+              medicineId: `medicine_${savedId}`,
+              medicineName: savedName, dosage, times: [reminderTime], mealTiming,
+            });
+          } else {
+            // Backend didn't return an id — skip scheduling rather than
+            // create another orphaned, unmatchable notification.
+            console.warn("[Medicine] No backend id returned — skipping reminder scheduling to avoid an orphaned notification.");
+          }
           setNotifPermission(true);
+          // Best-effort, one-time prompt to reduce OEM battery-manager delays
+          // (Xiaomi/Vivo/Oppo etc). Silently no-ops on iOS / unsupported OEMs.
+          improveAndroidNotificationReliability().catch(() => {});
           Alert.alert("✅ Medicine Added!", `Daily reminder for ${savedName} at ${reminderTime}`, [{ text: "OK" }]);
           setIsSubmitting(false);
           return;
@@ -244,9 +260,12 @@ export default function MedicineScreen() {
             const granted = await requestNotificationPermissions();
             setNotifPermission(granted);
             if (granted) {
-              for (const med of schedules) {
+              // BUG FIX: only reschedule ACTIVE medicines — this loop
+              // previously scheduled reminders for paused ones too.
+              for (const med of schedules.filter((m) => m.isActive)) {
                 await scheduleMedicineReminders({ medicineId: `medicine_${med.id}`, medicineName: med.medicineName, dosage: med.dosage, times: med.reminderTimes, mealTiming: med.mealTiming });
               }
+              improveAndroidNotificationReliability().catch(() => {});
             }
           }}
           style={s.notifBanner}

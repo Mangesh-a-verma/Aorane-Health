@@ -30,6 +30,9 @@ import {
   scheduleMedicineReminders,
   cancelWaterReminders,
   cancelFoodReminders,
+  cancelMedicineReminders,
+  cancelAllNotifications,
+  cleanupOrphanMedicineNotifications,
   registerNotificationCategories,
   getScheduledNotificationSummary,
 } from "@/lib/notifications";
@@ -37,16 +40,11 @@ import {
 import { useHealthSync } from "@/hooks/useHealthSync";
 import { logSilentError } from "@/lib/silentCatch";
 
-// ── Must be at module level so ALL notifications show alert/sound from app start ──
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// NOTE: setNotificationHandler() is registered exactly once, inside
+// lib/notifications.ts (which is imported above). Do NOT add a second
+// registration here — a duplicate previously existed at this exact spot and
+// silently overrode the one in lib/notifications.ts with a different config,
+// which is confusing and error-prone. Single source of truth now.
 
 SplashScreen.preventAutoHideAsync();
 // Optional: fade the splash instead of instant cut (smoother on slow devices)
@@ -159,6 +157,7 @@ const NOTIF_SETTINGS_KEY = "aorane_notif_settings_v1";
 // (Render cold start, no internet, etc.)
 const DEFAULT_NOTIF_SETTINGS = {
   notificationsEnabled: true,
+  medicineReminders:    true,
   waterReminders:       true,
   foodReminders:        true,
   periodReminders:      true,
@@ -242,6 +241,7 @@ async function restoreAllNotifications() {
 
         const fresh: NotifSettings = {
           notificationsEnabled: (s.notificationsEnabled as boolean) ?? true,
+          medicineReminders:    (s.medicineReminders as boolean)    ?? true,
           waterReminders:       (s.waterReminders as boolean)       ?? true,
           foodReminders:        (s.foodReminders  as boolean)       ?? true,
           periodReminders:      (s.periodReminders as boolean)      ?? true,
@@ -259,7 +259,8 @@ async function restoreAllNotifications() {
           fresh.bedTime          !== cachedSettings.bedTime          ||
           fresh.waterGoalGlasses !== cachedSettings.waterGoalGlasses ||
           fresh.waterReminders   !== cachedSettings.waterReminders   ||
-          fresh.foodReminders    !== cachedSettings.foodReminders;
+          fresh.foodReminders    !== cachedSettings.foodReminders    ||
+          fresh.medicineReminders !== cachedSettings.medicineReminders;
 
         if (changed) {
           console.debug("[Notifications] Fresh settings differ — rescheduling");
@@ -285,7 +286,7 @@ async function restoreAllNotifications() {
 async function _scheduleFromSettings(s: NotifSettings): Promise<void> {
   // If all notifications disabled — cancel everything and stop
   if (s.notificationsEnabled === false) {
-    await Notifications.cancelAllScheduledNotificationsAsync();
+    await cancelAllNotifications();
     return;
   }
 
@@ -303,22 +304,31 @@ async function _scheduleFromSettings(s: NotifSettings): Promise<void> {
       : cancelFoodReminders(),
   ]);
 
-  // Medicine reminders — needs backend, but don't block on it
-  // Wrap in separate try/catch so water/food work even if medicine fetch fails
-  try {
-    const medRes = await rawRequest("GET", "/medicine/schedules")
-      .catch(() => null) as Record<string, unknown> | null;
+  // ── Medicine reminders ──────────────────────────────────────────────────
+  // BUG FIX: this used to always (re)schedule medicine reminders regardless
+  // of the user's "Medicine Reminders" toggle in Settings — that toggle was
+  // silently a no-op. Now we actually respect it.
+  if (s.medicineReminders === false) {
+    await cancelMedicineReminders();
+  } else {
+    // needs backend, but don't block on it — wrapped separately so
+    // water/food still work even if this fetch fails
+    try {
+      const medRes = await rawRequest("GET", "/medicine/schedules")
+        .catch(() => null) as Record<string, unknown> | null;
 
-    const medicines = ((medRes?.schedules as Array<{
-      id: string; medicineName: string; dosage?: string;
-      reminderTimes: string[]; mealTiming?: string; isActive: boolean;
-    }>) || []);
+      const medicines = ((medRes?.schedules as Array<{
+        id: string; medicineName: string; dosage?: string;
+        reminderTimes: string[]; mealTiming?: string; isActive: boolean;
+      }>) || []);
 
-    if (medicines.length > 0) {
-      await Promise.allSettled(
-        medicines
-          .filter((med) => med.isActive && (med.reminderTimes?.length ?? 0) > 0)
-          .map((med) =>
+      const activeMedicines = medicines.filter(
+        (med) => med.isActive && (med.reminderTimes?.length ?? 0) > 0
+      );
+
+      if (activeMedicines.length > 0) {
+        await Promise.allSettled(
+          activeMedicines.map((med) =>
             scheduleMedicineReminders({
               medicineId:   `medicine_${med.id}`,
               medicineName: med.medicineName,
@@ -327,9 +337,19 @@ async function _scheduleFromSettings(s: NotifSettings): Promise<void> {
               mealTiming:   med.mealTiming,
             })
           )
+        );
+      }
+
+      // BUG FIX: clear out any legacy name-based-id medicine notifications
+      // that were scheduled before the medicineId consistency fix (or any
+      // that belong to medicines that were deleted/paused). Without this,
+      // old copies stack up forever across app restarts.
+      const validIds = medicines.map((med) => `medicine_${med.id}`);
+      cleanupOrphanMedicineNotifications(validIds).catch((e) =>
+        logSilentError("medicine-notif-cleanup", e)
       );
-    }
-  } catch { /* medicine reminders non-critical */ }
+    } catch { /* medicine reminders non-critical */ }
+  }
 
   // Period reminders — also non-blocking
   if (s.periodReminders !== false) {

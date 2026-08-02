@@ -1,9 +1,24 @@
 /**
- * lib/notifications.ts — Aorane Advanced Notification System v2.0
+ * lib/notifications.ts — Aorane Advanced Notification System v3.1
  *
  * Android + iOS dono ke liye fully working.
  *
- * BUGS FIXED vs old version:
+ * BUGS FIXED in this pass (v3.1):
+ * 1. This is now the ONLY place that calls setNotificationHandler — the
+ *    duplicate registration in app/_layout.tsx has been removed. Having two
+ *    handlers meant one silently overrode the other with a different config.
+ * 2. Dead "health_score" Android channel removed — nothing ever scheduled
+ *    into it. "general" is KEPT because backend-triggered push notifications
+ *    (family reminders etc.) rely on it as the app's defaultChannel.
+ * 3. NEW: requestExactAlarmPermission() + requestIgnoreBatteryOptimizations()
+ *    — Android 12+ (and MIUI/ColorOS/FuntouchOS OEMs in particular) will
+ *    silently defer/batch scheduled local notifications unless the app is
+ *    exempted from Doze/App-Standby and has exact-alarm scheduling rights.
+ *    This is very likely why notifications "sabhi ek saath aa jaate the jab
+ *    app open karte the" — the OS was holding pending alarms and flushing
+ *    them together when the app came to foreground.
+ *
+ * BUGS FIXED vs old (v2.0) version:
  * 1. 24h cooldown removed — restoreAllNotifications ab har startup pe safe hai
  * 2. cancelAllScheduledNotifications REPLACED with atomic swap (cancel-then-schedule per type)
  * 3. cancelByType O(n) serial → Promise.allSettled parallel
@@ -13,16 +28,19 @@
  * 7. getScheduledNotificationSummary() — debug helper
  */
 
-import { Platform } from "react-native";
+import { Platform, Linking } from "react-native";
 import * as Notifications from "expo-notifications";
 import { SchedulableTriggerInputTypes } from "expo-notifications";
 
 // ─── GLOBAL FOREGROUND HANDLER ───────────────────────────────────────────────
+// NOTE: This is the ONLY setNotificationHandler call in the whole app.
+// Do NOT add another one in app/_layout.tsx or anywhere else — the last one
+// registered silently wins and the other becomes dead code.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert:  true,
     shouldPlaySound:  true,
-    shouldSetBadge:   false,
+    shouldSetBadge:   true,
     shouldShowBanner: true,
     shouldShowList:   true,
   }),
@@ -68,12 +86,6 @@ export async function setupNotificationChannels(): Promise<void> {
     Notifications.setNotificationChannelAsync("general", {
       name: "General",
       description: "Health tips and general app notifications",
-      importance: Notifications.AndroidImportance.DEFAULT,
-      sound: "default",
-    }),
-    Notifications.setNotificationChannelAsync("health_score", {
-      name: "Health Score",
-      description: "Daily health score and achievement alerts",
       importance: Notifications.AndroidImportance.DEFAULT,
       sound: "default",
     }),
@@ -136,6 +148,36 @@ export const cancelMedicineReminders = () => cancelByType("medicine_reminder");
 export { cancelMedicineById };
 export async function cancelAllNotifications(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
+}
+
+/**
+ * ONE-TIME MIGRATION CLEANUP — fixes existing users' accumulated duplicates.
+ *
+ * BUG BEING FIXED: medicine reminders used to be scheduled with a
+ * *name-derived* id (e.g. "medicine_paracetamol") when a medicine was first
+ * added, but cancelled/rescheduled everywhere else using the *backend* id
+ * (e.g. "medicine_60f7a1..."). Since these never matched, the old name-based
+ * notification was never cancelled — every app restart added a fresh
+ * backend-id-based copy on top, without ever removing the earlier one(s).
+ * Over days/weeks this is exactly what produced "40-50 notifications at once".
+ *
+ * This function removes any scheduled `medicine_reminder` notification whose
+ * `medicineId` does NOT match one of the currently-valid backend-id-based
+ * ids. It is safe to call on every restore — once cleaned, there is nothing
+ * left to remove, so it becomes effectively a no-op.
+ */
+export async function cleanupOrphanMedicineNotifications(validMedicineIds: string[]): Promise<number> {
+  const validSet = new Set(validMedicineIds);
+  const all = await Notifications.getAllScheduledNotificationsAsync();
+  const orphans = all.filter((n) => {
+    const d = n.content.data as Record<string, unknown>;
+    return d?.type === "medicine_reminder" && !validSet.has(d?.medicineId as string);
+  });
+  if (orphans.length === 0) return 0;
+  await Promise.allSettled(
+    orphans.map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier))
+  );
+  return orphans.length;
 }
 
 export async function getScheduledNotificationSummary(): Promise<Record<string, number>> {
@@ -357,4 +399,78 @@ export async function registerNotificationCategories(): Promise<void> {
       options: { opensAppToForeground: false },
     },
   ]);
+}
+
+// ─── ANDROID DELIVERY RELIABILITY (Doze / OEM battery managers) ──────────────
+//
+// WHY THIS EXISTS:
+// On stock Android 12+, and especially on MIUI (Xiaomi), ColorOS (Oppo),
+// FuntouchOS (Vivo) and OriginOS/Realme UI, a scheduled local notification
+// can be silently held by the OS's Doze/App-Standby power management and
+// only delivered once the app is opened again — which looks exactly like
+// "sab notifications ek saath aa gaye jab app open kiya". Two separate
+// system permissions reduce this:
+//   1. SCHEDULE_EXACT_ALARM (Android 12+) — lets our alarms fire at the
+//      exact requested time instead of being bucketed into OS-controlled
+//      maintenance windows.
+//   2. Battery optimization exemption — stops the OS from freezing/killing
+//      the app's scheduled work in the background.
+// Both require an explicit user action via a system settings screen; they
+// cannot be silently auto-granted. These helpers open the correct screen
+// using RN's built-in Android intent support (no extra native module).
+
+/** Returns true if we're on an Android version that gained SCHEDULE_EXACT_ALARM restrictions (API 31 / Android 12+). */
+function isAndroid12Plus(): boolean {
+  if (Platform.OS !== "android") return false;
+  const v = Platform.Version; // numeric API level on Android
+  return typeof v === "number" && v >= 31;
+}
+
+/**
+ * Opens the system screen where the user can grant "Alarms & reminders"
+ * (exact alarm) permission for this app. No-op on iOS / pre-Android-12.
+ * Wrapped in try/catch — if the OEM doesn't support this intent, we fail
+ * silently rather than crash.
+ */
+export async function requestExactAlarmPermission(): Promise<void> {
+  if (!isAndroid12Plus()) return;
+  try {
+    await Linking.sendIntent?.("android.settings.REQUEST_SCHEDULE_EXACT_ALARM");
+  } catch {
+    // Some OEM ROMs don't support this intent — silently ignore.
+  }
+}
+
+/**
+ * Opens the system dialog asking the user to exempt Aorane from battery
+ * optimization, so scheduled reminders aren't deferred by Doze/App-Standby.
+ * No-op on iOS.
+ */
+export async function requestIgnoreBatteryOptimizations(): Promise<void> {
+  if (Platform.OS !== "android") return;
+  try {
+    await Linking.sendIntent?.("android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS");
+  } catch {
+    try {
+      // Fallback: generic battery optimization list screen (works on more OEMs
+      // than the direct per-app request intent).
+      await Linking.sendIntent?.("android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS");
+    } catch {
+      // Give up silently — worst case, reminders stay slightly less reliable
+      // on that specific device, nothing crashes.
+    }
+  }
+}
+
+/**
+ * Convenience: call both reliability prompts back-to-back. Intended to be
+ * triggered from a clear, contextual user action (e.g. "Fix delayed
+ * notifications" button in Settings, or right after adding the first
+ * medicine) — NOT blindly during onboarding, since two system dialogs in a
+ * row with no context is a fast way to get both denied.
+ */
+export async function improveAndroidNotificationReliability(): Promise<void> {
+  if (Platform.OS !== "android") return;
+  await requestExactAlarmPermission();
+  await requestIgnoreBatteryOptimizations();
 }

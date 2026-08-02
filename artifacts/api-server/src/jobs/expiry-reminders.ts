@@ -2,47 +2,20 @@ import cron from "node-cron";
 import { pool } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { sendExpiryReminderEmail, sendRenewalUpcomingEmail } from "../lib/welcome-email";
+import { sendExpoPushNotifications, getTokensForUsers } from "../routes/modules/support";
 
-// FIX 4: Push notification sender — Expo Push Notifications
-// Aapke existing push token infrastructure se connect karta hai
+// FIX (audit pass): this used to query a `user_device_tokens` table that is
+// never created anywhere in migrate.ts — every call here silently found
+// zero tokens (or would have thrown, had the table truly not existed) and
+// no subscription/renewal push notification was ever actually delivered.
+// The correct, existing table is `push_tokens` (see migrate.ts + support.ts).
+// Rather than duplicate the Expo push HTTP call a second time, this now
+// reuses the canonical sendExpoPushNotifications() helper from support.ts —
+// one implementation, one place to fix bugs in the future.
 async function sendPushNotification(userId: string, title: string, body: string): Promise<void> {
-  try {
-    // Users ke push tokens fetch karo DB se
-    const result = await pool.query(
-      `SELECT push_token FROM user_device_tokens WHERE user_id = $1 AND is_active = true`,
-      [userId]
-    );
-    if (result.rows.length === 0) return;
-
-    const tokens = result.rows.map((r: any) => r.push_token).filter(Boolean);
-    if (tokens.length === 0) return;
-
-    // Expo Push API
-    const messages = tokens.map((token: string) => ({
-      to: token,
-      sound: "default",
-      title,
-      body,
-      data: { type: "subscription_reminder", userId },
-    }));
-
-    const response = await fetch("https://exp.host/--/api/v2/push/send", {
-      method: "POST",
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(messages),
-    });
-
-    if (!response.ok) {
-      logger.warn({ userId, status: response.status }, "[PushNotif] Expo push API error");
-    } else {
-      logger.info({ userId, tokenCount: tokens.length }, "[PushNotif] Sent successfully");
-    }
-  } catch (err) {
-    logger.error({ err, userId }, "[PushNotif] Failed to send push notification");
-  }
+  const tokens = await getTokensForUsers([userId]);
+  if (tokens.length === 0) return;
+  await sendExpoPushNotifications(tokens, title, body, { type: "subscription_reminder", userId });
 }
 
 export function startExpiryReminderJob() {

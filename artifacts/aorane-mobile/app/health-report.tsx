@@ -12,7 +12,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import { router, useFocusEffect } from "expo-router";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { api } from "@/lib/api";
 import { smartSync } from "@/lib/health/syncManager";
 import { buildHealthReport } from "@/lib/reports/buildHealthReport";

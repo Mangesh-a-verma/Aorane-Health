@@ -313,7 +313,9 @@ export async function runStartupMigrations(): Promise<void> {
     // PLATFORM TABLES (Admin Panel + Push + Ads)
     // ══════════════════════════════════════════════════════
 
-    // ── push_tokens ──────────────────────────────────────
+    // ── push_tokens (canonical definition — do not redefine this table
+    //    elsewhere in this file; see the CREATE UNIQUE INDEX further down
+    //    for the ON CONFLICT fix that pairs with this table) ─────────────
     `CREATE TABLE IF NOT EXISTS push_tokens (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -837,16 +839,29 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS ai_generated BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS ai_source_cache_id UUID`,
 
-    // ── push_tokens: Expo push notification tokens per user ───────────────────
-    `CREATE TABLE IF NOT EXISTS push_tokens (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID NOT NULL,
-      token TEXT NOT NULL,
-      platform TEXT NOT NULL DEFAULT 'unknown',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      UNIQUE (user_id, token)
-    )`,
+    // ── push_tokens ──────────────────────────────────────────────────────────
+    // NOTE: This used to be a SECOND `CREATE TABLE IF NOT EXISTS push_tokens`
+    // (duplicate of the one defined earlier in this file, near line ~317).
+    // Because that earlier CREATE TABLE runs first and does NOT include a
+    // UNIQUE(user_id, token) constraint, the table already exists by the
+    // time this statement runs — so `IF NOT EXISTS` causes it to be skipped
+    // entirely, and the UNIQUE constraint from this block was NEVER actually
+    // applied on any real database that ran migrations in order.
+    //
+    // This matters because `POST /users/push-token` (routes/modules/support.ts)
+    // does:
+    //   INSERT INTO push_tokens (...) VALUES (...) 
+    //   ON CONFLICT (user_id, token) DO UPDATE ...
+    // `ON CONFLICT` requires a matching UNIQUE constraint OR unique index to
+    // exist — without one, every push-token save throws a Postgres error
+    // ("there is no unique or exclusion constraint matching the ON CONFLICT
+    // specification"), meaning push tokens may never be getting saved at all.
+    //
+    // FIX: a `CREATE UNIQUE INDEX IF NOT EXISTS` is idempotent and works
+    // regardless of which CREATE TABLE statement actually created the table
+    // on a given environment — it will correctly add the missing unique
+    // index on existing databases, and be a safe no-op if it already exists.
+    `CREATE UNIQUE INDEX IF NOT EXISTS push_tokens_user_token_uniq ON push_tokens(user_id, token)`,
     `CREATE INDEX IF NOT EXISTS idx_push_tokens_user ON push_tokens(user_id)`,
 
     // ── support_tickets: user complaints / help requests → admin panel ────────
