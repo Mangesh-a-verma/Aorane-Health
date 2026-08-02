@@ -74,6 +74,7 @@ router.post("/webhooks/razorpay", async (req: Request, res: Response) => {
     payload?: {
       subscription?: { entity?: { id?: string; plan_id?: string; status?: string; current_end?: number } };
       payment?: { entity?: { id?: string; amount?: number; subscription_id?: string } };
+      refund?: { entity?: { id?: string; payment_id?: string; amount?: number; status?: string } };
     };
   };
 
@@ -81,6 +82,7 @@ router.post("/webhooks/razorpay", async (req: Request, res: Response) => {
   const eventType = event.event || "";
   const subEntity = event.payload?.subscription?.entity;
   const paymentEntity = event.payload?.payment?.entity;
+  const refundEntity = event.payload?.refund?.entity;
 
   try {
     if (eventType === "subscription.charged" && subEntity?.id) {
@@ -177,6 +179,71 @@ router.post("/webhooks/razorpay", async (req: Request, res: Response) => {
          WHERE id = (SELECT user_id FROM subscriptions WHERE razorpay_subscription_id = $1 LIMIT 1)`,
         [subEntity.id]
       ).catch(() => {});
+    }
+
+    if (eventType === "refund.processed" && refundEntity?.payment_id) {
+      const rzPaymentId = refundEntity.payment_id;
+
+      // Try individual-app payment first
+      const indivPay = await pool.query(
+        `UPDATE payments SET status = 'refunded', updated_at = NOW()
+         WHERE razorpay_payment_id = $1 AND status != 'refunded'
+         RETURNING user_id, plan`,
+        [rzPaymentId]
+      ).catch(() => ({ rows: [] as { user_id: string; plan: string }[] }));
+
+      if (indivPay.rows.length > 0) {
+        const { user_id, plan } = indivPay.rows[0];
+        // Deactivate their subscription and downgrade to free — a refund
+        // means the service should no longer be entitled, same as expiry.
+        await pool.query(
+          `UPDATE subscriptions SET status = 'cancelled', auto_renew = FALSE, updated_at = NOW()
+           WHERE user_id = $1 AND status = 'active'`,
+          [user_id]
+        ).catch(() => {});
+        await pool.query(
+          `UPDATE users SET plan = 'free', updated_at = NOW() WHERE id = $1`,
+          [user_id]
+        ).catch(() => {});
+        createAdminNotif(
+          "refund_processed",
+          `↩️ Refund processed — individual user`,
+          `Payment ${rzPaymentId} (${plan} plan) refunded. User downgraded to free.`,
+          { razorpayPaymentId: rzPaymentId, userId: user_id, plan }
+        ).catch(() => {});
+      } else {
+        // Try org (business portal) payment
+        const orgPay = await pool.query(
+          `UPDATE org_payments SET status = 'refunded'
+           WHERE razorpay_payment_id = $1 AND status != 'refunded'
+           RETURNING org_id, plan`,
+          [rzPaymentId]
+        ).catch(() => ({ rows: [] as { org_id: string; plan: string }[] }));
+        if (orgPay.rows.length > 0) {
+          const { org_id, plan } = orgPay.rows[0];
+          await pool.query(
+            `UPDATE organizations SET is_verified = FALSE, updated_at = NOW() WHERE id = $1`,
+            [org_id]
+          ).catch(() => {});
+          createAdminNotif(
+            "refund_processed",
+            `↩️ Refund processed — organization`,
+            `Org payment ${rzPaymentId} (${plan} plan) refunded. Org access suspended pending manual review.`,
+            { razorpayPaymentId: rzPaymentId, orgId: org_id, plan }
+          ).catch(() => {});
+        } else {
+          // Neither table matched — this is exactly the kind of gap the
+          // reconciliation job (jobs/payment-reconciliation.ts) also guards
+          // against, but flag it immediately too since we're already here.
+          logger.warn({ rzPaymentId }, "[Webhook] refund.processed for unknown payment — no matching local record");
+          createAdminNotif(
+            "refund_processed",
+            `⚠️ Refund for unknown payment`,
+            `Razorpay refunded payment ${rzPaymentId} but no matching local record was found.`,
+            { razorpayPaymentId: rzPaymentId }
+          ).catch(() => {});
+        }
+      }
     }
 
     if (eventType === "subscription.cancelled" && subEntity?.id) {

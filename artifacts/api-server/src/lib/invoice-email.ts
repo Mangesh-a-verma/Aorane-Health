@@ -22,6 +22,8 @@ interface InvoiceData {
   totalAmount: number;
   isSameState: boolean;
   razorpayPaymentId?: string;
+  /** ISSUE 5 FIX: "individual" renders consumer-appropriate wording instead of "Business ... N seats". Defaults to "business" for backward compatibility. */
+  context?: "business" | "individual";
 }
 
 function formatINR(n: number): string {
@@ -33,11 +35,13 @@ function buildInvoiceHtml(data: InvoiceData, company: CompanyDetails): string {
     invoiceNumber, invoiceDate, orgName, orgGstin, orgState,
     planLabel, seats, billingCycle, pricePerSeat, months,
     baseAmount, cgstAmount, sgstAmount, igstAmount, gstAmount, totalAmount,
-    isSameState, razorpayPaymentId,
+    isSameState, razorpayPaymentId, context = "business",
   } = data;
 
   const billingLabel = billingCycle === "yearly" ? "12 months (Annual)" : "1 month (Monthly)";
-  const description = `Aorane Business ${planLabel} Plan — ${seats} seats × ${billingLabel}`;
+  const description = context === "individual"
+    ? `Aorane ${planLabel} Plan — ${billingLabel}`
+    : `Aorane Business ${planLabel} Plan — ${seats} seats × ${billingLabel}`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -187,6 +191,42 @@ export async function sendInvoiceEmail(params: {
     return true;
   } catch (err) {
     console.error("[Invoice Email] Failed:", err);
+    return false;
+  }
+}
+
+// ISSUE 5 FIX: individual/App customers now also get a real GST-compliant
+// invoice email (previously only the Business Portal recurring-subscription
+// flow had this — individual users only ever got a generic "welcome" email
+// with no tax breakdown, despite GST being charged on their plans too).
+export async function sendIndividualInvoiceEmail(params: {
+  toEmail: string;
+  customerName: string;
+  invoiceData: InvoiceData;
+}): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("[Invoice Email] RESEND_API_KEY not set — skipping individual invoice email");
+    return false;
+  }
+  try {
+    const resend = new Resend(apiKey);
+    const company = await getCompanyDetails();
+    const html = buildInvoiceHtml({ ...params.invoiceData, orgName: params.customerName, context: "individual" }, company);
+    const { error } = await resend.emails.send({
+      from: `Aorane <${SUPPORT_EMAIL}>`,
+      to: [params.toEmail],
+      subject: `Invoice ${params.invoiceData.invoiceNumber} — Aorane`,
+      html,
+    });
+    if (error) {
+      console.warn("[Invoice Email] Resend error (individual):", error.message);
+      return false;
+    }
+    console.info("[Invoice Email] Sent (individual) to", params.toEmail, "invoice", params.invoiceData.invoiceNumber);
+    return true;
+  } catch (err) {
+    console.error("[Invoice Email] Failed (individual):", err);
     return false;
   }
 }

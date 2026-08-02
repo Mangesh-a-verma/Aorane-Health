@@ -16,6 +16,7 @@ import {
 } from "../../lib/razorpay";
 import { sendInvoiceEmail } from "../../lib/invoice-email";
 import { sendBusinessWelcomeEmail, sendCorporatePaymentWelcomeEmail, sendTeamMemberJoinedEmail } from "../../lib/welcome-email";
+import { getNextInvoiceNumber } from "../../lib/invoice-number";
 
 const router = Router();
 
@@ -794,7 +795,7 @@ router.post("/business/billing/order", requireBusinessAuth, async (req: Business
 // ─── verify one-time payment ──────────────────────────────────────────────────
 router.post("/business/billing/verify", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
-    const { paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature, plan } = req.body as Record<string, unknown>;
+    const { paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body as Record<string, unknown>;
     // ALWAYS verify signature in LIVE mode — no isTestMode bypass allowed
     if (isLiveMode()) {
       if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
@@ -811,15 +812,20 @@ router.post("/business/billing/verify", requireBusinessAuth, async (req: Busines
       const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
       res.json({ success: true, org, message: "Already activated", alreadyDone: true }); return;
     }
+    // ISSUE 2 FIX: plan comes from the DB-stored payment record (decided
+    // server-side at /business/billing/order time), never from client body.
+    const plan = existingPayment.plan;
     const orgPlansVerify = await getOrgPlansFromDB();
-    const planInfo = orgPlansVerify[plan as string];
+    const planInfo = orgPlansVerify[plan];
     if (!planInfo) { res.status(400).json({ error: "Invalid plan" }); return; }
-    await db.update(orgPaymentsTable).set({ status: "success", razorpayPaymentId: razorpayPaymentId as string }).where(eq(orgPaymentsTable.id, paymentId as string));
     const expiresAt = new Date();
     expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-    await db.update(organizationsTable).set({
-      totalSeats: planInfo.seats, plan: billingPlanToOrgPlan(plan as string), isVerified: true,
-    }).where(eq(organizationsTable.id, req.orgId!));
+    await db.transaction(async (tx) => {
+      await tx.update(orgPaymentsTable).set({ status: "success", razorpayPaymentId: razorpayPaymentId as string }).where(eq(orgPaymentsTable.id, paymentId as string));
+      await tx.update(organizationsTable).set({
+        totalSeats: planInfo.seats, plan: billingPlanToOrgPlan(plan), isVerified: true,
+      }).where(eq(organizationsTable.id, req.orgId!));
+    });
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
     // Fire-and-forget corporate payment welcome email with Enrollment Code
     if (org?.contactEmail) {
@@ -896,20 +902,28 @@ router.post("/business/billing/subscription/create", requireBusinessAuth, async 
 // ─── verify subscription first payment ───────────────────────────────────────
 router.post("/business/billing/subscription/verify", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
-    const { paymentId, razorpaySubscriptionId, razorpayPaymentId, razorpaySignature, plan } = req.body as Record<string, string>;
+    const { paymentId, razorpaySubscriptionId, razorpayPaymentId, razorpaySignature } = req.body as Record<string, string>;
     if (isLiveMode()) {
       const valid = verifySubscriptionSignature(razorpaySubscriptionId, razorpayPaymentId, razorpaySignature);
       if (!valid) { res.status(400).json({ error: "Payment signature invalid" }); return; }
     }
+    // ISSUE 2 FIX: plan comes from the org_payments row (set server-side at
+    // /business/billing/subscription/create), never from client body.
+    const [payRow] = await db.select().from(orgPaymentsTable)
+      .where(and(eq(orgPaymentsTable.id, paymentId), eq(orgPaymentsTable.orgId, req.orgId!)));
+    if (!payRow) { res.status(404).json({ error: "Payment not found" }); return; }
+    const plan = payRow.plan;
     const orgPlans = await getOrgPlansFromDB();
     const planInfo = orgPlans[plan];
     if (!planInfo) { res.status(400).json({ error: "Invalid plan" }); return; }
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
-    await db.update(orgPaymentsTable).set({ status: "success", nextRenewalAt: expiresAt }).where(eq(orgPaymentsTable.id, paymentId));
-    await db.update(organizationsTable).set({
-      totalSeats: planInfo.seats, plan: billingPlanToOrgPlan(plan), isVerified: true,
-    }).where(eq(organizationsTable.id, req.orgId!));
+    await db.transaction(async (tx) => {
+      await tx.update(orgPaymentsTable).set({ status: "success", nextRenewalAt: expiresAt }).where(eq(orgPaymentsTable.id, paymentId));
+      await tx.update(organizationsTable).set({
+        totalSeats: planInfo.seats, plan: billingPlanToOrgPlan(plan), isVerified: true,
+      }).where(eq(organizationsTable.id, req.orgId!));
+    });
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
     // Fire-and-forget corporate payment welcome email with Enrollment Code
     if (org?.contactEmail) {
@@ -1400,12 +1414,10 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
     const sgstAmount = isSameState ? Math.round(gstAmount / 2) : 0;
     const igstAmount = isSameState ? 0 : gstAmount;
     const totalAmount = baseAmount + gstAmount;
-
-    // Invoice number
-    const year = new Date().getFullYear();
-    const fy = new Date().getMonth() >= 3 ? `${year}-${String(year + 1).slice(2)}` : `${year - 1}-${String(year).slice(2)}`;
-    const invoiceSeq = Math.floor(Math.random() * 9000) + 1000;
-    const invoiceNumber = `AOR/${fy}/${invoiceSeq}`;
+    // ISSUE 4 FIX: invoice number is no longer generated here — it's a
+    // preview/estimate before payment, not a real invoice yet. The actual
+    // sequential invoice number is generated only at seat-verify (payment
+    // success) time, via getNextInvoiceNumber().
 
     const liveMode = isLiveMode();
     const testModeActive = isTestMode();
@@ -1425,6 +1437,7 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
       orgId: req.orgId!,
       plan,
       seats,
+      billingCycle,
       amount: String(totalAmount),
       razorpayOrderId: razorpayOrderId || undefined,
       status: "pending",
@@ -1432,7 +1445,6 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
 
     res.json({
       paymentId: payment.id,
-      invoiceNumber,
       plan,
       planLabel: planInfo.label,
       seats,
@@ -1464,7 +1476,7 @@ router.post("/business/billing/seat-order", requireBusinessAuth, async (req: Bus
 
 router.post("/business/billing/seat-verify", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
-    const { paymentId, razorpayPaymentId, razorpayOrderId, razorpaySignature, seats, plan, billingCycle } = req.body as Record<string, unknown>;
+    const { paymentId, razorpayPaymentId, razorpayOrderId, razorpaySignature } = req.body as Record<string, unknown>;
     if (!paymentId) { res.status(400).json({ error: "paymentId required" }); return; }
 
     // ALWAYS verify signature in LIVE mode — no isTestMode bypass allowed
@@ -1484,33 +1496,42 @@ router.post("/business/billing/seat-verify", requireBusinessAuth, async (req: Bu
       const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
       res.json({ success: true, org, message: "Already activated", alreadyDone: true }); return;
     }
+    // ISSUE 2 FIX: seats, plan, and billingCycle ALL now come from the DB
+    // order record (set server-side at /business/billing/seat-order time) —
+    // previously this endpoint trusted all three directly from the client
+    // body, meaning an org could pay for e.g. 10 seats and claim 500 seats,
+    // or claim a different (cheaper-billed) plan than what was actually paid.
+    const seats = existingPay.seats;
+    const plan = existingPay.plan;
+    const billingCycle = existingPay.billingCycle ?? "monthly";
 
     const months = billingCycle === "yearly" ? 12 : 1;
     const expiresAt = new Date();
     expiresAt.setMonth(expiresAt.getMonth() + (months as number));
-
-    await db.update(orgPaymentsTable).set({
-      status: "success",
-      razorpayPaymentId: String(razorpayPaymentId || "test_" + Date.now()),
-      expiresAt,
-    }).where(eq(orgPaymentsTable.id, String(paymentId)));
-
     const seatCount = Number(seats) || 10;
-    await db.update(organizationsTable).set({
-      totalSeats: seatCount,
-      plan: billingPlanToOrgPlan(String(plan)),
-      isVerified: true,
-    }).where(eq(organizationsTable.id, req.orgId!));
+
+    await db.transaction(async (tx) => {
+      await tx.update(orgPaymentsTable).set({
+        status: "success",
+        razorpayPaymentId: String(razorpayPaymentId || "test_" + Date.now()),
+        expiresAt,
+      }).where(eq(orgPaymentsTable.id, String(paymentId)));
+
+      await tx.update(organizationsTable).set({
+        totalSeats: seatCount,
+        plan: billingPlanToOrgPlan(String(plan)),
+        isVerified: true,
+      }).where(eq(organizationsTable.id, req.orgId!));
+    });
 
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, req.orgId!));
 
     // Send invoice email
     const [payment] = await db.select().from(orgPaymentsTable).where(eq(orgPaymentsTable.id, String(paymentId)));
     if (payment && org?.contactEmail) {
-      const year = new Date().getFullYear();
-      const fy = new Date().getMonth() >= 3 ? `${year}-${String(year + 1).slice(2)}` : `${year - 1}-${String(year).slice(2)}`;
-      const invoiceSeq = Math.floor(Math.random() * 9000) + 1000;
-      const invoiceNumber = `AOR/${fy}/${invoiceSeq}`;
+      // ISSUE 4 FIX: sequential, DB-backed invoice number (was Math.random()).
+      const invoiceNumber = await getNextInvoiceNumber();
+      await db.update(orgPaymentsTable).set({ invoiceNumber }).where(eq(orgPaymentsTable.id, String(paymentId)));
       const planInfo = await getOrgSeatPlan(String(plan)) ?? { label: String(plan), pricePerSeat: 0, yearlyPricePerSeat: 0, features: [], color: "#0077B6", discountPercent: 0, offerLabel: null };
       const months = billingCycle === "yearly" ? 12 : 1;
       const pricePerSeat = billingCycle === "yearly" ? planInfo.yearlyPricePerSeat : planInfo.pricePerSeat;

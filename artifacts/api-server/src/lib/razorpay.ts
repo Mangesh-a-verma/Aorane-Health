@@ -131,3 +131,30 @@ export async function createOrder(params: { amount: number; currency?: string; r
     receipt: params.receipt,
   });
 }
+
+// ISSUE 1 FIX: Reconciliation support — list Razorpay's own record of captured
+// payments in a time window, so we can cross-check against our local DB and
+// catch any payment Razorpay confirms but our webhook/verify call missed.
+export interface RazorpayPaymentEntity {
+  id: string;
+  order_id: string | null;
+  status: string; // "captured" | "authorized" | "failed" | "refunded" | ...
+  amount: number; // paise
+  created_at: number; // unix seconds
+  email?: string;
+}
+export async function fetchCapturedPayments(fromUnix: number, toUnix: number): Promise<RazorpayPaymentEntity[]> {
+  const out: RazorpayPaymentEntity[] = [];
+  let skip = 0;
+  const count = 100;
+  for (;;) {
+    const page = await rzGet<{ items: RazorpayPaymentEntity[] }>(
+      `/payments?from=${fromUnix}&to=${toUnix}&count=${count}&skip=${skip}`
+    );
+    out.push(...page.items);
+    if (page.items.length < count) break;
+    skip += count;
+    if (skip > 5000) break; // safety cap
+  }
+  return out.filter(p => p.status === "captured");
+}

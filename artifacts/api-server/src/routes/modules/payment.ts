@@ -11,6 +11,9 @@ import {
   verifySubscriptionSignature, verifyPaymentSignature, createOrder,
 } from "../../lib/razorpay";
 import { sendIndividualPaymentWelcomeEmail } from "../../lib/welcome-email";
+import { sendIndividualInvoiceEmail } from "../../lib/invoice-email";
+import { computeGst } from "../../lib/gst";
+import { getNextInvoiceNumber } from "../../lib/invoice-number";
 import { signUserToken, signRefreshToken } from "../../lib/jwt";
 import { invalidateUserPlanCache } from "../../middlewares/user-auth";
 
@@ -106,6 +109,19 @@ router.get("/payment/subscription", requireAuth, async (req: AuthRequest, res) =
   }
 });
 
+// ─── GET: payment history (ISSUE 6 FIX — previously missing entirely) ────────
+router.get("/payment/history", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const payments = await db.select().from(paymentsTable)
+      .where(eq(paymentsTable.userId, req.userId!))
+      .orderBy(desc(paymentsTable.createdAt))
+      .limit(100);
+    res.json({ payments });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch payment history" });
+  }
+});
+
 // ─── POST: validate promo code ────────────────────────────────────────────────
 router.post("/payment/promo/validate", requireAuth, async (req: AuthRequest, res) => {
   try {
@@ -157,7 +173,13 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
         promoUsed = promo.code;
       }
     }
-    const finalAmount = Math.round(baseAmount * (1 - discount / 100));
+    const discountedBase = Math.round(baseAmount * (1 - discount / 100));
+    // ISSUE 5 FIX: previously the App charged `discountedBase` with ZERO GST
+    // added, despite the pricing page stating "GST @18% extra on paid
+    // plans" for individual plans too. Now GST is computed and added on
+    // top, same as the Business Portal already does.
+    const gst = computeGst(discountedBase);
+    const finalAmount = gst.totalAmount;
     if (!isLiveMode()) {
       res.status(503).json({ error: "Payment gateway not configured. Please contact support." }); return;
     }
@@ -172,6 +194,8 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
     const [payment] = await db.insert(paymentsTable).values({
       userId: req.userId!,
       amount: finalAmount.toString(),
+      baseAmount: discountedBase.toString(),
+      gstAmount: gst.gstAmount.toString(),
       currency: "INR",
       plan,
       seats: 1,
@@ -184,6 +208,8 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
       razorpayOrderId,
       razorpayKeyId: process.env["RAZORPAY_KEY_ID"] || null,
       amount: finalAmount,
+      baseAmount: discountedBase,
+      gstAmount: gst.gstAmount,
       plan,
       billingCycle,
       discount,
@@ -199,7 +225,7 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
 // ─── POST: verify one-time payment ───────────────────────────────────────────
 router.post("/payment/verify", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature, plan } = req.body as Record<string, unknown>;
+    const { paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body as Record<string, unknown>;
     if (isLiveMode()) {
       if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
         res.status(400).json({ error: "Payment details missing" }); return;
@@ -213,7 +239,13 @@ router.post("/payment/verify", requireAuth, async (req: AuthRequest, res) => {
     if (existingPayment.status === "success") {
       res.json({ success: true, message: "Payment already verified", alreadyDone: true }); return;
     }
-    await db.update(paymentsTable).set({ status: "success", razorpayPaymentId: razorpayPaymentId as string }).where(eq(paymentsTable.id, paymentId as string));
+    // ISSUE 2 FIX: `plan` now comes ONLY from the DB record created during
+    // /payment/order (server decided this at order-creation time, tied to the
+    // exact amount actually charged). We never again trust a client-supplied
+    // `plan` field here — previously a user could pay for a cheap plan, then
+    // send a different (more expensive) `plan` value to this endpoint and
+    // have that higher plan activated instead.
+    const plan = existingPayment.plan;
 
     // FIX 3: Determine expiry based on billing cycle stored in payment record
     // We store billingCycle in the payment amount context; if amount >= yearlyPrice threshold => yearly
@@ -228,17 +260,37 @@ router.post("/payment/verify", requireAuth, async (req: AuthRequest, res) => {
     } else {
       expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
     }
+    // ISSUE 5 FIX: real sequential invoice number (computed before the
+    // transaction — nextval() on the sequence is its own atomic operation
+    // and doesn't need to be inside this transaction).
+    const invoiceNumber = await getNextInvoiceNumber();
 
-    await db.insert(subscriptionsTable).values({
-      userId: req.userId!, plan: plan as string, status: "active",
-      source: "razorpay", expiresAt, paymentType: "one_time", autoRenew: false, nextRenewalAt: expiresAt,
-    }).onConflictDoNothing();
-    await db.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, req.userId!));
+    // ISSUE 7 FIX: these 3 writes must succeed or fail together. Previously
+    // each was a separate DB call — if the process crashed or a connection
+    // dropped between them, we could end up with payment status "success"
+    // in the DB while the subscription was never created and the user's
+    // plan was never upgraded (paid but not activated).
+    await db.transaction(async (tx) => {
+      await tx.update(paymentsTable)
+        .set({ status: "success", razorpayPaymentId: razorpayPaymentId as string, invoiceNumber })
+        .where(eq(paymentsTable.id, paymentId as string));
+      await tx.insert(subscriptionsTable).values({
+        userId: req.userId!, plan: plan as string, status: "active",
+        source: "razorpay", expiresAt, paymentType: "one_time", autoRenew: false, nextRenewalAt: expiresAt,
+      }).onConflictDoNothing();
+      await tx.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, req.userId!));
+    });
 
     const tokens = await rotateUserTokensForPlan(req.userId!).catch(() => null);
 
     let inviteCode: string | null = null;
     if (plan === "family") inviteCode = await autoCreateFamilyGroup(req.userId!);
+
+    // ISSUE 5 FIX: invoice email uses the same invoiceNumber already
+    // generated + persisted inside the transaction above.
+    const baseAmt = Number(existingPayment.baseAmount ?? existingPayment.amount);
+    const gstAmt = Number(existingPayment.gstAmount ?? 0);
+
     pool.query(
       `SELECT u.email, up.full_name, up.aorane_id FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = $1 LIMIT 1`,
       [req.userId!]
@@ -252,6 +304,28 @@ router.post("/payment/verify", requireAuth, async (req: AuthRequest, res) => {
           planName: safePlanLabel(plan as string),
           amountPaid: Number(existingPayment.amount),
           expiresAt,
+        }).catch(() => {});
+        sendIndividualInvoiceEmail({
+          toEmail: row.email,
+          customerName: row.full_name || row.email,
+          invoiceData: {
+            invoiceNumber,
+            invoiceDate: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+            orgName: row.full_name || row.email,
+            planLabel: safePlanLabel(plan as string),
+            seats: 1,
+            billingCycle: isYearlyPayment ? "yearly" : "monthly",
+            pricePerSeat: baseAmt,
+            months: isYearlyPayment ? 12 : 1,
+            baseAmount: baseAmt,
+            cgstAmount: 0,
+            sgstAmount: 0,
+            igstAmount: gstAmt,
+            gstAmount: gstAmt,
+            totalAmount: Number(existingPayment.amount),
+            isSameState: false,
+            razorpayPaymentId: razorpayPaymentId as string,
+          },
         }).catch(() => {});
       }
     }).catch(() => {});
@@ -341,15 +415,23 @@ router.post("/payment/subscription/create", requireAuth, async (req: AuthRequest
 // ─── POST: verify subscription first payment ──────────────────────────────────
 router.post("/payment/subscription/verify", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { subscriptionId, razorpaySubscriptionId, razorpayPaymentId, razorpaySignature, plan } = req.body as Record<string, string>;
+    const { subscriptionId, razorpaySubscriptionId, razorpayPaymentId, razorpaySignature } = req.body as Record<string, string>;
     if (isLiveMode()) {
       const valid = verifySubscriptionSignature(razorpaySubscriptionId, razorpayPaymentId, razorpaySignature);
       if (!valid) { res.status(400).json({ error: "Payment signature invalid" }); return; }
     }
+    const [subRow] = await db.select().from(subscriptionsTable)
+      .where(and(eq(subscriptionsTable.id, subscriptionId), eq(subscriptionsTable.userId, req.userId!)));
+    if (!subRow) { res.status(404).json({ error: "Subscription not found" }); return; }
+    // ISSUE 2 FIX: plan comes from the subscription row (set server-side at
+    // /payment/subscription/create), never from client-supplied body.
+    const plan = subRow.plan;
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
-    await db.update(subscriptionsTable).set({ status: "active", expiresAt, nextRenewalAt: expiresAt }).where(eq(subscriptionsTable.id, subscriptionId));
-    await db.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, req.userId!));
+    await db.transaction(async (tx) => {
+      await tx.update(subscriptionsTable).set({ status: "active", expiresAt, nextRenewalAt: expiresAt }).where(eq(subscriptionsTable.id, subscriptionId));
+      await tx.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, req.userId!));
+    });
 
     const tokens = await rotateUserTokensForPlan(req.userId!).catch(() => null);
 
@@ -571,15 +653,12 @@ router.post("/payment/rzp-callback", async (req, res) => {
 
   if (isValid && razorpay_order_id) {
     try {
-      await db.update(paymentsTable)
-        .set({ status: "success", razorpayPaymentId: razorpay_payment_id })
-        .where(eq(paymentsTable.razorpayOrderId, razorpay_order_id));
-      const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.razorpayOrderId, razorpay_order_id));
-      if (payment?.userId && payment?.plan) {
+      const [existingCbPayment] = await db.select().from(paymentsTable).where(eq(paymentsTable.razorpayOrderId, razorpay_order_id));
+      if (existingCbPayment?.userId && existingCbPayment?.plan) {
         // FIX 3: Detect yearly payment for correct expiry
-        const planData3 = await getPlanFromDB(payment.plan);
+        const planData3 = await getPlanFromDB(existingCbPayment.plan);
         const monthlyPrice3 = Number(planData3?.monthlyPrice ?? 0);
-        const paidAmt = Number(payment.amount);
+        const paidAmt = Number(existingCbPayment.amount);
         const isYearly3 = monthlyPrice3 > 0 && paidAmt >= monthlyPrice3 * 10;
         const expiresAt = new Date();
         if (isYearly3) {
@@ -587,15 +666,21 @@ router.post("/payment/rzp-callback", async (req, res) => {
         } else {
           expiresAt.setDate(expiresAt.getDate() + 30);
         }
-        await db.insert(subscriptionsTable).values({
-          userId: payment.userId, plan: payment.plan as "free" | "pro" | "max" | "family",
-          status: "active", source: "razorpay", expiresAt, paymentType: "one_time",
-          autoRenew: false, nextRenewalAt: expiresAt,
-        }).onConflictDoNothing();
-        await db.update(usersTable)
-          .set({ plan: payment.plan as "free" | "pro" | "max" | "family" })
-          .where(eq(usersTable.id, payment.userId));
-        if (payment.plan === "family") await autoCreateFamilyGroup(payment.userId);
+        const payment = existingCbPayment;
+        await db.transaction(async (tx) => {
+          await tx.update(paymentsTable)
+            .set({ status: "success", razorpayPaymentId: razorpay_payment_id })
+            .where(eq(paymentsTable.razorpayOrderId, razorpay_order_id));
+          await tx.insert(subscriptionsTable).values({
+            userId: payment.userId!, plan: payment.plan as "free" | "pro" | "max" | "family",
+            status: "active", source: "razorpay", expiresAt, paymentType: "one_time",
+            autoRenew: false, nextRenewalAt: expiresAt,
+          }).onConflictDoNothing();
+          await tx.update(usersTable)
+            .set({ plan: payment.plan as "free" | "pro" | "max" | "family" })
+            .where(eq(usersTable.id, payment.userId!));
+        });
+        if (payment.plan === "family") await autoCreateFamilyGroup(payment.userId!);
         pool.query(
           `SELECT u.email, up.full_name, up.aorane_id FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = $1 LIMIT 1`,
           [payment.userId]
@@ -797,15 +882,17 @@ router.post("/payment/subscription-rzp-callback", async (req, res) => {
     try {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
-      await db.update(subscriptionsTable).set({
-        status: "active",
-        expiresAt,
-        nextRenewalAt: expiresAt,
-      }).where(eq(subscriptionsTable.id, subscriptionId));
-      const [sub] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.id, subscriptionId));
-      if (sub?.userId && sub?.plan) {
-        await db.update(usersTable).set({ plan: sub.plan as "free" | "max" | "pro" | "family" }).where(eq(usersTable.id, sub.userId));
-      }
+      const [subBefore] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.id, subscriptionId));
+      await db.transaction(async (tx) => {
+        await tx.update(subscriptionsTable).set({
+          status: "active",
+          expiresAt,
+          nextRenewalAt: expiresAt,
+        }).where(eq(subscriptionsTable.id, subscriptionId));
+        if (subBefore?.userId && subBefore?.plan) {
+          await tx.update(usersTable).set({ plan: subBefore.plan as "free" | "max" | "pro" | "family" }).where(eq(usersTable.id, subBefore.userId));
+        }
+      });
     } catch (err) {
       // FIX CB-PAY-2: same reasoning as the one-time-payment case above —
       // this guards activating a subscription RENEWAL. A silent failure

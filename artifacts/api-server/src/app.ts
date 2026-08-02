@@ -8,6 +8,7 @@ import { logger } from "./lib/logger";
 import { pool } from "@workspace/db";
 import { startSubscriptionExpiryJob } from "./jobs/subscription-expiry";
 import { startExpiryReminderJob } from "./jobs/expiry-reminders";
+import { startPaymentReconciliationJob } from "./jobs/payment-reconciliation";
 import { startMonthlyHealthSummaryJob } from "./jobs/monthly-health-summary";
 import { startWinBackJob } from "./jobs/win-back";
 
@@ -235,6 +236,7 @@ startSubscriptionExpiryJob();
 
 // Start daily expiry reminders job
 startExpiryReminderJob();
+startPaymentReconciliationJob();
 
 // Start monthly individual health summary job (1st of month, 8 AM IST)
 startMonthlyHealthSummaryJob();

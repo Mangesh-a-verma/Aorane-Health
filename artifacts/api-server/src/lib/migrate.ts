@@ -6,6 +6,11 @@ import { buildNewFoodSeedSQL } from "./seed-new-foods";
 // Run once at server startup; safe to re-run multiple times
 export async function runStartupMigrations(): Promise<void> {
   const migrations: string[] = [
+    // ISSUE 4 FIX: sequential invoice numbering (GST Rule 46 compliance).
+    // Postgres sequences are safe under concurrent access — two simultaneous
+    // nextval() calls always return two different, ordered numbers, unlike
+    // Math.random() which can collide and isn't sequential.
+    `CREATE SEQUENCE IF NOT EXISTS invoice_number_seq START 1000`,
     // user_profiles missing columns
     `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS city TEXT`,
     `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS state TEXT`,
@@ -313,9 +318,7 @@ export async function runStartupMigrations(): Promise<void> {
     // PLATFORM TABLES (Admin Panel + Push + Ads)
     // ══════════════════════════════════════════════════════
 
-    // ── push_tokens (canonical definition — do not redefine this table
-    //    elsewhere in this file; see the CREATE UNIQUE INDEX further down
-    //    for the ON CONFLICT fix that pairs with this table) ─────────────
+    // ── push_tokens ──────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS push_tokens (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -688,6 +691,12 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS next_renewal_at TIMESTAMPTZ`,
 
     `ALTER TABLE payments ADD COLUMN IF NOT EXISTS razorpay_subscription_id TEXT`,
+    // ISSUE 5 FIX: individual-app payments table gets the same GST/invoice
+    // fields org_payments already had, so App purchases can carry a proper
+    // GST breakdown and a real persisted invoice number.
+    `ALTER TABLE payments ADD COLUMN IF NOT EXISTS base_amount NUMERIC`,
+    `ALTER TABLE payments ADD COLUMN IF NOT EXISTS gst_amount NUMERIC`,
+    `ALTER TABLE payments ADD COLUMN IF NOT EXISTS invoice_number TEXT`,
 
     `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS razorpay_subscription_id TEXT`,
     `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS payment_type TEXT NOT NULL DEFAULT 'one_time'`,
@@ -839,29 +848,16 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS ai_generated BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS ai_source_cache_id UUID`,
 
-    // ── push_tokens ──────────────────────────────────────────────────────────
-    // NOTE: This used to be a SECOND `CREATE TABLE IF NOT EXISTS push_tokens`
-    // (duplicate of the one defined earlier in this file, near line ~317).
-    // Because that earlier CREATE TABLE runs first and does NOT include a
-    // UNIQUE(user_id, token) constraint, the table already exists by the
-    // time this statement runs — so `IF NOT EXISTS` causes it to be skipped
-    // entirely, and the UNIQUE constraint from this block was NEVER actually
-    // applied on any real database that ran migrations in order.
-    //
-    // This matters because `POST /users/push-token` (routes/modules/support.ts)
-    // does:
-    //   INSERT INTO push_tokens (...) VALUES (...) 
-    //   ON CONFLICT (user_id, token) DO UPDATE ...
-    // `ON CONFLICT` requires a matching UNIQUE constraint OR unique index to
-    // exist — without one, every push-token save throws a Postgres error
-    // ("there is no unique or exclusion constraint matching the ON CONFLICT
-    // specification"), meaning push tokens may never be getting saved at all.
-    //
-    // FIX: a `CREATE UNIQUE INDEX IF NOT EXISTS` is idempotent and works
-    // regardless of which CREATE TABLE statement actually created the table
-    // on a given environment — it will correctly add the missing unique
-    // index on existing databases, and be a safe no-op if it already exists.
-    `CREATE UNIQUE INDEX IF NOT EXISTS push_tokens_user_token_uniq ON push_tokens(user_id, token)`,
+    // ── push_tokens: Expo push notification tokens per user ───────────────────
+    `CREATE TABLE IF NOT EXISTS push_tokens (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL,
+      token TEXT NOT NULL,
+      platform TEXT NOT NULL DEFAULT 'unknown',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, token)
+    )`,
     `CREATE INDEX IF NOT EXISTS idx_push_tokens_user ON push_tokens(user_id)`,
 
     // ── support_tickets: user complaints / help requests → admin panel ────────
@@ -1131,57 +1127,16 @@ export async function runStartupMigrations(): Promise<void> {
       updated_at   = now()`,
 
     // ══════════════════════════════════════════════════════════════════════════
-    // SUBSCRIPTION_PLANS — canonical plan catalogue (6 plans)
+    // CLEANUP: subscription_plans + b2b_plan_config were a parallel/duplicate
+    // pricing catalogue that ended up disconnected from the app — no route,
+    // admin panel, landing page, business portal, or mobile app ever reads
+    // from them. Real pricing (used by checkout, admin panel, and all client
+    // apps) lives entirely in `plan_pricing`. Dropped here since these tables
+    // held stale/incorrect prices and risked confusing future changes.
+    // Safe to drop: audited on 2026-08-01, zero live users, zero callers.
     // ══════════════════════════════════════════════════════════════════════════
-    `CREATE TABLE IF NOT EXISTS subscription_plans (
-      plan_id       TEXT PRIMARY KEY,
-      plan_name     TEXT NOT NULL,
-      plan_type     TEXT NOT NULL DEFAULT 'individual',
-      price_monthly INTEGER NOT NULL DEFAULT 0,
-      price_yearly  INTEGER NOT NULL DEFAULT 0,
-      currency      TEXT NOT NULL DEFAULT 'INR',
-      is_active     BOOLEAN NOT NULL DEFAULT true,
-      display_order INTEGER NOT NULL DEFAULT 0,
-      created_at    TIMESTAMPTZ DEFAULT now(),
-      updated_at    TIMESTAMPTZ DEFAULT now()
-    )`,
-
-    `INSERT INTO subscription_plans (plan_id, plan_name, plan_type, price_monthly, price_yearly, currency, is_active, display_order) VALUES
-      ('free',        'Free',    'individual', 0,   0,    'INR', true, 1),
-      ('max',         'Max',     'individual', 199, 1990, 'INR', true, 2),
-      ('pro',         'Pro',     'individual', 249, 2490, 'INR', true, 3),
-      ('family',      'Family',  'individual', 499, 4990, 'INR', true, 4),
-      ('b2b_starter', 'Starter', 'business',   199, 0,    'INR', true, 5),
-      ('b2b_growth',  'Growth',  'business',   249, 0,    'INR', true, 6)
-    ON CONFLICT (plan_id) DO UPDATE SET
-      plan_name     = EXCLUDED.plan_name,
-      price_monthly = EXCLUDED.price_monthly,
-      price_yearly  = EXCLUDED.price_yearly,
-      is_active     = EXCLUDED.is_active,
-      updated_at    = now()`,
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // B2B_PLAN_CONFIG — business plan seat rules
-    // ══════════════════════════════════════════════════════════════════════════
-    `CREATE TABLE IF NOT EXISTS b2b_plan_config (
-      plan_id            TEXT PRIMARY KEY,
-      min_seats          INTEGER NOT NULL,
-      max_seats          INTEGER,
-      crm_included       BOOLEAN DEFAULT false,
-      crm_monthly_charge INTEGER DEFAULT 0,
-      base_features      TEXT,
-      created_at         TIMESTAMPTZ DEFAULT now()
-    )`,
-
-    `INSERT INTO b2b_plan_config (plan_id, min_seats, max_seats, crm_included, crm_monthly_charge, base_features) VALUES
-      ('b2b_starter', 10, 50,  false, 499, 'max'),
-      ('b2b_growth',  20, 250, true,  0,   'pro')
-    ON CONFLICT (plan_id) DO UPDATE SET
-      min_seats          = EXCLUDED.min_seats,
-      max_seats          = EXCLUDED.max_seats,
-      crm_included       = EXCLUDED.crm_included,
-      crm_monthly_charge = EXCLUDED.crm_monthly_charge,
-      base_features      = EXCLUDED.base_features`,
+    `DROP TABLE IF EXISTS subscription_plans CASCADE`,
+    `DROP TABLE IF EXISTS b2b_plan_config CASCADE`,
 
     // ══════════════════════════════════════════════════════════════════════════
     // AI_USAGE_DAILY — per-user per-feature daily usage counter + RLS

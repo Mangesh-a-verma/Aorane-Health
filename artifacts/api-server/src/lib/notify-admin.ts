@@ -5,7 +5,9 @@ export type AdminNotifType =
   | "new_payment"
   | "new_blood_emergency"
   | "new_enquiry"
-  | "new_support_ticket";
+  | "new_support_ticket"
+  | "reconciliation_mismatch"
+  | "refund_processed";
 
 export async function createAdminNotif(
   type: AdminNotifType,
