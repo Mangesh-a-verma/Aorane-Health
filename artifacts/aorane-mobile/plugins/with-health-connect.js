@@ -38,6 +38,37 @@ const modifyAndroidManifest = (config) => {
           category: [{ $: { "android:name": "android.intent.category.DEFAULT" } }],
         });
       }
+
+      // ── Android 14+ (targetSdkVersion 34+) REQUIRED activity-alias ──────
+      // Without this, requestPermission() fails to launch the system
+      // permission screen at all on Android 14+ — it either throws
+      // "No Activity found to handle Intent
+      // androidx.activity.result.contract.action.REQUEST_PERMISSIONS" or
+      // (if that error is caught upstream) silently resolves as if every
+      // permission was denied, with no dialog ever shown to the user.
+      // See: https://matinzd.github.io/react-native-health-connect/docs/permissions/
+      const mainActivityName = mainActivity.$?.["android:name"] ?? ".MainActivity";
+      if (!Array.isArray(manifest.application[0]["activity-alias"])) {
+        manifest.application[0]["activity-alias"] = [];
+      }
+      const aliasList = manifest.application[0]["activity-alias"];
+      const aliasExists = aliasList.some((a) => a.$?.["android:name"] === "ViewPermissionUsageActivity");
+      if (!aliasExists) {
+        aliasList.push({
+          $: {
+            "android:name": "ViewPermissionUsageActivity",
+            "android:exported": "true",
+            "android:targetActivity": mainActivityName,
+            "android:permission": "android.permission.START_VIEW_PERMISSION_USAGE",
+          },
+          "intent-filter": [
+            {
+              action: [{ $: { "android:name": "android.intent.action.VIEW_PERMISSION_USAGE" } }],
+              category: [{ $: { "android:name": "android.intent.category.HEALTH_PERMISSIONS" } }],
+            },
+          ],
+        });
+      }
     }
 
     // Securely merge queries block
