@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, useColorScheme } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator} from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -27,14 +27,12 @@ const GOALS = [
 ];
 
 function StepBar({ current }: { current: number }) {
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
   return (
     <View style={sb.row}>
       {[1, 2, 3, 4, 5].map((s) => (
         <LinearGradient
           key={s}
-          colors={s <= current ? ["#0077B6", "#1B998B"] : (isDark ? ["rgba(255,255,255,0.1)", "rgba(255,255,255,0.1)"] : ["rgba(0,119,182,0.15)", "rgba(0,119,182,0.15)"])}
+          colors={s <= current ? ["#0077B6", "#1B998B"] : (["rgba(0,119,182,0.15)", "rgba(0,119,182,0.15)"])}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
           style={[sb.step, { flex: 1 }]}
         />
@@ -45,8 +43,6 @@ function StepBar({ current }: { current: number }) {
 const sb = StyleSheet.create({ row: { flexDirection: "row", gap: 6 }, step: { height: 4, borderRadius: 2 } });
 
 export default function OnboardingGoals() {
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
   const insets = useSafeAreaInsets();
   const { setOnboardingComplete } = useAuth();
   const { t } = useLanguage();
@@ -74,14 +70,14 @@ export default function OnboardingGoals() {
       <View style={[styles.root, { paddingTop: insets.top + 16 }]}>
         <View style={styles.header}>
           <StepBar current={5} />
-          <Text style={[styles.stepLabel, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,119,182,0.6)", fontFamily: "Inter_500Medium" }]}>{t("step5of5")}</Text>
+          <Text style={[styles.stepLabel, { color: "rgba(0,119,182,0.6)", fontFamily: "Inter_500Medium" }]}>{t("step5of5")}</Text>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.content}>
             <Text style={styles.emoji}>🎯</Text>
-            <Text style={[styles.title, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>{t("yourMainGoal")}</Text>
-            <Text style={[styles.subtitle, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>
+            <Text style={[styles.title, { color: "#0A1628", fontFamily: "Inter_700Bold" }]}>{t("yourMainGoal")}</Text>
+            <Text style={[styles.subtitle, { color: "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>
               AI will create a personalised plan for you
             </Text>
 
@@ -108,9 +104,9 @@ export default function OnboardingGoals() {
                           </View>
                         </LinearGradient>
                       ) : (
-                        <View style={[styles.goalCard, { backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,119,182,0.04)", borderColor: isDark ? "rgba(255,255,255,0.09)" : "rgba(0,119,182,0.12)" }]}>
+                        <View style={[styles.goalCard, { backgroundColor: "rgba(0,119,182,0.04)", borderColor: "rgba(0,119,182,0.12)" }]}>
                           <Text style={styles.goalIcon}>{g.icon}</Text>
-                          <Text style={[styles.goalLabel, { color: isDark ? "rgba(255,255,255,0.75)" : "#0A1628", fontFamily: "Inter_500Medium" }]}>{g.label}</Text>
+                          <Text style={[styles.goalLabel, { color: "#0A1628", fontFamily: "Inter_500Medium" }]}>{g.label}</Text>
                         </View>
                       )}
                     </TouchableOpacity>
@@ -125,7 +121,7 @@ export default function OnboardingGoals() {
                 style={styles.readyBanner}
               >
                 <Ionicons name="sparkles" size={18} color="#0077B6" />
-                <Text style={[styles.readyText, { color: isDark ? "#38BDF8" : "#0077B6", fontFamily: "Inter_600SemiBold" }]}>
+                <Text style={[styles.readyText, { color: "#0077B6", fontFamily: "Inter_600SemiBold" }]}>
                   You are ready! Aorane is building your plan...
                 </Text>
               </LinearGradient>

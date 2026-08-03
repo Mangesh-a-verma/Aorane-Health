@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, useColorScheme,
+  View, Text, TouchableOpacity, StyleSheet,
   Animated, Dimensions, Platform, Alert,
 } from "react-native";
 import { router } from "expo-router";
@@ -48,8 +48,6 @@ const PERMS = [
 ];
 
 export default function PermissionsScreen() {
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
   const insets = useSafeAreaInsets();
   const { setOnboardingComplete } = useAuth();
 
@@ -104,14 +102,12 @@ export default function PermissionsScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={isDark
-          ? ["#010814", "#031628", "#051E30", "#061A2A"]
-          : ["#C8E9FA", "#D9F4EE", "#E8F4FF", "#D4F0F7"]}
+        colors={["#C8E9FA", "#D9F4EE", "#E8F4FF", "#D4F0F7"]}
         locations={[0, 0.3, 0.65, 1]}
         style={StyleSheet.absoluteFill}
       />
-      <View style={[styles.orb1, { backgroundColor: isDark ? "#065F46" : "#6EE7B7" }]} />
-      <View style={[styles.orb2, { backgroundColor: isDark ? "#0055A3" : "#7DD3FC" }]} />
+      <View style={[styles.orb1, { backgroundColor: "#6EE7B7" }]} />
+      <View style={[styles.orb2, { backgroundColor: "#7DD3FC" }]} />
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
@@ -123,10 +119,10 @@ export default function PermissionsScreen() {
           ))}
         </View>
         <View style={styles.stepLabelRow}>
-          <View style={[styles.stepPill, { backgroundColor: isDark ? "rgba(56,189,248,0.15)" : "rgba(0,119,182,0.1)", borderColor: isDark ? "rgba(56,189,248,0.3)" : "rgba(0,119,182,0.2)" }]}>
-            <Text style={[styles.stepPillTxt, { color: isDark ? "#38BDF8" : "#0077B6", fontFamily: "Inter_600SemiBold" }]}>Almost Done!</Text>
+          <View style={[styles.stepPill, { backgroundColor: "rgba(0,119,182,0.1)", borderColor: "rgba(0,119,182,0.2)" }]}>
+            <Text style={[styles.stepPillTxt, { color: "#0077B6", fontFamily: "Inter_600SemiBold" }]}>Almost Done!</Text>
           </View>
-          <Text style={[styles.stepName, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>Permissions</Text>
+          <Text style={[styles.stepName, { color: "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>Permissions</Text>
         </View>
       </View>
 
@@ -137,8 +133,8 @@ export default function PermissionsScreen() {
           <LinearGradient colors={["#0077B6", "#0EA5E9", "#1B998B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.titleIcon}>
             <Ionicons name="shield-checkmark" size={26} color="#FFF" />
           </LinearGradient>
-          <Text style={[styles.title, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>App Permissions</Text>
-          <Text style={[styles.subtitle, { color: isDark ? "rgba(255,255,255,0.48)" : "rgba(10,22,40,0.52)", fontFamily: "Inter_400Regular" }]}>
+          <Text style={[styles.title, { color: "#0A1628", fontFamily: "Inter_700Bold" }]}>App Permissions</Text>
+          <Text style={[styles.subtitle, { color: "rgba(10,22,40,0.52)", fontFamily: "Inter_400Regular" }]}>
             These permissions make Aorane work better — all are optional
           </Text>
         </View>
@@ -153,32 +149,28 @@ export default function PermissionsScreen() {
           return (
             <Animated.View key={perm.key} style={{ opacity: fadeAnim }}>
               <LinearGradient
-                colors={isDark
-                  ? isGranted
-                    ? ["rgba(16,185,129,0.25)", "rgba(16,185,129,0.1)", "rgba(255,255,255,0.04)"]
-                    : ["rgba(56,189,248,0.22)", "rgba(45,212,191,0.12)", "rgba(255,255,255,0.04)"]
-                  : isGranted
+                colors={isGranted
                     ? ["rgba(167,243,208,0.9)", "rgba(186,230,253,0.5)"]
                     : ["rgba(255,255,255,0.95)", "rgba(186,230,253,0.5)"]
                 }
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={styles.cardBorder}
               >
-                <View style={[styles.cardInner, { backgroundColor: isDark ? "rgba(8,18,40,0.52)" : "rgba(255,255,255,0.52)" }]}>
+                <View style={[styles.cardInner, { backgroundColor: "rgba(255,255,255,0.52)" }]}>
                   {Platform.OS === "ios"
-                    ? <BlurView intensity={isDark ? 75 : 55} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
-                    : <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(8,16,36,0.38)" : "rgba(255,255,255,0.38)" }]} />
+                    ? <BlurView intensity={55} tint={"light"} style={StyleSheet.absoluteFill} />
+                    : <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.38)" }]} />
                   }
                   <View style={styles.permRow}>
                     <LinearGradient colors={perm.gradColors} style={styles.permIcon}>
                       <Ionicons name={perm.icon} size={22} color="#FFF" />
                     </LinearGradient>
                     <View style={styles.permText}>
-                      <Text style={[styles.permTitle, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>{perm.title}</Text>
-                      <Text style={[styles.permDesc, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.55)", fontFamily: "Inter_400Regular" }]}>{perm.desc}</Text>
+                      <Text style={[styles.permTitle, { color: "#0A1628", fontFamily: "Inter_700Bold" }]}>{perm.title}</Text>
+                      <Text style={[styles.permDesc, { color: "rgba(10,22,40,0.55)", fontFamily: "Inter_400Regular" }]}>{perm.desc}</Text>
                       <View style={styles.benefitRow}>
-                        <Ionicons name="checkmark-circle" size={12} color={isDark ? "#2DD4BF" : "#059669"} />
-                        <Text style={[styles.benefitTxt, { color: isDark ? "#2DD4BF" : "#059669", fontFamily: "Inter_400Regular" }]}>{perm.benefit}</Text>
+                        <Ionicons name="checkmark-circle" size={12} color={"#059669"} />
+                        <Text style={[styles.benefitTxt, { color: "#059669", fontFamily: "Inter_400Regular" }]}>{perm.benefit}</Text>
                       </View>
                     </View>
 
@@ -192,8 +184,8 @@ export default function PermissionsScreen() {
                         <Ionicons name="refresh" size={14} color="#EF4444" />
                       </TouchableOpacity>
                     ) : isAsking ? (
-                      <View style={[styles.statusBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.08)", borderColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,119,182,0.2)" }]}>
-                        <Ionicons name="hourglass-outline" size={14} color={isDark ? "#38BDF8" : "#0077B6"} />
+                      <View style={[styles.statusBtn, { backgroundColor: "rgba(0,119,182,0.08)", borderColor: "rgba(0,119,182,0.2)" }]}>
+                        <Ionicons name="hourglass-outline" size={14} color={"#0077B6"} />
                       </View>
                     ) : (
                       <TouchableOpacity onPress={() => requestPermission(perm.key)} activeOpacity={0.8}>
@@ -210,9 +202,9 @@ export default function PermissionsScreen() {
         })}
 
         {/* Privacy assurance */}
-        <View style={[styles.privNote, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.6)", borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.88)" }]}>
-          <Ionicons name="lock-closed" size={12} color={isDark ? "#38BDF8" : "#0077B6"} />
-          <Text style={[styles.privTxt, { color: isDark ? "rgba(255,255,255,0.38)" : "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>
+        <View style={[styles.privNote, { backgroundColor: "rgba(255,255,255,0.6)", borderColor: "rgba(255,255,255,0.88)" }]}>
+          <Ionicons name="lock-closed" size={12} color={"#0077B6"} />
+          <Text style={[styles.privTxt, { color: "rgba(10,22,40,0.45)", fontFamily: "Inter_400Regular" }]}>
             Your data is never shared with third parties • Aorane Privacy Policy
           </Text>
         </View>
@@ -221,9 +213,9 @@ export default function PermissionsScreen() {
       {/* Bottom CTA — fixed */}
       <View style={[styles.footer, {
         paddingBottom: insets.bottom + 16,
-        backgroundColor: isDark ? "rgba(1,8,20,0.88)" : "rgba(200,233,250,0.88)",
+        backgroundColor: "rgba(200,233,250,0.88)",
       }]}>
-        {Platform.OS === "ios" && <BlurView intensity={20} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />}
+        {Platform.OS === "ios" && <BlurView intensity={20} tint={"light"} style={StyleSheet.absoluteFill} />}
         <TouchableOpacity onPress={handleContinue} activeOpacity={0.85} style={styles.ctaWrap}>
           <LinearGradient colors={["#0077B6", "#0EA5E9", "#1B998B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaBtn}>
             <Text style={[styles.ctaTxt, { fontFamily: "Inter_700Bold" }]}>
@@ -232,7 +224,7 @@ export default function PermissionsScreen() {
             <Ionicons name="arrow-forward" size={18} color="#FFF" />
           </LinearGradient>
         </TouchableOpacity>
-        <Text style={[styles.skipNote, { color: isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.35)", fontFamily: "Inter_400Regular" }]}>
+        <Text style={[styles.skipNote, { color: "rgba(10,22,40,0.35)", fontFamily: "Inter_400Regular" }]}>
           You can always change permissions later in Settings
         </Text>
       </View>

@@ -2,7 +2,7 @@ import React from "react";
 import { View, ViewStyle, StyleSheet, Platform } from "react-native";
 import { BlurView } from "expo-blur";
 import { useColors } from "@/hooks/useColors";
-import { useColorScheme } from "react-native";
+import {} from "react-native";
 
 type Props = {
   children: React.ReactNode;
@@ -13,14 +13,12 @@ type Props = {
 
 export function GlassCard({ children, style, intensity = 40, strong = false }: Props) {
   const colors = useColors();
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
 
   if (Platform.OS === "ios") {
     return (
       <BlurView
         intensity={intensity}
-        tint={isDark ? "dark" : "light"}
+        tint={"light"}
         style={[
           styles.base,
           {

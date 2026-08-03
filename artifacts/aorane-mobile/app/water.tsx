@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Animated, Platform, useColorScheme, Dimensions,
+  Animated, Platform, Dimensions,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,10 +23,9 @@ const DRINK_TYPES = [
 ];
 
 function GlassIcon({ filled, partial }: { filled: boolean; partial?: boolean }) {
-  const isDark = useColorScheme() === "dark";
   return (
     <View style={{ width: 36, height: 48, alignItems: "center", justifyContent: "flex-end" }}>
-      <View style={{ width: 28, height: 40, borderRadius: 6, borderWidth: 2, borderColor: filled ? "#0077B6" : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,119,182,0.25)"), overflow: "hidden", backgroundColor: "transparent" }}>
+      <View style={{ width: 28, height: 40, borderRadius: 6, borderWidth: 2, borderColor: filled ? "#0077B6" : ("rgba(0,119,182,0.25)"), overflow: "hidden", backgroundColor: "transparent" }}>
         {filled && <LinearGradient colors={["#38BDF8","#0077B6"]} style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "100%" }} />}
         {partial && !filled && <LinearGradient colors={["#38BDF8","#0077B6"]} style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "50%" }} />}
       </View>
@@ -35,7 +34,6 @@ function GlassIcon({ filled, partial }: { filled: boolean; partial?: boolean }) 
 }
 
 export default function WaterScreen() {
-  const isDark = useColorScheme() === "dark";
   const insets = useSafeAreaInsets();
   const [glasses, setGlasses] = useState(0);
   const [goalGlasses, setGoalGlasses] = useState(10); // default 2500ml / 250 = 10
@@ -44,7 +42,7 @@ export default function WaterScreen() {
   const [loading, setLoading] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const topPad = insets.top;
-  const bg = isDark ? "#010814" : "#F0F9FF";
+  const bg = "#F0F9FF";
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 
   const { logEntry, onSync } = useOfflineLog();
@@ -117,16 +115,16 @@ export default function WaterScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: bg }}>
-      <LinearGradient colors={isDark ? ["#010814","#041428","#020C20"] : ["#E0F2FE","#BAE6FD","#F0FDF4"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={["#E0F2FE","#BAE6FD","#F0FDF4"]} style={StyleSheet.absoluteFill} />
       <ScrollView contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: 100, paddingHorizontal: 16 }}>
 
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-            <Ionicons name="arrow-back" size={20} color={isDark ? "#FFF" : "#0077B6"} />
+          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+            <Ionicons name="arrow-back" size={20} color={"#0077B6"} />
           </TouchableOpacity>
           <View>
-            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>Water Tracker 💧</Text>
-            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Stay hydrated — daily goal: {goalGlasses * ML_PER_GLASS} ml</Text>
+            <Text style={{ color: "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>Water Tracker 💧</Text>
+            <Text style={{ color: "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Stay hydrated — daily goal: {goalGlasses * ML_PER_GLASS} ml</Text>
           </View>
         </View>
 
@@ -142,10 +140,10 @@ export default function WaterScreen() {
         </LinearGradient>
 
         {/* Glass Icons Grid */}
-        <LinearGradient colors={isDark ? ["rgba(56,189,248,0.18)","rgba(45,212,191,0.08)"] : ["rgba(255,255,255,0.9)","rgba(186,230,253,0.45)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 20, padding: 1.5, marginBottom: 16 }}>
-          <View style={{ borderRadius: 19, overflow: "hidden", backgroundColor: isDark ? "rgba(4,20,40,0.5)" : "rgba(255,255,255,0.5)", padding: 20 }}>
-            {Platform.OS === "ios" ? <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(4,16,32,0.45)" : "rgba(255,255,255,0.45)" }]} />}
-            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 16, textAlign: "center" }}>Progress: {pct}%</Text>
+        <LinearGradient colors={["rgba(255,255,255,0.9)","rgba(186,230,253,0.45)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 20, padding: 1.5, marginBottom: 16 }}>
+          <View style={{ borderRadius: 19, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.5)", padding: 20 }}>
+            {Platform.OS === "ios" ? <BlurView intensity={60} tint={"light"} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.45)" }]} />}
+            <Text style={{ color: "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 16, textAlign: "center" }}>Progress: {pct}%</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 12 }}>
               {Array.from({ length: goalGlasses }).map((_, i) => (
                 <GlassIcon key={i} filled={i < glasses} partial={i === glasses && glasses < goalGlasses} />
@@ -155,16 +153,16 @@ export default function WaterScreen() {
         </LinearGradient>
 
         {/* Drink Type Selector */}
-        <LinearGradient colors={isDark ? ["rgba(56,189,248,0.18)","rgba(45,212,191,0.08)"] : ["rgba(255,255,255,0.9)","rgba(186,230,253,0.45)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 20, padding: 1.5, marginBottom: 16 }}>
-          <View style={{ borderRadius: 19, overflow: "hidden", backgroundColor: isDark ? "rgba(4,20,40,0.5)" : "rgba(255,255,255,0.5)", padding: 18 }}>
-            {Platform.OS === "ios" ? <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(4,16,32,0.45)" : "rgba(255,255,255,0.45)" }]} />}
-            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 12 }}>What did you drink?</Text>
+        <LinearGradient colors={["rgba(255,255,255,0.9)","rgba(186,230,253,0.45)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 20, padding: 1.5, marginBottom: 16 }}>
+          <View style={{ borderRadius: 19, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.5)", padding: 18 }}>
+            {Platform.OS === "ios" ? <BlurView intensity={60} tint={"light"} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.45)" }]} />}
+            <Text style={{ color: "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 12 }}>What did you drink?</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: "row", gap: 8 }}>
                 {DRINK_TYPES.map(d => (
-                  <TouchableOpacity key={d.key} onPress={() => setSelectedDrink(d.key)} style={{ alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: selectedDrink === d.key ? d.color : "transparent", backgroundColor: selectedDrink === d.key ? d.color + "20" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,119,182,0.06)") }}>
+                  <TouchableOpacity key={d.key} onPress={() => setSelectedDrink(d.key)} style={{ alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: selectedDrink === d.key ? d.color : "transparent", backgroundColor: selectedDrink === d.key ? d.color + "20" : ("rgba(0,119,182,0.06)") }}>
                     <Text style={{ fontSize: 24, marginBottom: 4 }}>{d.emoji}</Text>
-                    <Text style={{ color: selectedDrink === d.key ? d.color : (isDark ? "rgba(255,255,255,0.6)" : "rgba(10,22,40,0.6)"), fontFamily: "Inter_500Medium", fontSize: 11 }}>{d.label}</Text>
+                    <Text style={{ color: selectedDrink === d.key ? d.color : ("rgba(10,22,40,0.6)"), fontFamily: "Inter_500Medium", fontSize: 11 }}>{d.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -178,10 +176,10 @@ export default function WaterScreen() {
 
         {/* Today's Log */}
         {logs.length > 0 && (
-          <LinearGradient colors={isDark ? ["rgba(56,189,248,0.18)","rgba(45,212,191,0.08)"] : ["rgba(255,255,255,0.9)","rgba(186,230,253,0.45)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 20, padding: 1.5 }}>
-            <View style={{ borderRadius: 19, overflow: "hidden", backgroundColor: isDark ? "rgba(4,20,40,0.5)" : "rgba(255,255,255,0.5)", padding: 18 }}>
-              {Platform.OS === "ios" ? <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(4,16,32,0.45)" : "rgba(255,255,255,0.45)" }]} />}
-              <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 12 }}>Today's log</Text>
+          <LinearGradient colors={["rgba(255,255,255,0.9)","rgba(186,230,253,0.45)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 20, padding: 1.5 }}>
+            <View style={{ borderRadius: 19, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.5)", padding: 18 }}>
+              {Platform.OS === "ios" ? <BlurView intensity={60} tint={"light"} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.45)" }]} />}
+              <Text style={{ color: "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 12 }}>Today's log</Text>
               <View style={{ gap: 8 }}>
                 {logs.slice(0, 8).map((l, i) => {
                   const drinkKey = l.drink_type || l.drinkType || "water";
@@ -191,17 +189,17 @@ export default function WaterScreen() {
                   const t = rawTime ? new Date(rawTime) : new Date();
                   const validTime = !isNaN(t.getTime());
                   return (
-                    <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: i < logs.length - 1 ? 1 : 0, borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,119,182,0.08)" }}>
+                    <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: i < logs.length - 1 ? 1 : 0, borderBottomColor: "rgba(0,119,182,0.08)" }}>
                       <Text style={{ fontSize: 22 }}>{dt.emoji}</Text>
                       <View style={{ flex: 1 }}>
-                        <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 13 }}>{dt.label} — {glassCount} glass</Text>
+                        <Text style={{ color: "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 13 }}>{dt.label} — {glassCount} glass</Text>
                       </View>
                       {l._offline && (
                         <View style={{ backgroundColor: "#F59E0B20", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
                           <Text style={{ color: "#F59E0B", fontSize: 10, fontFamily: "Inter_600SemiBold" }}>⏳ Syncing</Text>
                         </View>
                       )}
-                      <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" }}>{validTime ? `${t.getHours()}:${String(t.getMinutes()).padStart(2, "0")}` : "--:--"}</Text>
+                      <Text style={{ color: "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" }}>{validTime ? `${t.getHours()}:${String(t.getMinutes()).padStart(2, "0")}` : "--:--"}</Text>
                     </View>
                   );
                 })}

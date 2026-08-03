@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  Animated, Platform, Alert, useColorScheme, StyleSheet,
+  Animated, Platform, Alert, StyleSheet,
   ActivityIndicator, KeyboardAvoidingView,
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
@@ -80,7 +80,6 @@ function SleepArc({ hours, maxHours = 10 }: { hours: number; maxHours?: number }
 
 // ── History bar chart ─────────────────────────────────────────────────────────
 function HistoryBar({ log, maxHours }: { log: Record<string, unknown>; maxHours: number }) {
-  const isDark = useColorScheme() === "dark";
   const hours = Number(log.sleep_hours ?? log.sleepHours ?? 0);
   const date = String(log.sleep_date ?? log.sleepDate ?? "");
   const quality = (log.quality as Quality | null) ?? null;
@@ -98,13 +97,13 @@ function HistoryBar({ log, maxHours }: { log: Record<string, unknown>; maxHours:
 
   return (
     <View style={{ alignItems: "center", flex: 1 }}>
-      <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 10, fontFamily: "Inter_500Medium", marginBottom: 4 }}>
+      <Text style={{ color: "rgba(10,22,40,0.5)", fontSize: 10, fontFamily: "Inter_500Medium", marginBottom: 4 }}>
         {hours > 0 ? `${hours.toFixed(1)}h` : "—"}
       </Text>
       <View style={{ height: 60, justifyContent: "flex-end", width: 24 }}>
         <Animated.View style={{ height: barH, width: 24, borderRadius: 6, backgroundColor: color, opacity: 0.85 }} />
       </View>
-      <Text style={{ color: isToday ? color : (isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.4)"), fontSize: 9, fontFamily: isToday ? "Inter_700Bold" : "Inter_400Regular", marginTop: 4 }}>
+      <Text style={{ color: isToday ? color : ("rgba(10,22,40,0.4)"), fontSize: 9, fontFamily: isToday ? "Inter_700Bold" : "Inter_400Regular", marginTop: 4 }}>
         {isToday ? "Today" : dayLabel}
       </Text>
       {quality && (
@@ -115,17 +114,17 @@ function HistoryBar({ log, maxHours }: { log: Record<string, unknown>; maxHours:
 }
 
 // ── Card wrapper ──────────────────────────────────────────────────────────────
-function Card({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
+function Card({ children }: { children: React.ReactNode }) {
   return (
     <LinearGradient
-      colors={isDark ? ["rgba(139,92,246,0.18)", "rgba(99,102,241,0.08)"] : ["rgba(255,255,255,0.9)", "rgba(237,233,254,0.45)"]}
+      colors={["rgba(255,255,255,0.9)", "rgba(237,233,254,0.45)"]}
       start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
       style={{ borderRadius: 20, padding: 1.5, marginBottom: 14 }}
     >
-      <View style={{ borderRadius: 19, overflow: "hidden", backgroundColor: isDark ? "rgba(4,20,40,0.55)" : "rgba(255,255,255,0.55)", padding: 18 }}>
+      <View style={{ borderRadius: 19, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.55)", padding: 18 }}>
         {Platform.OS === "ios"
-          ? <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
-          : <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(4,16,32,0.45)" : "rgba(255,255,255,0.45)" }]} />
+          ? <BlurView intensity={60} tint={"light"} style={StyleSheet.absoluteFill} />
+          : <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.45)" }]} />
         }
         {children}
       </View>
@@ -135,9 +134,8 @@ function Card({ children, isDark }: { children: React.ReactNode; isDark: boolean
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function SleepScreen() {
-  const isDark = useColorScheme() === "dark";
   const insets = useSafeAreaInsets();
-  const bg = isDark ? "#010814" : "#F5F3FF";
+  const bg = "#F5F3FF";
 
   const today = todayStr();
 
@@ -242,7 +240,7 @@ export default function SleepScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={{ flex: 1, backgroundColor: bg }}>
         <LinearGradient
-          colors={isDark ? ["#010814", "#0D0620", "#040C20"] : ["#EDE9FE", "#DDD6FE", "#F5F3FF"]}
+          colors={["#EDE9FE", "#DDD6FE", "#F5F3FF"]}
           style={StyleSheet.absoluteFill}
         />
 
@@ -255,15 +253,15 @@ export default function SleepScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
             <TouchableOpacity
               onPress={() => router.back()}
-              style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(139,92,246,0.12)", alignItems: "center", justifyContent: "center", marginRight: 12 }}
+              style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(139,92,246,0.12)", alignItems: "center", justifyContent: "center", marginRight: 12 }}
             >
-              <Ionicons name="arrow-back" size={20} color={isDark ? "#FFF" : "#7C3AED"} />
+              <Ionicons name="arrow-back" size={20} color={"#7C3AED"} />
             </TouchableOpacity>
             <View>
-              <Text style={{ color: isDark ? "#F0F0FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>
+              <Text style={{ color: "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>
                 Sleep Tracker 😴
               </Text>
-              <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>
+              <Text style={{ color: "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>
                 Adults need 7–9 hours of quality sleep
               </Text>
             </View>
@@ -320,24 +318,24 @@ export default function SleepScreen() {
           </LinearGradient>
 
           {/* Log / Edit Form */}
-          <Card isDark={isDark}>
-            <Text style={{ color: isDark ? "#F0F0FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 16 }}>
+          <Card>
+            <Text style={{ color: "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 16 }}>
               {isLogged ? "✏️ Update Today's Sleep" : "📝 Log Today's Sleep"}
             </Text>
 
             {/* Sleep Hours */}
-            <Text style={[lbl(isDark)]}>Sleep Hours</Text>
-            <View style={inputRow(isDark)}>
+            <Text style={[lbl()]}>Sleep Hours</Text>
+            <View style={inputRow()}>
               <Ionicons name="moon" size={18} color="#8B5CF6" style={{ marginRight: 8 }} />
               <TextInput
                 value={sleepHours}
                 onChangeText={setSleepHours}
                 keyboardType="decimal-pad"
                 placeholder="e.g. 7.5"
-                placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"}
-                style={{ flex: 1, color: isDark ? "#F0F0FF" : "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 15 }}
+                placeholderTextColor={"rgba(0,0,0,0.3)"}
+                style={{ flex: 1, color: "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 15 }}
               />
-              <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", fontFamily: "Inter_400Regular", fontSize: 13 }}>
+              <Text style={{ color: "rgba(0,0,0,0.4)", fontFamily: "Inter_400Regular", fontSize: 13 }}>
                 hrs
               </Text>
             </View>
@@ -350,35 +348,35 @@ export default function SleepScreen() {
             {/* Bedtime & Wake time */}
             <View style={{ flexDirection: "row", gap: 10 }}>
               <View style={{ flex: 1 }}>
-                <Text style={[lbl(isDark)]}>Bedtime</Text>
-                <View style={inputRow(isDark)}>
+                <Text style={[lbl()]}>Bedtime</Text>
+                <View style={inputRow()}>
                   <Ionicons name="bed" size={16} color="#8B5CF6" style={{ marginRight: 6 }} />
                   <TextInput
                     value={bedtime}
                     onChangeText={setBedtime}
                     placeholder="22:30"
-                    placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"}
-                    style={{ flex: 1, color: isDark ? "#F0F0FF" : "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 14 }}
+                    placeholderTextColor={"rgba(0,0,0,0.3)"}
+                    style={{ flex: 1, color: "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 14 }}
                   />
                 </View>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[lbl(isDark)]}>Wake Time</Text>
-                <View style={inputRow(isDark)}>
+                <Text style={[lbl()]}>Wake Time</Text>
+                <View style={inputRow()}>
                   <Ionicons name="sunny" size={16} color="#F59E0B" style={{ marginRight: 6 }} />
                   <TextInput
                     value={wakeTime}
                     onChangeText={setWakeTime}
                     placeholder="06:00"
-                    placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"}
-                    style={{ flex: 1, color: isDark ? "#F0F0FF" : "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 14 }}
+                    placeholderTextColor={"rgba(0,0,0,0.3)"}
+                    style={{ flex: 1, color: "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 14 }}
                   />
                 </View>
               </View>
             </View>
 
             {/* Quality Selector */}
-            <Text style={[lbl(isDark), { marginTop: 12 }]}>Sleep Quality</Text>
+            <Text style={[lbl(), { marginTop: 12 }]}>Sleep Quality</Text>
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
               {QUALITY_OPTIONS.map(opt => (
                 <TouchableOpacity
@@ -391,11 +389,11 @@ export default function SleepScreen() {
                     borderRadius: 14,
                     borderWidth: 2,
                     borderColor: quality === opt.key ? opt.color : "transparent",
-                    backgroundColor: quality === opt.key ? opt.color + "20" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(139,92,246,0.06)"),
+                    backgroundColor: quality === opt.key ? opt.color + "20" : ("rgba(139,92,246,0.06)"),
                   }}
                 >
                   <Text style={{ fontSize: 20, marginBottom: 2 }}>{opt.emoji}</Text>
-                  <Text style={{ color: quality === opt.key ? opt.color : (isDark ? "rgba(255,255,255,0.55)" : "rgba(10,22,40,0.55)"), fontFamily: "Inter_500Medium", fontSize: 10 }}>
+                  <Text style={{ color: quality === opt.key ? opt.color : ("rgba(10,22,40,0.55)"), fontFamily: "Inter_500Medium", fontSize: 10 }}>
                     {opt.label}
                   </Text>
                 </TouchableOpacity>
@@ -403,15 +401,15 @@ export default function SleepScreen() {
             </View>
 
             {/* Notes */}
-            <Text style={[lbl(isDark), { marginTop: 8 }]}>Notes (optional)</Text>
-            <View style={[inputRow(isDark), { alignItems: "flex-start", paddingVertical: 10, minHeight: 72 }]}>
+            <Text style={[lbl(), { marginTop: 8 }]}>Notes (optional)</Text>
+            <View style={[inputRow(), { alignItems: "flex-start", paddingVertical: 10, minHeight: 72 }]}>
               <TextInput
                 value={notes}
                 onChangeText={setNotes}
                 placeholder="e.g. woke up twice, vivid dreams..."
-                placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"}
+                placeholderTextColor={"rgba(0,0,0,0.3)"}
                 multiline
-                style={{ flex: 1, color: isDark ? "#F0F0FF" : "#1a1a2e", fontFamily: "Inter_400Regular", fontSize: 14, textAlignVertical: "top" }}
+                style={{ flex: 1, color: "#1a1a2e", fontFamily: "Inter_400Regular", fontSize: 14, textAlignVertical: "top" }}
               />
             </View>
 
@@ -440,9 +438,9 @@ export default function SleepScreen() {
           </Card>
 
           {/* Sleep History */}
-          <Card isDark={isDark}>
+          <Card>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <Text style={{ color: isDark ? "#F0F0FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16 }}>
+              <Text style={{ color: "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16 }}>
                 Last 7 Days
               </Text>
               {avgHours !== null && (
@@ -457,7 +455,7 @@ export default function SleepScreen() {
             {loadingHist ? (
               <ActivityIndicator color="#8B5CF6" />
             ) : history.length === 0 ? (
-              <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.4)", fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center", paddingVertical: 16 }}>
+              <Text style={{ color: "rgba(10,22,40,0.4)", fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center", paddingVertical: 16 }}>
                 No sleep history yet — start logging tonight!
               </Text>
             ) : (
@@ -474,11 +472,11 @@ export default function SleepScreen() {
                     const q = log.quality as Quality | null;
                     const qOpt = QUALITY_OPTIONS.find(o => o.key === q);
                     return (
-                      <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(139,92,246,0.06)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 }}>
+                      <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(139,92,246,0.06)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 }}>
                         <Text style={{ fontSize: 14 }}>{qOpt?.emoji ?? "😴"}</Text>
                         <View>
-                          <Text style={{ color: isDark ? "#F0F0FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 12 }}>{h.toFixed(1)}h</Text>
-                          <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.4)", fontSize: 10, fontFamily: "Inter_400Regular" }}>{d ? formatDate(d) : "—"}</Text>
+                          <Text style={{ color: "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 12 }}>{h.toFixed(1)}h</Text>
+                          <Text style={{ color: "rgba(10,22,40,0.4)", fontSize: 10, fontFamily: "Inter_400Regular" }}>{d ? formatDate(d) : "—"}</Text>
                         </View>
                       </View>
                     );
@@ -489,8 +487,8 @@ export default function SleepScreen() {
           </Card>
 
           {/* Sleep Tips */}
-          <Card isDark={isDark}>
-            <Text style={{ color: isDark ? "#F0F0FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 15, marginBottom: 12 }}>
+          <Card>
+            <Text style={{ color: "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 15, marginBottom: 12 }}>
               💡 Sleep Tips
             </Text>
             {[
@@ -499,9 +497,9 @@ export default function SleepScreen() {
               { icon: "⏰", tip: "Stick to a consistent sleep schedule" },
               { icon: "☕", tip: "Avoid caffeine after 2 PM" },
             ].map((item, i) => (
-              <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6, borderBottomWidth: i < 3 ? 1 : 0, borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(139,92,246,0.08)" }}>
+              <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6, borderBottomWidth: i < 3 ? 1 : 0, borderBottomColor: "rgba(139,92,246,0.08)" }}>
                 <Text style={{ fontSize: 18 }}>{item.icon}</Text>
-                <Text style={{ flex: 1, color: isDark ? "rgba(255,255,255,0.7)" : "rgba(10,22,40,0.7)", fontFamily: "Inter_400Regular", fontSize: 13 }}>
+                <Text style={{ flex: 1, color: "rgba(10,22,40,0.7)", fontFamily: "Inter_400Regular", fontSize: 13 }}>
                   {item.tip}
                 </Text>
               </View>
@@ -514,9 +512,9 @@ export default function SleepScreen() {
 }
 
 // ── Style helpers ─────────────────────────────────────────────────────────────
-function lbl(isDark: boolean) {
+function lbl() {
   return {
-    color: isDark ? "rgba(255,255,255,0.6)" : "rgba(10,22,40,0.55)",
+    color: "rgba(10,22,40,0.55)",
     fontFamily: "Inter_600SemiBold" as const,
     fontSize: 12,
     marginBottom: 6,
@@ -525,16 +523,16 @@ function lbl(isDark: boolean) {
   };
 }
 
-function inputRow(isDark: boolean) {
+function inputRow() {
   return {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(139,92,246,0.06)",
+    backgroundColor: "rgba(139,92,246,0.06)",
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(139,92,246,0.15)",
+    borderColor: "rgba(139,92,246,0.15)",
     marginBottom: 8,
   };
 }

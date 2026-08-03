@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, useColorScheme } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator} from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -19,14 +19,12 @@ const ACTIVITY_LEVELS = [
 ];
 
 function StepBar({ current }: { current: number }) {
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
   return (
     <View style={sb.row}>
       {[1, 2, 3, 4, 5].map((s) => (
         <LinearGradient
           key={s}
-          colors={s <= current ? ["#0077B6", "#1B998B"] : (isDark ? ["rgba(255,255,255,0.1)", "rgba(255,255,255,0.1)"] : ["rgba(0,119,182,0.15)", "rgba(0,119,182,0.15)"])}
+          colors={s <= current ? ["#0077B6", "#1B998B"] : (["rgba(0,119,182,0.15)", "rgba(0,119,182,0.15)"])}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
           style={[sb.step, { flex: 1 }]}
         />
@@ -37,8 +35,6 @@ function StepBar({ current }: { current: number }) {
 const sb = StyleSheet.create({ row: { flexDirection: "row", gap: 6 }, step: { height: 4, borderRadius: 2 } });
 
 export default function OnboardingLifestyle() {
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
   const insets = useSafeAreaInsets();
   const { t } = useLanguage();
   const [activityLevel, setActivityLevel] = useState("");
@@ -64,10 +60,10 @@ export default function OnboardingLifestyle() {
         <View style={styles.header}>
           <StepBar current={4} />
           <View style={styles.headerRow}>
-            <Text style={[styles.stepLabel, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,119,182,0.6)", fontFamily: "Inter_500Medium" }]}>{t("step4of5")}</Text>
+            <Text style={[styles.stepLabel, { color: "rgba(0,119,182,0.6)", fontFamily: "Inter_500Medium" }]}>{t("step4of5")}</Text>
             <TouchableOpacity onPress={() => router.push("/(onboarding)/goals")} style={styles.skipBtn}>
-              <Text style={[styles.skipText, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,119,182,0.5)", fontFamily: "Inter_400Regular" }]}>{t("skip")}</Text>
-              <Ionicons name="chevron-forward" size={14} color={isDark ? "rgba(255,255,255,0.4)" : "rgba(0,119,182,0.5)"} />
+              <Text style={[styles.skipText, { color: "rgba(0,119,182,0.5)", fontFamily: "Inter_400Regular" }]}>{t("skip")}</Text>
+              <Ionicons name="chevron-forward" size={14} color={"rgba(0,119,182,0.5)"} />
             </TouchableOpacity>
           </View>
         </View>
@@ -75,13 +71,13 @@ export default function OnboardingLifestyle() {
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.content}>
             <Text style={styles.emoji}>🌿</Text>
-            <Text style={[styles.title, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>{t("lifestyleTitle")}</Text>
-            <Text style={[styles.subtitle, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>
+            <Text style={[styles.title, { color: "#0A1628", fontFamily: "Inter_700Bold" }]}>{t("lifestyleTitle")}</Text>
+            <Text style={[styles.subtitle, { color: "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>
               How active are you in your daily routine?
             </Text>
 
             <GlassCard style={styles.card}>
-              <Text style={[styles.sectionTitle, { color: isDark ? "rgba(255,255,255,0.85)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>{t("activityLevelLabel")}</Text>
+              <Text style={[styles.sectionTitle, { color: "#0A1628", fontFamily: "Inter_600SemiBold" }]}>{t("activityLevelLabel")}</Text>
               <View style={styles.activityList}>
                 {ACTIVITY_LEVELS.map((a) => {
                   const sel = activityLevel === a.value;
@@ -93,15 +89,15 @@ export default function OnboardingLifestyle() {
                       style={[
                         styles.activityItem,
                         {
-                          backgroundColor: sel ? (isDark ? `${a.color}20` : `${a.color}12`) : (isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)"),
-                          borderColor: sel ? a.color : (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.12)"),
+                          backgroundColor: sel ? (`${a.color}12`) : ("rgba(0,0,0,0.02)"),
+                          borderColor: sel ? a.color : ("rgba(0,119,182,0.12)"),
                         },
                       ]}
                     >
                       <Text style={styles.actIcon}>{a.icon}</Text>
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.actLabel, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>{a.label}</Text>
-                        <Text style={[styles.actDesc, { color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>{a.desc}</Text>
+                        <Text style={[styles.actLabel, { color: "#0A1628", fontFamily: "Inter_600SemiBold" }]}>{a.label}</Text>
+                        <Text style={[styles.actDesc, { color: "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>{a.desc}</Text>
                       </View>
                       {sel && (
                         <View style={[styles.actCheck, { backgroundColor: a.color }]}>

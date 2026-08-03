@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, useColorScheme } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator} from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -24,14 +24,12 @@ const FOOD_PREFS = [
 const ALLERGIES = ["Lactose", "Gluten", "Nuts", "Shellfish", "None"];
 
 function StepBar({ current }: { current: number }) {
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
   return (
     <View style={sb.row}>
       {[1, 2, 3, 4, 5].map((s) => (
         <LinearGradient
           key={s}
-          colors={s <= current ? ["#0077B6", "#1B998B"] : (isDark ? ["rgba(255,255,255,0.1)", "rgba(255,255,255,0.1)"] : ["rgba(0,119,182,0.15)", "rgba(0,119,182,0.15)"])}
+          colors={s <= current ? ["#0077B6", "#1B998B"] : (["rgba(0,119,182,0.15)", "rgba(0,119,182,0.15)"])}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
           style={[sb.step, { flex: 1 }]}
         />
@@ -42,8 +40,6 @@ function StepBar({ current }: { current: number }) {
 const sb = StyleSheet.create({ row: { flexDirection: "row", gap: 6 }, step: { height: 4, borderRadius: 2 } });
 
 export default function OnboardingHealth() {
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
   const insets = useSafeAreaInsets();
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
   const [foodPref, setFoodPref] = useState("");
@@ -90,10 +86,10 @@ export default function OnboardingHealth() {
         <View style={styles.header}>
           <StepBar current={3} />
           <View style={styles.headerRow}>
-            <Text style={[styles.stepLabel, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,119,182,0.6)", fontFamily: "Inter_500Medium" }]}>Step 3 of 5</Text>
+            <Text style={[styles.stepLabel, { color: "rgba(0,119,182,0.6)", fontFamily: "Inter_500Medium" }]}>Step 3 of 5</Text>
             <TouchableOpacity onPress={() => router.push("/(onboarding)/lifestyle")} style={styles.skipBtn}>
-              <Text style={[styles.skipText, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,119,182,0.5)", fontFamily: "Inter_400Regular" }]}>Skip</Text>
-              <Ionicons name="chevron-forward" size={14} color={isDark ? "rgba(255,255,255,0.4)" : "rgba(0,119,182,0.5)"} />
+              <Text style={[styles.skipText, { color: "rgba(0,119,182,0.5)", fontFamily: "Inter_400Regular" }]}>Skip</Text>
+              <Ionicons name="chevron-forward" size={14} color={"rgba(0,119,182,0.5)"} />
             </TouchableOpacity>
           </View>
         </View>
@@ -101,17 +97,17 @@ export default function OnboardingHealth() {
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.content}>
             <Text style={styles.emoji}>🏥</Text>
-            <Text style={[styles.title, { color: isDark ? "#F0F8FF" : "#0A1628", fontFamily: "Inter_700Bold" }]}>Health Background</Text>
-            <Text style={[styles.subtitle, { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>
+            <Text style={[styles.title, { color: "#0A1628", fontFamily: "Inter_700Bold" }]}>Health Background</Text>
+            <Text style={[styles.subtitle, { color: "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>
               Optional — you can skip this step
             </Text>
 
             <GlassCard style={styles.card}>
               {/* Medical Conditions */}
-              <Text style={[styles.sectionTitle, { color: isDark ? "rgba(255,255,255,0.85)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>
+              <Text style={[styles.sectionTitle, { color: "#0A1628", fontFamily: "Inter_600SemiBold" }]}>
                 Medical Conditions
               </Text>
-              <Text style={[styles.sectionSub, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>You can select multiple options</Text>
+              <Text style={[styles.sectionSub, { color: "rgba(10,22,40,0.5)", fontFamily: "Inter_400Regular" }]}>You can select multiple options</Text>
               <View style={styles.chipGrid}>
                 {CONDITIONS.map((c) => {
                   const sel = selectedConditions.includes(c);
@@ -122,8 +118,8 @@ export default function OnboardingHealth() {
                           <Text style={[styles.chipText, { color: "#FFF", fontFamily: "Inter_600SemiBold" }]}>{c}</Text>
                         </LinearGradient>
                       ) : (
-                        <View style={[styles.chip, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,119,182,0.05)", borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.15)" }]}>
-                          <Text style={[styles.chipText, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_500Medium" }]}>{c}</Text>
+                        <View style={[styles.chip, { backgroundColor: "rgba(0,119,182,0.05)", borderColor: "rgba(0,119,182,0.15)" }]}>
+                          <Text style={[styles.chipText, { color: "#0A1628", fontFamily: "Inter_500Medium" }]}>{c}</Text>
                         </View>
                       )}
                     </TouchableOpacity>
@@ -134,7 +130,7 @@ export default function OnboardingHealth() {
 
             <GlassCard style={{ ...styles.card, marginTop: 14 }}>
               {/* Food Preference */}
-              <Text style={[styles.sectionTitle, { color: isDark ? "rgba(255,255,255,0.85)" : "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Food Preference</Text>
+              <Text style={[styles.sectionTitle, { color: "#0A1628", fontFamily: "Inter_600SemiBold" }]}>Food Preference</Text>
               <View style={styles.chipGrid}>
                 {FOOD_PREFS.map((p) => {
                   const sel = foodPref === p.value;
@@ -145,8 +141,8 @@ export default function OnboardingHealth() {
                           <Text style={[styles.chipText, { color: "#FFF", fontFamily: "Inter_600SemiBold" }]}>{p.label}</Text>
                         </LinearGradient>
                       ) : (
-                        <View style={[styles.chip, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,119,182,0.05)", borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.15)" }]}>
-                          <Text style={[styles.chipText, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_500Medium" }]}>{p.label}</Text>
+                        <View style={[styles.chip, { backgroundColor: "rgba(0,119,182,0.05)", borderColor: "rgba(0,119,182,0.15)" }]}>
+                          <Text style={[styles.chipText, { color: "#0A1628", fontFamily: "Inter_500Medium" }]}>{p.label}</Text>
                         </View>
                       )}
                     </TouchableOpacity>
@@ -155,7 +151,7 @@ export default function OnboardingHealth() {
               </View>
 
               {/* Allergies */}
-              <Text style={[styles.sectionTitle, { color: isDark ? "rgba(255,255,255,0.85)" : "#0A1628", fontFamily: "Inter_600SemiBold", marginTop: 16 }]}>Food Allergies</Text>
+              <Text style={[styles.sectionTitle, { color: "#0A1628", fontFamily: "Inter_600SemiBold", marginTop: 16 }]}>Food Allergies</Text>
               <View style={styles.chipGrid}>
                 {ALLERGIES.map((a) => {
                   const sel = selectedAllergies.includes(a);
@@ -166,8 +162,8 @@ export default function OnboardingHealth() {
                           <Text style={[styles.chipText, { color: "#FFF", fontFamily: "Inter_600SemiBold" }]}>{a}</Text>
                         </LinearGradient>
                       ) : (
-                        <View style={[styles.chip, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,119,182,0.05)", borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.15)" }]}>
-                          <Text style={[styles.chipText, { color: isDark ? "rgba(255,255,255,0.7)" : "#0A1628", fontFamily: "Inter_500Medium" }]}>{a}</Text>
+                        <View style={[styles.chip, { backgroundColor: "rgba(0,119,182,0.05)", borderColor: "rgba(0,119,182,0.15)" }]}>
+                          <Text style={[styles.chipText, { color: "#0A1628", fontFamily: "Inter_500Medium" }]}>{a}</Text>
                         </View>
                       )}
                     </TouchableOpacity>

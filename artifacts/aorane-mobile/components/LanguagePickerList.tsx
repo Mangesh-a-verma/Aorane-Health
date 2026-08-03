@@ -20,11 +20,9 @@ export const ENGLISH_LABEL: Record<LangCode, string> = {
 export function LanguagePickerList({
   selected,
   onSelect,
-  isDark = false,
 }: {
   selected: LangCode;
   onSelect: (code: LangCode) => void;
-  isDark?: boolean;
 }) {
   return (
     <>
@@ -38,8 +36,8 @@ export function LanguagePickerList({
             style={[
               styles.card,
               {
-                backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#FFFFFF",
-                borderColor: isSelected ? "#0077B6" : (isDark ? "rgba(255,255,255,0.1)" : "#E2E8F0"),
+                backgroundColor: "#FFFFFF",
+                borderColor: isSelected ? "#0077B6" : ("#E2E8F0"),
                 borderWidth: isSelected ? 2 : 1,
               },
             ]}
@@ -48,10 +46,10 @@ export function LanguagePickerList({
             accessibilityLabel={`${ENGLISH_LABEL[code]} — ${LANGUAGE_NAMES[code]}`}
           >
             <View style={{ flex: 1 }}>
-              <Text style={[styles.nativeName, { color: isDark ? "#fff" : "#0F172A" }]}>
+              <Text style={[styles.nativeName, { color: "#0F172A" }]}>
                 {LANGUAGE_NAMES[code]}
               </Text>
-              <Text style={[styles.englishName, { color: isDark ? "rgba(255,255,255,0.5)" : "#94A3B8" }]}>
+              <Text style={[styles.englishName, { color: "#94A3B8" }]}>
                 {ENGLISH_LABEL[code]}
               </Text>
             </View>

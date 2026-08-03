@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Platform, useColorScheme, Alert,
+  TextInput, Platform, Alert,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,11 +21,10 @@ const FLOWS = [
 ];
 
 function GlassCard({ children, style }: { children: React.ReactNode; style?: object }) {
-  const isDark = useColorScheme() === "dark";
   return (
-    <LinearGradient colors={isDark ? ["rgba(236,72,153,0.15)","rgba(168,85,247,0.08)","rgba(255,255,255,0.03)"] : ["rgba(255,255,255,0.9)","rgba(252,231,243,0.5)","rgba(255,255,255,0.7)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[{ borderRadius: 20, padding: 1.5 }, style]}>
-      <View style={{ borderRadius: 19, overflow: "hidden", backgroundColor: isDark ? "rgba(40,10,40,0.5)" : "rgba(255,255,255,0.5)" }}>
-        {Platform.OS === "ios" ? <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(30,8,40,0.45)" : "rgba(255,255,255,0.45)" }]} />}
+    <LinearGradient colors={["rgba(255,255,255,0.9)","rgba(252,231,243,0.5)","rgba(255,255,255,0.7)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[{ borderRadius: 20, padding: 1.5 }, style]}>
+      <View style={{ borderRadius: 19, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.5)" }}>
+        {Platform.OS === "ios" ? <BlurView intensity={60} tint={"light"} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.45)" }]} />}
         {children}
       </View>
     </LinearGradient>
@@ -33,7 +32,6 @@ function GlassCard({ children, style }: { children: React.ReactNode; style?: obj
 }
 
 export default function PeriodScreen() {
-  const isDark = useColorScheme() === "dark";
   const insets = useSafeAreaInsets();
   const [logs, setLogs] = useState<Log[]>([]);
   const [prediction, setPrediction] = useState<PredictionData>(null);
@@ -45,7 +43,7 @@ export default function PeriodScreen() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const topPad = insets.top;
-  const bg = isDark ? "#010814" : "#FFF5F9";
+  const bg = "#FFF5F9";
 
   useEffect(() => { load(); }, []);
 
@@ -77,16 +75,16 @@ export default function PeriodScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: bg }}>
-      <LinearGradient colors={isDark ? ["#010814","#180820","#010814"] : ["#FFF5F9","#FCE7F3","#FFF0F5"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={["#FFF5F9","#FCE7F3","#FFF0F5"]} style={StyleSheet.absoluteFill} />
       <ScrollView contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: 100, paddingHorizontal: 16 }}>
 
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: isDark ? "rgba(236,72,153,0.15)" : "rgba(236,72,153,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(236,72,153,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
             <Ionicons name="arrow-back" size={20} color="#EC4899" />
           </TouchableOpacity>
           <View>
-            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>Period Tracker 🌸</Text>
-            <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Track your cycle, predict your future periods</Text>
+            <Text style={{ color: "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 22 }}>Period Tracker 🌸</Text>
+            <Text style={{ color: "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>Track your cycle, predict your future periods</Text>
           </View>
         </View>
 
@@ -112,10 +110,10 @@ export default function PeriodScreen() {
           </LinearGradient>
         )}
 
-        <View style={{ flexDirection: "row", backgroundColor: isDark ? "rgba(236,72,153,0.1)" : "rgba(236,72,153,0.08)", borderRadius: 14, padding: 4, marginBottom: 18, gap: 4 }}>
+        <View style={{ flexDirection: "row", backgroundColor: "rgba(236,72,153,0.08)", borderRadius: 14, padding: 4, marginBottom: 18, gap: 4 }}>
           {(["tracker","log","history"] as const).map(t => (
             <TouchableOpacity key={t} onPress={() => setTab(t)} style={{ flex: 1, paddingVertical: 9, borderRadius: 11, backgroundColor: tab === t ? "#EC4899" : "transparent", alignItems: "center" }}>
-              <Text style={{ color: tab === t ? "#FFF" : (isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)"), fontFamily: "Inter_600SemiBold", fontSize: 12 }}>
+              <Text style={{ color: tab === t ? "#FFF" : ("rgba(10,22,40,0.5)"), fontFamily: "Inter_600SemiBold", fontSize: 12 }}>
                 {t === "tracker" ? "Tracker" : t === "log" ? "+ Log" : "History"}
               </Text>
             </TouchableOpacity>
@@ -126,8 +124,8 @@ export default function PeriodScreen() {
           <GlassCard>
             <View style={{ padding: 30, alignItems: "center" }}>
               <Text style={{ fontSize: 56 }}>🌸</Text>
-              <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 17, marginTop: 14, textAlign: "center" }}>Start Period Tracker</Text>
-              <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 8, lineHeight: 20 }}>Log your first period and AI will predict your cycle</Text>
+              <Text style={{ color: "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 17, marginTop: 14, textAlign: "center" }}>Start Period Tracker</Text>
+              <Text style={{ color: "rgba(10,22,40,0.5)", fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 8, lineHeight: 20 }}>Log your first period and AI will predict your cycle</Text>
               <TouchableOpacity onPress={() => setTab("log")} style={{ marginTop: 20, backgroundColor: "#EC4899", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14 }}>
                 <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>+ Log Period</Text>
               </TouchableOpacity>
@@ -138,28 +136,28 @@ export default function PeriodScreen() {
         {tab === "log" && (
           <GlassCard>
             <View style={{ padding: 18 }}>
-              <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 16 }}>Log Period 🌸</Text>
+              <Text style={{ color: "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 16 }}>Log Period 🌸</Text>
 
-              <Text style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(10,22,40,0.6)", fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 8 }}>Start Date</Text>
-              <TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.3)"} style={{ backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(236,72,153,0.06)", borderRadius: 12, padding: 14, color: isDark ? "#FFF" : "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 14, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(236,72,153,0.2)", marginBottom: 14 }} />
+              <Text style={{ color: "rgba(10,22,40,0.6)", fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 8 }}>Start Date</Text>
+              <TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" placeholderTextColor={"rgba(10,22,40,0.3)"} style={{ backgroundColor: "rgba(236,72,153,0.06)", borderRadius: 12, padding: 14, color: "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 14, borderWidth: 1, borderColor: "rgba(236,72,153,0.2)", marginBottom: 14 }} />
 
-              <Text style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(10,22,40,0.6)", fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 8 }}>End Date (optional)</Text>
-              <TextInput value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.3)"} style={{ backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(236,72,153,0.06)", borderRadius: 12, padding: 14, color: isDark ? "#FFF" : "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 14, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(236,72,153,0.2)", marginBottom: 14 }} />
+              <Text style={{ color: "rgba(10,22,40,0.6)", fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 8 }}>End Date (optional)</Text>
+              <TextInput value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" placeholderTextColor={"rgba(10,22,40,0.3)"} style={{ backgroundColor: "rgba(236,72,153,0.06)", borderRadius: 12, padding: 14, color: "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 14, borderWidth: 1, borderColor: "rgba(236,72,153,0.2)", marginBottom: 14 }} />
 
-              <Text style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(10,22,40,0.6)", fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 8 }}>Flow</Text>
+              <Text style={{ color: "rgba(10,22,40,0.6)", fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 8 }}>Flow</Text>
               <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
                 {FLOWS.map(f => (
-                  <TouchableOpacity key={f.key} onPress={() => setSelectedFlow(f.key)} style={{ flex: 1, padding: 12, borderRadius: 12, alignItems: "center", backgroundColor: selectedFlow === f.key ? f.color + "22" : "transparent", borderWidth: 2, borderColor: selectedFlow === f.key ? f.color : (isDark ? "rgba(255,255,255,0.1)" : "rgba(236,72,153,0.15)") }}>
-                    <Text style={{ color: selectedFlow === f.key ? f.color : (isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)"), fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{f.label}</Text>
+                  <TouchableOpacity key={f.key} onPress={() => setSelectedFlow(f.key)} style={{ flex: 1, padding: 12, borderRadius: 12, alignItems: "center", backgroundColor: selectedFlow === f.key ? f.color + "22" : "transparent", borderWidth: 2, borderColor: selectedFlow === f.key ? f.color : ("rgba(236,72,153,0.15)") }}>
+                    <Text style={{ color: selectedFlow === f.key ? f.color : ("rgba(10,22,40,0.5)"), fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{f.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <Text style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(10,22,40,0.6)", fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 8 }}>Symptoms</Text>
+              <Text style={{ color: "rgba(10,22,40,0.6)", fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 8 }}>Symptoms</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
                 {SYMPTOMS.map(s => (
-                  <TouchableOpacity key={s} onPress={() => toggleSymptom(s)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: selectedSymptoms.includes(s) ? "#EC489922" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(236,72,153,0.06)"), borderWidth: 1, borderColor: selectedSymptoms.includes(s) ? "#EC4899" : (isDark ? "rgba(255,255,255,0.12)" : "rgba(236,72,153,0.2)") }}>
-                    <Text style={{ color: selectedSymptoms.includes(s) ? "#EC4899" : (isDark ? "rgba(255,255,255,0.55)" : "rgba(10,22,40,0.55)"), fontFamily: "Inter_500Medium", fontSize: 12 }}>{s}</Text>
+                  <TouchableOpacity key={s} onPress={() => toggleSymptom(s)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: selectedSymptoms.includes(s) ? "#EC489922" : ("rgba(236,72,153,0.06)"), borderWidth: 1, borderColor: selectedSymptoms.includes(s) ? "#EC4899" : ("rgba(236,72,153,0.2)") }}>
+                    <Text style={{ color: selectedSymptoms.includes(s) ? "#EC4899" : ("rgba(10,22,40,0.55)"), fontFamily: "Inter_500Medium", fontSize: 12 }}>{s}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -174,7 +172,7 @@ export default function PeriodScreen() {
         {tab === "history" && (
           <View style={{ gap: 10 }}>
             {logs.length === 0 ? (
-              <GlassCard><View style={{ padding: 30, alignItems: "center" }}><Text style={{ fontSize: 40 }}>🌸</Text><Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 16, marginTop: 12 }}>No history yet</Text></View></GlassCard>
+              <GlassCard><View style={{ padding: 30, alignItems: "center" }}><Text style={{ fontSize: 40 }}>🌸</Text><Text style={{ color: "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 16, marginTop: 12 }}>No history yet</Text></View></GlassCard>
             ) : logs.map((log, i) => (
               <GlassCard key={i}>
                 <View style={{ padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -182,8 +180,8 @@ export default function PeriodScreen() {
                     <Text style={{ fontSize: 22 }}>🌸</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{log.startDate} {log.endDate ? `→ ${log.endDate}` : ""}</Text>
-                    <Text style={{ color: isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>
+                    <Text style={{ color: "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{log.startDate} {log.endDate ? `→ ${log.endDate}` : ""}</Text>
+                    <Text style={{ color: "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>
                       {log.flow ? `Flow: ${log.flow}` : ""}{log.cycleLength ? ` • Cycle: ${log.cycleLength} days` : ""}
                     </Text>
                     {log.symptoms && log.symptoms.length > 0 && <Text style={{ color: "#EC4899", fontSize: 11, fontFamily: "Inter_500Medium", marginTop: 3 }}>{log.symptoms.join(", ")}</Text>}

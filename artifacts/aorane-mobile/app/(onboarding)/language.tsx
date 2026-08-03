@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, useColorScheme,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from "react-native";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -13,8 +13,6 @@ import { LanguagePickerList } from "@/components/LanguagePickerList";
 import { logSilentError } from "@/lib/silentCatch";
 
 export default function LanguageSelectScreen() {
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
   const insets = useSafeAreaInsets();
   const { lang, setLang, isLoaded } = useLanguage();
   const [selected, setSelected] = useState<LangCode>(lang);
@@ -45,15 +43,15 @@ export default function LanguageSelectScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={isDark ? ["#010814", "#031628", "#051E30"] : ["#E0F2FE", "#EFF9FF", "#ECFDF5"]}
+        colors={["#E0F2FE", "#EFF9FF", "#ECFDF5"]}
         style={StyleSheet.absoluteFill}
       />
 
       <View style={[styles.header, { paddingTop: insets.top + 24 }]}>
-        <Text style={[styles.title, { color: isDark ? "#fff" : "#0F172A" }]}>
+        <Text style={[styles.title, { color: "#0F172A" }]}>
           Choose your language
         </Text>
-        <Text style={[styles.subtitle, { color: isDark ? "rgba(255,255,255,0.65)" : "#64748B" }]}>
+        <Text style={[styles.subtitle, { color: "#64748B" }]}>
           अपनी भाषा चुनें • आपकी भाषा में AORANE
         </Text>
       </View>
@@ -63,7 +61,7 @@ export default function LanguageSelectScreen() {
         showsVerticalScrollIndicator={false}
       >
         {isLoaded && (
-          <LanguagePickerList selected={selected} onSelect={handleSelect} isDark={isDark} />
+          <LanguagePickerList selected={selected} onSelect={handleSelect} />
         )}
       </ScrollView>
 

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  useColorScheme, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -12,16 +11,15 @@ import { useAuth } from "@/context/AuthContext";
 import { storage } from "@/lib/storage";
 
 export default function EnrollmentScreen() {
-  const isDark = useColorScheme() === "dark";
   const insets = useSafeAreaInsets();
   const { refreshUser } = useAuth() as { refreshUser?: () => void };
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const bg = isDark ? "#010814" : "#F0F9FF";
-  const textColor = isDark ? "#F0F8FF" : "#1a1a2e";
-  const subText = isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)";
-  const cardBg = isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.8)";
+  const bg = "#F0F9FF";
+  const textColor = "#1a1a2e";
+  const subText = "rgba(10,22,40,0.5)";
+  const cardBg = "rgba(255,255,255,0.8)";
 
   const handleSubmit = async () => {
     const trimmed = code.trim().toUpperCase();
@@ -63,12 +61,12 @@ export default function EnrollmentScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: bg }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <LinearGradient colors={isDark ? ["#010814", "#020C1E"] : ["#F0F9FF", "#FFF8F3"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={["#F0F9FF", "#FFF8F3"]} style={StyleSheet.absoluteFill} />
       <View style={{ paddingTop: insets.top + 8, paddingHorizontal: 16, flex: 1 }}>
 
         {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 32 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,119,182,0.08)", alignItems: "center", justifyContent: "center" }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,119,182,0.08)", alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="arrow-back" size={20} color={textColor} />
           </TouchableOpacity>
           <Text style={{ color: textColor, fontSize: 20, fontFamily: "Inter_700Bold" }}>Join Organization</Text>
@@ -87,7 +85,7 @@ export default function EnrollmentScreen() {
         </Text>
 
         {/* Code Input */}
-        <View style={{ backgroundColor: cardBg, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.12)", marginBottom: 16 }}>
+        <View style={{ backgroundColor: cardBg, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: "rgba(0,119,182,0.12)", marginBottom: 16 }}>
           <Text style={{ color: subText, fontFamily: "Inter_500Medium", fontSize: 12, marginBottom: 8, letterSpacing: 1 }}>ENROLLMENT CODE / ORG CODE</Text>
           <TextInput
             value={code}
@@ -104,7 +102,7 @@ export default function EnrollmentScreen() {
             onSubmitEditing={handleSubmit}
             returnKeyType="done"
           />
-          <View style={{ height: 2, backgroundColor: isDark ? "rgba(59,130,246,0.3)" : "rgba(0,119,182,0.2)", borderRadius: 2 }} />
+          <View style={{ height: 2, backgroundColor: "rgba(0,119,182,0.2)", borderRadius: 2 }} />
         </View>
 
         {/* Submit Button */}
@@ -118,8 +116,8 @@ export default function EnrollmentScreen() {
         </TouchableOpacity>
 
         {/* Info Box */}
-        <View style={{ backgroundColor: isDark ? "rgba(59,130,246,0.08)" : "rgba(0,119,182,0.06)", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: isDark ? "rgba(59,130,246,0.2)" : "rgba(0,119,182,0.12)" }}>
-          <Text style={{ color: isDark ? "rgba(59,130,246,0.9)" : "#0077B6", fontFamily: "Inter_600SemiBold", fontSize: 13, marginBottom: 6 }}>ℹ️ Where do I get the code?</Text>
+        <View style={{ backgroundColor: "rgba(0,119,182,0.06)", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "rgba(0,119,182,0.12)" }}>
+          <Text style={{ color: "#0077B6", fontFamily: "Inter_600SemiBold", fontSize: 13, marginBottom: 6 }}>ℹ️ Where do I get the code?</Text>
           <Text style={{ color: subText, fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 18 }}>
             Ask your company's HR or admin for the enrollment code. They can generate it from the Aorane Business Portal.{"\n\n"}
             Once the code is entered, your plan will automatically upgrade — no payment needed.

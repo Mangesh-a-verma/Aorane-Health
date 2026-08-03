@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, useColorScheme } from "react-native";
+import { View, StyleSheet} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 type Props = {
@@ -8,26 +8,6 @@ type Props = {
 };
 
 export function GradientBackground({ children, style }: Props) {
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
-
-  if (isDark) {
-    return (
-      <View style={[styles.root, style]}>
-        <LinearGradient
-          colors={["#040D1C", "#062040", "#063330"]}
-          locations={[0, 0.55, 1]}
-          start={{ x: 0.2, y: 0 }}
-          end={{ x: 0.8, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={[styles.orb1, styles.orbBlue]} />
-        <View style={[styles.orb2, styles.orbTeal]} />
-        {children}
-      </View>
-    );
-  }
-
   return (
     <View style={[styles.root, style]}>
       <LinearGradient
@@ -67,8 +47,6 @@ const styles = StyleSheet.create({
     left: -60,
     opacity: 0.25,
   },
-  orbBlue: { backgroundColor: "#0369A1" },
-  orbTeal: { backgroundColor: "#0D9488" },
   orbBlueLight: { backgroundColor: "#BAE6FD" },
   orbTealLight: { backgroundColor: "#99F6E4" },
 });
