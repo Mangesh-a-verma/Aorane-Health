@@ -52,7 +52,7 @@ const routes = {
   },
   "pricing": {
     title: "Pricing — Free & Premium Health Plans | AORANE",
-    description: "AORANE pricing plans made for India. Free forever plan + Pro ₹199/mo + Max ₹249/mo + Family ₹499/mo. AI food scanner, diet plans, health insights. No hidden fees. GST extra.",
+    description: "AORANE pricing plans made for India. Free forever plan + Pro ₹199/mo + Max ₹249/mo + Family ₹499/mo. AI food scanner, diet plans, health insights. All prices inclusive of GST.",
     ogTitle: "AORANE Pricing — Affordable Health Plans for India",
     ogDescription: "Free forever + Pro ₹199/mo + Max ₹249/mo + Family ₹499/mo. AI features, offline logging & more. Start free, upgrade anytime.",
   },

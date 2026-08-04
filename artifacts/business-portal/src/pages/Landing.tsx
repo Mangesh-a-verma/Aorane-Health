@@ -52,7 +52,7 @@ const features = [
 const plans = [
   {
     plan: "Max",
-    perSeatPrice: 199,
+    perSeatPrice: 249,
     minSeats: 10,
     features: [
       "Health Update",
@@ -64,7 +64,7 @@ const plans = [
   },
   {
     plan: "Pro",
-    perSeatPrice: 249,
+    perSeatPrice: 199,
     minSeats: 20,
     highlighted: true,
     features: [

@@ -91,7 +91,7 @@ export default function PricingPage() {
     <div className="min-h-screen bg-[#F8FAFC]">
       <Helmet>
         <title>Pricing — Free & Premium Health Plans | AORANE</title>
-        <meta name="description" content="AORANE pricing plans made for India. Free forever plan + Pro ₹199/mo + Max ₹249/mo + Family ₹499/mo. AI food scanner, diet plans, health insights. No hidden fees. GST extra." />
+        <meta name="description" content="AORANE pricing plans made for India. Free forever plan + Pro ₹199/mo + Max ₹249/mo + Family ₹499/mo. AI food scanner, diet plans, health insights. All prices inclusive of GST." />
         <link rel="canonical" href="https://aorane.com/pricing" />
         <meta property="og:title" content="AORANE Pricing — Affordable Health Plans for India" />
         <meta property="og:description" content="Free forever + Pro ₹199/mo + Max ₹249/mo + Family ₹499/mo. AI features, offline logging & more. Start free, upgrade anytime." />

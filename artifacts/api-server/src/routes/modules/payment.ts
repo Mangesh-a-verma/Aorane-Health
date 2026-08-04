@@ -12,7 +12,7 @@ import {
 } from "../../lib/razorpay";
 import { sendIndividualPaymentWelcomeEmail } from "../../lib/welcome-email";
 import { sendIndividualInvoiceEmail } from "../../lib/invoice-email";
-import { computeGst } from "../../lib/gst";
+import { computeGstInclusive } from "../../lib/gst";
 import { getNextInvoiceNumber } from "../../lib/invoice-number";
 import { signUserToken, signRefreshToken } from "../../lib/jwt";
 import { invalidateUserPlanCache } from "../../middlewares/user-auth";
@@ -174,12 +174,13 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
       }
     }
     const discountedBase = Math.round(baseAmount * (1 - discount / 100));
-    // ISSUE 5 FIX: previously the App charged `discountedBase` with ZERO GST
-    // added, despite the pricing page stating "GST @18% extra on paid
-    // plans" for individual plans too. Now GST is computed and added on
-    // top, same as the Business Portal already does.
-    const gst = computeGst(discountedBase);
-    const finalAmount = gst.totalAmount;
+    // GST is INCLUSIVE for individual/B2C pricing — the price shown to the
+    // user (discountedBase) is exactly what gets charged. GST is backed out
+    // of that number for invoicing/tax records, never added on top. See
+    // lib/gst.ts for the reasoning (individual consumers can't claim input
+    // tax credit, so an itemized "+18% GST" only reads as a price hike).
+    const gst = computeGstInclusive(discountedBase);
+    const finalAmount = gst.totalAmount; // == discountedBase, unchanged
     if (!isLiveMode()) {
       res.status(503).json({ error: "Payment gateway not configured. Please contact support." }); return;
     }

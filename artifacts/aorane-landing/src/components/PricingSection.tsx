@@ -740,9 +740,10 @@ export default function PricingSection({
           viewport={{ once: true }}
           className="mt-10 text-center text-sm text-gray-400"
         >
-          {taxDisclaimer()}
-          {tab === "individual" && (
-            <> &nbsp;·&nbsp; 30-day money-back guarantee. Secure payments via Razorpay.</>
+          {tab === "individual" ? (
+            <>All prices shown are inclusive of GST. &nbsp;·&nbsp; 30-day money-back guarantee. Secure payments via Razorpay.</>
+          ) : (
+            taxDisclaimer()
           )}
         </motion.div>
       </div>

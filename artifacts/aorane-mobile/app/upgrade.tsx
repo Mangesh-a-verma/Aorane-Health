@@ -174,15 +174,9 @@ export default function UpgradeScreen() {
 
   const plan = (plans.find(p => p.key === selectedPlan) ?? plans[0])!;
   const finalPrice = Math.round((plan?.price ?? 0) * (1 - discount / 100));
-  // MISMATCH FIX: backend /payment/order now adds 18% GST on top of finalPrice
-  // before charging (see lib/gst.ts on the server). This screen previously
-  // showed only the base price, so the Razorpay checkout sheet would open
-  // showing a higher amount than what the user just saw here — a confusing,
-  // trust-breaking mismatch. GST_RATE mirrors the server's rate; if that
-  // ever changes, update both.
-  const GST_RATE = 0.18;
-  const gstAmount = Math.round(finalPrice * GST_RATE);
-  const totalWithGst = finalPrice + gstAmount;
+  // Pricing is GST-inclusive: finalPrice is exactly what gets charged.
+  // (Backend backs GST out of this number for invoicing — see lib/gst.ts
+  // computeGstInclusive — it never adds GST on top of what's shown here.)
 
   useEffect(() => {
     return () => {
@@ -638,25 +632,22 @@ export default function UpgradeScreen() {
               <Text style={{ color: "#10B981", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>-₹{plan.price - finalPrice}</Text>
             </View>
           )}
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
-            <Text style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(10,22,40,0.6)", fontFamily: "Inter_400Regular", fontSize: 14 }}>GST (18%)</Text>
-            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>₹{gstAmount}</Text>
-          </View>
           <View style={{ height: 1, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.1)", marginVertical: 8 }} />
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
             <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16 }}>Total</Text>
             <View style={{ alignItems: "flex-end" }}>
               {discount > 0 && <Text style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.35)", fontFamily: "Inter_400Regular", fontSize: 12, textDecorationLine: "line-through" }}>₹{plan.price}</Text>}
-              <Text style={{ color: "#E8622A", fontFamily: "Inter_700Bold", fontSize: 22 }}>₹{totalWithGst}/mo</Text>
+              <Text style={{ color: "#E8622A", fontFamily: "Inter_700Bold", fontSize: 22 }}>₹{finalPrice}/mo</Text>
             </View>
           </View>
+          <Text style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(10,22,40,0.4)", fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 4, textAlign: "right" }}>Inclusive of all taxes</Text>
         </LinearGradient>
 
         <TouchableOpacity onPress={handleUpgrade} disabled={loading} style={{ borderRadius: 16, overflow: "hidden", opacity: loading ? 0.7 : 1 }}>
           <LinearGradient colors={isAutopay ? ["#E8622A","#F5A623"] : plan.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ padding: 18, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10 }}>
             <Ionicons name={loading ? "hourglass" : (isAutopay ? "refresh-circle" : "card")} size={22} color="#FFF" />
             <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 17 }}>
-              {loading ? "Processing..." : isAutopay ? `Setup Autopay ₹${totalWithGst}/mo` : `Pay Once ₹${totalWithGst}`}
+              {loading ? "Processing..." : isAutopay ? `Setup Autopay ₹${finalPrice}/mo` : `Pay Once ₹${finalPrice}`}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
