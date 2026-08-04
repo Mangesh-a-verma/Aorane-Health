@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Platform, Alert, Linking, AppState, AppStateStatus,
+  TextInput, Platform, useColorScheme, Alert, Linking, AppState, AppStateStatus,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -70,10 +70,11 @@ function loadRazorpayScript(): Promise<boolean> {
 }
 
 function GlassCard({ children, style }: { children: React.ReactNode; style?: object }) {
+  const isDark = useColorScheme() === "dark";
   return (
-    <LinearGradient colors={["rgba(255,255,255,0.9)","rgba(186,230,253,0.45)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[{ borderRadius: 20, padding: 1.5 }, style]}>
-      <View style={{ borderRadius: 19, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.5)" }}>
-        {Platform.OS === "ios" ? <BlurView intensity={60} tint={"light"} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.45)" }]} />}
+    <LinearGradient colors={isDark ? ["rgba(56,189,248,0.18)","rgba(45,212,191,0.08)"] : ["rgba(255,255,255,0.9)","rgba(186,230,253,0.45)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[{ borderRadius: 20, padding: 1.5 }, style]}>
+      <View style={{ borderRadius: 19, overflow: "hidden", backgroundColor: isDark ? "rgba(4,20,40,0.5)" : "rgba(255,255,255,0.5)" }}>
+        {Platform.OS === "ios" ? <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(4,16,32,0.45)" : "rgba(255,255,255,0.45)" }]} />}
         {children}
       </View>
     </LinearGradient>
@@ -81,6 +82,7 @@ function GlassCard({ children, style }: { children: React.ReactNode; style?: obj
 }
 
 function SuccessOverlay({ plan, inviteCode, onDone }: { plan: string; inviteCode?: string | null; onDone: () => void }) {
+  const isDark = useColorScheme() === "dark";
   const isFamilyPlan = plan === "family";
   const [copied, setCopied] = React.useState(false);
 
@@ -143,6 +145,7 @@ type ActiveSubscription = {
 } | null;
 
 export default function UpgradeScreen() {
+  const isDark = useColorScheme() === "dark";
   const insets = useSafeAreaInsets();
   const { user, refreshUser } = useAuth() as { user: Record<string, unknown>; refreshUser?: () => void };
   const [plans, setPlans] = useState<PlanItem[]>(FALLBACK_PLANS);
@@ -167,10 +170,19 @@ export default function UpgradeScreen() {
   const subPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingSubIdRef = useRef<string | null>(null);
   const topPad = insets.top;
-  const bg = "#F0F9FF";
+  const bg = isDark ? "#010814" : "#F0F9FF";
 
   const plan = (plans.find(p => p.key === selectedPlan) ?? plans[0])!;
   const finalPrice = Math.round((plan?.price ?? 0) * (1 - discount / 100));
+  // MISMATCH FIX: backend /payment/order now adds 18% GST on top of finalPrice
+  // before charging (see lib/gst.ts on the server). This screen previously
+  // showed only the base price, so the Razorpay checkout sheet would open
+  // showing a higher amount than what the user just saw here — a confusing,
+  // trust-breaking mismatch. GST_RATE mirrors the server's rate; if that
+  // ever changes, update both.
+  const GST_RATE = 0.18;
+  const gstAmount = Math.round(finalPrice * GST_RATE);
+  const totalWithGst = finalPrice + gstAmount;
 
   useEffect(() => {
     return () => {
@@ -522,8 +534,8 @@ export default function UpgradeScreen() {
                   <Ionicons name="checkmark-circle" size={24} color="#10B981" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 15 }}>Active Plan: {(user?.plan as string || "free").toUpperCase()}</Text>
-                  <Text style={{ color: "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>
+                  <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 15 }}>Active Plan: {(user?.plan as string || "free").toUpperCase()}</Text>
+                  <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 12, fontFamily: "Inter_400Regular" }}>
                     {activeSubscription?.autoRenew ? "🔄 Autopay active — auto-renews monthly" : "Your premium plan is active"}
                   </Text>
                 </View>
@@ -534,7 +546,7 @@ export default function UpgradeScreen() {
                 )}
               </View>
               {activeSubscription?.autoRenew && (
-                <TouchableOpacity onPress={handleCancelSubscription} disabled={loadingSubscription} style={{ backgroundColor: "rgba(239,68,68,0.08)", borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: "rgba(239,68,68,0.25)" }}>
+                <TouchableOpacity onPress={handleCancelSubscription} disabled={loadingSubscription} style={{ backgroundColor: isDark ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.08)", borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: "rgba(239,68,68,0.25)" }}>
                   <Text style={{ color: "#ef4444", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
                     {loadingSubscription ? "Cancelling..." : "Cancel Autopay"}
                   </Text>
@@ -548,39 +560,39 @@ export default function UpgradeScreen() {
         <GlassCard style={{ marginBottom: 16 }}>
           <View style={{ padding: 4, flexDirection: "row", borderRadius: 18 }}>
             <TouchableOpacity onPress={() => setIsAutopay(true)} style={{ flex: 1, paddingVertical: 11, borderRadius: 16, alignItems: "center", backgroundColor: isAutopay ? "#E8622A" : "transparent" }}>
-              <Text style={{ color: isAutopay ? "#FFF" : ("rgba(10,22,40,0.5)"), fontFamily: "Inter_700Bold", fontSize: 13 }}>🔄 Auto-debit Monthly</Text>
+              <Text style={{ color: isAutopay ? "#FFF" : (isDark ? "rgba(255,255,255,0.55)" : "rgba(10,22,40,0.5)"), fontFamily: "Inter_700Bold", fontSize: 13 }}>🔄 Auto-debit Monthly</Text>
               {isAutopay && <Text style={{ color: "rgba(255,255,255,0.75)", fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 2 }}>Recommended • Cancel anytime</Text>}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setIsAutopay(false)} style={{ flex: 1, paddingVertical: 11, borderRadius: 16, alignItems: "center", backgroundColor: !isAutopay ? ("rgba(0,119,182,0.12)") : "transparent" }}>
-              <Text style={{ color: !isAutopay ? ("#1a1a2e") : ("rgba(10,22,40,0.4)"), fontFamily: "Inter_700Bold", fontSize: 13 }}>💳 Pay Once</Text>
-              {!isAutopay && <Text style={{ color: "rgba(10,22,40,0.4)", fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 2 }}>1 month only</Text>}
+            <TouchableOpacity onPress={() => setIsAutopay(false)} style={{ flex: 1, paddingVertical: 11, borderRadius: 16, alignItems: "center", backgroundColor: !isAutopay ? (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.12)") : "transparent" }}>
+              <Text style={{ color: !isAutopay ? (isDark ? "#F0F8FF" : "#1a1a2e") : (isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.4)"), fontFamily: "Inter_700Bold", fontSize: 13 }}>💳 Pay Once</Text>
+              {!isAutopay && <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.4)", fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 2 }}>1 month only</Text>}
             </TouchableOpacity>
           </View>
         </GlassCard>
 
-        <Text style={{ color: "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 12 }}>Choose a Plan</Text>
+        <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 12 }}>Choose a Plan</Text>
         <View style={{ gap: 12, marginBottom: 16 }}>
           {plans.map(p => (
             <TouchableOpacity key={p.key} onPress={() => { setSelectedPlan(p.key); setDiscount(0); setPromoMsg(""); setPromoCode(""); }} activeOpacity={0.85}>
               <LinearGradient
-                colors={selectedPlan === p.key ? p.gradient : (["rgba(255,255,255,0.8)","rgba(240,249,255,0.6)"] as [string,string])}
+                colors={selectedPlan === p.key ? p.gradient : (isDark ? ["rgba(255,255,255,0.04)","rgba(255,255,255,0.02)"] : ["rgba(255,255,255,0.8)","rgba(240,249,255,0.6)"] as [string,string])}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                style={{ borderRadius: 20, padding: 20, borderWidth: selectedPlan === p.key ? 0 : 1, borderColor: "rgba(0,119,182,0.15)" }}
+                style={{ borderRadius: 20, padding: 20, borderWidth: selectedPlan === p.key ? 0 : 1, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.15)" }}
               >
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                   <View>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                      <Text style={{ color: selectedPlan === p.key ? "#FFF" : ("#1a1a2e"), fontFamily: "Inter_700Bold", fontSize: 20 }}>{p.label}</Text>
+                      <Text style={{ color: selectedPlan === p.key ? "#FFF" : (isDark ? "#F0F8FF" : "#1a1a2e"), fontFamily: "Inter_700Bold", fontSize: 20 }}>{p.label}</Text>
                       <View style={{ backgroundColor: selectedPlan === p.key ? "rgba(255,255,255,0.2)" : p.color + "22", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
                         <Text style={{ color: selectedPlan === p.key ? "#FFF" : p.color, fontFamily: "Inter_700Bold", fontSize: 10 }}>{p.badge}</Text>
                       </View>
                     </View>
                     <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 4 }}>
-                      <Text style={{ color: selectedPlan === p.key ? "#FFF" : ("#1a1a2e"), fontFamily: "Inter_700Bold", fontSize: 32 }}>₹{p.price}</Text>
-                      <Text style={{ color: selectedPlan === p.key ? "rgba(255,255,255,0.7)" : ("rgba(10,22,40,0.5)"), fontFamily: "Inter_400Regular", fontSize: 13, paddingBottom: 4 }}>/month</Text>
+                      <Text style={{ color: selectedPlan === p.key ? "#FFF" : (isDark ? "#F0F8FF" : "#1a1a2e"), fontFamily: "Inter_700Bold", fontSize: 32 }}>₹{p.price}</Text>
+                      <Text style={{ color: selectedPlan === p.key ? "rgba(255,255,255,0.7)" : (isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.5)"), fontFamily: "Inter_400Regular", fontSize: 13, paddingBottom: 4 }}>/month</Text>
                     </View>
                   </View>
-                  <View style={{ width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: selectedPlan === p.key ? "#FFF" : ("rgba(0,119,182,0.3)"), alignItems: "center", justifyContent: "center" }}>
+                  <View style={{ width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: selectedPlan === p.key ? "#FFF" : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,119,182,0.3)"), alignItems: "center", justifyContent: "center" }}>
                     {selectedPlan === p.key && <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: "#FFF" }} />}
                   </View>
                 </View>
@@ -588,7 +600,7 @@ export default function UpgradeScreen() {
                   {p.features.map((f, i) => (
                     <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                       <Ionicons name="checkmark-circle" size={16} color={selectedPlan === p.key ? "rgba(255,255,255,0.8)" : p.color} />
-                      <Text style={{ color: selectedPlan === p.key ? "rgba(255,255,255,0.85)" : ("rgba(10,22,40,0.65)"), fontFamily: "Inter_400Regular", fontSize: 13 }}>{f}</Text>
+                      <Text style={{ color: selectedPlan === p.key ? "rgba(255,255,255,0.85)" : (isDark ? "rgba(255,255,255,0.65)" : "rgba(10,22,40,0.65)"), fontFamily: "Inter_400Regular", fontSize: 13 }}>{f}</Text>
                     </View>
                   ))}
                 </View>
@@ -599,12 +611,12 @@ export default function UpgradeScreen() {
 
         <GlassCard style={{ marginBottom: 16 }}>
           <View style={{ padding: 16 }}>
-            <Text style={{ color: "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 10 }}>Promo Code</Text>
+            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 10 }}>Promo Code</Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
               <TextInput
                 value={promoCode} onChangeText={t => { setPromoCode(t); setPromoMsg(""); setDiscount(0); }}
-                placeholder="Enter code (e.g. AORANE20)" placeholderTextColor={"rgba(10,22,40,0.3)"}
-                style={{ flex: 1, backgroundColor: "rgba(0,119,182,0.06)", borderRadius: 12, padding: 12, color: "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 14, borderWidth: 1, borderColor: "rgba(0,119,182,0.15)", textTransform: "uppercase" }}
+                placeholder="Enter code (e.g. AORANE20)" placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(10,22,40,0.3)"}
+                style={{ flex: 1, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,119,182,0.06)", borderRadius: 12, padding: 12, color: isDark ? "#FFF" : "#1a1a2e", fontFamily: "Inter_500Medium", fontSize: 14, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.15)", textTransform: "uppercase" }}
                 autoCapitalize="characters"
               />
               <TouchableOpacity onPress={validatePromo} disabled={validatingPromo || !promoCode.trim()} style={{ backgroundColor: "#1B998B", borderRadius: 12, paddingHorizontal: 16, alignItems: "center", justifyContent: "center", opacity: !promoCode.trim() ? 0.5 : 1 }}>
@@ -615,10 +627,10 @@ export default function UpgradeScreen() {
           </View>
         </GlassCard>
 
-        <LinearGradient colors={["rgba(255,255,255,0.8)","rgba(240,249,255,0.6)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 18, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: "rgba(0,119,182,0.12)" }}>
+        <LinearGradient colors={isDark ? ["rgba(255,255,255,0.06)","rgba(255,255,255,0.02)"] : ["rgba(255,255,255,0.8)","rgba(240,249,255,0.6)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 18, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.12)" }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
-            <Text style={{ color: "rgba(10,22,40,0.6)", fontFamily: "Inter_400Regular", fontSize: 14 }}>{plan.label} Plan (1 month)</Text>
-            <Text style={{ color: "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>₹{plan.price}</Text>
+            <Text style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(10,22,40,0.6)", fontFamily: "Inter_400Regular", fontSize: 14 }}>{plan.label} Plan (1 month)</Text>
+            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>₹{plan.price}</Text>
           </View>
           {discount > 0 && (
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
@@ -626,12 +638,16 @@ export default function UpgradeScreen() {
               <Text style={{ color: "#10B981", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>-₹{plan.price - finalPrice}</Text>
             </View>
           )}
-          <View style={{ height: 1, backgroundColor: "rgba(0,119,182,0.1)", marginVertical: 8 }} />
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+            <Text style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(10,22,40,0.6)", fontFamily: "Inter_400Regular", fontSize: 14 }}>GST (18%)</Text>
+            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>₹{gstAmount}</Text>
+          </View>
+          <View style={{ height: 1, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.1)", marginVertical: 8 }} />
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text style={{ color: "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16 }}>Total</Text>
+            <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16 }}>Total</Text>
             <View style={{ alignItems: "flex-end" }}>
-              {discount > 0 && <Text style={{ color: "rgba(10,22,40,0.35)", fontFamily: "Inter_400Regular", fontSize: 12, textDecorationLine: "line-through" }}>₹{plan.price}</Text>}
-              <Text style={{ color: "#E8622A", fontFamily: "Inter_700Bold", fontSize: 22 }}>₹{finalPrice}/mo</Text>
+              {discount > 0 && <Text style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.35)", fontFamily: "Inter_400Regular", fontSize: 12, textDecorationLine: "line-through" }}>₹{plan.price}</Text>}
+              <Text style={{ color: "#E8622A", fontFamily: "Inter_700Bold", fontSize: 22 }}>₹{totalWithGst}/mo</Text>
             </View>
           </View>
         </LinearGradient>
@@ -640,22 +656,22 @@ export default function UpgradeScreen() {
           <LinearGradient colors={isAutopay ? ["#E8622A","#F5A623"] : plan.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ padding: 18, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10 }}>
             <Ionicons name={loading ? "hourglass" : (isAutopay ? "refresh-circle" : "card")} size={22} color="#FFF" />
             <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 17 }}>
-              {loading ? "Processing..." : isAutopay ? `Setup Autopay ₹${finalPrice}/mo` : `Pay Once ₹${finalPrice}`}
+              {loading ? "Processing..." : isAutopay ? `Setup Autopay ₹${totalWithGst}/mo` : `Pay Once ₹${totalWithGst}`}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
 
         <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 14 }}>
-          <Ionicons name="lock-closed" size={12} color={"rgba(10,22,40,0.4)"} />
-          <Text style={{ color: "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" }}>
+          <Ionicons name="lock-closed" size={12} color={isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)"} />
+          <Text style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(10,22,40,0.4)", fontSize: 11, fontFamily: "Inter_400Regular" }}>
             {isAutopay ? "256-bit SSL • Razorpay Mandate • Cancel anytime from app" : "256-bit SSL • Razorpay Secure • Cancel anytime"}
           </Text>
         </View>
 
         <View style={{ flexDirection: "row", justifyContent: "center", gap: 16, marginTop: 16, paddingBottom: 10 }}>
           {["UPI", "Cards", "NetBanking", "Wallets"].map(m => (
-            <View key={m} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, backgroundColor: "rgba(0,119,182,0.08)", borderWidth: 1, borderColor: "rgba(0,119,182,0.12)" }}>
-              <Text style={{ color: "rgba(10,22,40,0.5)", fontSize: 10, fontFamily: "Inter_600SemiBold" }}>{m}</Text>
+            <View key={m} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,119,182,0.08)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.12)" }}>
+              <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.5)", fontSize: 10, fontFamily: "Inter_600SemiBold" }}>{m}</Text>
             </View>
           ))}
         </View>
