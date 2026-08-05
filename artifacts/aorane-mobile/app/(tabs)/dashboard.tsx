@@ -51,18 +51,19 @@ function wmoDesc(code: number): string {
   if (code <= 82) return "Rain showers";
   return "Thunderstorm";
 }
-function weatherHealthTip(code: number, temp: number): string {
-  if (temp >= 38) return "🔥 High heat alert — drink plenty of water and avoid outdoor exercise.";
-  if (temp >= 32) return "☀️ Stay hydrated! Heat affects energy & focus";
-  if (temp <= 12) return "🧣 It's cold — ensure a proper warm-up before exercising.";
-  if (code >= 51 && code <= 82) return "🌧️ Rainy day — indoor workout kaafi accha rahega";
-  if (code >= 95) return "⛈️ Thunderstorm — it is safer to stay indoors.";
-  return "🌿 Great weather for a walk or outdoor exercise!";
+function weatherHealthTip(code: number, temp: number, t: (key: keyof import("@/lib/translations").TranslationMap) => string): string {
+  if (temp >= 38) return t("dashTipHeatAlert");
+  if (temp >= 32) return t("dashTipStayHydrated");
+  if (temp <= 12) return t("dashTipCold");
+  if (code >= 51 && code <= 82) return t("dashTipRainy");
+  if (code >= 95) return t("dashTipThunderstorm");
+  return t("dashTipGreatWeather");
 }
 
 const DELHI = { lat: 28.6139, lon: 77.2090, city: "New Delhi" };
 
 function useWeather() {
+  const { t } = useLanguage();
   const [weather, setWeather] = useState<WeatherInfo | null>(null);
   const [wLoading, setWLoading] = useState(true);
 
@@ -114,7 +115,7 @@ function useWeather() {
         emoji: wmoEmoji(code, isDay),
         description: wmoDesc(code),
         city,
-        healthTip: weatherHealthTip(code, temp),
+        healthTip: weatherHealthTip(code, temp, t),
         isDay,
       });
     } catch { }

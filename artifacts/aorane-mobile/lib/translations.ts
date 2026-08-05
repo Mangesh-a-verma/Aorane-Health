@@ -15,7 +15,7 @@ export const LANGUAGE_NAMES: Record<LangCode, string> = {
 
 export const SUPPORTED_LANGS: readonly LangCode[] = Object.keys(LANGUAGE_NAMES) as LangCode[];
 
-type TranslationMap = {
+export type TranslationMap = {
   dashTodaysMedicines?: string;
   dashCupsGoalMet?: string;
   dashWeatherTapHint?: string;
@@ -80,6 +80,12 @@ type TranslationMap = {
   dashFeelsLike?: string;
   dashHumidity?: string;
   dashWindLabel?: string;
+  dashTipHeatAlert?: string;
+  dashTipStayHydrated?: string;
+  dashTipCold?: string;
+  dashTipRainy?: string;
+  dashTipThunderstorm?: string;
+  dashTipGreatWeather?: string;
   dashTodaysNutrition?: string;
   limitWarningRemaining?: string;
   limitWarningEmpty?: string;
@@ -300,6 +306,12 @@ export const translations: Record<LangCode, TranslationMap> = {
     dashFeelsLike: "Feels",
     dashHumidity: "Humidity",
     dashWindLabel: "Wind",
+    dashTipHeatAlert: "🔥 High heat alert — drink plenty of water and avoid outdoor exercise.",
+    dashTipStayHydrated: "☀️ Stay hydrated! Heat affects energy & focus.",
+    dashTipCold: "🧣 It's cold — ensure a proper warm-up before exercising.",
+    dashTipRainy: "🌧️ Rainy day — a good time for an indoor workout instead.",
+    dashTipThunderstorm: "⛈️ Thunderstorm — it is safer to stay indoors.",
+    dashTipGreatWeather: "🌿 Great weather for a walk or outdoor exercise!",
     dashTodaysNutrition: "Today's Nutrition",
     limitWarningRemaining: '⚠️ Only {remaining} {feature} remaining today!',
     limitWarningEmpty: '⚠️ You have used all your {feature} today!',
@@ -508,6 +520,12 @@ export const translations: Record<LangCode, TranslationMap> = {
     dashFeelsLike: "महसूस",
     dashHumidity: "नमी",
     dashWindLabel: "हवा",
+    dashTipHeatAlert: "🔥 भीषण गर्मी की चेतावनी — खूब पानी पिएं और बाहर व्यायाम करने से बचें।",
+    dashTipStayHydrated: "☀️ पानी पीते रहें! गर्मी से ऊर्जा और एकाग्रता प्रभावित होती है।",
+    dashTipCold: "🧣 ठंड है — व्यायाम से पहले अच्छी तरह वार्म-अप करें।",
+    dashTipRainy: "🌧️ बारिश का दिन — इनडोर वर्कआउट के लिए अच्छा समय है।",
+    dashTipThunderstorm: "⛈️ आंधी-तूफान — घर के अंदर रहना सुरक्षित है।",
+    dashTipGreatWeather: "🌿 टहलने या बाहर व्यायाम के लिए बढ़िया मौसम है!",
     dashTodaysNutrition: "आज का पोषण",
     loginTagline: "आपकी सेहत, आपके हाथ में 🇮🇳",
     selectLanguage: "अपनी भाषा चुनें",

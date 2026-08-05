@@ -1044,13 +1044,31 @@ export async function runStartupMigrations(): Promise<void> {
     // ── plan_pricing: add org_seat plans (org_max, org_pro) used by Business Portal billing ──
     `INSERT INTO plan_pricing (plan_key, display_name, type, monthly_price, yearly_price, max_seats, features, badge_color, sort_order, is_active)
      VALUES
-       ('org_max', 'Max', 'org_seat', 199, null, null,
-        '["Basic aggregate health dashboard","Enrollment code management","Employee search","GST-ready invoice","Email support"]',
+       ('org_max', 'Max', 'org_seat', 249, 2532, null,
+        '["Everything in Pro","Advanced health analytics & charts","Health risk distribution alerts","Weekly & monthly team reports","Priority support","Custom announcements to employees"]',
         '#0077B6', 20, true),
-       ('org_pro', 'Pro', 'org_seat', 249, null, null,
-        '["Everything in Max","Advanced health analytics & charts","Health risk distribution alerts","Weekly & monthly team reports","Priority support","Custom announcements to employees"]',
+       ('org_pro', 'Pro', 'org_seat', 199, 2028, null,
+        '["Basic aggregate health dashboard","Enrollment code management","Employee search","GST-ready invoice","Email support"]',
         '#7C3AED', 21, true)
      ON CONFLICT (plan_key) DO NOTHING`,
+
+    // CRITICAL FIX: the INSERT above originally seeded org_max/org_pro with
+    // swapped monthly_price, yearly_price, AND features (org_max=₹199/yr₹2028
+    // with basic features, org_pro=₹249/yr₹2532 with advanced features —
+    // backwards). Because the INSERT uses ON CONFLICT DO NOTHING, any row
+    // already created by the old seed would never self-correct on redeploy.
+    // These explicit UPDATEs force-fix rows that were already seeded with
+    // the old, wrong values — including yearly_price, which a previous fix
+    // pass corrected monthly_price for but left yearly_price mismatched
+    // (org_pro's yearly ended up costing MORE per month than its monthly
+    // price — an inverted, nonsensical "discount"). Safe to run every
+    // deploy — becomes a no-op once values are already correct.
+    `UPDATE plan_pricing SET monthly_price = '249', yearly_price = '2532',
+       features = '["Everything in Pro","Advanced health analytics & charts","Health risk distribution alerts","Weekly & monthly team reports","Priority support","Custom announcements to employees"]'
+     WHERE plan_key = 'org_max' AND (monthly_price != '249' OR yearly_price != '2532')`,
+    `UPDATE plan_pricing SET monthly_price = '199', yearly_price = '2028',
+       features = '["Basic aggregate health dashboard","Enrollment code management","Employee search","GST-ready invoice","Email support"]'
+     WHERE plan_key = 'org_pro' AND (monthly_price != '199' OR yearly_price != '2028')`,
 
     // ── daily_activity_scores: task-based active percentage per day ────────────
     `CREATE TABLE IF NOT EXISTS daily_activity_scores (
@@ -1179,8 +1197,9 @@ export async function runStartupMigrations(): Promise<void> {
     // ORG SEAT PLANS — Set yearly prices (₹169/seat/month × 12 = ₹2028, ₹211/seat/month × 12 = ₹2532)
     // Fix: yearly_price is NUMERIC — cannot compare to '' (empty string), only IS NULL
     // ══════════════════════════════════════════════════════════════════════════
-    `UPDATE plan_pricing SET yearly_price = '2028' WHERE plan_key = 'org_max' AND yearly_price IS NULL`,
-    `UPDATE plan_pricing SET yearly_price = '2532' WHERE plan_key = 'org_pro' AND yearly_price IS NULL`,
+    // (old NULL-only yearly_price backfill removed — superseded by the
+    // CRITICAL FIX block above, which also had the correct swapped values
+    // and runs unconditionally so it can fix already-wrong data too)
 
     // ══════════════════════════════════════════════════════════════════════════
     // SECURITY FIX C4: organizations.contact_email unique constraint
