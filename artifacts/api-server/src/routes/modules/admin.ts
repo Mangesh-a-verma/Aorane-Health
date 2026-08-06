@@ -858,17 +858,21 @@ router.get("/admin/revenue", requireAdmin, async (req: AdminRequest, res) => {
 });
 
 // ─── AI CONFIG ────────────────────────────────────────────────────────────────
+// NOTE: Every entry here MUST correspond to an actual callAI(feature, ...)
+// call site somewhere in the codebase — this list previously included
+// "water_ai" and "blood_ai" which had ZERO backing implementation anywhere
+// (pure placeholder admin controls that silently did nothing). Removed.
+// Defaults below use "google" (Gemini) since that's the provider actually
+// in use for this project — NVIDIA is not currently configured/used.
 const DEFAULT_AI_FEATURES = [
-  { feature: "food_ai",            label: "Food AI Analysis",                provider: "google", model: "gemini-2.0-flash" },
-  { feature: "medical_ai",         label: "Medical AI Assistant",            provider: "google", model: "gemini-2.0-flash" },
+  { feature: "food_ai",            label: "Food AI Analysis (text + photo)", provider: "google", model: "gemini-2.0-flash" },
+  { feature: "medical_ai",         label: "Medical Report Scan AI",          provider: "google", model: "gemini-2.0-flash" },
   { feature: "smart_scan",         label: "Smart Scan (OCR + AI)",           provider: "google", model: "gemini-2.0-flash" },
-  { feature: "water_ai",           label: "Water Intake Suggestions",        provider: "google", model: "gemini-2.0-flash" },
   { feature: "stress_ai",          label: "Stress & Sleep Analysis",         provider: "google", model: "gemini-2.0-flash" },
-  { feature: "blood_ai",           label: "Blood Report Analysis",           provider: "google", model: "gemini-2.0-flash" },
-  { feature: "meal_planner",       label: "AI Meal Planner",                 provider: "google", model: "gemini-2.0-flash" },
+  { feature: "meal_planner",       label: "AI Meal Planner & Swap",          provider: "google", model: "gemini-2.0-flash" },
   { feature: "health_suggestions", label: "Daily Health Suggestions",        provider: "google", model: "gemini-2.0-flash" },
-  { feature: "health_prediction",  label: "Monthly Disease Risk Prediction", provider: "nvidia", model: "deepseek-ai/deepseek-v3.2" },
-  { feature: "weekly_diet_chart",  label: "Weekly AI Diet Chart",            provider: "nvidia", model: "deepseek-ai/deepseek-v3.2" },
+  { feature: "health_prediction",  label: "Monthly Disease Risk Prediction", provider: "google", model: "gemini-2.0-flash" },
+  { feature: "weekly_diet_chart",  label: "Weekly AI Diet Chart",            provider: "google", model: "gemini-2.0-flash" },
 ];
 
 router.get("/admin/ai-config", requireAdmin, async (_req: AdminRequest, res) => {

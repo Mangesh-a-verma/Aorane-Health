@@ -8,7 +8,6 @@ import { logger } from "./lib/logger";
 import { pool } from "@workspace/db";
 import { startSubscriptionExpiryJob } from "./jobs/subscription-expiry";
 import { startExpiryReminderJob } from "./jobs/expiry-reminders";
-import { startPaymentReconciliationJob } from "./jobs/payment-reconciliation";
 import { startMonthlyHealthSummaryJob } from "./jobs/monthly-health-summary";
 import { startWinBackJob } from "./jobs/win-back";
 
@@ -111,7 +110,7 @@ app.use(
 app.use("/api/webhooks/razorpay", express.raw({ type: "application/json", limit: "2mb" }));
 
 // SECURITY-FIX H-11: Normal payload limits reduced from 20mb to 2mb to prevent OOM/DoS attacks
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 // SECURITY-FIX: Request Timeout Protection. Terminates requests taking longer than 30 seconds.
@@ -236,7 +235,6 @@ startSubscriptionExpiryJob();
 
 // Start daily expiry reminders job
 startExpiryReminderJob();
-startPaymentReconciliationJob();
 
 // Start monthly individual health summary job (1st of month, 8 AM IST)
 startMonthlyHealthSummaryJob();

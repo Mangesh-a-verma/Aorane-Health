@@ -5,7 +5,7 @@ import { db, stressLogsTable, userProfilesTable, exerciseLogsTable, waterLogsTab
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { aiRateLimit } from "../../middlewares/ai-rate-limit";
+import { checkAndUseAILimit } from "../../lib/aiLimiter";
 import { callAI } from "../../lib/ai";
 
 // ── Work profile → estimated daily work hours map ───────────────────────────
@@ -322,7 +322,7 @@ router.get("/stress/weekly", requireAuth, async (req: AuthRequest, res) => {
 // ─────────────────────────────────────────────────────────
 // GET /stress/insight  — AI-powered personalized insight
 // ─────────────────────────────────────────────────────────
-router.get("/stress/insight", requireAuth, aiRateLimit("stress_insight", 5), async (req: AuthRequest, res) => {
+router.get("/stress/insight", requireAuth, async (req: AuthRequest, res) => {
   try {
     const recentLogs = await db.select().from(stressLogsTable)
       .where(eq(stressLogsTable.userId, req.userId!))
@@ -335,15 +335,32 @@ router.get("/stress/insight", requireAuth, aiRateLimit("stress_insight", 5), asy
 
     let insight  = "";
     let aiTips: string[] = [];
+    let aiLimitInfo: { remaining: number; limit: number } | null = null;
 
     if (recentLogs.length > 0) {
-      const logSummary = recentLogs.slice(0, 7).map(l => {
-        const pData = l.pillars as Record<string, unknown> | null;
-        const mode  = pData?.mode as string || l.stressType;
-        return `${l.loggedAt.toISOString().split("T")[0]}: score=${l.stressScore}, type=${mode}${l.mood ? `, mood=${l.mood}` : ""}`;
-      }).join("\n");
+      // ── Admin-controlled AI quota gate — only consumed when we're
+      // actually about to call the AI (not for users with zero logs, who
+      // always get the static fallback below and never touch the AI).
+      const planType = (req.userPlan || "free").toLowerCase();
+      const limitCheck = await checkAndUseAILimit(req.userId!, "ai_stress_insight_daily", planType);
 
-      const prompt = `You are an Indian health AI assistant for the Aorane health app. Analyze this user's stress data and give personalized advice in English.
+      if (!limitCheck.allowed && !limitCheck.planRequired) {
+        // Over daily quota — fall through to the static insight below
+        // rather than hard-blocking; stress insight is a supportive
+        // feature, not a paywalled action, so degrade gracefully instead
+        // of returning an error page.
+        logger.info({ userId: req.userId }, "[Stress] AI insight quota reached — serving static fallback");
+      } else if (!limitCheck.allowed && limitCheck.planRequired) {
+        // Feature disabled entirely on this plan — also degrade gracefully
+      } else {
+        aiLimitInfo = { remaining: limitCheck.remaining, limit: limitCheck.limit };
+        const logSummary = recentLogs.slice(0, 7).map(l => {
+          const pData = l.pillars as Record<string, unknown> | null;
+          const mode  = pData?.mode as string || l.stressType;
+          return `${l.loggedAt.toISOString().split("T")[0]}: score=${l.stressScore}, type=${mode}${l.mood ? `, mood=${l.mood}` : ""}`;
+        }).join("\n");
+
+        const prompt = `You are an Indian health AI assistant for the Aorane health app. Analyze this user's stress data and give personalized advice in English.
 
 Stress logs (last 7 entries):
 ${logSummary}
@@ -359,18 +376,19 @@ Give:
 Format as JSON exactly:
 {"insight": "...", "tips": ["tip1", "tip2", "tip3"]}`;
 
-      try {
-        const raw        = await callAI("stress_ai", [{ role: "user", content: prompt }], { maxTokens: 600 });
-        const jsonMatch  = raw.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]) as { insight?: string; tips?: string[] };
-          insight  = parsed.insight || "";
-          aiTips   = parsed.tips || [];
+        try {
+          const raw        = await callAI("stress_ai", [{ role: "user", content: prompt }], { maxTokens: 600 });
+          const jsonMatch  = raw.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]) as { insight?: string; tips?: string[] };
+            insight  = parsed.insight || "";
+            aiTips   = parsed.tips || [];
+          }
+        } catch (err) {
+          // Safe to continue with the fallback insight/tips below — but log
+          // it so a persistent AI failure (bad key, quota, etc.) is visible.
+          logger.warn({ err }, "[Stress] AI insight generation failed — falling back to default insight/tips");
         }
-      } catch (err) {
-        // Safe to continue with the fallback insight/tips below — but log
-        // it so a persistent AI failure (bad key, quota, etc.) is visible.
-        logger.warn({ err }, "[Stress] AI insight generation failed — falling back to default insight/tips");
       }
     }
 
@@ -387,7 +405,7 @@ Format as JSON exactly:
       else aiTips = ["Contact a doctor or counselor today", "Avoid caffeine — drink warm water with lemon", "Practice box breathing: 4 sec in, 4 hold, 4 out, 4 hold"];
     }
 
-    res.json({ avgScore: avg, insight, tips: aiTips, logsCount: recentLogs.length, aiPowered: recentLogs.length > 0 });
+    res.json({ avgScore: avg, insight, tips: aiTips, logsCount: recentLogs.length, aiPowered: recentLogs.length > 0 && !!aiLimitInfo, aiUsage: aiLimitInfo });
   } catch {
     res.status(500).json({ error: "Failed to get insight" });
   }

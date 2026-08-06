@@ -1,9 +1,22 @@
 /**
- * AI Limiter — per-user, per-feature daily usage limits
+ * AI Limiter — per-user, per-feature daily/weekly/monthly usage limits
  *
- * Uses plan_features table for limits + ai_usage_daily for tracking.
- * Increment happens ONLY when AI is actually called (not on cache hits).
- * IST midnight reset.
+ * SINGLE SOURCE OF TRUTH for AI quota enforcement across the entire app.
+ * Uses plan_features table for admin-editable limits + ai_usage_daily for
+ * tracking. Every AI-calling route MUST go through checkAndUseAILimit()
+ * before invoking callAI() — no exceptions, no parallel/hardcoded limiters.
+ *
+ * (production-hardening pass): previously this did a SELECT to check
+ * current usage, then a SEPARATE increment call — two concurrent requests
+ * from the same user could both pass the check before either incremented,
+ * letting the limit be exceeded. Now uses the atomic
+ * try_increment_ai_usage() Postgres function (see migrate.ts) — the
+ * check-and-increment happens as one atomic UPSERT guarded by the row's
+ * UNIQUE constraint, so concurrent requests can never both succeed past
+ * the configured limit.
+ *
+ * IST midnight (or week/month) reset, based on the feature's configured
+ * `period` in plan_features.
  */
 
 import { pool } from "@workspace/db";
@@ -15,8 +28,11 @@ export type AIFeature =
   | "ai_diet_plan_daily"
   | "ai_health_coach_daily"
   | "ai_meal_swap_daily"
-  | "ai_predictions_enabled"
-  | "ai_health_prediction_weekly";
+  | "ai_meal_planner_daily"
+  | "ai_health_prediction_weekly"
+  | "ai_health_suggestions_daily"
+  | "ai_stress_insight_daily"
+  | "ai_weather_suggestions_daily";
 
 type Period = "daily" | "weekly" | "monthly";
 
@@ -95,7 +111,7 @@ function limitForPlan(row: CachedFeature, plan: string): number {
   }
 }
 
-/** Get usage count for a user+feature in the given period bucket */
+/** Get usage count for a user+feature in the given period bucket (read-only — used for display/summary only, NOT for gating) */
 async function getPeriodUsage(userId: string, feature: AIFeature, bucketDate: string): Promise<number> {
   try {
     const { rows } = await pool.query(
@@ -109,8 +125,36 @@ async function getPeriodUsage(userId: string, feature: AIFeature, bucketDate: st
   }
 }
 
-/** Increment AI usage via stored procedure */
-export async function incrementAIUsage(userId: string, feature: AIFeature, bucketDate: string): Promise<void> {
+/**
+ * Atomic check-and-increment — the ONLY correct way to gate an AI call.
+ * Calls the try_increment_ai_usage() Postgres function, which does the
+ * read-check-write as a single UPSERT so concurrent requests can't race
+ * past the limit (see migrate.ts for the function definition).
+ */
+async function tryIncrementUsage(
+  userId: string,
+  feature: AIFeature,
+  bucketDate: string,
+  limit: number,
+): Promise<{ allowed: boolean; usageCount: number }> {
+  try {
+    const { rows } = await pool.query(
+      `SELECT allowed, usage_count FROM try_increment_ai_usage($1::uuid, $2::text, $3::date, $4::int)`,
+      [userId, feature, bucketDate, limit],
+    );
+    if (!rows.length) return { allowed: false, usageCount: limit };
+    return { allowed: rows[0].allowed as boolean, usageCount: rows[0].usage_count as number };
+  } catch {
+    // DB error on the gating call itself — fail CLOSED here (unlike the
+    // "feature not configured" case below, which fails open on purpose).
+    // A DB hiccup mid-request should not silently grant free unlimited AI
+    // usage; better to ask the user to retry.
+    return { allowed: false, usageCount: 0 };
+  }
+}
+
+/** Legacy non-atomic increment — kept only for the "feature not configured, allow through" fallback path below (no limit to race against there). */
+async function incrementAIUsage(userId: string, feature: AIFeature, bucketDate: string): Promise<void> {
   try {
     await pool.query(
       `SELECT increment_ai_usage($1::uuid, $2::text, $3::date)`,
@@ -155,8 +199,14 @@ export async function checkAndUseAILimit(
 ): Promise<AILimitResult> {
   const row = await fetchFeatureRow(feature);
 
-  // Feature not configured in plan_features → allow through
+  // Feature not configured in plan_features → allow through, but log loudly.
+  // This should never happen in practice (AIFeature is a closed union and
+  // every value is seeded in migrate.ts), but if a new feature is ever added
+  // to the type without a matching plan_features row, failing open silently
+  // would mean unlimited free AI usage for everyone until someone notices.
   if (!row) {
+    // eslint-disable-next-line no-console
+    console.error(`[aiLimiter] WARNING: no plan_features row for "${feature}" — allowing UNMETERED access. Seed this feature in the Admin Panel > Plan Features immediately.`);
     await incrementAIUsage(userId, feature, periodBucket("daily"));
     return { allowed: true, remaining: 999, limit: 999, usedToday: 0 };
   }
@@ -171,20 +221,58 @@ export async function checkAndUseAILimit(
     return { allowed: false, remaining: 0, limit: 0, usedToday: 0, planRequired, period: row.period };
   }
 
-  // Unlimited
+  // Unlimited (even "unlimited" usage is still recorded for admin visibility/
+  // reporting — but never gates, so a plain non-atomic increment is fine here)
   if (limit >= 999) {
     await incrementAIUsage(userId, feature, bucketDate);
     return { allowed: true, remaining: 999, limit: 999, usedToday: 0, period: row.period };
   }
 
-  const usedToday = await getPeriodUsage(userId, feature, bucketDate);
+  // Bounded limit — atomic check-and-increment (race-condition-safe).
+  const { allowed, usageCount } = await tryIncrementUsage(userId, feature, bucketDate, limit);
 
-  // Over limit for this period
-  if (usedToday >= limit) {
-    return { allowed: false, remaining: 0, limit, usedToday, period: row.period };
+  if (!allowed) {
+    return { allowed: false, remaining: 0, limit, usedToday: usageCount, period: row.period };
   }
 
-  // Under limit — increment and allow
-  await incrementAIUsage(userId, feature, bucketDate);
-  return { allowed: true, remaining: limit - usedToday - 1, limit, usedToday, period: row.period };
+  return {
+    allowed: true,
+    remaining: Math.max(0, limit - usageCount),
+    limit,
+    usedToday: usageCount - 1, // usageCount already includes this call
+    period: row.period,
+  };
+}
+
+/**
+ * Read-only usage peek — does NOT increment. Use this for display purposes
+ * (e.g. "You've used 3/5 scans today" banners) where you must not consume
+ * a unit of quota just by showing the number.
+ */
+export async function peekAIUsage(
+  userId: string,
+  feature: AIFeature,
+  planType: string = "free",
+): Promise<AILimitResult> {
+  const row = await fetchFeatureRow(feature);
+  if (!row) return { allowed: true, remaining: 999, limit: 999, usedToday: 0 };
+
+  const limit = limitForPlan(row, planType);
+  const bucketDate = periodBucket(row.period);
+
+  if (limit === 0) {
+    return { allowed: false, remaining: 0, limit: 0, usedToday: 0, period: row.period };
+  }
+  if (limit >= 999) {
+    return { allowed: true, remaining: 999, limit: 999, usedToday: 0, period: row.period };
+  }
+
+  const usedToday = await getPeriodUsage(userId, feature, bucketDate);
+  return {
+    allowed: usedToday < limit,
+    remaining: Math.max(0, limit - usedToday),
+    limit,
+    usedToday,
+    period: row.period,
+  };
 }

@@ -6,11 +6,6 @@ import { buildNewFoodSeedSQL } from "./seed-new-foods";
 // Run once at server startup; safe to re-run multiple times
 export async function runStartupMigrations(): Promise<void> {
   const migrations: string[] = [
-    // ISSUE 4 FIX: sequential invoice numbering (GST Rule 46 compliance).
-    // Postgres sequences are safe under concurrent access — two simultaneous
-    // nextval() calls always return two different, ordered numbers, unlike
-    // Math.random() which can collide and isn't sequential.
-    `CREATE SEQUENCE IF NOT EXISTS invoice_number_seq START 1000`,
     // user_profiles missing columns
     `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS city TEXT`,
     `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS state TEXT`,
@@ -168,6 +163,14 @@ export async function runStartupMigrations(): Promise<void> {
       analyzed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
+    // (production-hardening pass): patientName/urgencyLevel/followUpRequired
+    // were already being extracted from the AI's analysis in medical.ts but
+    // were silently dropped instead of being saved — a real data-loss bug.
+    // pageCount is new, for multi-page report scan tracking.
+    `ALTER TABLE medical_reports ADD COLUMN IF NOT EXISTS patient_name TEXT`,
+    `ALTER TABLE medical_reports ADD COLUMN IF NOT EXISTS urgency_level TEXT`,
+    `ALTER TABLE medical_reports ADD COLUMN IF NOT EXISTS follow_up_required BOOLEAN NOT NULL DEFAULT false`,
+    `ALTER TABLE medical_reports ADD COLUMN IF NOT EXISTS page_count INTEGER NOT NULL DEFAULT 1`,
 
     // ── family_groups table ──────────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS family_groups (
@@ -318,7 +321,9 @@ export async function runStartupMigrations(): Promise<void> {
     // PLATFORM TABLES (Admin Panel + Push + Ads)
     // ══════════════════════════════════════════════════════
 
-    // ── push_tokens ──────────────────────────────────────
+    // ── push_tokens (canonical definition — do not redefine this table
+    //    elsewhere in this file; see the CREATE UNIQUE INDEX further down
+    //    for the ON CONFLICT fix that pairs with this table) ─────────────
     `CREATE TABLE IF NOT EXISTS push_tokens (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -661,12 +666,25 @@ export async function runStartupMigrations(): Promise<void> {
      ON CONFLICT (key) DO NOTHING`,
 
     // Seed default AI config
+    // NOTE: keys here MUST match actual callAI(feature, ...) call sites —
+    // previously this seeded 'food_scan', 'health_coach', 'report_scan',
+    // none of which any route ever calls (real keys are 'food_ai',
+    // 'health_suggestions', 'medical_ai' respectively) — those rows just
+    // sat in the DB unused while the real features fell back to the
+    // DEFAULT_AI_FEATURES runtime default in admin.ts. Fixed to seed the
+    // keys that are actually read, with "google" (Gemini) as the provider
+    // actually in use for this project.
     `INSERT INTO ai_config (feature, label, provider, model, is_enabled) VALUES
-      ('food_scan',    'Food Scan AI',       'nvidia', 'meta/llama-3.1-70b-instruct', true),
-      ('health_coach', 'Health Coach AI',    'nvidia', 'meta/llama-3.1-70b-instruct', true),
-      ('report_scan',  'Medical Report AI',  'nvidia', 'meta/llama-3.1-70b-instruct', true),
-      ('stress_ai',    'Stress Analysis AI', 'nvidia', 'meta/llama-3.1-70b-instruct', true)
+      ('food_ai',            'Food Scan AI',       'google', 'gemini-2.0-flash', true),
+      ('health_suggestions', 'Health Suggestions AI', 'google', 'gemini-2.0-flash', true),
+      ('medical_ai',         'Medical Report AI',  'google', 'gemini-2.0-flash', true),
+      ('stress_ai',          'Stress Analysis AI', 'google', 'gemini-2.0-flash', true)
      ON CONFLICT (feature) DO NOTHING`,
+
+    // Remove old orphaned ai_config rows from any existing database — these
+    // exact keys ('food_scan', 'health_coach', 'report_scan') are never
+    // read by any route; the correct keys were seeded just above.
+    `DELETE FROM ai_config WHERE feature IN ('food_scan', 'health_coach', 'report_scan')`,
 
     // Seed supported Indian languages
     `INSERT INTO languages (code, name_en, name_local, direction, is_active, completion_pct) VALUES
@@ -691,12 +709,6 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS next_renewal_at TIMESTAMPTZ`,
 
     `ALTER TABLE payments ADD COLUMN IF NOT EXISTS razorpay_subscription_id TEXT`,
-    // ISSUE 5 FIX: individual-app payments table gets the same GST/invoice
-    // fields org_payments already had, so App purchases can carry a proper
-    // GST breakdown and a real persisted invoice number.
-    `ALTER TABLE payments ADD COLUMN IF NOT EXISTS base_amount NUMERIC`,
-    `ALTER TABLE payments ADD COLUMN IF NOT EXISTS gst_amount NUMERIC`,
-    `ALTER TABLE payments ADD COLUMN IF NOT EXISTS invoice_number TEXT`,
 
     `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS razorpay_subscription_id TEXT`,
     `ALTER TABLE org_payments ADD COLUMN IF NOT EXISTS payment_type TEXT NOT NULL DEFAULT 'one_time'`,
@@ -848,16 +860,29 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS ai_generated BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE food_items ADD COLUMN IF NOT EXISTS ai_source_cache_id UUID`,
 
-    // ── push_tokens: Expo push notification tokens per user ───────────────────
-    `CREATE TABLE IF NOT EXISTS push_tokens (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID NOT NULL,
-      token TEXT NOT NULL,
-      platform TEXT NOT NULL DEFAULT 'unknown',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      UNIQUE (user_id, token)
-    )`,
+    // ── push_tokens ──────────────────────────────────────────────────────────
+    // NOTE: This used to be a SECOND `CREATE TABLE IF NOT EXISTS push_tokens`
+    // (duplicate of the one defined earlier in this file, near line ~317).
+    // Because that earlier CREATE TABLE runs first and does NOT include a
+    // UNIQUE(user_id, token) constraint, the table already exists by the
+    // time this statement runs — so `IF NOT EXISTS` causes it to be skipped
+    // entirely, and the UNIQUE constraint from this block was NEVER actually
+    // applied on any real database that ran migrations in order.
+    //
+    // This matters because `POST /users/push-token` (routes/modules/support.ts)
+    // does:
+    //   INSERT INTO push_tokens (...) VALUES (...) 
+    //   ON CONFLICT (user_id, token) DO UPDATE ...
+    // `ON CONFLICT` requires a matching UNIQUE constraint OR unique index to
+    // exist — without one, every push-token save throws a Postgres error
+    // ("there is no unique or exclusion constraint matching the ON CONFLICT
+    // specification"), meaning push tokens may never be getting saved at all.
+    //
+    // FIX: a `CREATE UNIQUE INDEX IF NOT EXISTS` is idempotent and works
+    // regardless of which CREATE TABLE statement actually created the table
+    // on a given environment — it will correctly add the missing unique
+    // index on existing databases, and be a safe no-op if it already exists.
+    `CREATE UNIQUE INDEX IF NOT EXISTS push_tokens_user_token_uniq ON push_tokens(user_id, token)`,
     `CREATE INDEX IF NOT EXISTS idx_push_tokens_user ON push_tokens(user_id)`,
 
     // ── support_tickets: user complaints / help requests → admin panel ────────
@@ -1044,31 +1069,13 @@ export async function runStartupMigrations(): Promise<void> {
     // ── plan_pricing: add org_seat plans (org_max, org_pro) used by Business Portal billing ──
     `INSERT INTO plan_pricing (plan_key, display_name, type, monthly_price, yearly_price, max_seats, features, badge_color, sort_order, is_active)
      VALUES
-       ('org_max', 'Max', 'org_seat', 249, 2532, null,
-        '["Everything in Pro","Advanced health analytics & charts","Health risk distribution alerts","Weekly & monthly team reports","Priority support","Custom announcements to employees"]',
-        '#0077B6', 20, true),
-       ('org_pro', 'Pro', 'org_seat', 199, 2028, null,
+       ('org_max', 'Max', 'org_seat', 199, null, null,
         '["Basic aggregate health dashboard","Enrollment code management","Employee search","GST-ready invoice","Email support"]',
+        '#0077B6', 20, true),
+       ('org_pro', 'Pro', 'org_seat', 249, null, null,
+        '["Everything in Max","Advanced health analytics & charts","Health risk distribution alerts","Weekly & monthly team reports","Priority support","Custom announcements to employees"]',
         '#7C3AED', 21, true)
      ON CONFLICT (plan_key) DO NOTHING`,
-
-    // CRITICAL FIX: the INSERT above originally seeded org_max/org_pro with
-    // swapped monthly_price, yearly_price, AND features (org_max=₹199/yr₹2028
-    // with basic features, org_pro=₹249/yr₹2532 with advanced features —
-    // backwards). Because the INSERT uses ON CONFLICT DO NOTHING, any row
-    // already created by the old seed would never self-correct on redeploy.
-    // These explicit UPDATEs force-fix rows that were already seeded with
-    // the old, wrong values — including yearly_price, which a previous fix
-    // pass corrected monthly_price for but left yearly_price mismatched
-    // (org_pro's yearly ended up costing MORE per month than its monthly
-    // price — an inverted, nonsensical "discount"). Safe to run every
-    // deploy — becomes a no-op once values are already correct.
-    `UPDATE plan_pricing SET monthly_price = '249', yearly_price = '2532',
-       features = '["Everything in Pro","Advanced health analytics & charts","Health risk distribution alerts","Weekly & monthly team reports","Priority support","Custom announcements to employees"]'
-     WHERE plan_key = 'org_max' AND (monthly_price != '249' OR yearly_price != '2532')`,
-    `UPDATE plan_pricing SET monthly_price = '199', yearly_price = '2028',
-       features = '["Basic aggregate health dashboard","Enrollment code management","Employee search","GST-ready invoice","Email support"]'
-     WHERE plan_key = 'org_pro' AND (monthly_price != '199' OR yearly_price != '2028')`,
 
     // ── daily_activity_scores: task-based active percentage per day ────────────
     `CREATE TABLE IF NOT EXISTS daily_activity_scores (
@@ -1120,9 +1127,16 @@ export async function runStartupMigrations(): Promise<void> {
       ('ai_diet_plan_daily',          '0',     '1',     '1',     '1',     'Weekly AI diet chart',                   'weekly'),
       ('ai_health_coach_daily',       '0',     '1',     '1',     '1',     'AI health coach per week',               'weekly'),
       ('ai_health_prediction_weekly', '0',     '1',     '1',     '1',     'AI health prediction per week',          'weekly'),
+      ('ai_health_suggestions_daily', '3',     '999',   '10',    '999',   'AI daily health suggestions refresh',    'daily'),
       ('ai_meal_swap_daily',          '0',     '20',    '20',    '20',    'AI meal swap suggestions per day',       'daily'),
-      ('ai_predictions_enabled',      'false', 'true',  'true',  'true',  'Advanced AI health predictions',         'daily'),
+      ('ai_meal_planner_daily',       '0',     '5',     '5',     '5',     'AI ad-hoc meal/diet plan generation per day', 'daily'),
+      ('ai_weather_suggestions_daily','1',     '8',     '4',     '8',     'AI weather-based food suggestions per day (also 6h cached)', 'daily'),
+      // NOTE: 'ai_predictions_enabled' row removed — verified dead, never
+      // read by any route. The real plan-eligibility gate for AI health
+      // predictions is requireFeature("health_prediction") (feature_flags
+      // table), which IS correctly wired in intelligence.ts.
       ('ai_stress_monitoring',        'false', 'true',  'true',  'true',  'Stress & Burnout AI monitoring',         'daily'),
+      ('ai_stress_insight_daily',     '0',     '10',    '5',     '10',    'AI-generated personalized stress insight per day', 'daily'),
       ('health_history_days',         '7',     '-1',    '-1',    '-1',    'Health history days, -1 = unlimited',    'daily'),
       ('blood_sugar_bp_tracking',     'false', 'true',  'true',  'true',  'Blood sugar and BP tracking',            'daily'),
       ('sleep_stage_analysis',        'false', 'true',  'true',  'true',  'Sleep stage analysis',                   'daily'),
@@ -1145,16 +1159,57 @@ export async function runStartupMigrations(): Promise<void> {
       updated_at   = now()`,
 
     // ══════════════════════════════════════════════════════════════════════════
-    // CLEANUP: subscription_plans + b2b_plan_config were a parallel/duplicate
-    // pricing catalogue that ended up disconnected from the app — no route,
-    // admin panel, landing page, business portal, or mobile app ever reads
-    // from them. Real pricing (used by checkout, admin panel, and all client
-    // apps) lives entirely in `plan_pricing`. Dropped here since these tables
-    // held stale/incorrect prices and risked confusing future changes.
-    // Safe to drop: audited on 2026-08-01, zero live users, zero callers.
+    // SUBSCRIPTION_PLANS — canonical plan catalogue (6 plans)
     // ══════════════════════════════════════════════════════════════════════════
-    `DROP TABLE IF EXISTS subscription_plans CASCADE`,
-    `DROP TABLE IF EXISTS b2b_plan_config CASCADE`,
+    `CREATE TABLE IF NOT EXISTS subscription_plans (
+      plan_id       TEXT PRIMARY KEY,
+      plan_name     TEXT NOT NULL,
+      plan_type     TEXT NOT NULL DEFAULT 'individual',
+      price_monthly INTEGER NOT NULL DEFAULT 0,
+      price_yearly  INTEGER NOT NULL DEFAULT 0,
+      currency      TEXT NOT NULL DEFAULT 'INR',
+      is_active     BOOLEAN NOT NULL DEFAULT true,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at    TIMESTAMPTZ DEFAULT now(),
+      updated_at    TIMESTAMPTZ DEFAULT now()
+    )`,
+
+    `INSERT INTO subscription_plans (plan_id, plan_name, plan_type, price_monthly, price_yearly, currency, is_active, display_order) VALUES
+      ('free',        'Free',    'individual', 0,   0,    'INR', true, 1),
+      ('max',         'Max',     'individual', 199, 1990, 'INR', true, 2),
+      ('pro',         'Pro',     'individual', 249, 2490, 'INR', true, 3),
+      ('family',      'Family',  'individual', 499, 4990, 'INR', true, 4),
+      ('b2b_starter', 'Starter', 'business',   199, 0,    'INR', true, 5),
+      ('b2b_growth',  'Growth',  'business',   249, 0,    'INR', true, 6)
+    ON CONFLICT (plan_id) DO UPDATE SET
+      plan_name     = EXCLUDED.plan_name,
+      price_monthly = EXCLUDED.price_monthly,
+      price_yearly  = EXCLUDED.price_yearly,
+      is_active     = EXCLUDED.is_active,
+      updated_at    = now()`,
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // B2B_PLAN_CONFIG — business plan seat rules
+    // ══════════════════════════════════════════════════════════════════════════
+    `CREATE TABLE IF NOT EXISTS b2b_plan_config (
+      plan_id            TEXT PRIMARY KEY,
+      min_seats          INTEGER NOT NULL,
+      max_seats          INTEGER,
+      crm_included       BOOLEAN DEFAULT false,
+      crm_monthly_charge INTEGER DEFAULT 0,
+      base_features      TEXT,
+      created_at         TIMESTAMPTZ DEFAULT now()
+    )`,
+
+    `INSERT INTO b2b_plan_config (plan_id, min_seats, max_seats, crm_included, crm_monthly_charge, base_features) VALUES
+      ('b2b_starter', 10, 50,  false, 499, 'max'),
+      ('b2b_growth',  20, 250, true,  0,   'pro')
+    ON CONFLICT (plan_id) DO UPDATE SET
+      min_seats          = EXCLUDED.min_seats,
+      max_seats          = EXCLUDED.max_seats,
+      crm_included       = EXCLUDED.crm_included,
+      crm_monthly_charge = EXCLUDED.crm_monthly_charge,
+      base_features      = EXCLUDED.base_features`,
 
     // ══════════════════════════════════════════════════════════════════════════
     // AI_USAGE_DAILY — per-user per-feature daily usage counter + RLS
@@ -1187,6 +1242,49 @@ export async function runStartupMigrations(): Promise<void> {
     $$ LANGUAGE plpgsql`,
 
     // ══════════════════════════════════════════════════════════════════════════
+    // TRY_INCREMENT_AI_USAGE — atomic CHECK-AND-INCREMENT in one round trip.
+    //
+    // BUG FIXED (AI system production-hardening pass): the old flow in
+    // aiLimiter.ts did a SELECT (check usage) followed by a SEPARATE
+    // increment_ai_usage() call. Two concurrent requests from the same user
+    // (double-tap, two devices, retry-on-timeout) could both read the same
+    // "under limit" count before either one's increment landed, letting the
+    // user exceed their configured limit by N (N = concurrency). This
+    // function does the check AND the increment as a single atomic
+    // UPSERT — the row's UNIQUE(user_id, feature_name, usage_date)
+    // constraint serializes concurrent callers, and the WHERE guard on the
+    // UPDATE ensures the count can never be pushed past p_limit.
+    // ══════════════════════════════════════════════════════════════════════════
+    `CREATE OR REPLACE FUNCTION try_increment_ai_usage(
+      p_user_id UUID,
+      p_feature  TEXT,
+      p_date     DATE,
+      p_limit    INTEGER
+    ) RETURNS TABLE(allowed BOOLEAN, usage_count INTEGER) AS $$
+    DECLARE
+      v_count INTEGER;
+    BEGIN
+      INSERT INTO ai_usage_daily (user_id, feature_name, usage_date, usage_count)
+      VALUES (p_user_id, p_feature, p_date, 1)
+      ON CONFLICT (user_id, feature_name, usage_date)
+      DO UPDATE SET usage_count = ai_usage_daily.usage_count + 1
+        WHERE ai_usage_daily.usage_count < p_limit
+      RETURNING ai_usage_daily.usage_count INTO v_count;
+
+      IF v_count IS NULL THEN
+        -- Either the row already existed AND was already at/over p_limit
+        -- (the WHERE guard skipped the update, so RETURNING produced no
+        -- row) — fetch the current count to report back accurately.
+        SELECT usage_count INTO v_count FROM ai_usage_daily
+          WHERE user_id = p_user_id AND feature_name = p_feature AND usage_date = p_date;
+        RETURN QUERY SELECT false, COALESCE(v_count, 0);
+      ELSE
+        RETURN QUERY SELECT true, v_count;
+      END IF;
+    END;
+    $$ LANGUAGE plpgsql`,
+
+    // ══════════════════════════════════════════════════════════════════════════
     // ORGANIZATIONS — B2B config columns (admin panel FIX 3)
     // ══════════════════════════════════════════════════════════════════════════
     `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS b2b_plan TEXT DEFAULT 'starter'`,
@@ -1197,9 +1295,8 @@ export async function runStartupMigrations(): Promise<void> {
     // ORG SEAT PLANS — Set yearly prices (₹169/seat/month × 12 = ₹2028, ₹211/seat/month × 12 = ₹2532)
     // Fix: yearly_price is NUMERIC — cannot compare to '' (empty string), only IS NULL
     // ══════════════════════════════════════════════════════════════════════════
-    // (old NULL-only yearly_price backfill removed — superseded by the
-    // CRITICAL FIX block above, which also had the correct swapped values
-    // and runs unconditionally so it can fix already-wrong data too)
+    `UPDATE plan_pricing SET yearly_price = '2028' WHERE plan_key = 'org_max' AND yearly_price IS NULL`,
+    `UPDATE plan_pricing SET yearly_price = '2532' WHERE plan_key = 'org_pro' AND yearly_price IS NULL`,
 
     // ══════════════════════════════════════════════════════════════════════════
     // SECURITY FIX C4: organizations.contact_email unique constraint

@@ -4,7 +4,6 @@ import { eq } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { aiRateLimit, planAiRateLimit } from "../../middlewares/ai-rate-limit";
 import { requireFeature } from "../../middlewares/feature-check";
 import { callAI } from "../../lib/ai";
 import { checkAndUseAILimit } from "../../lib/aiLimiter";
@@ -51,14 +50,14 @@ router.get("/test-ai-connection", requireAdmin, async (req, res) => {
 });
 
 // ── AI Diet Plan ─────────────────────────────────────────────────────────────
-router.post("/ai/diet-plan", requireAuth, requireFeature("meal_planner"), aiRateLimit("meal_planner", 5), async (req: AuthRequest, res) => {
+router.post("/ai/diet-plan", requireAuth, requireFeature("meal_planner"), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const planType = req.userPlan || "free";
 
-    const limitCheck = await checkAndUseAILimit(userId, "ai_diet_plan_daily", planType);
+    const limitCheck = await checkAndUseAILimit(userId, "ai_meal_planner_daily", planType);
     if (!limitCheck.allowed) {
-      sendLimitBlocked(res, "ai_diet_plan_daily", limitCheck.usedToday, limitCheck.limit, planType, limitCheck.planRequired);
+      sendLimitBlocked(res, "ai_meal_planner_daily", limitCheck.usedToday, limitCheck.limit, planType, limitCheck.planRequired);
       return;
     }
 
@@ -160,7 +159,7 @@ Return ONLY valid JSON (no markdown, no extra text):
 });
 
 // ── AI Health Tip ─────────────────────────────────────────────────────────────
-router.post("/ai/health-tip", requireAuth, requireFeature("health_suggestions"), aiRateLimit("health_tip", 10), async (req: AuthRequest, res) => {
+router.post("/ai/health-tip", requireAuth, requireFeature("health_suggestions"), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const planType = req.userPlan || "free";
@@ -200,7 +199,7 @@ Return ONLY valid JSON:
 });
 
 // ── AI Meal Swap ──────────────────────────────────────────────────────────────
-router.post("/ai/meal-swap", requireAuth, requireFeature("meal_planner"), aiRateLimit("meal_swap", 20), async (req: AuthRequest, res) => {
+router.post("/ai/meal-swap", requireAuth, requireFeature("meal_planner"), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const planType = req.userPlan || "free";
@@ -243,7 +242,7 @@ Return ONLY valid JSON:
 });
 
 // ── AI Smart Scan (vision — food / medical report / medicine) ─────────────────
-router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), aiRateLimit("smart_scan", 10), async (req: AuthRequest, res) => {
+router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const planType = req.userPlan || "free";

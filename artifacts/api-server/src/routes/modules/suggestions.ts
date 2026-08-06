@@ -16,7 +16,7 @@ import {
 import { eq, and, gte, lte } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { aiRateLimit } from "../../middlewares/ai-rate-limit";
+import { checkAndUseAILimit } from "../../lib/aiLimiter";
 import { callAI } from "../../lib/ai";
 
 const router = Router();
@@ -233,12 +233,18 @@ Return ONLY valid JSON (no markdown):
 }
 
 // ── GET /suggestions/daily — Main endpoint ────────────────────────────────────
-router.get("/suggestions/daily", requireAuth, aiRateLimit("daily_suggestions", 3), async (req: AuthRequest, res) => {
+router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
+    const planType = (req.userPlan || "free").toLowerCase();
     const today = new Date().toISOString().slice(0, 10);
 
     // 1. Check cache — if today's suggestions exist, return them
+    //    (BUG FIX: the AI-usage gate below runs AFTER this cache check, so
+    //    repeatedly viewing already-cached suggestions never consumes quota
+    //    — only an actual AI generation does. Previously a hardcoded,
+    //    non-admin-controlled aiRateLimit() ran BEFORE this check, so even
+    //    pure cache hits burned through the daily allowance.)
     const [cached] = await db.select()
       .from(dailySuggestionsTable)
       .where(and(eq(dailySuggestionsTable.userId, userId), eq(dailySuggestionsTable.date, today)))
@@ -251,6 +257,21 @@ router.get("/suggestions/daily", requireAuth, aiRateLimit("daily_suggestions", 3
         generatedAt: cached.generatedAt,
         date: today,
       }); return;
+    }
+
+    // ── Admin-controlled AI quota gate (only reached on a real cache miss) ──
+    const limitCheck = await checkAndUseAILimit(userId, "ai_health_suggestions_daily", planType);
+    if (!limitCheck.allowed) {
+      res.status(429).json({
+        error: `You've reached today's suggestions limit. Limit: ${limitCheck.limit}/day on ${planType.toUpperCase()} plan.`,
+        feature: "ai_health_suggestions_daily",
+        limitPerDay: limitCheck.limit,
+        usedToday: limitCheck.usedToday,
+        currentPlan: planType,
+        resetsAt: "midnight IST",
+        upgradeSuggested: planType === "free",
+      });
+      return;
     }
 
     // 2. Load user data
@@ -369,7 +390,7 @@ router.get("/suggestions/daily", requireAuth, aiRateLimit("daily_suggestions", 3
 });
 
 // ── POST /suggestions/refresh — Force new AI generation ──────────────────────
-router.post("/suggestions/refresh", requireAuth, aiRateLimit("daily_suggestions", 3), async (req: AuthRequest, res) => {
+router.post("/suggestions/refresh", requireAuth, async (req: AuthRequest, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10);
     await db.delete(dailySuggestionsTable).where(

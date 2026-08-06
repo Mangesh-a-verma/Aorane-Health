@@ -419,19 +419,22 @@ export const api = {
   getMedicalReports: () =>
     request<{ reports: Array<Record<string, unknown>> }>("GET", "/medical/reports"),
 
-  scanMedicalReport: (data: { imageBase64: string; reportType?: string; mimeType?: string }) =>
+  scanMedicalReport: (data: { imageBase64?: string; images?: Array<{ data: string; mimeType?: string }>; reportType?: string; mimeType?: string }) =>
     request<{
       report: Record<string, unknown>;
       analysis: {
         reportType: string;
         reportDate?: string;
         labName?: string;
+        patientName?: string;
+        pagesAnalyzed?: number;
         findings: Array<{ testName: string; value: string; numericValue?: number; unit?: string; normalRange: string; status: string; interpretation: string }>;
         criticalValues?: Array<{ testName: string; value: string; urgency: string }>;
         overallAssessment?: string;
         aiAdvice?: string;
         dietRecommendations?: string[];
         urgencyLevel?: string;
+        followUpRequired?: boolean;
       };
     }>("POST", "/medical/scan", data),
 

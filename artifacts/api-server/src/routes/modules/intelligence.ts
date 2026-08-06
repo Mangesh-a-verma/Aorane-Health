@@ -29,7 +29,6 @@ import type { AuthRequest } from "../../middlewares/user-auth";
 import { callAI } from "../../lib/ai";
 import { requireFeature } from "../../middlewares/feature-check";
 import { incrementUsage } from "../../middlewares/plan-limits";
-import { checkAndUseAILimit } from "../../lib/aiLimiter";
 import { getWeatherContext } from "../../lib/weather";
 import { calculateCaloriesBurned, getMet, MET_VALUES } from "../../lib/met";
 

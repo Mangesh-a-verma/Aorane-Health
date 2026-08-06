@@ -27,8 +27,9 @@ type Schedule = {
 type Finding = { testName: string; value: string; normalRange: string; status: string; interpretation?: string };
 type CriticalValue = { testName: string; value: string; urgency?: string };
 type ScanAnalysis = {
-  reportType?: string; reportDate?: string; labName?: string;
-  overallAssessment?: string; urgencyLevel?: string;
+  reportType?: string; reportDate?: string; labName?: string; patientName?: string;
+  overallAssessment?: string; urgencyLevel?: string; followUpRequired?: boolean;
+  pagesAnalyzed?: number;
   criticalValues?: CriticalValue[]; findings?: Finding[];
   aiAdvice?: string; dietRecommendations?: string[];
 };
@@ -65,8 +66,8 @@ export default function MedicineScreen() {
   const [notifPermission, setNotifPermission] = useState(false);
 
   const [showScanModal, setShowScanModal] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [selectedScanImage, setSelectedScanImage] = useState<string | null>(null);
+  const MAX_SCAN_PAGES = 5;
+  const [scanPages, setScanPages] = useState<{ uri: string; base64: string; mimeType: string }[]>([]);
   const [isScanning,    setIsScanning]    = useState(false);
   const [scanResult,    setScanResult]    = useState<ScanAnalysis | null>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -199,6 +200,10 @@ export default function MedicineScreen() {
   }, []));
 
   const pickImage = async (fromCamera: boolean) => {
+    if (scanPages.length >= MAX_SCAN_PAGES) {
+      Alert.alert("Limit reached", `You can scan up to ${MAX_SCAN_PAGES} pages per report.`);
+      return;
+    }
     try {
       let result;
       if (fromCamera) {
@@ -210,22 +215,35 @@ export default function MedicineScreen() {
         if (!perm.granted) { Alert.alert("Permission", "Gallery permission is required"); return; }
         result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: false, quality: 0.5, base64: true });
       }
-      if (!result.canceled && result.assets[0]) {
-        setSelectedImage(result.assets[0].uri); setSelectedScanImage(result.assets[0].uri); setScanResult(null);
-        if (result.assets[0].base64) await analyseReport(result.assets[0].base64, result.assets[0].mimeType || "image/jpeg");
+      if (!result.canceled && result.assets[0]?.base64) {
+        setScanResult(null);
+        setScanPages((prev) => [
+          ...prev,
+          { uri: result.assets[0].uri, base64: result.assets[0].base64!, mimeType: result.assets[0].mimeType || "image/jpeg" },
+        ]);
       }
     } catch (err) { Alert.alert("Error", (err instanceof Error ? err.message : "Could not select image. Please try again.")); }
   };
 
-  const analyseReport = async (base64: string, mimeType: string) => {
+  const removeScanPage = (index: number) => {
+    setScanPages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const analyseReport = async () => {
+    if (scanPages.length === 0) return;
     setIsScanning(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const res = await api.scanMedicalReport({ imageBase64: base64, mimeType });
+      // Multi-page: report ek hi page ka nahi hota, kabhi 2-3 pages hote hain
+      // (blood test, lipid profile, etc.) — sab pages ek saath bhejte hain
+      // taaki AI poori report ko combined document ki tarah analyze kare.
+      const res = await api.scanMedicalReport({
+        images: scanPages.map((p) => ({ data: p.base64, mimeType: p.mimeType })),
+      });
       setScanResult(res.analysis);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err) { Alert.alert("AI Error", (err instanceof Error ? err.message : "Report analysis failed.")); }
-    setIsScanning(false); setSelectedScanImage(null);
+    setIsScanning(false);
   };
 
   const activeCount = schedules.filter((s) => s.isActive).length;
@@ -282,7 +300,7 @@ export default function MedicineScreen() {
 
       {/* ── AI Report Scanner Banner ── */}
       <TouchableOpacity
-        onPress={() => { setScanResult(null); setSelectedImage(null); setShowScanModal(true); }}
+        onPress={() => { setScanResult(null); setScanPages([]); setShowScanModal(true); }}
         activeOpacity={0.85}
         style={{ marginHorizontal: 16, marginBottom: 12 }}
       >
@@ -354,20 +372,20 @@ export default function MedicineScreen() {
       {/* ════════════════════════════════════════════════ */}
       {/* Medical Report Scanner Modal                    */}
       {/* ════════════════════════════════════════════════ */}
-      <Modal visible={showScanModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowScanModal(false); setSelectedImage(null); setScanResult(null); }}>
+      <Modal visible={showScanModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowScanModal(false); setScanPages([]); setScanResult(null); }}>
         <View style={s.modalRoot}>
           <View style={s.modalHeader}>
             <View>
               <Text style={s.modalTitle}>Medical Report Scan 🔬</Text>
               <Text style={s.modalSub}>AI instant analysis</Text>
             </View>
-            <TouchableOpacity onPress={() => { setShowScanModal(false); setSelectedImage(null); setScanResult(null); }} style={s.closeBtn}>
+            <TouchableOpacity onPress={() => { setShowScanModal(false); setScanPages([]); setScanResult(null); }} style={s.closeBtn}>
               <X size={20} color={DS.color.text} strokeWidth={2} />
             </TouchableOpacity>
           </View>
 
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
-            {!selectedImage && !isScanning && (
+            {scanPages.length === 0 && !isScanning && !scanResult && (
               <>
                 <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
                   <TouchableOpacity onPress={() => pickImage(true)} activeOpacity={0.85} style={{ flex: 1 }}>
@@ -387,7 +405,7 @@ export default function MedicineScreen() {
                 </View>
                 <View style={s.tipsCard}>
                   <Text style={s.tipsTitle}>For best results:</Text>
-                  {["Report should be clear and readable", "Entire report must be visible", "Take photo in good lighting", "Works for blood test, thyroid, lipid panel and more"].map((tip, i) => (
+                  {["Report should be clear and readable", "Entire report must be visible", "Take photo in good lighting", "Report ke 2-3 pages hain? Sab pages add kar sakte hain", "Works for blood test, thyroid, lipid panel and more"].map((tip, i) => (
                     <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 }}>
                       <LinearGradient colors={[PUR, P]} style={{ width: 6, height: 6, borderRadius: 3 }} />
                       <Text style={s.tipText}>{tip}</Text>
@@ -397,15 +415,46 @@ export default function MedicineScreen() {
               </>
             )}
 
-            {selectedImage && (
-              <View style={{ borderRadius: 16, overflow: "hidden", marginBottom: 16 }}>
-                <Image source={{ uri: selectedImage }} style={{ width: "100%", height: 220 }} resizeMode="contain" />
-                {!isScanning && !scanResult && (
-                  <TouchableOpacity onPress={() => { setSelectedImage(null); setScanResult(null); }} style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 12, justifyContent: "center", backgroundColor: DS.color.bgSoft }}>
-                    <Ionicons name="refresh-outline" size={16} color={DS.color.text} />
-                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: DS.color.text }}>Try again</Text>
-                  </TouchableOpacity>
-                )}
+            {/* Multi-page thumbnail strip — shown once at least 1 page is captured and before analysis starts */}
+            {scanPages.length > 0 && !isScanning && !scanResult && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={[s.tipsTitle, { marginBottom: 10 }]}>
+                  {scanPages.length} page{scanPages.length > 1 ? "s" : ""} added {scanPages.length > 1 ? "— will be analyzed as one report" : ""}
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 4 }}>
+                  {scanPages.map((page, i) => (
+                    <View key={i} style={{ position: "relative" }}>
+                      <Image source={{ uri: page.uri }} style={{ width: 90, height: 120, borderRadius: 12 }} resizeMode="cover" />
+                      <View style={{ position: "absolute", top: 4, left: 4, backgroundColor: "rgba(0,0,0,0.55)", borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <Text style={{ color: "#FFF", fontSize: 10, fontFamily: "Inter_600SemiBold" }}>Page {i + 1}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => removeScanPage(i)}
+                        style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#EF4444", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}
+                      >
+                        <X size={12} color="#FFF" strokeWidth={3} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  {scanPages.length < MAX_SCAN_PAGES && (
+                    <TouchableOpacity
+                      onPress={() => pickImage(false)}
+                      style={{ width: 90, height: 120, borderRadius: 12, borderWidth: 1.5, borderColor: DS.color.border, borderStyle: "dashed", alignItems: "center", justifyContent: "center", gap: 4 }}
+                    >
+                      <Ionicons name="add" size={22} color={DS.color.muted} />
+                      <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: DS.color.muted }}>Add page</Text>
+                    </TouchableOpacity>
+                  )}
+                </ScrollView>
+
+                <TouchableOpacity onPress={analyseReport} activeOpacity={0.85} style={{ marginTop: 16 }}>
+                  <LinearGradient colors={[PUR, P]} style={{ borderRadius: 14, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}>
+                    <ScanLine size={18} color="#FFF" strokeWidth={2} />
+                    <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 15 }}>
+                      Analyze Report{scanPages.length > 1 ? ` (${scanPages.length} pages)` : ""}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -414,7 +463,9 @@ export default function MedicineScreen() {
                 <View style={[s.medIcon, { width: 70, height: 70, borderRadius: 35, backgroundColor: DS.color.purpleSoft }]}>
                   <ScanLine size={32} color={PUR} strokeWidth={2} />
                 </View>
-                <Text style={[s.tipsTitle, { textAlign: "center", marginBottom: 8 }]}>AI is analysing your report...</Text>
+                <Text style={[s.tipsTitle, { textAlign: "center", marginBottom: 8 }]}>
+                  AI is analysing your {scanPages.length > 1 ? `${scanPages.length}-page ` : ""}report...
+                </Text>
                 <ActivityIndicator color={PUR} size="large" />
                 <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: DS.color.muted, textAlign: "center", marginTop: 8 }}>Checking values against normal ranges...</Text>
               </View>
@@ -519,7 +570,7 @@ export default function MedicineScreen() {
                 </TouchableOpacity>
 
                 {/* Retry */}
-                <TouchableOpacity onPress={() => { setSelectedImage(null); setScanResult(null); }} style={s.retryBtn}>
+                <TouchableOpacity onPress={() => { setScanPages([]); setScanResult(null); }} style={s.retryBtn}>
                   <Camera size={18} color={DS.color.muted} strokeWidth={2} />
                   <Text style={s.retryText}>Scan another report</Text>
                 </TouchableOpacity>

@@ -4,7 +4,6 @@ import { db, foodLogsTable, foodItemsTable, foodScanCacheTable, userProfilesTabl
 import { eq, and, gte, lte, ilike, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { aiRateLimit } from "../../middlewares/ai-rate-limit";
 import { checkAndUseAILimit } from "../../lib/aiLimiter";
 import { callAI } from "../../lib/ai";
 import { getWeatherContext } from "../../lib/weather";
@@ -267,7 +266,7 @@ router.get("/food/favorites", requireAuth, async (req: AuthRequest, res) => {
 
 // ── AI Food Scan — 4-level lookup: History → DB → AI-Cache → Gemini AI ───────
 // This is the core of AI cost reduction: personal history is checked FIRST
-router.post("/food/scan", requireAuth, aiRateLimit("food_scan", 20), async (req: AuthRequest, res) => {
+router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { foodName, imageBase64, mimeType } = req.body as { foodName?: string; imageBase64?: string; mimeType?: string };
     const searchTerm = foodName?.toLowerCase().trim();
@@ -467,10 +466,13 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
         };
       }
     } else if (imageBase64) {
-      // Image-based food scan — Gemini only (LLaMA does not support vision)
-      const geminiKey = process.env["GOOGLE_GEMINI_API_KEY"];
-      if (!geminiKey) { res.status(503).json({ error: "Image AI service not configured" }); return; }
-
+      // Image-based food scan — routed through the standard callAI()
+      // abstraction (feature key "food_ai", same as the text-search path
+      // above) so Admin Panel > AI Config actually controls provider/model
+      // for this too. Previously this made a hardcoded raw fetch() straight
+      // to Gemini, completely bypassing admin config, with its own
+      // duplicate retry loop (now redundant — callAI's google provider
+      // already retries on 429/5xx with backoff, see lib/ai.ts).
       const promptText = `You are a certified Indian dietitian and nutrition expert. Carefully look at this food image and identify what food or meal is shown. Visually estimate the serving size based on the image, and provide highly accurate macro-nutrients (Calories, Protein, Carbs, Fat) for that specific estimated serving size.
 
 Return ONLY a valid JSON object (no markdown, no explanation, no extra text) with exactly these fields:
@@ -503,40 +505,24 @@ Return ONLY a valid JSON object (no markdown, no explanation, no extra text) wit
 
 All numeric values must be numbers (not strings). dietaryTags must be an array. If unsure about a value, provide a reasonable estimate — never return null or omit a field.`;
 
-      const geminiBody = {
-        contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: mimeType || "image/jpeg", data: imageBase64 } }] }],
-        generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
-      };
-
-      let geminiRes: globalThis.Response | null = null;
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(geminiBody) }
+      let jsonStr: string;
+      try {
+        jsonStr = await callAI(
+          "food_ai",
+          [{ role: "user", content: promptText, media: { mimeType: mimeType || "image/jpeg", data: imageBase64 } }],
+          { maxTokens: 1200, temperature: 0.2 },
         );
-        if (geminiRes.status === 429 && attempt < 3) {
-          await new Promise((r: any) => setTimeout(r, attempt * 2000));
-          continue;
-        }
-        break;
+      } catch (aiErr) {
+        req.log.error({ err: aiErr }, "[FoodScan] AI photo analysis failed");
+        res.status(502).json({ error: `AI photo analysis failed: ${aiErr instanceof Error ? aiErr.message : "Unknown error"}. Please try again or enter manually.` });
+        return;
       }
 
-      if (!geminiRes || !geminiRes.ok) {
-        const errText = await geminiRes?.text().catch(() => "");
-        req.log.error({ status: geminiRes?.status, body: errText?.slice(0, 300) }, "Gemini food scan error");
-        res.status(502).json({ error: `AI API Error: Failed to analyze image. Details: ${errText ? errText.substring(0, 100) : "Timeout or unknown error"}` }); return;
-      }
-
-      const geminiData = await geminiRes.json() as { candidates?: Array<{ content: { parts: Array<{ text: string }> } }> };
-      const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      if (!text) {
-        req.log.warn({ geminiData }, "Gemini food scan: empty response");
-        res.status(502).json({ error: "AI API Error: Could not parse AI response or response was empty." }); return;
-      }
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        req.log.warn({ text: text.slice(0, 300) }, "Gemini food scan: no JSON in response");
-        res.status(502).json({ error: "AI API Error: Could not parse AI response or response was empty." }); return;
+        req.log.warn({ text: jsonStr.slice(0, 300) }, "[FoodScan] AI photo analysis: no JSON in response");
+        res.status(502).json({ error: "Could not parse AI response. Please try again or enter the food manually." });
+        return;
       }
       result = JSON.parse(jsonMatch[0]);
     } else {
@@ -737,7 +723,7 @@ router.get("/food/monthly-nutrition", requireAuth, async (req: AuthRequest, res)
 });
 
 // ── Weather-based Food Suggestions ───────────────────────────────────────────
-router.post("/food/weather-suggestions", requireAuth, aiRateLimit("weather_suggestions", 4), async (req: AuthRequest, res) => {
+router.post("/food/weather-suggestions", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
 
@@ -746,6 +732,22 @@ router.post("/food/weather-suggestions", requireAuth, aiRateLimit("weather_sugge
     const cached = cache.get(cacheKey);
     if (cached) {
       res.json({ ...JSON.parse(cached), fromCache: true });
+      return;
+    }
+
+    // Admin-controlled AI quota gate — only reached on an actual cache miss.
+    const planType = req.userPlan || "free";
+    const limitCheck = await checkAndUseAILimit(userId, "ai_weather_suggestions_daily", planType);
+    if (!limitCheck.allowed) {
+      res.status(429).json({
+        error: `You've reached today's weather suggestions limit. Limit: ${limitCheck.limit}/day on ${planType.toUpperCase()} plan.`,
+        feature: "ai_weather_suggestions_daily",
+        limitPerDay: limitCheck.limit,
+        usedToday: limitCheck.usedToday,
+        currentPlan: planType,
+        resetsAt: "midnight IST",
+        upgradeSuggested: planType === "free",
+      });
       return;
     }
 
