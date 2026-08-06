@@ -1131,10 +1131,10 @@ export async function runStartupMigrations(): Promise<void> {
       ('ai_meal_swap_daily',          '0',     '20',    '20',    '20',    'AI meal swap suggestions per day',       'daily'),
       ('ai_meal_planner_daily',       '0',     '5',     '5',     '5',     'AI ad-hoc meal/diet plan generation per day', 'daily'),
       ('ai_weather_suggestions_daily','1',     '8',     '4',     '8',     'AI weather-based food suggestions per day (also 6h cached)', 'daily'),
-      // NOTE: 'ai_predictions_enabled' row removed — verified dead, never
-      // read by any route. The real plan-eligibility gate for AI health
-      // predictions is requireFeature("health_prediction") (feature_flags
-      // table), which IS correctly wired in intelligence.ts.
+      -- NOTE: 'ai_predictions_enabled' row removed — verified dead, never
+      -- read by any route. The real plan-eligibility gate for AI health
+      -- predictions is requireFeature("health_prediction") (feature_flags
+      -- table), which IS correctly wired in intelligence.ts.
       ('ai_stress_monitoring',        'false', 'true',  'true',  'true',  'Stress & Burnout AI monitoring',         'daily'),
       ('ai_stress_insight_daily',     '0',     '10',    '5',     '10',    'AI-generated personalized stress insight per day', 'daily'),
       ('health_history_days',         '7',     '-1',    '-1',    '-1',    'Health history days, -1 = unlimited',    'daily'),
