@@ -10,6 +10,7 @@ import { eq, and, desc, gte, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { logger } from "../../lib/logger";
+import { sendExpoPushNotifications, getTokensForUsers } from "./support";
 
 const router = Router();
 
@@ -401,38 +402,28 @@ router.post("/family/member/:memberId/reminder", requireAuth, async (req: AuthRe
     const [senderProfile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, req.userId!));
     const senderName = senderProfile?.fullName || "Family Admin";
 
-    let pushToken: string | null = null;
+    // FIX: previously fetched only the single most-recently-registered
+    // device (`ORDER BY updated_at DESC LIMIT 1`) — a member with the app on
+    // 2+ devices would only ever get reminders on whichever one registered
+    // most recently. Now uses the shared helper, which sends to every active
+    // device the member has registered.
+    let tokens: string[] = [];
     try {
-      const deviceTokenRes = await pool.query(
-        `SELECT token FROM push_tokens WHERE user_id=$1 ORDER BY updated_at DESC LIMIT 1`,
-        [memberId]
-      );
-      pushToken = deviceTokenRes.rows[0]?.token ?? null;
+      tokens = await getTokensForUsers([memberId]);
     } catch (pushErr: unknown) {
-      logger.error({ err: pushErr }, "Could not fetch push token from push_tokens table");
+      logger.error({ err: pushErr }, "Could not fetch push tokens from push_tokens table");
     }
 
-    if (pushToken) {
-      try {
-        const pushRes = await fetch("https://exp.host/--/api/v2/push/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Accept": "application/json" },
-          body: JSON.stringify({
-            to: pushToken,
-            title: `💙 Reminder from ${senderName}`,
-            body: message,
-            sound: "default",
-            data: { type: "family_reminder", fromUserId: req.userId },
-          }),
-        });
-        if (!pushRes.ok) {
-          const errBody = await pushRes.text().catch(() => "");
-          logger.warn({ status: pushRes.status, body: errBody }, "Expo push API returned non-OK status");
-        }
-      } catch (pushErr: unknown) { logger.error({ err: pushErr }, "Push notification delivery failed"); }
+    if (tokens.length > 0) {
+      await sendExpoPushNotifications(
+        tokens,
+        `💙 Reminder from ${senderName}`,
+        message,
+        { type: "family_reminder", fromUserId: req.userId },
+      );
     }
 
-    res.json({ success: true, notified: !!pushToken, message: pushToken ? "Reminder sent!" : "Reminder queued (member will see it on next login)" });
+    res.json({ success: true, notified: tokens.length > 0, message: tokens.length > 0 ? "Reminder sent!" : "Reminder queued (member will see it on next login)" });
   } catch (err: unknown) {
     logger.error({ err }, "Failed to send reminder");
     res.status(500).json({ error: "Failed to send reminder" });

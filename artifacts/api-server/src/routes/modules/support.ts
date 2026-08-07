@@ -19,7 +19,11 @@ export async function sendExpoPushNotifications(
   ttlSeconds = 86400,
 ): Promise<void> {
   if (!tokens.length) return;
-  const messages = tokens.filter(t => t.startsWith("ExponentPushToken[")).map(token => ({
+  // FIX: was `tokens.filter(t => t.startsWith("ExponentPushToken["))` — matches
+  // the same registration-time strictness fix above (see /users/push-token).
+  // A basic sanity filter instead of enforcing one specific token format.
+  const validTokens = tokens.filter(t => typeof t === "string" && t.trim().length >= 10);
+  const messages = validTokens.map(token => ({
     to: token,
     title,
     body,
@@ -46,12 +50,30 @@ export async function sendExpoPushNotifications(
       const errBody = await res.text().catch(() => "");
       throw new Error(`Expo Push API ${res.status}: ${errBody}`);
     }
-    const result = await res.json().catch(() => null) as { data?: Array<{ status: string; message?: string }> } | null;
+    const result = await res.json().catch(() => null) as { data?: Array<{ status: string; message?: string; details?: { error?: string } }> } | null;
     if (result?.data) {
       const failed = result.data
+        .map((r, i) => ({ ...r, token: validTokens[i] }))
         .filter(r => r.status === "error");
       if (failed.length) {
         logger.warn({ count: failed.length, messages: failed.map(f => f.message).join(", ") }, "Push tokens failed");
+
+        // FIX 3: dead-token cleanup. Expo reports "DeviceNotRegistered" when
+        // the app has been uninstalled or the token has otherwise expired —
+        // that token will NEVER succeed again. Previously this was only
+        // logged, so dead tokens accumulated in push_tokens forever and every
+        // future send silently retried them. Deactivate them now so future
+        // queries (getTokensForUsers, family reminders, etc.) skip them.
+        const deadTokens = failed
+          .filter(f => f.details?.error === "DeviceNotRegistered")
+          .map(f => f.token)
+          .filter((t): t is string => !!t);
+        if (deadTokens.length) {
+          pool.query(
+            `UPDATE push_tokens SET is_active = false WHERE token = ANY($1)`,
+            [deadTokens]
+          ).catch((e: unknown) => logger.warn({ err: e }, "Failed to deactivate dead push tokens"));
+        }
       }
     }
   } catch (e) {
@@ -67,7 +89,12 @@ export async function sendExpoPushNotifications(
 export async function getTokensForUsers(userIds: string[]): Promise<string[]> {
   if (!userIds.length) return [];
   const placeholders = userIds.map((_, i) => `$${i + 1}`).join(",");
-  const r = await pool.query(`SELECT token FROM push_tokens WHERE user_id IN (${placeholders})`, userIds);
+  // FIX: now filters is_active = true — previously fetched every token ever
+  // registered, including ones Expo had already told us were dead.
+  const r = await pool.query(
+    `SELECT token FROM push_tokens WHERE user_id IN (${placeholders}) AND is_active = true`,
+    userIds
+  );
   return r.rows.map((row: { token: string }) => row.token);
 }
 
@@ -78,14 +105,21 @@ router.post("/users/push-token", requireAuth, async (req: AuthRequest, res) => {
   try {
     const uid = req.userId!;
     const { token, platform = "unknown" } = req.body as { token: string; platform?: string };
-    if (!token?.startsWith("ExponentPushToken[")) {
-      res.status(400).json({ error: "Invalid Expo push token" });
+    // FIX: was `if (!token?.startsWith("ExponentPushToken["))` — rejected any
+    // token not in that exact format. The mobile client intentionally relaxed
+    // its OWN check for "broader compatibility" (see app/_layout.tsx comment),
+    // but the server still hard-rejected anything that didn't match, silently
+    // breaking push registration for those devices (client wraps this call in
+    // .catch(), so the failure was invisible). Now we do a basic sanity check
+    // instead of enforcing one specific token format.
+    if (!token || typeof token !== "string" || token.trim().length < 10 || token.length > 500) {
+      res.status(400).json({ error: "Invalid push token" });
       return;
     }
     await pool.query(
-      `INSERT INTO push_tokens (user_id, token, platform, updated_at)
-       VALUES ($1, $2, $3, NOW())
-       ON CONFLICT (user_id, token) DO UPDATE SET updated_at = NOW()`,
+      `INSERT INTO push_tokens (user_id, token, platform, is_active, updated_at)
+       VALUES ($1, $2, $3, true, NOW())
+       ON CONFLICT (user_id, token) DO UPDATE SET updated_at = NOW(), is_active = true`,
       [uid, token, platform]
     );
     res.json({ success: true });
