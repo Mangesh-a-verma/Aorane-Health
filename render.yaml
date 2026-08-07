@@ -5,7 +5,7 @@ services:
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile && npx pnpm@10 --filter @workspace/api-server build && npx pnpm@10 --filter @workspace/api-server run db:migrate
+    buildCommand: npx --yes pnpm@10 install --no-frozen-lockfile && npx pnpm@10 --filter @workspace/api-server build && npx pnpm@10 --filter @workspace/db run migrate && npx pnpm@10 --filter @workspace/api-server run db:migrate
     startCommand: npx pnpm@10 --filter @workspace/api-server start
     autoDeploy: true
     envVars:

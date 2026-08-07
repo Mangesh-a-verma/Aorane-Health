@@ -6,6 +6,300 @@ import { buildNewFoodSeedSQL } from "./seed-new-foods";
 // Run once at server startup; safe to re-run multiple times
 export async function runStartupMigrations(): Promise<void> {
   const migrations: string[] = [
+    // ══════════════════════════════════════════════════════════════════════════
+    // BASE SCHEMA (foundational tables) — LEGACY / BACKWARD-COMPAT SAFETY NET
+    // ──────────────────────────────────────────────────────────────────────────
+    // ORIGINAL BUG (production deploy audit): render.yaml's buildCommand only
+    // ran `db:migrate` (this file) — it never ran `drizzle-kit push`, which was
+    // the only place these foundational tables (users, auth, profile, and core
+    // health-logging tables) were ever defined. Every existing production
+    // database got them because someone ran `pnpm --filter @workspace/db push`
+    // by hand at some point in the past. On a brand-new, empty Postgres
+    // database, this file would hit these tables via ALTER TABLE / FK
+    // REFERENCES before they ever existed, fail every one of those statements
+    // (caught and only logged as "Migration skipped"), and leave the app with
+    // no usable schema at all — auth, profiles, and every health-log table
+    // would be missing.
+    //
+    // CURRENT ARCHITECTURE: table structure is now owned by
+    // `lib/db/src/schema/*.ts` (Drizzle) and applied via versioned SQL files
+    // under `lib/db/drizzle/`, generated with `pnpm --filter @workspace/db
+    // generate` and run by `lib/db/src/run-migrations.ts`
+    // (`pnpm --filter @workspace/db run migrate`) — see that file for details.
+    // render.yaml runs that step BEFORE this one, so on every current deploy
+    // path these tables already exist by the time this file runs.
+    //
+    // The CREATE TABLE IF NOT EXISTS statements below are kept, unchanged, as
+    // a backward-compatible safety net: they make this file (`db:migrate`)
+    // fully self-sufficient on its own — for any deploy path, script, or
+    // manual invocation that runs only this file without the schema-migration
+    // step. They are pure additive, safe-to-rerun, no-ops on every database
+    // that already has these tables (i.e. every current production DB, and
+    // every fresh DB that already went through the schema-migration step).
+    // ══════════════════════════════════════════════════════════════════════════
+
+    `CREATE TABLE IF NOT EXISTS users (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      phone TEXT UNIQUE,
+      email TEXT UNIQUE,
+      plan TEXT NOT NULL DEFAULT 'free',
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      is_banned BOOLEAN NOT NULL DEFAULT FALSE,
+      country_code TEXT NOT NULL DEFAULT 'IN',
+      language_code TEXT NOT NULL DEFAULT 'hi',
+      timezone TEXT NOT NULL DEFAULT 'Asia/Kolkata',
+      currency_code TEXT NOT NULL DEFAULT 'INR',
+      referral_code TEXT UNIQUE,
+      referred_by UUID,
+      last_login_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS otp_store (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      phone TEXT NOT NULL,
+      hashed_otp TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS user_auth_providers (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL,
+      provider_user_id TEXT NOT NULL,
+      email TEXT,
+      is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+      linked_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS user_profiles (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      full_name TEXT,
+      gender TEXT,
+      profile_photo_url TEXT,
+      weight_kg NUMERIC(5,2),
+      bmi NUMERIC(5,2),
+      blood_group TEXT,
+      food_preference TEXT,
+      current_health_streak INTEGER NOT NULL DEFAULT 0,
+      longest_health_streak INTEGER NOT NULL DEFAULT 0,
+      rolling_7_day_score INTEGER,
+      rolling_30_day_score INTEGER,
+      biological_age INTEGER,
+      ai_health_predictions JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS user_medical_conditions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      condition TEXT NOT NULL,
+      condition_type TEXT,
+      diagnosed_at TEXT,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS user_health_goals (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      primary_goal TEXT NOT NULL,
+      current_weight_kg NUMERIC(5,2),
+      target_weight_kg NUMERIC(5,2),
+      target_date TEXT,
+      secondary_goals TEXT[],
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS user_preferences (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      language_code TEXT NOT NULL DEFAULT 'hi',
+      dark_mode BOOLEAN NOT NULL DEFAULT FALSE,
+      notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      medicine_reminders BOOLEAN NOT NULL DEFAULT TRUE,
+      water_reminders BOOLEAN NOT NULL DEFAULT TRUE,
+      weekly_report_email BOOLEAN NOT NULL DEFAULT FALSE,
+      app_lock_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      app_lock_method TEXT,
+      pin_hash TEXT,
+      session_timeout_minutes INTEGER NOT NULL DEFAULT 5,
+      ads_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS user_privacy_settings (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      share_basic_profile BOOLEAN NOT NULL DEFAULT TRUE,
+      share_bmi BOOLEAN NOT NULL DEFAULT TRUE,
+      share_exercise_data BOOLEAN NOT NULL DEFAULT TRUE,
+      share_water_intake BOOLEAN NOT NULL DEFAULT TRUE,
+      share_sleep_data BOOLEAN NOT NULL DEFAULT FALSE,
+      share_stress_level BOOLEAN NOT NULL DEFAULT FALSE,
+      share_medicine_details BOOLEAN NOT NULL DEFAULT FALSE,
+      share_medical_conditions BOOLEAN NOT NULL DEFAULT FALSE,
+      share_food_data BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    // ── core health-logging tables ──────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS exercise_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      exercise_type TEXT NOT NULL,
+      duration_minutes INTEGER NOT NULL,
+      intensity TEXT NOT NULL DEFAULT 'moderate',
+      calories_burned NUMERIC(7,2),
+      source TEXT NOT NULL DEFAULT 'manual',
+      photo_url TEXT,
+      is_offline_entry BOOLEAN NOT NULL DEFAULT FALSE,
+      synced_at TIMESTAMPTZ,
+      logged_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS water_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      glasses_count INTEGER NOT NULL DEFAULT 1,
+      ml_amount INTEGER NOT NULL DEFAULT 250,
+      drink_type TEXT NOT NULL DEFAULT 'water',
+      is_offline_entry BOOLEAN NOT NULL DEFAULT FALSE,
+      synced_at TIMESTAMPTZ,
+      logged_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS medicine_schedules (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      medicine_name TEXT NOT NULL,
+      dosage TEXT,
+      dose_count INTEGER NOT NULL DEFAULT 1,
+      meal_timing TEXT NOT NULL DEFAULT 'anytime',
+      frequency TEXT NOT NULL DEFAULT 'daily',
+      custom_days TEXT[],
+      reminder_times TEXT[] NOT NULL,
+      start_date TEXT NOT NULL,
+      end_date TEXT,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      refill_alert_days INTEGER NOT NULL DEFAULT 7,
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS medicine_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      schedule_id UUID NOT NULL REFERENCES medicine_schedules(id) ON DELETE CASCADE,
+      status TEXT NOT NULL,
+      scheduled_at TIMESTAMPTZ NOT NULL,
+      taken_at TIMESTAMPTZ,
+      is_offline_entry BOOLEAN NOT NULL DEFAULT FALSE,
+      synced_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS food_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      food_name_en TEXT NOT NULL,
+      meal_type TEXT NOT NULL,
+      input_method TEXT NOT NULL DEFAULT 'text',
+      quantity_g NUMERIC(7,2),
+      calories NUMERIC(7,2) NOT NULL,
+      protein_g NUMERIC(6,2),
+      carbs_g NUMERIC(6,2),
+      fat_g NUMERIC(6,2),
+      fiber_g NUMERIC(6,2),
+      logged_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    // ── referrals / emergency / wearable tables (actively queried by routes) ─
+    `CREATE TABLE IF NOT EXISTS referrals (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      referrer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      referred_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      reward_status TEXT NOT NULL DEFAULT 'pending',
+      reward_amount NUMERIC(8,2),
+      rewarded_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS emergency_contacts (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      relation TEXT,
+      is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+      notify_on_accident BOOLEAN NOT NULL DEFAULT TRUE,
+      notify_on_blood_emergency BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS accident_emergency_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      lat TEXT NOT NULL,
+      lng TEXT NOT NULL,
+      accuracy_meters TEXT,
+      address TEXT,
+      status TEXT NOT NULL DEFAULT 'triggered',
+      hospitals_notified INTEGER NOT NULL DEFAULT 0,
+      police_notified BOOLEAN NOT NULL DEFAULT FALSE,
+      nearby_hospitals_json TEXT,
+      responded_at TIMESTAMPTZ,
+      resolved_at TIMESTAMPTZ,
+      cancelled_at TIMESTAMPTZ,
+      cancel_reason TEXT,
+      emergency_contacts_notified INTEGER NOT NULL DEFAULT 0,
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS wearable_connections (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL,
+      access_token TEXT,
+      refresh_token TEXT,
+      token_expires_at TIMESTAMPTZ,
+      scopes TEXT[],
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      last_synced_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS wearable_data (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL,
+      recorded_at TIMESTAMPTZ NOT NULL,
+      synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      steps INTEGER,
+      heart_rate_avg INTEGER,
+      heart_rate_min INTEGER,
+      heart_rate_max INTEGER,
+      calories_burned NUMERIC(7,2),
+      sleep_hours NUMERIC(3,1),
+      blood_oxygen NUMERIC(5,2),
+      active_minutes INTEGER,
+      distance_km NUMERIC(6,2),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+
     // user_profiles missing columns
     `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS city TEXT`,
     `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS state TEXT`,
@@ -750,22 +1044,19 @@ export async function runStartupMigrations(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_app_sessions_user_id ON app_sessions(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_app_sessions_started_at ON app_sessions(started_at)`,
 
-    // ── blood_donations: 90-day donor cooldown ─────────────────────────────────
-    `CREATE TABLE IF NOT EXISTS blood_donations (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      donor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      request_id UUID REFERENCES blood_emergency_requests(id) ON DELETE SET NULL,
-      blood_group TEXT NOT NULL,
-      units_donated INTEGER NOT NULL DEFAULT 1,
-      hospital_name TEXT,
-      hospital_city TEXT,
-      donated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      donor_inactive_until TIMESTAMPTZ NOT NULL,
-      confirmed_by_admin BOOLEAN NOT NULL DEFAULT FALSE,
-      notes TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`,
-    `CREATE INDEX IF NOT EXISTS idx_blood_donations_donor_id ON blood_donations(donor_id)`,
+    // NOTE: the `blood_donations` table (90-day donor cooldown) used to be
+    // created right here, but its `request_id` column has
+    // `REFERENCES blood_emergency_requests(id)`, and `blood_emergency_requests`
+    // was only created much further down in this file. On any database that
+    // already had `blood_emergency_requests` (i.e. real production, created
+    // manually at some point) this silently worked; on a brand-new empty
+    // database this FK reference failed at CREATE TABLE time (relation does
+    // not exist), so `blood_donations` and its index were never created and
+    // the failure was swallowed by the try/catch below ("Migration skipped").
+    // MOVED below, after `blood_emergency_requests` is created, so a fresh
+    // database creates both tables in valid dependency order. This is a pure
+    // reordering of idempotent, IF-NOT-EXISTS statements — a no-op on every
+    // database where both tables already exist.
 
     // ── blood_donors: add donor_inactive_until for 90-day cooldown enforcement ──
     `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS donor_inactive_until TIMESTAMPTZ`,
@@ -979,6 +1270,25 @@ export async function runStartupMigrations(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_blood_emergency_requests_requester ON blood_emergency_requests(requester_id)`,
     `CREATE INDEX IF NOT EXISTS idx_blood_emergency_requests_status ON blood_emergency_requests(status)`,
     `CREATE INDEX IF NOT EXISTS idx_blood_emergency_requests_city ON blood_emergency_requests(hospital_city)`,
+
+    // ── blood_donations: 90-day donor cooldown (moved here — see NOTE above;
+    //    must come after blood_emergency_requests, which its request_id FK
+    //    references) ────────────────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS blood_donations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      donor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      request_id UUID REFERENCES blood_emergency_requests(id) ON DELETE SET NULL,
+      blood_group TEXT NOT NULL,
+      units_donated INTEGER NOT NULL DEFAULT 1,
+      hospital_name TEXT,
+      hospital_city TEXT,
+      donated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      donor_inactive_until TIMESTAMPTZ NOT NULL,
+      confirmed_by_admin BOOLEAN NOT NULL DEFAULT FALSE,
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_blood_donations_donor_id ON blood_donations(donor_id)`,
 
     // ── blood_emergency_responses: donor responses to blood requests ──
     `CREATE TABLE IF NOT EXISTS blood_emergency_responses (
