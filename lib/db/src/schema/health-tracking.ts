@@ -9,6 +9,7 @@ import {
   jsonb,
   pgEnum,
   uniqueIndex,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -40,7 +41,16 @@ export const exerciseLogsTable = pgTable("exercise_logs", {
   syncedAt: timestamp("synced_at", { withTimezone: true }),
   loggedAt: timestamp("logged_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // Every log-write in the app (food/water/exercise/medicine/sleep/stress)
+  // triggers upsertDailyActivityScore(), which runs
+  // `SELECT COUNT(*) FROM exercise_logs WHERE user_id=$1 AND logged_at>=$2 AND logged_at<=$3`
+  // (lib/activityScore.ts) on every single call, plus the same shape of
+  // query in lib/scoring.ts (dashboard score) and GET /health/exercise
+  // (history view, ORDER BY logged_at DESC). No existing index covers
+  // (user_id, logged_at) — only the primary key on id.
+  userLoggedAtIdx: index("idx_exercise_logs_user_logged_at").on(t.userId, t.loggedAt),
+}));
 
 export const waterLogsTable = pgTable("water_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -52,7 +62,13 @@ export const waterLogsTable = pgTable("water_logs", {
   syncedAt: timestamp("synced_at", { withTimezone: true }),
   loggedAt: timestamp("logged_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // Same justification as exercise_logs above: queried with
+  // WHERE user_id=$1 AND logged_at BETWEEN ... on every log-write
+  // (lib/activityScore.ts), every score computation (lib/scoring.ts),
+  // and GET /health/water/:date.
+  userLoggedAtIdx: index("idx_water_logs_user_logged_at").on(t.userId, t.loggedAt),
+}));
 
 export const medicineSchedulesTable = pgTable("medicine_schedules", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -71,7 +87,12 @@ export const medicineSchedulesTable = pgTable("medicine_schedules", {
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => ({
+  // Queried with WHERE user_id=$1 AND is_active=true in medicine.ts (3x),
+  // family.ts, stress.ts, and on every single log-write via
+  // lib/activityScore.ts's upsertDailyActivityScore().
+  userActiveIdx: index("idx_medicine_schedules_user_active").on(t.userId, t.isActive),
+}));
 
 export const medicineLogsTable = pgTable("medicine_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -83,7 +104,12 @@ export const medicineLogsTable = pgTable("medicine_logs", {
   isOfflineEntry: boolean("is_offline_entry").notNull().default(false),
   syncedAt: timestamp("synced_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // Queried with WHERE user_id=$1 AND scheduled_at BETWEEN ...
+  // (and ORDER BY scheduled_at DESC) in medicine.ts, family.ts, stress.ts,
+  // and on every log-write via lib/activityScore.ts.
+  userScheduledAtIdx: index("idx_medicine_logs_user_scheduled_at").on(t.userId, t.scheduledAt),
+}));
 
 export const stressLogsTable = pgTable("stress_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -104,7 +130,12 @@ export const stressLogsTable = pgTable("stress_logs", {
   syncedAt: timestamp("synced_at", { withTimezone: true }),
   loggedAt: timestamp("logged_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // WHERE user_id=$1 AND logged_at BETWEEN ... on every log-write
+  // (lib/activityScore.ts's upsertDailyActivityScore, called after every
+  // food/water/exercise/medicine/sleep log).
+  userLoggedAtIdx: index("idx_stress_logs_user_logged_at").on(t.userId, t.loggedAt),
+}));
 
 export const periodLogsTable = pgTable("period_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -117,7 +148,11 @@ export const periodLogsTable = pgTable("period_logs", {
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => ({
+  // routes/modules/period.ts: WHERE user_id=$1 ORDER BY start_date DESC
+  // (3 call sites — dashboard, latest-cycle lookup, 12-cycle history).
+  userStartDateIdx: index("idx_period_logs_user_start_date").on(t.userId, t.startDate),
+}));
 
 export const medicalReportsTable = pgTable("medical_reports", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -158,7 +193,27 @@ export const dailyHealthScoresTable = pgTable("daily_health_scores", {
   totalPossibleFields: integer("total_possible_fields").notNull().default(5),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => ({
+  // lib/scoring.ts's computeScientificScore() persists via
+  //   INSERT INTO daily_health_scores (...) VALUES (...)
+  //   ON CONFLICT (user_id, score_date) DO UPDATE SET ...
+  // `ON CONFLICT (columns)` requires a UNIQUE or exclusion constraint on
+  // exactly those columns. artifacts/api-server/src/lib/migrate.ts (the
+  // legacy, backward-compat script) already creates this table with an
+  // inline `UNIQUE(user_id, score_date)`, so real production — which was
+  // bootstrapped via that script — already has this constraint and the
+  // upsert already works there today. This entry exists so the *Drizzle
+  // schema itself* (the intended long-term source of truth) also declares
+  // it: verified by reproducing `ON CONFLICT` against a database that had
+  // ONLY gone through the new schema-migration path (no legacy script) —
+  // without this, that path silently fails every upsert with "there is no
+  // unique or exclusion constraint matching the ON CONFLICT specification".
+  // Also serves GET /health/scores/history's WHERE user_id=$1 ... ORDER BY
+  // score_date. See the corresponding generated migration for how this is
+  // made safe (IF NOT EXISTS) against databases that already have it via
+  // the legacy path.
+  userScoreDateUniq: uniqueIndex("daily_health_scores_user_id_score_date_key").on(t.userId, t.scoreDate),
+}));
 
 export const sleepQualityEnum = pgEnum("sleep_quality", ["poor", "fair", "good", "excellent"]);
 
@@ -175,7 +230,14 @@ export const sleepLogsTable = pgTable("sleep_logs", {
   syncedAt: timestamp("synced_at", { withTimezone: true }),
   loggedAt: timestamp("logged_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // WHERE user_id=$1 AND sleep_date=$2 (3 call sites: POST /health/sleep
+  // dedup check, PUT /health/sleep/:date, GET /health/sleep/:date) and
+  // WHERE user_id=$1 ORDER BY sleep_date DESC LIMIT N (GET
+  // /health/sleep/history) — exact match for lib/scoring.ts's dashboard
+  // query too.
+  userSleepDateIdx: index("idx_sleep_logs_user_sleep_date").on(t.userId, t.sleepDate),
+}));
 
 export const insertExerciseLogSchema = createInsertSchema(exerciseLogsTable).omit({ id: true, createdAt: true });
 export const insertWaterLogSchema = createInsertSchema(waterLogsTable).omit({ id: true, createdAt: true });

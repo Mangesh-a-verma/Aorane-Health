@@ -1,5 +1,4 @@
 import { defineConfig } from "drizzle-kit";
-import path from "path";
 
 // NOTE: `drizzle-kit generate` diffs the schema files against the SQL
 // migrations already on disk and does NOT need a live database connection —
@@ -10,13 +9,18 @@ import path from "path";
 // at config-load time (that eager throw previously made `generate` unusable
 // without a live DB, which is why no versioned migrations existed at all).
 export default defineConfig({
-  schema: path.join(__dirname, "./src/schema/index.ts"),
-  // Must be a plain relative path (not resolved via path.join/__dirname) —
-  // drizzle-kit's internal snapshot-validation step string-concatenates a
-  // "./" prefix onto `out` when reading past migrations' meta files, which
-  // produces a malformed, doubled path if `out` is already absolute. All
-  // drizzle-kit scripts in package.json run with cwd = this package
-  // directory (lib/db), so "./drizzle" resolves correctly.
+  // Must be a plain relative path with forward slashes — NOT
+  // path.join(__dirname, ...). On Windows, __dirname/path.join produce
+  // backslash paths (e.g. "D:\...\src\schema\index.ts"), but drizzle-kit
+  // resolves `schema` internally via a glob matcher, and glob patterns
+  // treat backslash as an escape character, not a path separator. A
+  // backslash path silently matches zero files there, failing with
+  // "No schema files found for path config [...]" even though the file
+  // exists exactly where it says. All drizzle-kit scripts in package.json
+  // run with cwd = this package directory (lib/db), so a relative
+  // forward-slash path resolves correctly on Windows, macOS, and Linux.
+  schema: "./src/schema/index.ts",
+  // Same reasoning as `schema` above — plain relative path, no path.join.
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {

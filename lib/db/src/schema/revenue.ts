@@ -8,6 +8,7 @@ import {
   decimal,
   pgEnum,
   jsonb,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -37,7 +38,16 @@ export const subscriptionsTable = pgTable("subscriptions", {
   nextRenewalAt: timestamp("next_renewal_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => ({
+  // routes/modules/webhook.ts: 4 call sites doing
+  // `SELECT ... FROM subscriptions WHERE razorpay_subscription_id = $1`
+  // inside real-time Razorpay webhook handlers (payment success, renewal,
+  // failure, cancellation) — Razorpay retries on slow/failed webhook acks,
+  // so this lookup is latency-sensitive. No existing index covers this
+  // column (nullable, so a plain non-unique index — some subscriptions
+  // have no Razorpay ID, e.g. admin-granted or org-managed plans).
+  razorpaySubIdIdx: index("idx_subscriptions_razorpay_subscription_id").on(t.razorpaySubscriptionId),
+}));
 
 export const paymentsTable = pgTable("payments", {
   id: uuid("id").primaryKey().defaultRandom(),

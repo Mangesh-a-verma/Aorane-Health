@@ -8,6 +8,7 @@ import {
   decimal,
   jsonb,
   pgEnum,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -96,7 +97,14 @@ export const foodLogsTable = pgTable("food_logs", {
   syncedAt: timestamp("synced_at", { withTimezone: true }),
   loggedAt: timestamp("logged_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // WHERE user_id=$1 [AND logged_at BETWEEN ...] ORDER BY logged_at —
+  // routes/modules/food.ts (GET /food/logs, 4 call sites), on every
+  // log-write via lib/activityScore.ts, and in lib/scoring.ts's dashboard
+  // score computation (2 call sites). No existing index covers this beyond
+  // the primary key on id.
+  userLoggedAtIdx: index("idx_food_logs_user_logged_at").on(t.userId, t.loggedAt),
+}));
 
 export const insertFoodItemSchema = createInsertSchema(foodItemsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertFoodLogSchema = createInsertSchema(foodLogsTable).omit({ id: true, createdAt: true });

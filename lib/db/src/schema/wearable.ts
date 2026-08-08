@@ -6,6 +6,7 @@ import {
   uuid,
   decimal,
   integer,
+  index,
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
@@ -39,7 +40,13 @@ export const wearableDataTable = pgTable("wearable_data", {
   activeMinutes: integer("active_minutes"),
   distanceKm: decimal("distance_km", { precision: 6, scale: 2 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // routes/modules/wearable.ts: WHERE user_id=$1 ORDER BY recorded_at DESC
+  // (sync history). wearable_sync is enabled in production (feature_flags),
+  // and unlike wearable_connections (a handful of rows per user), this
+  // table grows with every sync over time.
+  userRecordedAtIdx: index("idx_wearable_data_user_recorded_at").on(t.userId, t.recordedAt),
+}));
 
 export const offlineQueueTable = pgTable("offline_queue", {
   id: uuid("id").primaryKey().defaultRandom(),

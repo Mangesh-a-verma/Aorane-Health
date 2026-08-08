@@ -8,6 +8,7 @@ import {
   decimal,
   jsonb,
   pgEnum,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -95,7 +96,11 @@ export const userMedicalConditionsTable = pgTable("user_medical_conditions", {
   diagnosedAt: text("diagnosed_at"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // lib/scoring.ts: WHERE user_id=$1 AND is_active=true, on every single
+  // score computation. Also routes/modules/users.ts (profile GET/PUT).
+  userActiveIdx: index("idx_user_medical_conditions_user_active").on(t.userId, t.isActive),
+}));
 
 export const userHealthGoalsTable = pgTable("user_health_goals", {
   id: uuid("id").primaryKey().defaultRandom(),
