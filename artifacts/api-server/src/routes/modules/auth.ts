@@ -588,6 +588,8 @@ router.post("/auth/verify-email-otp", async (req, res) => {
       res.status(400).json({ error: "Incorrect OTP. Please try again." });
       return;
     }
+    // Success hone par counter reset kar dein (matches pin_login pattern)
+    await cache.resetRateLimit(emailVerifyLimitKey);
     // Clean up from both cache and DB
     await cache.deleteOtp(emailKey);
     await pool.query(`DELETE FROM otp_store WHERE phone = $1`, [emailKey]).catch(() => {});
@@ -730,6 +732,8 @@ router.post("/auth/link-phone", requireAuth, async (req: AuthRequest, res) => {
 
     if (!storedHash) { res.status(400).json({ error: "OTP expired or not found. Request a new one." }); return; }
     if (!verifyOtpHash(otp, storedHash)) { res.status(400).json({ error: "Invalid OTP." }); return; }
+    // Success hone par counter reset kar dein (matches pin_login pattern)
+    await cache.resetRateLimit(linkVerifyLimitKey);
     if (fromDb) await db.delete(otpStoreTable).where(eq(otpStoreTable.phone, phone)).catch(() => {});
     else await cache.deleteOtp(phone);
 
