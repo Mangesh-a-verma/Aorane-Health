@@ -15,6 +15,7 @@ import { DS } from "@/lib/theme";
 import { exportMedicalReportPDF } from "@/lib/pdfExport";
 import { scheduleMedicineReminders, cancelMedicineById, requestNotificationPermissions, checkNotificationPermissions, improveAndroidNotificationReliability } from "@/lib/notifications";
 import { Plus, X, ScanLine, Pill, Sparkles, Camera, Image as ImageIcon, FileText, AlertTriangle, ChevronRight, Trash2 } from "lucide-react-native";
+import TimePickerField, { isValidHHMM } from "@/components/TimePickerField";
 
 const P = DS.color.primary;
 const G = DS.color.green;
@@ -84,6 +85,13 @@ export default function MedicineScreen() {
 
   const handleAdd = async () => {
     if (!medicineName.trim()) { Alert.alert("Required", "Please enter medicine name"); return; }
+    // Defense in depth: TimePickerField can only ever produce a valid
+    // "HH:MM" value, but we guard here too so this check never silently
+    // regresses if the field is ever swapped back to free text.
+    if (!isValidHHMM(reminderTime)) {
+      Alert.alert("Invalid Time", "Please pick a valid reminder time.");
+      return;
+    }
     setIsSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const savedName = medicineName.trim();
@@ -139,20 +147,38 @@ export default function MedicineScreen() {
           // every app restart, which is what caused the 40-50 notification
           // burst users were seeing.
           if (savedId) {
-            await scheduleMedicineReminders({
+            const scheduledIds = await scheduleMedicineReminders({
               medicineId: `medicine_${savedId}`,
               medicineName: savedName, dosage, times: [reminderTime], mealTiming,
             });
+            setNotifPermission(true);
+            // Best-effort, one-time prompt to reduce OEM battery-manager delays
+            // (Xiaomi/Vivo/Oppo etc). Silently no-ops on iOS / unsupported OEMs.
+            improveAndroidNotificationReliability().catch(() => {});
+            // AUDIT FIX (Phase 0): previously this alert always said "✅
+            // reminder set" regardless of whether scheduling actually
+            // succeeded. Now it reflects what scheduleMedicineReminders()
+            // actually returned, so a silent scheduling failure (e.g.
+            // permission revoked mid-flow) is never reported as a success.
+            if (scheduledIds.length > 0) {
+              Alert.alert("✅ Medicine Added!", `Daily reminder for ${savedName} at ${reminderTime}`, [{ text: "OK" }]);
+            } else {
+              Alert.alert(
+                "⚠️ Medicine Saved — Reminder Not Set",
+                `${savedName} was saved, but the daily reminder could not be scheduled on this device. Check notification permission in Settings and try again.`,
+                [{ text: "OK" }]
+              );
+            }
           } else {
             // Backend didn't return an id — skip scheduling rather than
             // create another orphaned, unmatchable notification.
             console.warn("[Medicine] No backend id returned — skipping reminder scheduling to avoid an orphaned notification.");
+            Alert.alert(
+              "⚠️ Medicine Saved — Reminder Not Set",
+              `${savedName} was saved, but the reminder couldn't be scheduled. Please try editing it again.`,
+              [{ text: "OK" }]
+            );
           }
-          setNotifPermission(true);
-          // Best-effort, one-time prompt to reduce OEM battery-manager delays
-          // (Xiaomi/Vivo/Oppo etc). Silently no-ops on iOS / unsupported OEMs.
-          improveAndroidNotificationReliability().catch(() => {});
-          Alert.alert("✅ Medicine Added!", `Daily reminder for ${savedName} at ${reminderTime}`, [{ text: "OK" }]);
           setIsSubmitting(false);
           return;
         }
@@ -617,8 +643,11 @@ export default function MedicineScreen() {
               ))}
             </View>
 
-            <Text style={s.inputLabel}>Reminder Time</Text>
-            <TextInput style={s.input} placeholder="08:00" placeholderTextColor={DS.color.muted} value={reminderTime} onChangeText={setReminderTime} />
+            {/* AUDIT FIX (Phase 0): free-text time input replaced with a
+                scroll-wheel picker (components/TimePickerField.tsx) that can
+                only ever produce a valid "HH:MM" value — this was the root
+                cause of reminders silently never being scheduled. */}
+            <TimePickerField label="Reminder Time" value={reminderTime} onChange={setReminderTime} accentColor={P} />
 
             <TouchableOpacity onPress={handleAdd} disabled={isSubmitting} activeOpacity={0.85}>
               <LinearGradient colors={[PUR, P]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.saveBtn}>

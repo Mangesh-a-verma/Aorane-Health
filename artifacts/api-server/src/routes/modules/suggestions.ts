@@ -451,27 +451,93 @@ router.get("/notifications/settings", requireAuth, async (req: AuthRequest, res)
   }
 });
 
+// AUDIT FIX (Phase 0): "HH:MM" 24-hour format check, reused for every time-ish
+// field below. Root-cause note: this route previously accepted any string for
+// wakeUpTime/bedTime/*ReminderTime with zero validation — a malformed value
+// saved here would flow straight into the mobile app's notification scheduler
+// (lib/notifications.ts parseTime()), which silently drops any time it can't
+// parse. That meant a bad save here = a reminder that silently never fires,
+// with no error surfaced anywhere in the chain.
+function isValidHHMM(t: unknown): t is string {
+  return typeof t === "string" && /^([01]\d|2[0-3]):([0-5]\d)$/.test(t);
+}
+
+// Some fields (waterReminderTimes/foodReminderTime/medicineReminderTime) are
+// stored as comma-separated "HH:MM,HH:MM,..." lists — validate every entry.
+function isValidHHMMList(t: unknown): t is string {
+  if (typeof t !== "string" || t.trim().length === 0) return false;
+  return t.split(",").every((part) => isValidHHMM(part.trim()));
+}
+
 // ── PUT /notifications/settings ───────────────────────────────────────────────
 router.put("/notifications/settings", requireAuth, async (req: AuthRequest, res) => {
   try {
     const body = req.body as Record<string, unknown>;
-    const allowed = [
+    const booleanFields = [
       "notificationsEnabled", "medicineReminders", "waterReminders",
       "foodReminders", "periodReminders", "suggestionNotifications",
-      "waterReminderTimes", "foodReminderTime", "medicineReminderTime",
-      "wakeUpTime", "bedTime", "weeklyReportEmail", "calorieGoal", "waterGoalGlasses",
+      "weeklyReportEmail",
     ];
+    const singleTimeFields = ["wakeUpTime", "bedTime"];
+    const timeListFields = ["waterReminderTimes", "foodReminderTime", "medicineReminderTime"];
+
     const updates: Record<string, unknown> = {};
-    for (const key of allowed) {
-      if (Object.prototype.hasOwnProperty.call(body, key) && body[key] !== undefined) updates[key] = body[key];
+    const invalidFields: string[] = [];
+
+    for (const key of booleanFields) {
+      if (!Object.prototype.hasOwnProperty.call(body, key) || body[key] === undefined) continue;
+      if (typeof body[key] !== "boolean") { invalidFields.push(key); continue; }
+      updates[key] = body[key];
     }
 
-    await db.update(userPreferencesTable)
-      .set(updates)
-      .where(eq(userPreferencesTable.userId, req.userId!));
+    for (const key of singleTimeFields) {
+      if (!Object.prototype.hasOwnProperty.call(body, key) || body[key] === undefined) continue;
+      if (!isValidHHMM(body[key])) { invalidFields.push(key); continue; }
+      updates[key] = body[key];
+    }
+
+    for (const key of timeListFields) {
+      if (!Object.prototype.hasOwnProperty.call(body, key) || body[key] === undefined) continue;
+      if (!isValidHHMMList(body[key])) { invalidFields.push(key); continue; }
+      updates[key] = body[key];
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, "calorieGoal") && body.calorieGoal !== undefined) {
+      const v = Number(body.calorieGoal);
+      if (!Number.isFinite(v) || v < 500 || v > 10000) invalidFields.push("calorieGoal");
+      else updates.calorieGoal = Math.round(v);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, "waterGoalGlasses") && body.waterGoalGlasses !== undefined) {
+      const v = Number(body.waterGoalGlasses);
+      if (!Number.isFinite(v) || v < 1 || v > 30) invalidFields.push("waterGoalGlasses");
+      else updates.waterGoalGlasses = Math.round(v);
+    }
+
+    if (invalidFields.length > 0) {
+      res.status(400).json({ error: "Invalid value for field(s)", fields: invalidFields });
+      return;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      res.json({ success: true });
+      return;
+    }
+
+    // AUDIT FIX (Phase 0): was a bare UPDATE with no existence check — if a
+    // user's user_preferences row didn't exist (e.g. a future signup path
+    // that misses the "ensure supporting rows exist" insert), this silently
+    // matched zero rows and returned {success:true} anyway, permanently
+    // discarding the user's settings change with no error to the client.
+    // Upsert guarantees the row always ends up correct regardless of whether
+    // it previously existed.
+    await db.insert(userPreferencesTable)
+      .values({ userId: req.userId!, ...updates })
+      .onConflictDoUpdate({ target: userPreferencesTable.userId, set: updates });
 
     res.json({ success: true });
-  } catch {
+  } catch (e) {
+    logger.error({ err: e }, "notifications/settings PUT error");
     res.status(500).json({ error: "Failed to save settings" });
   }
 });

@@ -14,6 +14,8 @@ import {
   setupNotificationChannels,
   requestExactAlarmPermission,
   requestIgnoreBatteryOptimizations,
+  getNotificationDiagnostics,
+  type NotificationDiagnosticEntry,
 } from "@/lib/notifications";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -131,6 +133,30 @@ export default function NotificationSettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+
+  // AUDIT FIX (Phase 0 — diagnostics): lets the user (and support/QA) verify
+  // that reminders are ACTUALLY scheduled on this device and see exactly
+  // when the OS will next fire each one, instead of guessing why a
+  // notification "didn't come on time". Uses
+  // Notifications.getAllScheduledNotificationsAsync() +
+  // Notifications.getNextTriggerDateAsync() directly.
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [diagOpen, setDiagOpen] = useState(false);
+  const [diagPermission, setDiagPermission] = useState<boolean | null>(null);
+  const [diagEntries, setDiagEntries] = useState<NotificationDiagnosticEntry[]>([]);
+
+  const runDiagnostics = async () => {
+    setDiagLoading(true);
+    try {
+      const { permissionGranted, entries } = await getNotificationDiagnostics();
+      setDiagPermission(permissionGranted);
+      setDiagEntries(entries);
+      setDiagOpen(true);
+    } catch {
+      Alert.alert("Diagnostics failed", "Could not read scheduled notifications on this device.");
+    }
+    setDiagLoading(false);
+  };
 
   const load = useCallback(async () => {
     // ✅ Load from cache first (instant) — screen shows immediately
@@ -503,6 +529,72 @@ export default function NotificationSettingsScreen() {
             onToggle={(v) => update("weeklyReportEmail", v)}
           />
         </View>
+
+        {/* AUDIT FIX (Phase 0): Notification Diagnostics — real, on-device
+            verification instead of guesswork. Shows what's actually
+            scheduled right now and exactly when the OS will next fire each
+            one (Notifications.getAllScheduledNotificationsAsync() +
+            Notifications.getNextTriggerDateAsync()). */}
+        {Platform.OS !== "web" && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>🔍 Notification Diagnostics</Text>
+            <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, marginBottom: 12, lineHeight: 17 }}>
+              Check exactly what's scheduled on this device right now, and when each reminder will actually fire.
+            </Text>
+            <TouchableOpacity
+              onPress={runDiagnostics}
+              disabled={diagLoading}
+              style={{ borderRadius: 12, borderWidth: 1.5, borderColor: C.primary, paddingVertical: 10, alignItems: "center", opacity: diagLoading ? 0.6 : 1 }}
+            >
+              {diagLoading ? (
+                <ActivityIndicator size="small" color={C.primary} />
+              ) : (
+                <Text style={{ color: C.primary, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>Run Diagnostics</Text>
+              )}
+            </TouchableOpacity>
+
+            {diagOpen && (
+              <View style={{ marginTop: 14, gap: 10 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Ionicons
+                    name={diagPermission ? "checkmark-circle" : "close-circle"}
+                    size={18}
+                    color={diagPermission ? C.green : C.red}
+                  />
+                  <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                    Notification permission: {diagPermission ? "Granted" : "Not granted"}
+                  </Text>
+                </View>
+
+                {!diagPermission && (
+                  <Text style={{ color: C.red, fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 17 }}>
+                    Permission is off, so nothing below will ever be delivered even if it shows as scheduled. Enable notifications for Aorane in your phone's Settings app.
+                  </Text>
+                )}
+
+                <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                  {diagEntries.length} reminder{diagEntries.length === 1 ? "" : "s"} currently scheduled on this device
+                </Text>
+
+                {diagEntries.length === 0 && (
+                  <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>
+                    Nothing is scheduled. Turn on a reminder toggle above and tap Save, or add a medicine, to schedule one.
+                  </Text>
+                )}
+
+                {diagEntries.map((e) => (
+                  <View key={e.id} style={{ borderTopWidth: 1, borderTopColor: C.border, paddingTop: 8 }}>
+                    <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>{e.title}</Text>
+                    <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 11 }}>Type: {e.type}</Text>
+                    <Text style={{ color: e.nextTriggerAt ? C.green : C.red, fontFamily: "Inter_600SemiBold", fontSize: 11 }}>
+                      Next fire: {e.nextTriggerAtLabel}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Info Banner */}
         <View style={{ backgroundColor: "#EFF9FF", borderRadius: 14, borderWidth: 1, borderColor: "#BAE6FD", padding: 14, flexDirection: "row", gap: 10 }}>

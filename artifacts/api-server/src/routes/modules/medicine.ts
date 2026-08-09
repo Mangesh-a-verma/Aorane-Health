@@ -7,6 +7,25 @@ import type { AuthRequest } from "../../middlewares/user-auth";
 
 const router = Router();
 
+// AUDIT FIX (Phase 0 — root cause): reminderTimes previously flowed straight
+// from the request body into the DB with zero format checking. The mobile
+// app's free-text time input meant garbage strings ("8am", "8", "25:99")
+// could be saved here, then silently fail to schedule a device notification
+// later (lib/notifications.ts parseTime() just skips anything it can't
+// parse) — with the user never told the reminder wasn't actually set. This
+// is now rejected at the source instead of failing silently three layers
+// downstream.
+function isValidHHMM(t: unknown): t is string {
+  return typeof t === "string" && /^([01]\d|2[0-3]):([0-5]\d)$/.test(t);
+}
+
+function invalidReminderTimes(reminderTimes: unknown): string[] | null {
+  if (reminderTimes === undefined) return null; // not being set — fine
+  if (!Array.isArray(reminderTimes)) return ["reminderTimes must be an array of \"HH:MM\" strings"];
+  const bad = reminderTimes.filter((t) => !isValidHHMM(t));
+  return bad.length > 0 ? bad : null;
+}
+
 router.get("/medicine/schedules", requireAuth, async (req: AuthRequest, res) => {
   try {
     const schedules = await db.select().from(medicineSchedulesTable)
@@ -23,6 +42,13 @@ router.post("/medicine/schedule", requireAuth, async (req: AuthRequest, res) => 
     const { medicineName, dosage, doseCount, mealTiming, frequency, customDays, reminderTimes, startDate, endDate, refillAlertDays, notes } = req.body as Record<string, unknown>;
     if (!medicineName) return void res.status(400).json({ error: "medicineName is required" });
     if (!startDate) return void res.status(400).json({ error: "startDate is required" });
+    const badTimes = invalidReminderTimes(reminderTimes);
+    if (badTimes) {
+      return void res.status(400).json({
+        error: "reminderTimes must each be a 24-hour \"HH:MM\" string (e.g. \"08:00\")",
+        invalid: badTimes,
+      });
+    }
     const [schedule] = await db.insert(medicineSchedulesTable).values({
       userId: req.userId!,
       medicineName: medicineName as string,
@@ -51,6 +77,15 @@ router.patch("/medicine/schedule/:id", requireAuth, async (req: AuthRequest, res
     const updates: Record<string, unknown> = {};
     for (const field of allowedFields) {
       if (Object.prototype.hasOwnProperty.call(req.body, field) && req.body[field] !== undefined) updates[field] = req.body[field];
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, "reminderTimes")) {
+      const badTimes = invalidReminderTimes(updates.reminderTimes);
+      if (badTimes) {
+        return void res.status(400).json({
+          error: "reminderTimes must each be a 24-hour \"HH:MM\" string (e.g. \"08:00\")",
+          invalid: badTimes,
+        });
+      }
     }
     const [updated] = await db.update(medicineSchedulesTable).set(updates as Partial<typeof medicineSchedulesTable.$inferInsert>)
       .where(and(eq(medicineSchedulesTable.id, id), eq(medicineSchedulesTable.userId, req.userId!)))

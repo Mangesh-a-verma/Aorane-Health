@@ -190,6 +190,63 @@ export async function getScheduledNotificationSummary(): Promise<Record<string, 
   return summary;
 }
 
+// ─── DIAGNOSTICS (Phase 0 — "is a notification actually going to fire?") ────
+//
+// Root-cause verification for "notification on time nahi aata": knowing the
+// scheduling *code* ran is not the same as knowing the OS will actually fire
+// it at the right time. This combines getAllScheduledNotificationsAsync()
+// (what's currently scheduled) with getNextTriggerDateAsync() (when the OS
+// will actually next fire each one) so a real answer — not a guess — can be
+// given for "kab aayega" / "aaya kyun nahi".
+export type NotificationDiagnosticEntry = {
+  id: string;
+  type: string;
+  title: string;
+  channelId?: string;
+  /** Epoch ms of the next OS-scheduled fire time, or null if the OS couldn't resolve it (a strong signal something is wrong with that trigger). */
+  nextTriggerAt: number | null;
+  nextTriggerAtLabel: string;
+};
+
+export async function getNotificationDiagnostics(): Promise<{
+  permissionGranted: boolean;
+  entries: NotificationDiagnosticEntry[];
+}> {
+  const { status } = await Notifications.getPermissionsAsync();
+  const permissionGranted = status === "granted";
+
+  const all = await Notifications.getAllScheduledNotificationsAsync();
+  const entries: NotificationDiagnosticEntry[] = await Promise.all(
+    all.map(async (n) => {
+      const data = n.content.data as Record<string, unknown>;
+      let nextTriggerAt: number | null = null;
+      try {
+        // NotificationRequest.trigger (resolved) is a structural superset of
+        // SchedulableNotificationTriggerInput for CALENDAR/DATE triggers —
+        // cast defensively since this is read-only diagnostic code.
+        nextTriggerAt = await Notifications.getNextTriggerDateAsync(
+          n.trigger as unknown as Parameters<typeof Notifications.getNextTriggerDateAsync>[0]
+        );
+      } catch {
+        nextTriggerAt = null;
+      }
+      return {
+        id: n.identifier,
+        type: (data?.type as string) ?? "unknown",
+        title: n.content.title ?? "(no title)",
+        channelId: (n.trigger as unknown as { channelId?: string })?.channelId,
+        nextTriggerAt,
+        nextTriggerAtLabel: nextTriggerAt
+          ? new Date(nextTriggerAt).toLocaleString()
+          : "⚠️ Could not resolve — OS may not fire this reliably",
+      };
+    })
+  );
+
+  entries.sort((a, b) => (a.nextTriggerAt ?? Infinity) - (b.nextTriggerAt ?? Infinity));
+  return { permissionGranted, entries };
+}
+
 // ─── TIME HELPERS ─────────────────────────────────────────────────────────────
 function parseTime(timeStr: string): { hour: number; minute: number } | null {
   const parts = timeStr.split(":").map(Number);

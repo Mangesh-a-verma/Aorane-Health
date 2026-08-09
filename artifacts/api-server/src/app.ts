@@ -10,6 +10,7 @@ import { startSubscriptionExpiryJob } from "./jobs/subscription-expiry";
 import { startExpiryReminderJob } from "./jobs/expiry-reminders";
 import { startMonthlyHealthSummaryJob } from "./jobs/monthly-health-summary";
 import { startWinBackJob } from "./jobs/win-back";
+import { startPaymentReconciliationJob } from "./jobs/payment-reconciliation";
 
 const app: Express = express();
 
@@ -241,6 +242,12 @@ startMonthlyHealthSummaryJob();
 
 // Start daily win-back / re-engagement email job
 startWinBackJob();
+
+// AUDIT FIX (Phase 0): this job was fully implemented (Razorpay↔DB payment
+// reconciliation + admin alert on mismatch) but was never actually started —
+// unlike every other job in this file, it was missing from both the import
+// list and this startup block, so it silently never ran in production.
+startPaymentReconciliationJob();
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Route not found" });
