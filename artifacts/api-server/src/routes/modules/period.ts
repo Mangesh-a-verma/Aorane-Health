@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, periodLogsTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 
@@ -73,7 +73,18 @@ router.patch("/period/log/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     const id = String(req.params.id);
     const { endDate, symptoms, flow, notes } = req.body as Record<string, unknown>;
-    const [updated] = await db.update(periodLogsTable).set({ endDate: endDate as string, symptoms: symptoms as string[], flow: flow as string, notes: notes as string }).where(eq(periodLogsTable.id, id)).returning();
+    // SECURITY FIX (IDOR): scope by userId — without this, any authenticated
+    // user could overwrite another user's period-tracking entry (dates,
+    // symptoms, flow) by guessing/observing its UUID. Sensitive reproductive
+    // health data.
+    const [updated] = await db.update(periodLogsTable)
+      .set({ endDate: endDate as string, symptoms: symptoms as string[], flow: flow as string, notes: notes as string })
+      .where(and(eq(periodLogsTable.id, id), eq(periodLogsTable.userId, req.userId!)))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ error: "Period log not found" });
+      return;
+    }
     res.json({ success: true, log: updated });
   } catch {
     res.status(500).json({ error: "Failed to update period log" });

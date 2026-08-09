@@ -555,6 +555,17 @@ router.post("/auth/verify-email-otp", async (req, res) => {
       res.status(400).json({ error: "Email and OTP required" });
       return;
     }
+
+    // SECURITY FIX: this endpoint had no rate limit on verify attempts,
+    // unlike /auth/verify-otp (phone) which limits to 5/15min. A 6-digit
+    // OTP is brute-forceable without this within its validity window.
+    const emailVerifyLimitKey = `email_otp_verify:${email.toLowerCase()}`;
+    const emailVerifyAttempts = await cache.incrementRateLimitFixed(emailVerifyLimitKey, 900);
+    if (emailVerifyAttempts > 5) {
+      res.status(429).json({ error: "Too many failed attempts. Please request a new OTP after 15 minutes." });
+      return;
+    }
+
     const emailKey = emailOtpKey(email);
 
     // Check memory cache first (fast path)
@@ -695,6 +706,18 @@ router.post("/auth/link-phone", requireAuth, async (req: AuthRequest, res) => {
     const { phone, otp } = req.body as { phone: string; otp: string };
     if (!phone || !otp || !/^\d{10}$/.test(phone)) {
       res.status(400).json({ error: "Valid 10-digit phone and OTP required" }); return;
+    }
+
+    // SECURITY FIX: no rate limit existed on this verify attempt. A
+    // successful brute force here merges another user's phone-linked
+    // account (and its health data) into the attacker's account — higher
+    // value than a normal login OTP guess, so this needs the same
+    // protection /auth/verify-otp already has.
+    const linkVerifyLimitKey = `link_phone_verify:${phone}`;
+    const linkVerifyAttempts = await cache.incrementRateLimitFixed(linkVerifyLimitKey, 900);
+    if (linkVerifyAttempts > 5) {
+      res.status(429).json({ error: "Too many failed attempts. Please request a new OTP after 15 minutes." });
+      return;
     }
 
     let storedHash: string | null = null;

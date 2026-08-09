@@ -228,10 +228,23 @@ router.post("/business/forgot-password/verify", async (req, res) => {
     if (!email || !otp || !newPassword) { res.status(400).json({ error: "Email, OTP and new password required" }); return; }
     if (newPassword.length < 8) { res.status(400).json({ error: "Password must be at least 8 characters" }); return; }
     const { cache } = await import("../../lib/redis");
+
+    // SECURITY FIX (CRITICAL): this had no rate limit on the verify step.
+    // Unrestricted OTP guessing on a password-reset endpoint is a direct
+    // account-takeover path — no valid session is even needed. Same
+    // protection as /auth/verify-otp, applied here.
+    const forgotVerifyLimitKey = `biz_forgot_verify:${email.toLowerCase()}`;
+    const forgotVerifyAttempts = cache.incrementRateLimitFixed(forgotVerifyLimitKey, 900);
+    if (forgotVerifyAttempts > 5) {
+      res.status(429).json({ error: "Too many failed attempts. Please request a new code after 15 minutes." });
+      return;
+    }
+
     const storedHash = cache.getOtp(`biz_forgot_otp:${email.toLowerCase()}`);
     if (!storedHash) { res.status(400).json({ error: "Reset code expired or invalid. Request a new one." }); return; }
     if (!verifyOtpHash(otp, storedHash as string)) { res.status(400).json({ error: "Incorrect code. Please try again." }); return; }
     cache.deleteOtp(`biz_forgot_otp:${email.toLowerCase()}`);
+    cache.resetRateLimit(forgotVerifyLimitKey);
     const newHash = await bcrypt.hash(newPassword, 12);
     await db.update(orgAdminsTable).set({ passwordHash: newHash }).where(eq(orgAdminsTable.email, email.toLowerCase()));
     res.json({ success: true, message: "Password updated successfully. Please log in." });
@@ -249,6 +262,17 @@ router.post("/business/login/verify-otp", async (req, res) => {
     }
 
     const { cache } = await import("../../lib/redis");
+
+    // SECURITY FIX: no rate limit on this verify step — only the send step
+    // (/business/login/send-email-otp) was limited. Login-bypass risk via
+    // OTP brute force.
+    const loginVerifyLimitKey = `biz_login_verify:${email.toLowerCase()}`;
+    const loginVerifyAttempts = cache.incrementRateLimitFixed(loginVerifyLimitKey, 900);
+    if (loginVerifyAttempts > 5) {
+      res.status(429).json({ error: "Too many failed attempts. Please request a new OTP after 15 minutes." });
+      return;
+    }
+
     const storedHash = cache.getOtp(`biz_login_otp:${email.toLowerCase()}`);
     if (!storedHash) {
       res.status(400).json({ error: "OTP expired or not found. Please log in again." });
@@ -258,6 +282,7 @@ router.post("/business/login/verify-otp", async (req, res) => {
       res.status(400).json({ error: "Incorrect OTP. Please try again." });
       return;
     }
+    cache.resetRateLimit(loginVerifyLimitKey);
     cache.deleteOtp(`biz_login_otp:${email.toLowerCase()}`);
 
     // BUG-5: Normalize email to lowercase before DB lookup to prevent case mismatch

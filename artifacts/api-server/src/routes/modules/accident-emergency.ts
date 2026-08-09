@@ -21,7 +21,7 @@
 
 import { Router } from "express";
 import { db, accidentEmergencyLogsTable, emergencyContactsTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 
@@ -70,8 +70,17 @@ router.post("/emergency/contacts", requireAuth, async (req: AuthRequest, res) =>
 /** DELETE /emergency/contacts/:id */
 router.delete("/emergency/contacts/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
-    await db.delete(emergencyContactsTable)
-      .where(eq(emergencyContactsTable.id, String(req.params.id)));
+    // SECURITY FIX (IDOR): must scope by userId too, or any authenticated
+    // user could delete any OTHER user's emergency contact by guessing/
+    // observing its UUID. requireAuth only proves *who* is calling — it
+    // does not prove they own this row.
+    const deleted = await db.delete(emergencyContactsTable)
+      .where(and(eq(emergencyContactsTable.id, String(req.params.id)), eq(emergencyContactsTable.userId, req.userId!)))
+      .returning({ id: emergencyContactsTable.id });
+    if (!deleted.length) {
+      res.status(404).json({ error: "Emergency contact not found" });
+      return;
+    }
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Failed to delete emergency contact" });
@@ -165,9 +174,17 @@ router.get("/emergency/accident/history", requireAuth, async (req: AuthRequest, 
 router.patch("/emergency/accident/:id/cancel", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { reason } = req.body as { reason?: string };
-    await db.update(accidentEmergencyLogsTable)
+    // SECURITY FIX (IDOR): scope by userId — without this, any authenticated
+    // user could cancel ANY other user's in-progress SOS emergency by
+    // guessing/observing the log ID. Direct safety impact.
+    const updated = await db.update(accidentEmergencyLogsTable)
       .set({ status: "cancelled", cancelledAt: new Date(), cancelReason: reason || "User cancelled" })
-      .where(eq(accidentEmergencyLogsTable.id, String(req.params.id)));
+      .where(and(eq(accidentEmergencyLogsTable.id, String(req.params.id)), eq(accidentEmergencyLogsTable.userId, req.userId!)))
+      .returning({ id: accidentEmergencyLogsTable.id });
+    if (!updated.length) {
+      res.status(404).json({ error: "Emergency log not found" });
+      return;
+    }
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Cancel failed" });
@@ -177,9 +194,15 @@ router.patch("/emergency/accident/:id/cancel", requireAuth, async (req: AuthRequ
 /** PATCH /emergency/accident/:id/resolve */
 router.patch("/emergency/accident/:id/resolve", requireAuth, async (req: AuthRequest, res) => {
   try {
-    await db.update(accidentEmergencyLogsTable)
+    // SECURITY FIX (IDOR): same as /cancel above — scope by userId.
+    const updated = await db.update(accidentEmergencyLogsTable)
       .set({ status: "resolved", resolvedAt: new Date() })
-      .where(eq(accidentEmergencyLogsTable.id, String(req.params.id)));
+      .where(and(eq(accidentEmergencyLogsTable.id, String(req.params.id)), eq(accidentEmergencyLogsTable.userId, req.userId!)))
+      .returning({ id: accidentEmergencyLogsTable.id });
+    if (!updated.length) {
+      res.status(404).json({ error: "Emergency log not found" });
+      return;
+    }
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Resolve failed" });
