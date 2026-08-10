@@ -23,7 +23,7 @@ interface FlagCache {
 const FLAG_CACHE = new Map<string, FlagCache>();
 const FLAG_TTL_MS = 5 * 60 * 1000;
 
-// FIX BUG 1: Safe Default Registry (Agar DB mein seed data chhoot gaya ho toh ye fallback use hoga)
+// FIX BUG 1: Safe Default Registry (used as a fallback if seed data is missing from the DB)
 const KNOWN_FEATURES: Record<string, { isEnabled: boolean; enabledForPlans: string[] }> = {
   // enabledForPlans: [] here means "no extra plan restriction from this
   // registry" — per-plan access + quantity for these two is now solely
@@ -34,7 +34,7 @@ const KNOWN_FEATURES: Record<string, { isEnabled: boolean; enabledForPlans: stri
   // consolidated to a single source of truth, July 2026.
   "health_prediction": { isEnabled: true, enabledForPlans: [] },
   "weekly_diet_chart": { isEnabled: true, enabledForPlans: [] },
-  // Aap aage chal kar yahan aur default features add kar sakte hain
+  // More default features can be added here in the future
 };
 
 async function getFlag(name: string): Promise<FlagCache | null> {
@@ -51,7 +51,7 @@ async function getFlag(name: string): Promise<FlagCache | null> {
   let flag: FlagCache;
 
   if (!row) {
-    // Agar DB mein feature nahi mila, toh pehle Known Features list mein check karo
+    // If the feature wasn't found in the DB, check the Known Features list first
     if (KNOWN_FEATURES[name]) {
       flag = {
         isEnabled: KNOWN_FEATURES[name].isEnabled,
@@ -59,7 +59,7 @@ async function getFlag(name: string): Promise<FlagCache | null> {
         expiresAt: now + FLAG_TTL_MS,
       };
     } else {
-      return null; // Unknown feature ke liye abhi bhi Fail-Closed rahega (Security Intact)
+      return null; // Still fail-closed for unknown features (security intact)
     }
   } else {
     flag = {
@@ -84,7 +84,7 @@ export function requireFeature(featureName: string) {
     try {
       const flag = await getFlag(featureName);
 
-      // FIX H-9: Fail-Closed (Deny by default) agar flag DB aur registry dono mein nahi hai
+      // FIX H-9: Fail-closed (deny by default) if the flag is in neither the DB nor the registry
       if (!flag) {
         logger.warn({ feature: featureName }, "[FeatureCheck] Missing flag requested. Blocking access securely.");
         res.status(403).json({
@@ -95,7 +95,7 @@ export function requireFeature(featureName: string) {
         return;
       }
 
-      // Agar feature totally disable kar diya gaya hai
+      // If the feature has been fully disabled
       if (!flag.isEnabled) {
         res.status(403).json({
           error: "This feature is currently unavailable",
@@ -106,7 +106,7 @@ export function requireFeature(featureName: string) {
       }
 
       // FIX BUG 2: Case-Insensitive Matching
-      // DB mein case kuch bhi ho ("pro", "Pro", "PRO"), dono ko upper case karke match karenge
+      // Regardless of case in the DB ("pro", "Pro", "PRO"), match by uppercasing both sides
       if (flag.enabledForPlans.length > 0) {
         const userPlan = (req.userPlan || "free").toUpperCase(); 
         const allowedPlans = flag.enabledForPlans.map((p: string) => p.toUpperCase());

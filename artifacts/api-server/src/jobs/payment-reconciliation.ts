@@ -21,7 +21,7 @@ import { createAdminNotif } from "../lib/notify-admin";
  * a human can resolve each case (activate manually, or refund).
  */
 export function startPaymentReconciliationJob() {
-  // Roz raat 2:00 AM (Asia/Kolkata) — subscription-expiry (midnight) ke baad
+  // Runs daily at 2:00 AM (Asia/Kolkata) — after subscription-expiry (midnight)
   cron.schedule("0 2 * * *", async () => {
     if (!isLiveMode()) {
       logger.info("[Reconciliation] Skipped — not in live mode");

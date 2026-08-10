@@ -284,7 +284,7 @@ export const weeklyDietChartsTable = pgTable("weekly_diet_charts", {
   weekStart: text("week_start").notNull(),               // YYYY-MM-DD (Monday)
   dietChartJson: jsonb("diet_chart_json").notNull(),     // { days: [{day, breakfast, lunch, dinner, snacks, totalCalories}] }
   targetCalories: integer("target_calories"),
-  wasForced: boolean("was_forced").default(false),       // NAYA COLUMN (Cost-saver lock)
+  wasForced: boolean("was_forced").default(false),       // NEW COLUMN (Cost-saver lock)
   generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({

@@ -83,7 +83,7 @@ router.post("/medical/scan", requireAuth, requireFeature("medical_report"), asyn
         });
       } else {
         res.status(429).json({
-          error: `Is mahine ki medical scan limit khatam ho gayi! Limit: ${limitCheck.limit}/month on ${planType.toUpperCase()} plan.`,
+          error: `Your medical scan limit for this month is over! Limit: ${limitCheck.limit}/month on ${planType.toUpperCase()} plan.`,
           feature: "ai_medical_scan_daily",
           limitPerDay: limitCheck.limit,
           usedToday: limitCheck.usedToday,

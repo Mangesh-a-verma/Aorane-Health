@@ -23,7 +23,7 @@ const PLAN_CACHE_TTL_SECONDS = 120;
 async function getCurrentPlan(userId: string, fallbackPlan: string): Promise<string> {
   const cacheKey = `user_plan:${userId}`;
   
-  // NAYA: Await lagaya Redis network call ke liye
+  // Added: await for the Redis network call
   const cached = await cache.get(cacheKey);
   if (cached) return cached;
   
@@ -53,17 +53,17 @@ async function getCurrentPlan(userId: string, fallbackPlan: string): Promise<str
       const now = new Date();
       const expiryDate = new Date(row.expiresAt);
       
-      // Agar aaj ki date expiry date se aage nikal chuki hai, toh on-the-fly 'free' return karo
+      // If today's date is past the expiry date, return 'free' on the fly
       if (expiryDate < now) {
         plan = "free"; 
       }
     } else if (plan !== "free" && !row?.expiresAt) {
-      // Defense in depth: Agar user 'pro' hai lekin koi active subscription exist hi nahi karta,
-      // usko downgrade kar do. (Zaroori agar cancel hone ke baad users table update na hua ho).
+      // Defense in depth: if the user's plan is 'pro' but no active subscription exists,
+      // downgrade them. (Needed in case the users table wasn't updated after a cancellation.)
       plan = "free";
     }
 
-    // NAYA: Await lagaya Redis network call ke liye
+    // Added: await for the Redis network call
     await cache.set(cacheKey, plan, PLAN_CACHE_TTL_SECONDS);
     return plan;
   } catch (error) {
@@ -75,7 +75,7 @@ async function getCurrentPlan(userId: string, fallbackPlan: string): Promise<str
 
 /** Call this after any code path that updates users.plan to invalidate the cache */
 export async function invalidateUserPlanCache(userId: string): Promise<void> {
-  // NAYA: Asli Redis use kar rahe hain toh direct delete call karenge
+  // Added: since we're using real Redis, we issue a direct delete call
   await cache.delete(`user_plan:${userId}`);
 }
 
@@ -114,7 +114,7 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     const payload = verifyUserToken(token);
 
     // A5: Token revocation — reject tokens issued before last logout
-    // NAYA: Await lagaya Redis network call ke liye
+    // Added: await for the Redis network call
     const logoutTs = await cache.get(`logout:user:${payload.userId}`);
     if (logoutTs) {
       const decoded = payload as unknown as { iat?: number };
@@ -152,7 +152,7 @@ export async function optionalAuth(req: AuthRequest, res: Response, next: NextFu
     try {
       const payload = verifyUserToken(token);
       
-      // NAYA: Await lagaya Redis network call ke liye
+      // Added: await for the Redis network call
       const logoutTs = await cache.get(`logout:user:${payload.userId}`);
       
       const decoded = payload as unknown as { iat?: number };

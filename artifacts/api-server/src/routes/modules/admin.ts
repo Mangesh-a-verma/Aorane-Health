@@ -268,12 +268,12 @@ router.patch("/admin/users/:id", requireAdmin, async (req: AdminRequest, res) =>
           status: "active", 
           source: "admin_grant", 
           expiresAt,
-          paymentType: "one_time", // Added: System ko batana zaroori hai ki one-time hai
-          autoRenew: false,        // Added: Auto renew false taaki error na aaye
-          nextRenewalAt: expiresAt // Added: Cron jobs ke liye safe date
+          paymentType: "one_time", // Added: needed to tell the system this is a one-time grant
+          autoRenew: false,        // Added: keep auto-renew false to avoid errors
+          nextRenewalAt: expiresAt // Added: safe date for cron jobs
         });
       }
-      invalidatePlanCache(userId); // Ya invalidateUserPlanCache agar naam alag ho
+      invalidatePlanCache(userId); // Or invalidateUserPlanCache if the name differs
     }
     await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "update_user", targetType: "user", targetId: userId, details: updates });
     res.json({ user: updated });

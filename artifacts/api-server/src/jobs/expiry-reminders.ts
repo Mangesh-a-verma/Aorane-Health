@@ -19,13 +19,13 @@ async function sendPushNotification(userId: string, title: string, body: string)
 }
 
 export function startExpiryReminderJob() {
-  // Roz subah 10:00 AM chalega (Asia/Kolkata time)
+  // Runs daily at 10:00 AM (Asia/Kolkata time)
   cron.schedule("0 10 * * *", async () => {
     logger.info("[Cron] Running daily expiry reminders check...");
 
     try {
       // FIX 4: Correct daysLeft calculation using proper date diff
-      // Pehle wale code mein getDate() se sirf din nikal raha tha — month/year ignore ho raha tha
+      // The previous code used getDate() which only extracted the day — month/year were being ignored
       const result = await pool.query(`
         SELECT s.user_id, u.phone, u.email, up.full_name, u.plan, s.expires_at,
           EXTRACT(DAY FROM (s.expires_at::date - CURRENT_DATE)) AS days_left
@@ -93,9 +93,9 @@ export function startExpiryReminderJob() {
     timezone: "Asia/Kolkata",
   });
 
-  // FIX 4: Auto-debit (subscription.charged) reminder — 3 din pehle warn karo
-  // Yeh webhook se handle hota hai (subscription.charged event), lekin
-  // agar webhook miss ho toh yeh cron backup ka kaam karta hai.
+  // FIX 4: Auto-debit (subscription.charged) reminder — warn 3 days in advance
+  // This is normally handled via webhook (subscription.charged event), but
+  // if the webhook is missed, this cron job acts as a backup.
   cron.schedule("0 9 * * *", async () => {
     logger.info("[Cron] Running auto-debit upcoming reminders...");
     try {

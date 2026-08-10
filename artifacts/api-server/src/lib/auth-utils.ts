@@ -5,12 +5,12 @@ export async function verifyAndMigratePassword(
   stored: string,
   updateHash: (h: string) => Promise<void>
 ): Promise<boolean> {
-  // Sirf bcrypt formats ($2b$ ya $2a$) allow karein
+  // Only allow bcrypt formats ($2b$ or $2a$)
   if (stored.startsWith("$2b$") || stored.startsWith("$2a$")) {
     return bcrypt.compare(plain, stored);
   }
   
-  // SHA-256 fallback aur auto-migration security reasons se hata diya gaya hai.
-  // Agar password hash bcrypt format mein nahi hai, toh login reject kar dein.
+  // SHA-256 fallback and auto-migration have been removed for security reasons.
+  // If the stored hash is not in bcrypt format, reject the login.
   return false;
 }

@@ -4,12 +4,12 @@ import { logger } from "../lib/logger";
 import { sendSubscriptionExpiredEmail } from "../lib/welcome-email";
 
 export function startSubscriptionExpiryJob() {
-  // Roz raat 12:00 AM baje chalega (Asia/Kolkata time ke hisaab se)
+  // Runs daily at 12:00 AM (Asia/Kolkata time)
   cron.schedule("0 0 * * *", async () => {
     logger.info("[Cron] Running daily subscription expiry check...");
     
     try {
-      // 1. Un sabhi active plans ko 'expired' karo jinki date nikal chuki hai
+      // 1. Mark all active plans whose expiry date has passed as 'expired'
       const result = await pool.query(`
         UPDATE subscriptions 
         SET status = 'expired', updated_at = NOW() 
@@ -20,7 +20,7 @@ export function startSubscriptionExpiryJob() {
       const expiredUserIds = result.rows.map((row: any) => row.user_id);
 
       if (expiredUserIds.length > 0) {
-        // 2. Un sabhi users ka plan 'free' kar do
+        // 2. Downgrade all those users' plan to 'free'
         await pool.query(`
           UPDATE users 
           SET plan = 'free', updated_at = NOW() 

@@ -134,7 +134,7 @@ router.post("/auth/verify-otp", async (req, res) => {
     }
 
     // 🔒 FIX H3: Added Rate Limiting for OTP verification to prevent brute-force attacks
-    // Ek number par 15 minute mein sirf 5 attempts allow honge
+    // Only 5 attempts allowed per number within a 15-minute window
     const verifyLimitKey = `otp_verify:${phone}`;
     const verifyAttempts = await cache.incrementRateLimitFixed(verifyLimitKey, 900); // 900 seconds = 15 minutes
     if (verifyAttempts > 5) {
@@ -588,7 +588,7 @@ router.post("/auth/verify-email-otp", async (req, res) => {
       res.status(400).json({ error: "Incorrect OTP. Please try again." });
       return;
     }
-    // Success hone par counter reset kar dein (matches pin_login pattern)
+    // Reset the counter on success (matches pin_login pattern)
     await cache.resetRateLimit(emailVerifyLimitKey);
     // Clean up from both cache and DB
     await cache.deleteOtp(emailKey);
@@ -689,7 +689,7 @@ router.post("/auth/pin/login", async (req, res) => {
       res.status(401).json({ error: "Incorrect PIN." }); return;
     }
     
-    // Success hone par counter reset kar dein
+    // Reset the counter on success
     await cache.resetRateLimit(pinRateLimitKey);
 
     await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
@@ -732,7 +732,7 @@ router.post("/auth/link-phone", requireAuth, async (req: AuthRequest, res) => {
 
     if (!storedHash) { res.status(400).json({ error: "OTP expired or not found. Request a new one." }); return; }
     if (!verifyOtpHash(otp, storedHash)) { res.status(400).json({ error: "Invalid OTP." }); return; }
-    // Success hone par counter reset kar dein (matches pin_login pattern)
+    // Reset the counter on success (matches pin_login pattern)
     await cache.resetRateLimit(linkVerifyLimitKey);
     if (fromDb) await db.delete(otpStoreTable).where(eq(otpStoreTable.phone, phone)).catch(() => {});
     else await cache.deleteOtp(phone);

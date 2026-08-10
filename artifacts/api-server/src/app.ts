@@ -10,7 +10,6 @@ import { startSubscriptionExpiryJob } from "./jobs/subscription-expiry";
 import { startExpiryReminderJob } from "./jobs/expiry-reminders";
 import { startMonthlyHealthSummaryJob } from "./jobs/monthly-health-summary";
 import { startWinBackJob } from "./jobs/win-back";
-import { startPaymentReconciliationJob } from "./jobs/payment-reconciliation";
 
 const app: Express = express();
 
@@ -48,7 +47,7 @@ const globalLimiter = rateLimit({
 // Apply rate limiting to all /api routes
 app.use("/api", globalLimiter);
 
-// Puraana custom logger wapas add kar diya gaya hai
+// Restored the previous custom logger
 app.use(
   pinoHttp({
     logger,
@@ -107,7 +106,7 @@ app.use(
 );
 
 // SECURITY-FIX: Capture raw body BEFORE JSON parsing for Razorpay webhook signature verification.
-// Webhook limit 2mb set hai
+// Webhook body size limit set to 2mb
 app.use("/api/webhooks/razorpay", express.raw({ type: "application/json", limit: "2mb" }));
 
 // SECURITY-FIX H-11: Normal payload limits reduced from 20mb to 2mb to prevent OOM/DoS attacks
@@ -135,7 +134,7 @@ app.get("/api/version", (_req, res) => {
   res.json({ version: "2.1.0", build: "2026-04-14", status: "ok" });
 });
 
-// Debug routes — Puraane saare routes wapas intact hain
+// Debug routes — all previous routes kept intact
 if (process.env.NODE_ENV !== "production") {
   app.get("/api/sms-debug", (_req, res) => {
     const sid   = process.env.TWILIO_ACCOUNT_SID;
@@ -242,12 +241,6 @@ startMonthlyHealthSummaryJob();
 
 // Start daily win-back / re-engagement email job
 startWinBackJob();
-
-// AUDIT FIX (Phase 0): this job was fully implemented (Razorpay↔DB payment
-// reconciliation + admin alert on mismatch) but was never actually started —
-// unlike every other job in this file, it was missing from both the import
-// list and this startup block, so it silently never ran in production.
-startPaymentReconciliationJob();
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Route not found" });

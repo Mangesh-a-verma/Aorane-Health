@@ -2,7 +2,7 @@ import { Router } from "express";
 import { pool } from "@workspace/db";
 import { verifyWebhookSignature } from "../../lib/razorpay";
 import { createAdminNotif } from "../../lib/notify-admin";
-import { cache } from "../../lib/redis"; // NAYA: Redis import kiya idempotency ke liye
+import { cache } from "../../lib/redis"; // Added: Redis import for idempotency
 import type { Request, Response } from "express";
 import { logger } from "../../lib/logger";
 import { sendPaymentFailedEmail, sendCorporatePaymentFailedEmail } from "../../lib/welcome-email";
@@ -18,7 +18,7 @@ function formatPlanName(plan: string | null | undefined): string {
 router.post("/webhooks/razorpay", async (req: Request, res: Response) => {
   const webhookSecret = process.env["RAZORPAY_WEBHOOK_SECRET"];
   const signature = req.headers["x-razorpay-signature"] as string;
-  const eventId = req.headers["x-razorpay-event-id"] as string; // NAYA: Event ID catch kiya
+  const eventId = req.headers["x-razorpay-event-id"] as string; // Added: capture the event ID
 
   // C1: Secret must be configured in production
   if (!webhookSecret) {
@@ -272,7 +272,7 @@ router.post("/webhooks/razorpay", async (req: Request, res: Response) => {
       ).catch(() => {});
     }
 
-    // NAYA: Successfully process hone ke baad Event ID ko cache mein save kar diya (7 days ke liye)
+    // Added: after successful processing, save the event ID in cache (for 7 days)
     if (eventId) {
       await cache.set(`webhook_event:${eventId}`, "processed", 7 * 24 * 3600);
     }

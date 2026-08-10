@@ -527,9 +527,9 @@ router.get("/payment/checkout/:orderId", async (req, res) => {
 
     res.setHeader("Content-Type", "text/html");
     // FIX 2: Key changes:
-    // 1. checkout.js load detect karo — agar load nahi hua to error dikhao
-    // 2. Retry button turant dikhao (hidden nahi)
-    // 3. window.onload ke baad sirf tab open karo jab Razorpay defined ho
+    // 1. Detect whether checkout.js loaded — show an error if it didn't
+    // 2. Show the retry button immediately (not hidden)
+    // 3. Only open the checkout after window.onload, and only once Razorpay is defined
     res.send(`<!DOCTYPE html>
 <html>
 <head>
