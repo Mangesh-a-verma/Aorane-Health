@@ -253,6 +253,7 @@ export const api = {
     req<{ success: boolean }>(`/admin/subscriptions/${id}/cancel`, { method: "PATCH" }),
 
   analytics: () => req<{ totalUsers: number; totalOrganizations: number; activeSubscriptions: number; totalRevenue: number; planBreakdown: Array<{ plan: string; count: number }> }>("/admin/analytics"),
+  aiUsage: () => req<{ today: Array<{ feature: string; calls: number; uniqueUsers: number }>; last7Days: Array<{ feature: string; calls: number }> }>("/admin/ai-usage"),
   platformCosts: () => req<{ costs: Array<{ category: string; monthlyUSD: number; description: string }>; totalMonthlyUSD: number; totalMonthlyINR: number; userCount: number; costPerUser: number }>("/admin/platform-costs"),
 
   ads: () => req<{ ads: AdCampaign[] }>("/admin/ads"),

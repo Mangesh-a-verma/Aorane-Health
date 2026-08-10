@@ -165,6 +165,35 @@ async function incrementAIUsage(userId: string, feature: AIFeature, bucketDate: 
   }
 }
 
+/**
+ * refundAIUsage — call this when checkAndUseAILimit() already consumed a
+ * unit of quota but the AI call afterwards failed for a reason that is
+ * NOT the user's fault (provider rate-limited, misconfigured API key,
+ * provider 5xx, unparseable response, etc.). Without this, a failed scan
+ * silently burns the user's daily quota — which is especially painful
+ * now that Gemini's free-tier rate limit means failures can be frequent.
+ *
+ * Best-effort / non-atomic by design: worst case (two failed scans by the
+ * same user in the same instant) under-refunds by one unit, which is a
+ * far smaller problem than over-charging every failed attempt. Bounded
+ * at 0 so it can never push a user's usage negative.
+ */
+export async function refundAIUsage(userId: string, feature: AIFeature): Promise<void> {
+  try {
+    const row = await fetchFeatureRow(feature);
+    const bucketDate = periodBucket(row?.period ?? "daily");
+    await pool.query(
+      `UPDATE ai_usage_daily SET usage_count = GREATEST(usage_count - 1, 0)
+         WHERE user_id = $1 AND feature_name = $2 AND usage_date = $3`,
+      [userId, feature, bucketDate],
+    );
+  } catch {
+    // Non-fatal — a missed refund just means the user's quota display is
+    // off by one for today; never let this break the error response already
+    // being sent back to the client.
+  }
+}
+
 /** Invalidate cache (call after admin updates plan_features) */
 export function invalidateAILimiterCache(feature?: AIFeature): void {
   if (feature) FEATURE_CACHE.delete(feature);

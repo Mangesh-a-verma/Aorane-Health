@@ -268,12 +268,12 @@ router.patch("/admin/users/:id", requireAdmin, async (req: AdminRequest, res) =>
           status: "active", 
           source: "admin_grant", 
           expiresAt,
-          paymentType: "one_time", // Added: needed to tell the system this is a one-time grant
-          autoRenew: false,        // Added: keep auto-renew false to avoid errors
-          nextRenewalAt: expiresAt // Added: safe date for cron jobs
+          paymentType: "one_time", // Added: System ko batana zaroori hai ki one-time hai
+          autoRenew: false,        // Added: Auto renew false taaki error na aaye
+          nextRenewalAt: expiresAt // Added: Cron jobs ke liye safe date
         });
       }
-      invalidatePlanCache(userId); // Or invalidateUserPlanCache if the name differs
+      invalidatePlanCache(userId); // Ya invalidateUserPlanCache agar naam alag ho
     }
     await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "update_user", targetType: "user", targetId: userId, details: updates });
     res.json({ user: updated });
@@ -702,6 +702,30 @@ router.patch("/admin/subscriptions/:id/cancel", requireAdmin, async (req: AdminR
     res.status(500).json({ error: "Failed to cancel subscription" });
   }
 });
+
+// ─── AI Usage Stats (real data from ai_usage_daily — helps watch free-tier
+//     Gemini rate-limit consumption before it causes user-facing failures) ────
+router.get("/admin/ai-usage", requireAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { rows: todayRows } = await pool.query(
+      `SELECT feature_name, SUM(usage_count)::int AS total, COUNT(DISTINCT user_id)::int AS users
+         FROM ai_usage_daily WHERE usage_date = CURRENT_DATE
+         GROUP BY feature_name ORDER BY total DESC`,
+    );
+    const { rows: weekRows } = await pool.query(
+      `SELECT feature_name, SUM(usage_count)::int AS total
+         FROM ai_usage_daily WHERE usage_date >= CURRENT_DATE - INTERVAL '6 days'
+         GROUP BY feature_name ORDER BY total DESC`,
+    );
+    res.json({
+      today: todayRows.map((r) => ({ feature: r.feature_name as string, calls: r.total as number, uniqueUsers: r.users as number })),
+      last7Days: weekRows.map((r) => ({ feature: r.feature_name as string, calls: r.total as number })),
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch AI usage stats" });
+  }
+});
+
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
 router.get("/admin/analytics", requireAdmin, async (req: AdminRequest, res) => {

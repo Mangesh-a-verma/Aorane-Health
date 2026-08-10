@@ -5,8 +5,12 @@ import { requireAuth } from "../../middlewares/user-auth";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { requireFeature } from "../../middlewares/feature-check";
-import { callAI } from "../../lib/ai";
-import { checkAndUseAILimit } from "../../lib/aiLimiter";
+import { callAI, AIProviderError } from "../../lib/ai";
+import { checkAndUseAILimit, refundAIUsage } from "../../lib/aiLimiter";
+import { cache } from "../../lib/redis";
+import crypto from "crypto";
+
+const SMART_SCAN_CACHE_TTL_SECONDS = 24 * 60 * 60; // 24h — same photo re-scanned (by same or different user) skips the Gemini call entirely
 
 const router = Router();
 
@@ -247,19 +251,39 @@ router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), async (
     const userId = req.userId!;
     const planType = req.userPlan || "free";
 
-    // Check photo scan limit before calling AI
-    const limitCheck = await checkAndUseAILimit(userId, "ai_food_scan_photo_daily", planType);
-    if (!limitCheck.allowed) {
-      sendLimitBlocked(res, "ai_food_scan_photo_daily", limitCheck.usedToday, limitCheck.limit, planType, limitCheck.planRequired);
-      return;
-    }
-
     let { imageBase64, mimeType = "image/jpeg" } = req.body as { imageBase64?: string; mimeType?: string };
     if (!imageBase64) { res.status(400).json({ error: "imageBase64 required" }); return; }
 
     // Clean Data URI prefix if present
     if (imageBase64.includes("base64,")) {
       imageBase64 = imageBase64.split("base64,")[1];
+    }
+
+    // Check photo scan limit before calling AI (input already validated above,
+    // so quota is only consumed for requests that will actually reach the AI)
+    const limitCheck = await checkAndUseAILimit(userId, "ai_food_scan_photo_daily", planType);
+    if (!limitCheck.allowed) {
+      sendLimitBlocked(res, "ai_food_scan_photo_daily", limitCheck.usedToday, limitCheck.limit, planType, limitCheck.planRequired);
+      return;
+    }
+
+    // Exact-duplicate check: same image bytes (same packaged product/medicine
+    // photo, scanned again by this or any other user) — skip the Gemini call
+    // entirely and reuse the previous analysis. Cache key is content-based only
+    // (no userId), so this also helps across different users scanning the same
+    // product. Saves real Gemini free-tier quota, not just server latency.
+    const imageHash = crypto.createHash("sha256").update(imageBase64).digest("hex");
+    const cacheKey = `smartscan:${imageHash}`;
+    const cachedResult = cache.get(cacheKey);
+    if (cachedResult) {
+      try {
+        const parsedCached = JSON.parse(cachedResult) as Record<string, unknown>;
+        res.json({ ...parsedCached, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit }, cached: true });
+        return;
+      } catch {
+        // Corrupt cache entry — fall through and re-analyze normally.
+        cache.delete(cacheKey);
+      }
     }
 
     const prompt = `You are an expert AI health assistant. Carefully analyze this image and determine what type of content it shows.
@@ -296,21 +320,50 @@ If no food or medical info is visible, return {"error": "No recognized items fou
 
     let jsonStr;
     try {
-      jsonStr = await callAI("smart_scan", payload, { maxTokens: 1000, temperature: 0.2 });
-    } catch (apiErr: any) {
-      res.status(502).json({ error: "AI Provider failed to analyze the image", details: apiErr.message || String(apiErr) });
+      jsonStr = await callAI("smart_scan", payload, { maxTokens: 1500, temperature: 0.2 });
+    } catch (apiErr) {
+      req.log.error({ err: apiErr, feature: "smart_scan" }, "smart-scan AI call failed");
+      await refundAIUsage(userId, "ai_food_scan_photo_daily");
+      if (apiErr instanceof AIProviderError) {
+        if (apiErr.code === "rate_limited") {
+          res.status(503).json({
+            error: "AI Smart Scan is busy right now (Gemini free-tier rate limit reached across the app). Please wait a minute and try again.",
+            code: "rate_limited",
+          });
+          return;
+        }
+        if (apiErr.code === "missing_key") {
+          // Ops/config issue, not a user-fixable problem — logged above with full detail.
+          res.status(500).json({
+            error: "AI Smart Scan is not configured correctly on the server. Please contact support.",
+            code: "config_error",
+          });
+          return;
+        }
+        if (apiErr.code === "empty_response") {
+          res.status(502).json({
+            error: "Could not read this image clearly. Try a clearer, well-lit photo.",
+            code: "unclear_image",
+          });
+          return;
+        }
+      }
+      res.status(502).json({ error: "AI Provider failed to analyze the image", details: apiErr instanceof Error ? apiErr.message : String(apiErr) });
       return;
     }
 
     let result: Record<string, unknown>;
     try {
       result = JSON.parse(jsonStr) as Record<string, unknown>;
-    } catch(e) {
-      res.status(502).json({ error: "Invalid JSON from AI provider", rawResponse: jsonStr });
+    } catch (e) {
+      req.log.error({ jsonStrPreview: jsonStr?.slice(0, 500), len: jsonStr?.length }, "smart-scan: AI returned non-JSON or truncated JSON");
+      await refundAIUsage(userId, "ai_food_scan_photo_daily");
+      res.status(502).json({ error: "AI response could not be read. Please try scanning again.", code: "invalid_ai_response" });
       return;
     }
 
     res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
+    cache.set(cacheKey, JSON.stringify(result), SMART_SCAN_CACHE_TTL_SECONDS);
   } catch (err) {
     req.log.error({ err }, "smart-scan error");
     res.status(500).json({ error: "Smart scan failed. Please try again with a clearer image." });

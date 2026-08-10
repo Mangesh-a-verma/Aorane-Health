@@ -160,6 +160,10 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
       detached: false,
       cwd: projectRoot,
       env,
+      // Windows: spawning a .cmd file directly (pnpm.cmd) fails with
+      // "spawn EINVAL" because .cmd files are batch scripts, not real
+      // executables — Node's spawn() can only run them via a shell.
+      shell: process.platform === "win32",
     },
   );
 

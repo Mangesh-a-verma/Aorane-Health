@@ -24,6 +24,36 @@ import { db, aiConfigTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { callDeepSeek } from "./nvidia";
 
+/**
+ * Classified AI-provider error — lets callers (routes) distinguish WHY a
+ * call failed instead of every failure collapsing into one generic 502.
+ * Added because smart-scan failures were previously indistinguishable:
+ * a missing API key, a Gemini free-tier rate limit (429), and a
+ * safety-filtered empty response all produced the exact same generic
+ * "AI Provider failed to analyze the image" message — impossible to
+ * diagnose from the mobile app or even from server logs at a glance.
+ */
+export class AIProviderError extends Error {
+  public readonly code: "missing_key" | "rate_limited" | "provider_error" | "empty_response";
+  constructor(code: AIProviderError["code"], message: string) {
+    super(message);
+    this.name = "AIProviderError";
+    this.code = code;
+  }
+}
+
+/** Turn a non-ok fetch Response into a classified AIProviderError. */
+async function throwForBadResponse(res: Response, providerLabel: string): Promise<never> {
+  if (res.status === 429) {
+    throw new AIProviderError(
+      "rate_limited",
+      `${providerLabel} rate limit hit — likely the free-tier per-minute/per-day quota is exhausted (this quota is shared across ALL AI features in the app, not just this one). Wait a minute and try again, or move to a paid API tier for higher limits.`,
+    );
+  }
+  const bodyText = await res.text().catch(() => "");
+  throw new AIProviderError("provider_error", `${providerLabel} error ${res.status}: ${bodyText}`);
+}
+
 export interface AIMedia {
   mimeType: string;
   data: string; // Base64
@@ -201,12 +231,21 @@ async function callGoogleProvider(
     `${getGeminiBaseUrl()}/v1beta/models/${model}:generateContent?key=${apiKey}`,
     { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
   );
-  if (!res.ok) throw new Error(`Google AI error ${res.status}: ${await res.text()}`);
+  if (!res.ok) await throwForBadResponse(res, "Google Gemini");
 
   const data = await res.json() as {
-    candidates?: Array<{ content: { parts: Array<{ text: string }> } }>;
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }>;
+    promptFeedback?: { blockReason?: string };
   };
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  if (!text.trim()) {
+    // No usable text back — usually Gemini's safety filter blocked the
+    // image/prompt (promptFeedback.blockReason) or the response was cut
+    // off before any content (finishReason). Either way this is NOT the
+    // same failure as a network/quota error, so it gets its own code.
+    const reason = data.promptFeedback?.blockReason || data.candidates?.[0]?.finishReason || "unknown";
+    throw new AIProviderError("empty_response", `Gemini returned no readable content (reason: ${reason}). The image may be unclear, or content was filtered.`);
+  }
   if (text.includes("{") && text.includes("}")) {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) return jsonMatch[0];
@@ -256,7 +295,7 @@ async function callAnthropicProvider(
     },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`Anthropic error ${res.status}: ${await res.text()}`);
+  if (!res.ok) await throwForBadResponse(res, "Anthropic");
 
   const data = await res.json() as { content?: Array<{ text?: string }> };
   const text = data.content?.[0]?.text ?? "";
@@ -299,7 +338,7 @@ async function callOpenAIProvider(
     },
     body: JSON.stringify({ model, messages: openaiMessages, max_tokens: maxTokens, temperature: temp }),
   });
-  if (!res.ok) throw new Error(`OpenAI error ${res.status}: ${await res.text()}`);
+  if (!res.ok) await throwForBadResponse(res, "OpenAI");
 
   const data = await res.json() as {
     choices?: Array<{ message?: { content?: string } }>;
@@ -342,8 +381,9 @@ export async function callAI(
 
   const resolvedKey = config.apiKey || getGlobalKey(config.provider);
   if (!resolvedKey) {
-    throw new Error(
-      `No API key for provider "${config.provider}". Set it in Admin Panel > AI Config or as environment variable.`,
+    throw new AIProviderError(
+      "missing_key",
+      `No API key for provider "${config.provider}" (feature: "${feature}"). Set GOOGLE_GEMINI_API_KEY as an env var on the server, or set a key in Admin Panel > AI Config.`,
     );
   }
 

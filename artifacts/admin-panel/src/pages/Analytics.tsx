@@ -91,6 +91,7 @@ function ChartCard({ title, subtitle, children }: {
 
 export default function Analytics() {
   const [data, setData]     = useState<Analytics | null>(null);
+  const [aiUsage, setAiUsage] = useState<{ today: Array<{ feature: string; calls: number; uniqueUsers: number }>; last7Days: Array<{ feature: string; calls: number }> } | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr]       = useState("");
 
@@ -99,6 +100,7 @@ export default function Analytics() {
       .then(setData)
       .catch((e: Error) => setErr(e.message))
       .finally(() => setLoading(false));
+    api.aiUsage().then(setAiUsage).catch(() => { /* non-critical widget — fail silent */ });
   }, []);
 
   const revenueTrend = data ? buildRevenueTrend(data.totalRevenue) : [];
@@ -366,6 +368,28 @@ export default function Analytics() {
             )}
           </ChartCard>
         </div>
+
+        {/* ── AI Usage (real data — watch free-tier Gemini quota consumption) ── */}
+        <ChartCard title="AI Usage Today" subtitle="Calls per AI feature, today — all features currently share one Gemini API key/quota">
+          {!aiUsage || aiUsage.today.length === 0 ? (
+            <div className="h-32 flex items-center justify-center text-xs"
+                 style={{ color: "rgba(255,255,255,0.25)" }}>
+              {aiUsage ? "No AI calls yet today" : "Loading..."}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={Math.max(160, aiUsage.today.length * 34)}>
+              <BarChart data={aiUsage.today} layout="vertical" margin={{ left: 8, right: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
+                <XAxis type="number" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} allowDecimals={false} />
+                <YAxis type="category" dataKey="feature" width={140}
+                       tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 10 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="calls" name="Calls today" fill="#0077B6" radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
+
 
         {/* ── AI Insight banner ─────────────────────────────────── */}
         <div className="rounded-2xl p-6 relative overflow-hidden"

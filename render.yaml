@@ -37,6 +37,8 @@ services:
         sync: false
       - key: NVIDIA_API_KEY
         sync: false
+      - key: GOOGLE_GEMINI_API_KEY
+        sync: false
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET

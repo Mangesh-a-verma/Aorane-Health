@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Alert, ActivityIndicator, Animated, Dimensions, Image, Platform,
@@ -19,10 +18,8 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { useAuth } from "@/context/AuthContext";
 import { DS } from "@/lib/theme";
 import { UpgradeModal, type UpgradeModalConfig } from "@/components/UpgradeModal";
-import { ScanningOverlay } from "@/components/ScanningOverlay";
 import { AIUsageIndicator } from "@/components/AIUsageIndicator";
 import { LimitWarningToast } from "@/components/LimitWarningToast";
-import { logSilentError } from "@/lib/silentCatch";
 
 const { width: W, height: H } = Dimensions.get("window");
 const PRIMARY = DS.color.primary;
@@ -156,29 +153,29 @@ const sf = StyleSheet.create({
   cornerBR: { position: "absolute", bottom: 0, right: 0, width: CORNER, height: CORNER, borderBottomWidth: BORDER, borderRightWidth: BORDER, borderColor: ACCENT, borderBottomRightRadius: 16 },
 });
 
-// ─── PLAN GATE OVERLAY ────────────────────────────────────────────────────────
-function PlanGate({ onDismiss }: { onDismiss: () => void }) {
+// ─── PLAN GATE OVERLAY (Pro / Max only — free plan has ZERO scans) ────────────
+function PlanGate() {
   return (
-    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,248,243,0.95)", zIndex: 100, alignItems: "center", justifyContent: "center", padding: 32 }}>
+    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,248,243,0.97)", zIndex: 100, alignItems: "center", justifyContent: "center", padding: 32 }}>
       <View style={{ backgroundColor: "#FFF", borderRadius: 28, padding: 28, alignItems: "center", gap: 14, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 20, elevation: 8, borderWidth: 1, borderColor: "#F0E6E0" }}>
         <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: PRIMARY + "15", alignItems: "center", justifyContent: "center" }}>
           <Text style={{ fontSize: 36 }}>✨</Text>
         </View>
         <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: "#1A1A1A", textAlign: "center" }}>AI Smart Scan</Text>
         <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: "#6B7280", textAlign: "center", lineHeight: 21 }}>
-          Scan food, lab reports & medicines with AI. Free daily scans included — upgrade for unlimited usage and priority processing.
+          Scan food, lab reports & medicines with AI. This is a Pro & Max plan feature — upgrade to unlock unlimited AI-powered scanning.
         </Text>
-        <View style={{ backgroundColor: "#F0FDF4", borderRadius: 12, padding: 12, width: "100%" }}>
-          <Text style={{ color: "#166534", fontFamily: "Inter_600SemiBold", fontSize: 12, textAlign: "center" }}>✅ Free Plan · Daily Scans Available</Text>
+        <View style={{ backgroundColor: DS.color.primarySoft, borderRadius: 12, padding: 12, width: "100%" }}>
+          <Text style={{ color: PRIMARY, fontFamily: "Inter_600SemiBold", fontSize: 12, textAlign: "center" }}>🔒 Available on Pro & Max plans</Text>
         </View>
-        <TouchableOpacity onPress={onDismiss} style={{ width: "100%", borderRadius: 16, overflow: "hidden" }}>
+        <TouchableOpacity onPress={() => router.push("/upgrade" as never)} style={{ width: "100%", borderRadius: 16, overflow: "hidden" }}>
           <LinearGradient colors={[PRIMARY, SKY]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ padding: 16, alignItems: "center" }}>
-            <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>Start Scanning — Free</Text>
+            <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>Upgrade to Pro / Max</Text>
             <Text style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>Powered by Google Gemini AI</Text>
           </LinearGradient>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push("/upgrade" as never)} style={{ paddingVertical: 8 }}>
-          <Text style={{ color: PRIMARY, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Upgrade for Unlimited Scans ✨</Text>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/food" as never)} style={{ paddingVertical: 8 }}>
+          <Text style={{ color: PRIMARY, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Search Food by Name instead</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -191,23 +188,6 @@ export default function SmartScanScreen() {
   const { user } = useAuth();
   const userPlan = ((user as Record<string, unknown>)?.plan as string || "free").toLowerCase();
   const isPremium = userPlan !== "free";
-
-  // ── FIX: Persist gate-dismissed state so re-focusing the tab doesn't
-  // re-show the gate. Using a ref + AsyncStorage-backed initial load.
-  const GATE_KEY = "scan_gate_dismissed";
-  const [planGateDismissed, setPlanGateDismissed] = useState(false);
-
-  useEffect(() => {
-    // Load persisted dismissal state once on mount
-    AsyncStorage.getItem(GATE_KEY)
-      .then((v) => { if (v === "1") setPlanGateDismissed(true); })
-      .catch((e) => logSilentError('background-task', e));
-  }, []);
-
-  const dismissGate = useCallback(() => {
-    setPlanGateDismissed(true);
-    AsyncStorage.setItem(GATE_KEY, "1").catch((e) => logSilentError('storage-write', e));
-  }, []);
 
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
@@ -307,12 +287,12 @@ export default function SmartScanScreen() {
       }
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("503") || msg.includes("Gemini") || msg.includes("service") || msg.includes("timeout")) {
-        Alert.alert("AI Unavailable", "Connection to AI Smart Scan failed. Please try again.");
+        Alert.alert("AI Unavailable", msg || "Connection to AI Smart Scan failed. Please try again.");
       } else if (msg.includes("413") || msg.toLowerCase().includes("large")) {
          // Agar phir bhi galti se badi ho jaye (extremely rare now)
         Alert.alert("File Too Large", "Please try taking a photo from slightly further away.");
       } else {
-        Alert.alert("Scan Failed", "Could not analyse this image. Try with a clearer photo in good lighting.");
+        Alert.alert("Scan Failed", msg || "Could not analyse this image. Try with a clearer photo in good lighting.");
       }
     }
   }
@@ -330,7 +310,7 @@ export default function SmartScanScreen() {
     <View style={s.root}>
       <LinearGradient colors={[DS.color.bg, DS.color.bgSoft, "#FFFFFF"]} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFill} />
       <View style={s.blob1} /><View style={s.blob2} />
-      {!isPremium && !planGateDismissed && <PlanGate onDismiss={dismissGate} />}
+      {!isPremium && <PlanGate />}
 
       <ScrollView
         contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: insets.bottom + 96, paddingHorizontal: 16 }}
@@ -382,7 +362,7 @@ export default function SmartScanScreen() {
         {/* CTA Buttons */}
         {!result && !scanning && (
           <Animated.View style={[s.btnGroup, { opacity: headerFade }]}>
-            {isPremium || planGateDismissed ? (
+            {isPremium && (
               <>
                 <TouchableOpacity style={s.cameraBtnWrap} onPress={() => pickAndScan("camera")}>
                   <LinearGradient colors={[PRIMARY, SKY, ACCENT]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.cameraBtn}>
@@ -401,17 +381,6 @@ export default function SmartScanScreen() {
                   iconName="scan-outline"
                 />
               </>
-            ) : null}
-            {(!isPremium && planGateDismissed) && (
-              <TouchableOpacity
-                style={[s.cameraBtnWrap, { marginTop: 8 }]}
-                onPress={() => router.push("/(tabs)/food" as never)}
-              >
-                <LinearGradient colors={[PRIMARY, "#F5A623"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.cameraBtn}>
-                  <Ionicons name="search" size={22} color="#FFF" />
-                  <Text style={s.cameraBtnText}>Search Food by Name</Text>
-                </LinearGradient>
-              </TouchableOpacity>
             )}
           </Animated.View>
         )}
@@ -455,6 +424,20 @@ export default function SmartScanScreen() {
   );
 }
 
+const LOW_CONFIDENCE_THRESHOLD = 0.6;
+
+function LowConfidenceBanner({ confidence }: { confidence: number }) {
+  if (confidence >= LOW_CONFIDENCE_THRESHOLD) return null;
+  return (
+    <View style={rs.lowConfBanner}>
+      <Ionicons name="alert-circle" size={16} color="#B45309" />
+      <Text style={rs.lowConfText}>
+        AI isn't fully sure about this scan — please double-check these details before relying on them.
+      </Text>
+    </View>
+  );
+}
+
 function FoodResult({ r, onReset }: { r: Extract<ScanResult, { type: "food" }>; onReset: () => void }) {
   const scoreColor = r.healthScore >= 7 ? ACCENT : r.healthScore >= 4 ? "#F59E0B" : "#EF4444";
   return (
@@ -466,6 +449,7 @@ function FoodResult({ r, onReset }: { r: Extract<ScanResult, { type: "food" }>; 
         </View>
         <Text style={[rs.conf, { color: ACCENT }]}>{Math.round((r.confidence || 0.9) * 100)}% confident</Text>
       </View>
+      <LowConfidenceBanner confidence={r.confidence ?? 0.9} />
       <Text style={rs.title}>{r.foodName}</Text>
       <Text style={rs.serving}>{r.servingSize}</Text>
       <View style={rs.macroRow}>
@@ -523,6 +507,7 @@ function MedicalResult({ r, onReset }: { r: Extract<ScanResult, { type: "medical
           <Text style={[rs.urgencyText, { color: urgencyColor }]}>{r.urgencyLevel.toUpperCase()}</Text>
         </View>
       </View>
+      <LowConfidenceBanner confidence={r.confidence ?? 0.9} />
       <Text style={rs.title}>{r.reportType}</Text>
       {r.date && <Text style={rs.serving}>Date: {r.date}</Text>}
       <View style={rs.summBox}><Text style={rs.summText}>{r.summary}</Text></View>
@@ -578,6 +563,7 @@ function MedicineResult({ r, onReset }: { r: Extract<ScanResult, { type: "medici
         </View>
         <Text style={[rs.conf, { color: ACCENT }]}>{Math.round((r.confidence || 0.85) * 100)}% confident</Text>
       </View>
+      <LowConfidenceBanner confidence={r.confidence ?? 0.85} />
       <Text style={rs.title}>{r.medicineName}</Text>
       {r.genericName && <Text style={rs.serving}>Generic: {r.genericName}</Text>}
       <View style={rs.summBox}><Text style={rs.sectionSmall}>Used For</Text><Text style={rs.summText}>{r.uses}</Text></View>
@@ -617,6 +603,8 @@ const rs = StyleSheet.create({
   chip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   chipText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   conf: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  lowConfBanner: { flexDirection: "row", alignItems: "flex-start", gap: 8, backgroundColor: "#FEF3C7", borderRadius: 12, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: "#FDE68A" },
+  lowConfText: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium", color: "#78350F", lineHeight: 17 },
   title: { fontSize: 22, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 4 },
   serving: { fontSize: 13, color: C.muted, marginBottom: 14 },
   macroRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
