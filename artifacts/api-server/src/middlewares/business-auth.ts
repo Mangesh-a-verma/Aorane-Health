@@ -8,7 +8,7 @@ export interface BusinessRequest extends Request {
   orgRole?: string;
 }
 
-export function requireBusinessAuth(req: BusinessRequest, res: Response, next: NextFunction): void {
+export async function requireBusinessAuth(req: BusinessRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     res.status(401).json({ error: "Business authorization required" });
@@ -19,7 +19,7 @@ export function requireBusinessAuth(req: BusinessRequest, res: Response, next: N
     const payload = verifyBusinessToken(token);
 
     // A5: Token revocation — reject tokens issued before last logout
-    const logoutTs = cache.get(`logout:business:${payload.orgAdminId}`);
+    const logoutTs = await cache.get(`logout:business:${payload.orgAdminId}`);
     if (logoutTs) {
       const decoded = payload as unknown as { iat?: number };
       const iat = decoded.iat ?? 0;

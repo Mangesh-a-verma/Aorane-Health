@@ -51,14 +51,14 @@ const PAID_PLANS = new Set(["max", "pro", "family", "starter", "growth", "enterp
  * Fixed-limit rate limiting — same limit for all plans.
  */
 export function aiRateLimit(feature: string, limitPerDay: number) {
-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+  return async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     const userId = req.userId;
     if (!userId) { next(); return; }
 
     const date  = todayIST();
     const key   = `${feature}:${userId}:${date}`;
     const ttl   = secondsUntilMidnight();
-    const count = cache.incrementRateLimitFixed(key, ttl);
+    const count = await cache.incrementRateLimitFixed(key, ttl);
 
     if (count > limitPerDay) {
       const label = FEATURE_LABELS[feature] ?? feature;
@@ -89,7 +89,7 @@ export function planAiRateLimit(
   feature: string,
   limits: { free: number; paid: number }
 ) {
-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+  return async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     const userId = req.userId;
     if (!userId) { next(); return; }
 
@@ -100,7 +100,7 @@ export function planAiRateLimit(
     const date  = todayIST();
     const key   = `${feature}:${userId}:${date}`;
     const ttl   = secondsUntilMidnight();
-    const count = cache.incrementRateLimitFixed(key, ttl);
+    const count = await cache.incrementRateLimitFixed(key, ttl);
 
     if (count > limitPerDay) {
       const label = FEATURE_LABELS[feature] ?? feature;

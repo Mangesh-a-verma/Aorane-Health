@@ -729,7 +729,7 @@ router.post("/food/weather-suggestions", requireAuth, async (req: AuthRequest, r
 
     // ── 6-hour server-side cache (per user) — prevents AI call on every food screen open ──
     const cacheKey = `weather:sug:${userId}`;
-    const cached = cache.get(cacheKey);
+    const cached = await cache.get(cacheKey);
     if (cached) {
       res.json({ ...JSON.parse(cached), fromCache: true });
       return;
@@ -792,7 +792,7 @@ Return ONLY valid JSON:
       const jsonStr = await callAI("food_ai", [{ role: "user", content: prompt }], { maxTokens: 1200 });
       const result = JSON.parse(jsonStr);
       const response = { ...result, weatherContext: weather, fromCache: false };
-      cache.set(cacheKey, JSON.stringify(response), WEATHER_CACHE_TTL);
+      await cache.set(cacheKey, JSON.stringify(response), WEATHER_CACHE_TTL);
       res.json(response);
     } catch {
       const month = new Date().getMonth() + 1;

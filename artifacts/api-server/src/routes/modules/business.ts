@@ -26,7 +26,7 @@ router.post("/business/register", async (req, res) => {
     const { cache } = await import("../../lib/redis");
     const ip = (req.headers["x-forwarded-for"] as string || req.socket.remoteAddress || "unknown").split(",")[0].trim();
     const rlKey = `biz_register:${ip}`;
-    const attempts = cache.incrementRateLimitFixed(rlKey, 3600);
+    const attempts = await cache.incrementRateLimitFixed(rlKey, 3600);
     if (attempts > 5) {
       res.status(429).json({ error: "Too many registration attempts. Please try again after 1 hour." });
       return;
@@ -103,7 +103,7 @@ router.post("/business/register", async (req, res) => {
     const token = signBusinessToken({ orgAdminId: admin.id, orgId: org.id, role: admin.role });
     // W3: Send email verification OTP (fire & forget)
     const verifyOtp = generateOtp(6);
-    cache.setOtp(`biz_email_verify:${admin.id}`, hashOtp(verifyOtp));
+    await cache.setOtp(`biz_email_verify:${admin.id}`, hashOtp(verifyOtp));
     sendEmailOtp(normalizedEmail, verifyOtp).catch(() => {});
     // Send business welcome email (fire & forget)
     sendBusinessWelcomeEmail({
@@ -138,7 +138,7 @@ router.post("/business/login", async (req, res) => {
     // Brute-force protection: max 10 attempts per email per 15 minutes
     const { cache } = await import("../../lib/redis");
     const rlKey = `biz_login:${email.toLowerCase()}`;
-    const attempts = cache.incrementRateLimitFixed(rlKey, 15 * 60);
+    const attempts = await cache.incrementRateLimitFixed(rlKey, 15 * 60);
     if (attempts > 10) {
       res.status(429).json({ error: "Too many login attempts. Try after 15 minutes." });
       return;
@@ -173,10 +173,10 @@ router.post("/business/verify-registration-email", requireBusinessAuth, async (r
     const { otp } = req.body as { otp: string };
     if (!otp) { res.status(400).json({ error: "OTP required" }); return; }
     const { cache } = await import("../../lib/redis");
-    const storedHash = cache.getOtp(`biz_email_verify:${req.orgAdminId}`);
+    const storedHash = await cache.getOtp(`biz_email_verify:${req.orgAdminId}`);
     if (!storedHash) { res.status(400).json({ error: "Verification code expired. Request a new one." }); return; }
     if (!verifyOtpHash(otp, storedHash)) { res.status(400).json({ error: "Invalid verification code" }); return; }
-    cache.deleteOtp(`biz_email_verify:${req.orgAdminId}`);
+    await cache.deleteOtp(`biz_email_verify:${req.orgAdminId}`);
     await db.update(orgAdminsTable).set({ isEmailVerified: true, emailVerifiedAt: new Date() }).where(eq(orgAdminsTable.id, req.orgAdminId!));
     res.json({ success: true, message: "Email verified successfully" });
   } catch { res.status(500).json({ error: "Email verification failed" }); }
@@ -191,7 +191,7 @@ router.post("/business/resend-verification-email", requireBusinessAuth, async (r
     if (admin.isEmailVerified) { res.json({ success: true, message: "Email already verified" }); return; }
     const { cache } = await import("../../lib/redis");
     const verifyOtp = generateOtp(6);
-    cache.setOtp(`biz_email_verify:${req.orgAdminId}`, hashOtp(verifyOtp));
+    await cache.setOtp(`biz_email_verify:${req.orgAdminId}`, hashOtp(verifyOtp));
     const sent = await sendEmailOtp(admin.email, verifyOtp);
     const isDev = process.env.NODE_ENV !== "production";
     res.json({ success: true, sent, ...(!sent && isDev ? { devOtp: verifyOtp } : {}) });
@@ -212,7 +212,7 @@ router.post("/business/forgot-password", async (req, res) => {
     const { cache } = await import("../../lib/redis");
     const otp = generateOtp(6);
     const hashed = hashOtp(otp);
-    cache.setOtp(`biz_forgot_otp:${email.toLowerCase()}`, hashed);
+    await cache.setOtp(`biz_forgot_otp:${email.toLowerCase()}`, hashed);
     const sent = await sendEmailOtp(email, otp);
     const isDev = process.env.NODE_ENV !== "production";
     // B1: Only expose devOtp when email actually failed in dev — never in prod
@@ -234,17 +234,17 @@ router.post("/business/forgot-password/verify", async (req, res) => {
     // account-takeover path — no valid session is even needed. Same
     // protection as /auth/verify-otp, applied here.
     const forgotVerifyLimitKey = `biz_forgot_verify:${email.toLowerCase()}`;
-    const forgotVerifyAttempts = cache.incrementRateLimitFixed(forgotVerifyLimitKey, 900);
+    const forgotVerifyAttempts = await cache.incrementRateLimitFixed(forgotVerifyLimitKey, 900);
     if (forgotVerifyAttempts > 5) {
       res.status(429).json({ error: "Too many failed attempts. Please request a new code after 15 minutes." });
       return;
     }
 
-    const storedHash = cache.getOtp(`biz_forgot_otp:${email.toLowerCase()}`);
+    const storedHash = await cache.getOtp(`biz_forgot_otp:${email.toLowerCase()}`);
     if (!storedHash) { res.status(400).json({ error: "Reset code expired or invalid. Request a new one." }); return; }
     if (!verifyOtpHash(otp, storedHash as string)) { res.status(400).json({ error: "Incorrect code. Please try again." }); return; }
-    cache.deleteOtp(`biz_forgot_otp:${email.toLowerCase()}`);
-    cache.resetRateLimit(forgotVerifyLimitKey);
+    await cache.deleteOtp(`biz_forgot_otp:${email.toLowerCase()}`);
+    await cache.resetRateLimit(forgotVerifyLimitKey);
     const newHash = await bcrypt.hash(newPassword, 12);
     await db.update(orgAdminsTable).set({ passwordHash: newHash }).where(eq(orgAdminsTable.email, email.toLowerCase()));
     res.json({ success: true, message: "Password updated successfully. Please log in." });
@@ -267,13 +267,13 @@ router.post("/business/login/verify-otp", async (req, res) => {
     // (/business/login/send-email-otp) was limited. Login-bypass risk via
     // OTP brute force.
     const loginVerifyLimitKey = `biz_login_verify:${email.toLowerCase()}`;
-    const loginVerifyAttempts = cache.incrementRateLimitFixed(loginVerifyLimitKey, 900);
+    const loginVerifyAttempts = await cache.incrementRateLimitFixed(loginVerifyLimitKey, 900);
     if (loginVerifyAttempts > 5) {
       res.status(429).json({ error: "Too many failed attempts. Please request a new OTP after 15 minutes." });
       return;
     }
 
-    const storedHash = cache.getOtp(`biz_login_otp:${email.toLowerCase()}`);
+    const storedHash = await cache.getOtp(`biz_login_otp:${email.toLowerCase()}`);
     if (!storedHash) {
       res.status(400).json({ error: "OTP expired or not found. Please log in again." });
       return;
@@ -282,8 +282,8 @@ router.post("/business/login/verify-otp", async (req, res) => {
       res.status(400).json({ error: "Incorrect OTP. Please try again." });
       return;
     }
-    cache.resetRateLimit(loginVerifyLimitKey);
-    cache.deleteOtp(`biz_login_otp:${email.toLowerCase()}`);
+    await cache.resetRateLimit(loginVerifyLimitKey);
+    await cache.deleteOtp(`biz_login_otp:${email.toLowerCase()}`);
 
     // BUG-5: Normalize email to lowercase before DB lookup to prevent case mismatch
     const [admin] = await db.select().from(orgAdminsTable).where(eq(orgAdminsTable.email, email.toLowerCase().trim()));
@@ -317,7 +317,7 @@ router.post("/business/send-reg-otp", async (req, res) => {
     const { cache } = await import("../../lib/redis");
     const otp = generateOtp(6);
     const hashed = hashOtp(otp);
-    cache.setOtp(`biz_reg_otp:${email.toLowerCase()}`, hashed);
+    await cache.setOtp(`biz_reg_otp:${email.toLowerCase()}`, hashed);
     const sent = await sendEmailOtp(email, otp);
     const isDev = process.env.NODE_ENV !== "production";
     // B1: Only expose devOtp when email actually failed in dev — never in prod
@@ -340,7 +340,7 @@ router.post("/business/verify-reg-otp", async (req, res) => {
       return;
     }
     const { cache } = await import("../../lib/redis");
-    const storedHash = cache.getOtp(`biz_reg_otp:${email.toLowerCase()}`);
+    const storedHash = await cache.getOtp(`biz_reg_otp:${email.toLowerCase()}`);
     if (!storedHash) {
       res.status(400).json({ error: "Verification code expired. Please request a new one." });
       return;
@@ -349,7 +349,7 @@ router.post("/business/verify-reg-otp", async (req, res) => {
       res.status(400).json({ error: "Incorrect verification code. Please try again." });
       return;
     }
-    cache.deleteOtp(`biz_reg_otp:${email.toLowerCase()}`);
+    await cache.deleteOtp(`biz_reg_otp:${email.toLowerCase()}`);
     res.json({ success: true, verified: true });
   } catch {
     res.status(500).json({ error: "Verification failed" });
@@ -371,14 +371,14 @@ router.post("/business/login/send-email-otp", async (req, res) => {
     }
     const { cache } = await import("../../lib/redis");
     const rlKey = `biz_email_otp:${email.toLowerCase()}`;
-    const attempts = cache.incrementRateLimitFixed(rlKey, 3600);
+    const attempts = await cache.incrementRateLimitFixed(rlKey, 3600);
     if (attempts > 5) {
       res.status(429).json({ error: "Too many OTP requests. Try after 1 hour." });
       return;
     }
     const otp = generateOtp(6);
     const hashed = hashOtp(otp);
-    cache.setOtp(`biz_login_otp:${email.toLowerCase()}`, hashed);
+    await cache.setOtp(`biz_login_otp:${email.toLowerCase()}`, hashed);
     const sent = await sendEmailOtp(email, otp);
     const isDev = process.env.NODE_ENV !== "production";
     const testEmails = (process.env.TEST_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);

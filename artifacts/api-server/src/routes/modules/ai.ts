@@ -274,7 +274,7 @@ router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), async (
     // product. Saves real Gemini free-tier quota, not just server latency.
     const imageHash = crypto.createHash("sha256").update(imageBase64).digest("hex");
     const cacheKey = `smartscan:${imageHash}`;
-    const cachedResult = cache.get(cacheKey);
+    const cachedResult = await cache.get(cacheKey);
     if (cachedResult) {
       try {
         const parsedCached = JSON.parse(cachedResult) as Record<string, unknown>;
@@ -282,7 +282,7 @@ router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), async (
         return;
       } catch {
         // Corrupt cache entry — fall through and re-analyze normally.
-        cache.delete(cacheKey);
+        await cache.delete(cacheKey);
       }
     }
 
@@ -363,7 +363,7 @@ If no food or medical info is visible, return {"error": "No recognized items fou
     }
 
     res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
-    cache.set(cacheKey, JSON.stringify(result), SMART_SCAN_CACHE_TTL_SECONDS);
+    await cache.set(cacheKey, JSON.stringify(result), SMART_SCAN_CACHE_TTL_SECONDS);
   } catch (err) {
     req.log.error({ err }, "smart-scan error");
     res.status(500).json({ error: "Smart scan failed. Please try again with a clearer image." });

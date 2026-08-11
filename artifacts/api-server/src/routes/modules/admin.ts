@@ -22,7 +22,7 @@ router.post("/admin/login", async (req, res) => {
     // Brute-force protection: max 10 attempts per email per 15 minutes
     const { cache } = await import("../../lib/redis");
     const rlKey = `admin_login:${email.toLowerCase()}`;
-    const attempts = cache.incrementRateLimitFixed(rlKey, 15 * 60);
+    const attempts = await cache.incrementRateLimitFixed(rlKey, 15 * 60);
     if (attempts > 10) {
       res.status(429).json({ error: "Too many login attempts. Try after 15 minutes." });
       return;

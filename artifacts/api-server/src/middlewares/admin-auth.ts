@@ -7,7 +7,7 @@ export interface AdminRequest extends Request {
   adminRole?: string;
 }
 
-export function requireAdmin(req: AdminRequest, res: Response, next: NextFunction): void {
+export async function requireAdmin(req: AdminRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     res.status(401).json({ error: "Admin authorization required" });
@@ -18,7 +18,7 @@ export function requireAdmin(req: AdminRequest, res: Response, next: NextFunctio
     const payload = verifyAdminToken(token);
 
     // A5: Token revocation — reject tokens issued before last logout
-    const logoutTs = cache.get(`logout:admin:${payload.adminId}`);
+    const logoutTs = await cache.get(`logout:admin:${payload.adminId}`);
     if (logoutTs) {
       const decoded = payload as unknown as { iat?: number };
       const iat = decoded.iat ?? 0;

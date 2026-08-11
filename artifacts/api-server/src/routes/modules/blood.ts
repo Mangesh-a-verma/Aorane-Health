@@ -212,10 +212,10 @@ router.post("/blood/request", requireAuth, async (req: AuthRequest, res) => {
 
     const otp = generateOtp(6);
     const hashed = hashOtp(otp);
-    cache.setOtp(`blood_req:${req.userId}`, hashed);
+    await cache.setOtp(`blood_req:${req.userId}`, hashed);
     if (contactPhone) await sendSmsOtp(contactPhone as string, otp);
 
-    cache.set(`blood_req_pending:${req.userId}`, JSON.stringify({ patientName, bloodGroupNeeded, hospitalName, hospitalAddress, hospitalCity, hospitalState, hospitalPincode, hospitalPhone, doctorName, doctorPhone, unitsNeeded, contactPhone, contactName, urgency: urgency || "urgent", notes }), 600);
+    await cache.set(`blood_req_pending:${req.userId}`, JSON.stringify({ patientName, bloodGroupNeeded, hospitalName, hospitalAddress, hospitalCity, hospitalState, hospitalPincode, hospitalPhone, doctorName, doctorPhone, unitsNeeded, contactPhone, contactName, urgency: urgency || "urgent", notes }), 600);
     res.json({ success: true, requiresOtp: true, message: "OTP sent for verification" });
   } catch {
     res.status(500).json({ error: "Failed to create blood request" });
@@ -225,20 +225,20 @@ router.post("/blood/request", requireAuth, async (req: AuthRequest, res) => {
 router.post("/blood/request/verify-otp", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { otp } = req.body as { otp: string };
-    const stored = cache.getOtp(`blood_req:${req.userId}`);
+    const stored = await cache.getOtp(`blood_req:${req.userId}`);
     if (!stored || !verifyOtpHash(otp, stored)) {
       res.status(400).json({ error: "Invalid or expired OTP" });
       return;
     }
-    cache.deleteOtp(`blood_req:${req.userId}`);
+    await cache.deleteOtp(`blood_req:${req.userId}`);
 
-    const pendingStr = cache.get(`blood_req_pending:${req.userId}`);
+    const pendingStr = await cache.get(`blood_req_pending:${req.userId}`);
     if (!pendingStr) {
       res.status(400).json({ error: "Request session expired. Please start again." });
       return;
     }
     const pending = JSON.parse(pendingStr);
-    cache.delete(`blood_req_pending:${req.userId}`);
+    await cache.delete(`blood_req_pending:${req.userId}`);
 
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 72);
