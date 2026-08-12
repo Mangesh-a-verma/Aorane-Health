@@ -8,10 +8,9 @@ import {
 
 const PROVIDERS = [
   { value: "google", label: "Google (Gemini)" },
-  { value: "nvidia", label: "AI-powered (DeepSeek V3)" },
+  { value: "nvidia", label: "NVIDIA NIM (DeepSeek / Llama / Mistral)" },
   { value: "openai", label: "OpenAI (GPT)" },
   { value: "anthropic", label: "Anthropic (Claude)" },
-  { value: "openrouter", label: "OpenRouter" },
 ];
 
 const MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]> = {
@@ -25,6 +24,8 @@ const MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]> = {
     { value: "deepseek-ai/deepseek-r1", label: "DeepSeek R1 (Reasoning)" },
     { value: "meta/llama-3.1-70b-instruct", label: "Llama 3.1 70B" },
     { value: "mistralai/mixtral-8x7b-instruct-v0.1", label: "Mixtral 8x7B" },
+    { value: "meta/llama-3.2-90b-vision-instruct", label: "Llama 3.2 90B Vision (image scans)" },
+    { value: "meta/llama-3.2-11b-vision-instruct", label: "Llama 3.2 11B Vision (image scans, faster)" },
   ],
   openai: [
     { value: "gpt-4o", label: "GPT-4o" },
@@ -36,11 +37,6 @@ const MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]> = {
     { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
     { value: "claude-3-haiku-20240307", label: "Claude 3 Haiku" },
     { value: "claude-3-opus-20240229", label: "Claude 3 Opus" },
-  ],
-  openrouter: [
-    { value: "meta-llama/llama-3.1-8b-instruct:free", label: "Llama 3.1 8B (Free)" },
-    { value: "google/gemini-flash-1.5", label: "Gemini Flash 1.5" },
-    { value: "openai/gpt-4o-mini", label: "GPT-4o Mini via OR" },
   ],
 };
 
@@ -175,17 +171,22 @@ function FeatureCard({
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Model</label>
-              <select
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                Model
+                <span className="text-[10px] text-muted-foreground/60 font-normal ml-1">(pick a suggestion, or type any model name)</span>
+              </label>
+              <input
+                list={`models-${form.feature}`}
                 value={form.model}
                 onChange={e => setForm(f => ({ ...f, model: e.target.value }))}
-                className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-              >
+                placeholder="e.g. gpt-5, claude-opus-4-5, gemini-3.0-pro..."
+                className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none font-mono"
+              />
+              <datalist id={`models-${form.feature}`}>
                 {models.map(m => (
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
-                <option value={form.model}>{form.model}</option>
-              </select>
+              </datalist>
             </div>
           </div>
 
@@ -269,18 +270,18 @@ function FeatureCard({
               </div>
               {form.fallbackProvider && (
                 <div>
-                  <select
+                  <input
+                    list={`fallback-models-${form.feature}`}
                     value={form.fallbackModel ?? ""}
                     onChange={e => setForm(f => ({ ...f, fallbackModel: e.target.value }))}
-                    className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                  >
+                    placeholder="Pick a suggestion, or type any model name"
+                    className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none font-mono"
+                  />
+                  <datalist id={`fallback-models-${form.feature}`}>
                     {fallbackModels.map(m => (
                       <option key={m.value} value={m.value}>{m.label}</option>
                     ))}
-                    {form.fallbackModel && !fallbackModels.some(m => m.value === form.fallbackModel) && (
-                      <option value={form.fallbackModel}>{form.fallbackModel}</option>
-                    )}
-                  </select>
+                  </datalist>
                 </div>
               )}
             </div>
