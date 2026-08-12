@@ -15,6 +15,13 @@
       "when": 1786165847370,
       "tag": "0001_nervous_blonde_phantom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786467732039,
+      "tag": "0002_abandoned_kingpin",
+      "breakpoints": true
     }
   ]
 }

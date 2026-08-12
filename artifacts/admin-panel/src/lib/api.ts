@@ -348,6 +348,7 @@ export const api = {
 export type AiConfig = {
   id: string | null; feature: string; label: string; provider: string; model: string;
   apiKey: string | null; systemPrompt: string | null; isEnabled: boolean;
+  fallbackProvider: string | null; fallbackModel: string | null; fallbackApiKey: string | null;
 };
 
 export type PlanPricingItem = {

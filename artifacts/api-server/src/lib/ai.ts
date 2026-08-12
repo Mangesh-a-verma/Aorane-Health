@@ -5,7 +5,8 @@
  * yahan se automatically naye provider ko call kiya jaayega.
  *
  * Supported providers: nvidia (AI-powered) | google | anthropic | openai | placeholder
- * Cache: 5-minute in-memory (no Redis needed)
+ * Cache: 5-minute in-memory (no Redis needed) for config; Redis-backed for
+ * the cross-instance circuit-breaker state (see below).
  *
  * (production-hardening pass):
  * - `media` on a message can now be a SINGLE image OR an ARRAY of images —
@@ -18,11 +19,27 @@
  *   these 3 had NEITHER a timeout NOR a retry, so a slow/transient provider
  *   hiccup could hang a request indefinitely on Render, or fail a request
  *   (and waste the caller's already-consumed AI quota) on a retryable error.
+ *
+ * PHASE 2 — Automatic multi-provider fallback + circuit breaker:
+ * - Each feature can now optionally have a `fallbackProvider` / `fallbackModel`
+ *   / `fallbackApiKey` configured in Admin Panel > AI Config. If the primary
+ *   provider fails (rate-limited, down, empty response, or times out),
+ *   callAI() automatically retries once against the fallback — the caller
+ *   never sees the failure unless BOTH fail. This means a single provider's
+ *   free-tier quota running out no longer takes the whole feature down.
+ * - A Redis-backed circuit breaker (shared across all server instances,
+ *   via lib/redis.ts) tracks recent failures per provider. Once a provider
+ *   has failed repeatedly in a short window, subsequent requests skip
+ *   straight to the fallback instead of waiting through a full timeout+retry
+ *   cycle first — this is a real latency win once a provider is genuinely
+ *   down, not just a one-off blip.
  */
 
 import { db, aiConfigTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { callDeepSeek } from "./nvidia";
+import { cache } from "./redis";
+import { logger } from "./logger";
 
 /**
  * Classified AI-provider error — lets callers (routes) distinguish WHY a
@@ -117,6 +134,9 @@ interface CachedConfig {
   provider: string;
   model: string;
   apiKey: string | null;
+  fallbackProvider: string | null;
+  fallbackModel: string | null;
+  fallbackApiKey: string | null;
   isEnabled: boolean;
   expiresAt: number;
 }
@@ -140,6 +160,9 @@ async function getConfig(feature: string): Promise<CachedConfig> {
         provider: row.provider ?? "nvidia",
         model: row.model ?? "meta/llama-3.3-70b-instruct",
         apiKey: row.apiKey ?? null,
+        fallbackProvider: row.fallbackProvider ?? null,
+        fallbackModel: row.fallbackModel ?? null,
+        fallbackApiKey: row.fallbackApiKey ?? null,
         isEnabled: row.isEnabled ?? true,
         expiresAt: now + CACHE_TTL_MS,
       }
@@ -147,6 +170,9 @@ async function getConfig(feature: string): Promise<CachedConfig> {
         provider: "nvidia",
         model: "meta/llama-3.3-70b-instruct",
         apiKey: null,
+        fallbackProvider: null,
+        fallbackModel: null,
+        fallbackApiKey: null,
         isEnabled: true,
         expiresAt: now + CACHE_TTL_MS,
       };
@@ -351,6 +377,73 @@ async function callOpenAIProvider(
   return text;
 }
 
+/** Dispatches to the right provider implementation. Shared by both the
+ * primary attempt and the fallback attempt in callAI(). */
+async function callProvider(
+  provider: string,
+  model: string,
+  apiKey: string,
+  messages: AIMessage[],
+  maxTokens: number,
+  temp: number,
+): Promise<string> {
+  switch (provider) {
+    case "nvidia":
+      return callNvidiaProvider(messages, model, apiKey, maxTokens, temp);
+    case "google":
+      return callGoogleProvider(messages, model, apiKey, maxTokens, temp);
+    case "anthropic":
+      return callAnthropicProvider(messages, model, apiKey, maxTokens);
+    case "openai":
+      return callOpenAIProvider(messages, model, apiKey, maxTokens, temp);
+    default:
+      return callNvidiaProvider(messages, model, apiKey, maxTokens, temp);
+  }
+}
+
+// ─── Circuit breaker (Redis-backed — shared across every server instance) ──
+// If a provider fails FAILURE_THRESHOLD times within FAILURE_WINDOW_SECONDS,
+// it's marked "open" for COOLDOWN_SECONDS: further requests skip straight to
+// the fallback instead of waiting through a full timeout+retry cycle first.
+// This does NOT block the provider outright — once COOLDOWN_SECONDS passes
+// the breaker key simply expires and the provider gets tried again normally
+// (a "half-open" retry, in circuit-breaker terminology).
+const FAILURE_THRESHOLD = 3;
+const FAILURE_WINDOW_SECONDS = 60;
+const COOLDOWN_SECONDS = 30;
+
+async function isCircuitOpen(provider: string): Promise<boolean> {
+  try {
+    return (await cache.get(`cb:open:${provider}`)) !== null;
+  } catch (err) {
+    // Redis hiccup — fail OPEN (treat circuit as closed, i.e. attempt the
+    // provider normally) rather than blocking AI calls on a cache outage.
+    logger.warn({ err, provider }, "[ai] circuit-breaker read failed, assuming closed");
+    return false;
+  }
+}
+
+async function recordProviderFailure(provider: string): Promise<void> {
+  try {
+    const count = await cache.incrementRateLimitFixed(`cb:fail:${provider}`, FAILURE_WINDOW_SECONDS);
+    if (count >= FAILURE_THRESHOLD) {
+      await cache.set(`cb:open:${provider}`, "1", COOLDOWN_SECONDS);
+      await cache.resetRateLimit(`cb:fail:${provider}`);
+      logger.warn({ provider, count }, "[ai] circuit breaker OPEN — skipping this provider for " + COOLDOWN_SECONDS + "s");
+    }
+  } catch (err) {
+    logger.warn({ err, provider }, "[ai] circuit-breaker write failed (non-fatal)");
+  }
+}
+
+async function recordProviderSuccess(provider: string): Promise<void> {
+  try {
+    await cache.resetRateLimit(`cb:fail:${provider}`);
+  } catch {
+    // Non-fatal — worst case the failure streak takes a bit longer to clear.
+  }
+}
+
 /**
  * Main function — call any AI feature
  *
@@ -387,17 +480,81 @@ export async function callAI(
     );
   }
 
-  switch (config.provider) {
-    case "nvidia":
-      return callNvidiaProvider(messages, config.model, resolvedKey, maxTokens, temp);
-    case "google":
-      return callGoogleProvider(messages, config.model, resolvedKey, maxTokens, temp);
-    case "anthropic":
-      return callAnthropicProvider(messages, config.model, resolvedKey, maxTokens);
-    case "openai":
-      return callOpenAIProvider(messages, config.model, resolvedKey, maxTokens, temp);
-    default:
-      return callNvidiaProvider(messages, config.model, resolvedKey, maxTokens, temp);
+  const hasFallback = Boolean(config.fallbackProvider);
+  // Only skip straight to fallback if a fallback actually exists — with no
+  // fallback configured there's nothing to gain from pre-emptively refusing,
+  // so always attempt the primary provider in that case.
+  const primaryCircuitOpen = hasFallback && (await isCircuitOpen(config.provider));
+
+  if (!primaryCircuitOpen) {
+    try {
+      const result = await callProvider(config.provider, config.model, resolvedKey, messages, maxTokens, temp);
+      await recordProviderSuccess(config.provider);
+      return result;
+    } catch (primaryErr) {
+      await recordProviderFailure(config.provider);
+
+      if (!hasFallback) throw primaryErr;
+
+      logger.warn(
+        { feature, provider: config.provider, err: primaryErr },
+        "[ai] primary provider failed, attempting fallback",
+      );
+      return callFallback(feature, config, messages, maxTokens, temp, primaryErr);
+    }
+  }
+
+  logger.warn(
+    { feature, provider: config.provider },
+    "[ai] primary provider circuit is open, skipping straight to fallback",
+  );
+  return callFallback(feature, config, messages, maxTokens, temp, null);
+}
+
+/** Attempts the configured fallback provider. Throws the ORIGINAL primary
+ * error (not the fallback's) if no fallback is usable, so the caller sees
+ * the more meaningful failure; throws a combined error if both fail. */
+async function callFallback(
+  feature: string,
+  config: CachedConfig,
+  messages: AIMessage[],
+  maxTokens: number,
+  temp: number,
+  primaryErr: unknown,
+): Promise<string> {
+  const fallbackProvider = config.fallbackProvider;
+  if (!fallbackProvider) {
+    if (primaryErr) throw primaryErr;
+    throw new AIProviderError("provider_error", `Primary provider circuit open for feature "${feature}" and no fallback configured.`);
+  }
+
+  const fallbackKey = config.fallbackApiKey || getGlobalKey(fallbackProvider);
+  if (!fallbackKey) {
+    logger.warn({ feature, fallbackProvider }, "[ai] fallback provider has no API key configured, giving up");
+    if (primaryErr) throw primaryErr;
+    throw new AIProviderError("missing_key", `No API key for fallback provider "${fallbackProvider}" (feature: "${feature}").`);
+  }
+
+  const fallbackModel = config.fallbackModel || fallbackProvider;
+  if ((await isCircuitOpen(fallbackProvider))) {
+    logger.error({ feature, fallbackProvider }, "[ai] fallback provider's circuit is ALSO open — both providers down");
+    if (primaryErr) throw primaryErr;
+    throw new AIProviderError("provider_error", `Both primary and fallback providers are currently unavailable for feature "${feature}".`);
+  }
+
+  try {
+    const result = await callProvider(fallbackProvider, fallbackModel, fallbackKey, messages, maxTokens, temp);
+    await recordProviderSuccess(fallbackProvider);
+    logger.info({ feature, fallbackProvider }, "[ai] fallback provider succeeded");
+    return result;
+  } catch (fallbackErr) {
+    await recordProviderFailure(fallbackProvider);
+    logger.error({ feature, fallbackProvider, err: fallbackErr }, "[ai] fallback provider ALSO failed");
+    // Both failed — the fallback's error is usually more actionable (it's
+    // the last thing that actually ran), but if we only got here because
+    // the circuit was already open (no primaryErr), surface the fallback's
+    // real error either way.
+    throw primaryErr ?? fallbackErr;
   }
 }
 

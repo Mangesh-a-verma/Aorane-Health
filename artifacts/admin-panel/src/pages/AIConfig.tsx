@@ -45,16 +45,16 @@ const MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]> = {
 };
 
 const DEFAULT_FEATURES: AiConfig[] = [
-  { id: null, feature: "food_ai", label: "Food AI Analysis", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true },
-  { id: null, feature: "medical_ai", label: "Medical AI Assistant", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true },
-  { id: null, feature: "smart_scan", label: "Smart Scan (OCR + AI)", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true },
-  { id: null, feature: "water_ai", label: "Water Intake Suggestions", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true },
-  { id: null, feature: "stress_ai", label: "Stress & Sleep Analysis", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true },
-  { id: null, feature: "blood_ai", label: "Blood Report Analysis", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true },
-  { id: null, feature: "meal_planner", label: "AI Meal Planner", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true },
-  { id: null, feature: "health_suggestions", label: "Daily Health Suggestions", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true },
-  { id: null, feature: "health_prediction", label: "Monthly Disease Risk Prediction", provider: "nvidia", model: "deepseek-ai/deepseek-v3.2", apiKey: null, systemPrompt: null, isEnabled: true },
-  { id: null, feature: "weekly_diet_chart", label: "Weekly AI Diet Chart", provider: "nvidia", model: "deepseek-ai/deepseek-v3.2", apiKey: null, systemPrompt: null, isEnabled: true },
+  { id: null, feature: "food_ai", label: "Food AI Analysis", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
+  { id: null, feature: "medical_ai", label: "Medical AI Assistant", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
+  { id: null, feature: "smart_scan", label: "Smart Scan (OCR + AI)", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
+  { id: null, feature: "water_ai", label: "Water Intake Suggestions", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
+  { id: null, feature: "stress_ai", label: "Stress & Sleep Analysis", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
+  { id: null, feature: "blood_ai", label: "Blood Report Analysis", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
+  { id: null, feature: "meal_planner", label: "AI Meal Planner", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
+  { id: null, feature: "health_suggestions", label: "Daily Health Suggestions", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
+  { id: null, feature: "health_prediction", label: "Monthly Disease Risk Prediction", provider: "nvidia", model: "deepseek-ai/deepseek-v3.2", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
+  { id: null, feature: "weekly_diet_chart", label: "Weekly AI Diet Chart", provider: "nvidia", model: "deepseek-ai/deepseek-v3.2", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
 ];
 
 const FEATURE_COLORS: Record<string, string> = {
@@ -73,12 +73,14 @@ function FeatureCard({
   const [expanded, setExpanded] = useState(false);
   const [form, setForm] = useState({ ...config });
   const [showKey, setShowKey] = useState(false);
+  const [showFallbackKey, setShowFallbackKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const color = FEATURE_COLORS[config.feature] || "#6366F1";
 
   const models = MODELS_BY_PROVIDER[form.provider] || MODELS_BY_PROVIDER.google;
+  const fallbackModels = form.fallbackProvider ? (MODELS_BY_PROVIDER[form.fallbackProvider] || []) : [];
 
   const handleSave = async () => {
     setSaving(true);
@@ -91,6 +93,9 @@ function FeatureCard({
         systemPrompt: form.systemPrompt || null,
         isEnabled: form.isEnabled,
         label: form.label,
+        fallbackProvider: form.fallbackProvider || null,
+        fallbackModel: form.fallbackModel || null,
+        fallbackApiKey: form.fallbackApiKey || null,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -203,6 +208,74 @@ function FeatureCard({
               placeholder="You are a helpful health assistant for Aorane..."
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 outline-none resize-none font-mono text-xs"
             />
+          </div>
+
+          {/* Automatic Fallback (Phase 2) */}
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-3">
+            <label className="text-xs font-medium text-foreground flex items-center gap-1">
+              Automatic Fallback Provider
+              <span className="text-[10px] text-muted-foreground/70 font-normal ml-1">
+                (optional — if the primary provider fails/rate-limits, this one is tried automatically)
+              </span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <select
+                  value={form.fallbackProvider ?? ""}
+                  onChange={e => setForm(f => ({
+                    ...f,
+                    fallbackProvider: e.target.value || null,
+                    fallbackModel: e.target.value ? (MODELS_BY_PROVIDER[e.target.value]?.[0]?.value ?? null) : null,
+                  }))}
+                  className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                >
+                  <option value="">None (no fallback)</option>
+                  {PROVIDERS.filter(p => p.value !== form.provider).map(p => (
+                    <option key={p.value} value={p.value}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
+              {form.fallbackProvider && (
+                <div>
+                  <select
+                    value={form.fallbackModel ?? ""}
+                    onChange={e => setForm(f => ({ ...f, fallbackModel: e.target.value }))}
+                    className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                  >
+                    {fallbackModels.map(m => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                    {form.fallbackModel && !fallbackModels.some(m => m.value === form.fallbackModel) && (
+                      <option value={form.fallbackModel}>{form.fallbackModel}</option>
+                    )}
+                  </select>
+                </div>
+              )}
+            </div>
+            {form.fallbackProvider && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                  Fallback API Key
+                  <span className="text-[10px] text-muted-foreground/60 font-normal ml-1">(optional — leave blank to use that provider's global key)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showFallbackKey ? "text" : "password"}
+                    value={form.fallbackApiKey ?? ""}
+                    onChange={e => setForm(f => ({ ...f, fallbackApiKey: e.target.value || null }))}
+                    placeholder="Leave blank to use global key for the fallback provider"
+                    className="w-full h-9 rounded-lg border border-border bg-background px-3 pr-9 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowFallbackKey(s => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showFallbackKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Info note */}

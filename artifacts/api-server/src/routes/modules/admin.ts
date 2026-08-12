@@ -902,11 +902,12 @@ const DEFAULT_AI_FEATURES = [
 router.get("/admin/ai-config", requireAdmin, async (_req: AdminRequest, res) => {
   try {
     const rows = await db.select().from(aiConfigTable);
+    const defaults = { id: null, isEnabled: true, apiKey: null, systemPrompt: null, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null };
     if (rows.length === 0) {
-      res.json({ configs: DEFAULT_AI_FEATURES.map(f => ({ ...f, id: null, isEnabled: true, apiKey: null, systemPrompt: null })) });
+      res.json({ configs: DEFAULT_AI_FEATURES.map(f => ({ ...f, ...defaults })) });
     } else {
       const configMap = new Map(rows.map(r => [r.feature, r]));
-      const configs = DEFAULT_AI_FEATURES.map(f => configMap.get(f.feature) || { ...f, id: null, isEnabled: true, apiKey: null, systemPrompt: null });
+      const configs = DEFAULT_AI_FEATURES.map(f => configMap.get(f.feature) || { ...f, ...defaults });
       res.json({ configs });
     }
   } catch { res.status(500).json({ error: "Failed to fetch AI config" }); }
@@ -915,18 +916,23 @@ router.get("/admin/ai-config", requireAdmin, async (_req: AdminRequest, res) => 
 router.put("/admin/ai-config/:feature", requireAdmin, async (req: AdminRequest, res) => {
   try {
     const feature = String(req.params.feature);
-    const { provider, model, apiKey, systemPrompt, isEnabled } = req.body as Record<string, unknown>;
+    const { provider, model, apiKey, systemPrompt, isEnabled, fallbackProvider, fallbackModel, fallbackApiKey } = req.body as Record<string, unknown>;
     const providerStr = (provider as string) || "gemini";
     const modelStr = (model as string) || "gemini-2.0-flash";
     const apiKeyStr = (apiKey as string) || null;
     const systemPromptStr = (systemPrompt as string) || null;
+    // Fallback fields are all optional — an empty string from a cleared
+    // form field means "no fallback", stored as null, not "".
+    const fallbackProviderStr = (fallbackProvider as string)?.trim() || null;
+    const fallbackModelStr = (fallbackModel as string)?.trim() || null;
+    const fallbackApiKeyStr = (fallbackApiKey as string)?.trim() || null;
     const label = DEFAULT_AI_FEATURES.find(f => f.feature === feature)?.label || feature;
     const existing = await db.select().from(aiConfigTable).where(eq(aiConfigTable.feature, feature)).limit(1);
     let result;
     if (existing.length === 0) {
-      [result] = await db.insert(aiConfigTable).values({ feature, label, provider: providerStr, model: modelStr, apiKey: apiKeyStr, systemPrompt: systemPromptStr, isEnabled: isEnabled !== false }).returning();
+      [result] = await db.insert(aiConfigTable).values({ feature, label, provider: providerStr, model: modelStr, apiKey: apiKeyStr, systemPrompt: systemPromptStr, isEnabled: isEnabled !== false, fallbackProvider: fallbackProviderStr, fallbackModel: fallbackModelStr, fallbackApiKey: fallbackApiKeyStr }).returning();
     } else {
-      [result] = await db.update(aiConfigTable).set({ provider: providerStr, model: modelStr, apiKey: apiKeyStr, systemPrompt: systemPromptStr, isEnabled: Boolean(isEnabled), updatedAt: new Date() }).where(eq(aiConfigTable.feature, feature)).returning();
+      [result] = await db.update(aiConfigTable).set({ provider: providerStr, model: modelStr, apiKey: apiKeyStr, systemPrompt: systemPromptStr, isEnabled: Boolean(isEnabled), fallbackProvider: fallbackProviderStr, fallbackModel: fallbackModelStr, fallbackApiKey: fallbackApiKeyStr, updatedAt: new Date() }).where(eq(aiConfigTable.feature, feature)).returning();
     }
     invalidateAICache(feature);
     res.json({ config: result, success: true });

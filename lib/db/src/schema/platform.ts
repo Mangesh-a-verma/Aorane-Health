@@ -146,6 +146,13 @@ export const aiConfigTable = pgTable("ai_config", {
   provider: text("provider").notNull().default("gemini"),
   model: text("model").notNull().default("gemini-2.0-flash"),
   apiKey: text("api_key"),
+  // Phase 2 — automatic fallback: if the primary provider fails
+  // (rate-limited / down / times out), callAI() automatically retries once
+  // against this fallback provider before giving up. Optional — leave all
+  // three null to keep the old single-provider behavior for a feature.
+  fallbackProvider: text("fallback_provider"),
+  fallbackModel: text("fallback_model"),
+  fallbackApiKey: text("fallback_api_key"),
   systemPrompt: text("system_prompt"),
   isEnabled: boolean("is_enabled").notNull().default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
