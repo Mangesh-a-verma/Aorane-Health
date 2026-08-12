@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
-import { api, type AiConfig } from "@/lib/api";
+import { api, type AiConfig, type AiConfigWrite } from "@/lib/api";
 import {
   Brain, Save, RefreshCw, ChevronDown, ChevronUp,
   CheckCircle2, XCircle, Info, Eye, EyeOff,
@@ -45,16 +45,16 @@ const MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]> = {
 };
 
 const DEFAULT_FEATURES: AiConfig[] = [
-  { id: null, feature: "food_ai", label: "Food AI Analysis", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
-  { id: null, feature: "medical_ai", label: "Medical AI Assistant", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
-  { id: null, feature: "smart_scan", label: "Smart Scan (OCR + AI)", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
-  { id: null, feature: "water_ai", label: "Water Intake Suggestions", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
-  { id: null, feature: "stress_ai", label: "Stress & Sleep Analysis", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
-  { id: null, feature: "blood_ai", label: "Blood Report Analysis", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
-  { id: null, feature: "meal_planner", label: "AI Meal Planner", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
-  { id: null, feature: "health_suggestions", label: "Daily Health Suggestions", provider: "google", model: "gemini-2.0-flash", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
-  { id: null, feature: "health_prediction", label: "Monthly Disease Risk Prediction", provider: "nvidia", model: "deepseek-ai/deepseek-v3.2", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
-  { id: null, feature: "weekly_diet_chart", label: "Weekly AI Diet Chart", provider: "nvidia", model: "deepseek-ai/deepseek-v3.2", apiKey: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null },
+  { id: null, feature: "food_ai", label: "Food AI Analysis", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "medical_ai", label: "Medical AI Assistant", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "smart_scan", label: "Smart Scan (OCR + AI)", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "water_ai", label: "Water Intake Suggestions", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "stress_ai", label: "Stress & Sleep Analysis", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "blood_ai", label: "Blood Report Analysis", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "meal_planner", label: "AI Meal Planner", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "health_suggestions", label: "Daily Health Suggestions", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "health_prediction", label: "Monthly Disease Risk Prediction", provider: "nvidia", model: "deepseek-ai/deepseek-v3.2", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "weekly_diet_chart", label: "Weekly AI Diet Chart", provider: "nvidia", model: "deepseek-ai/deepseek-v3.2", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
 ];
 
 const FEATURE_COLORS: Record<string, string> = {
@@ -68,10 +68,17 @@ function FeatureCard({
   config, onSave,
 }: {
   config: AiConfig;
-  onSave: (feature: string, data: Partial<AiConfig>) => Promise<void>;
+  onSave: (feature: string, data: AiConfigWrite) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [form, setForm] = useState({ ...config });
+  // Phase 3: the real key is never in `form` (the server never sends it).
+  // These are LOCAL-ONLY drafts for "type a new key" — empty means
+  // "don't change it", separate from the explicit "clear" toggles below.
+  const [apiKeyDraft, setApiKeyDraft] = useState("");
+  const [fallbackApiKeyDraft, setFallbackApiKeyDraft] = useState("");
+  const [clearApiKey, setClearApiKey] = useState(false);
+  const [clearFallbackApiKey, setClearFallbackApiKey] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [showFallbackKey, setShowFallbackKey] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -86,17 +93,28 @@ function FeatureCard({
     setSaving(true);
     setError("");
     try {
-      await onSave(form.feature, {
+      const payload: AiConfigWrite = {
         provider: form.provider,
         model: form.model,
-        apiKey: form.apiKey || null,
         systemPrompt: form.systemPrompt || null,
         isEnabled: form.isEnabled,
         label: form.label,
         fallbackProvider: form.fallbackProvider || null,
         fallbackModel: form.fallbackModel || null,
-        fallbackApiKey: form.fallbackApiKey || null,
-      });
+      };
+      // Only include apiKey/fallbackApiKey in the request at all if the
+      // admin actually typed something or explicitly hit "clear" — an
+      // untouched, blank field means "leave whatever's already saved".
+      if (clearApiKey) payload.apiKey = "";
+      else if (apiKeyDraft.trim()) payload.apiKey = apiKeyDraft.trim();
+      if (clearFallbackApiKey) payload.fallbackApiKey = "";
+      else if (fallbackApiKeyDraft.trim()) payload.fallbackApiKey = fallbackApiKeyDraft.trim();
+
+      await onSave(form.feature, payload);
+      setApiKeyDraft("");
+      setFallbackApiKeyDraft("");
+      setClearApiKey(false);
+      setClearFallbackApiKey(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e: unknown) {
@@ -175,14 +193,28 @@ function FeatureCard({
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
               API Key Override
-              <span className="text-[10px] text-muted-foreground/60 font-normal ml-1">(optional — leave blank to use global key)</span>
+              <span className="text-[10px] text-muted-foreground/60 font-normal ml-1">
+                (optional — leave blank to use global key)
+              </span>
             </label>
+            {form.hasApiKey && !clearApiKey && (
+              <p className="text-[11px] text-muted-foreground mb-1">
+                Key set, ending in <span className="font-mono">{form.apiKeyPreview}</span> — leave the field below blank to keep it, or{" "}
+                <button type="button" onClick={() => setClearApiKey(true)} className="text-red-500 hover:underline">clear it</button>.
+              </p>
+            )}
+            {clearApiKey && (
+              <p className="text-[11px] text-amber-600 mb-1">
+                Key will be cleared on save (falls back to the global key).{" "}
+                <button type="button" onClick={() => setClearApiKey(false)} className="text-primary hover:underline">undo</button>
+              </p>
+            )}
             <div className="relative">
               <input
                 type={showKey ? "text" : "password"}
-                value={form.apiKey ?? ""}
-                onChange={e => setForm(f => ({ ...f, apiKey: e.target.value || null }))}
-                placeholder="sk-... or AIza..."
+                value={apiKeyDraft}
+                onChange={e => { setApiKeyDraft(e.target.value); if (e.target.value) setClearApiKey(false); }}
+                placeholder={form.hasApiKey ? "Type a new key to replace it..." : "sk-... or AIza..."}
                 className="w-full h-9 rounded-lg border border-border bg-background px-3 pr-9 text-sm focus:ring-2 focus:ring-primary/20 outline-none font-mono"
               />
               <button
@@ -258,12 +290,24 @@ function FeatureCard({
                   Fallback API Key
                   <span className="text-[10px] text-muted-foreground/60 font-normal ml-1">(optional — leave blank to use that provider's global key)</span>
                 </label>
+                {form.hasFallbackApiKey && !clearFallbackApiKey && (
+                  <p className="text-[11px] text-muted-foreground mb-1">
+                    Key set, ending in <span className="font-mono">{form.fallbackApiKeyPreview}</span> — leave blank to keep it, or{" "}
+                    <button type="button" onClick={() => setClearFallbackApiKey(true)} className="text-red-500 hover:underline">clear it</button>.
+                  </p>
+                )}
+                {clearFallbackApiKey && (
+                  <p className="text-[11px] text-amber-600 mb-1">
+                    Key will be cleared on save.{" "}
+                    <button type="button" onClick={() => setClearFallbackApiKey(false)} className="text-primary hover:underline">undo</button>
+                  </p>
+                )}
                 <div className="relative">
                   <input
                     type={showFallbackKey ? "text" : "password"}
-                    value={form.fallbackApiKey ?? ""}
-                    onChange={e => setForm(f => ({ ...f, fallbackApiKey: e.target.value || null }))}
-                    placeholder="Leave blank to use global key for the fallback provider"
+                    value={fallbackApiKeyDraft}
+                    onChange={e => { setFallbackApiKeyDraft(e.target.value); if (e.target.value) setClearFallbackApiKey(false); }}
+                    placeholder={form.hasFallbackApiKey ? "Type a new key to replace it..." : "Leave blank to use global key for the fallback provider"}
                     className="w-full h-9 rounded-lg border border-border bg-background px-3 pr-9 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
                   />
                   <button
@@ -340,7 +384,7 @@ export default function AIConfig() {
 
   useEffect(() => { load(); }, []);
 
-  const handleSave = async (feature: string, data: Partial<AiConfig>) => {
+  const handleSave = async (feature: string, data: AiConfigWrite) => {
     const result = await api.updateAiConfig(feature, data);
     setConfigs(prev => prev.map(c => c.feature === feature ? { ...c, ...result.config } : c));
   };

@@ -301,7 +301,7 @@ export const api = {
     req<{ organization: Org; success: boolean }>(`/admin/organizations/${id}`, { method: "PUT", body: JSON.stringify(data) }),
 
   getAiConfig: () => req<{ configs: AiConfig[] }>("/admin/ai-config"),
-  updateAiConfig: (feature: string, data: Partial<AiConfig>) =>
+  updateAiConfig: (feature: string, data: AiConfigWrite) =>
     req<{ config: AiConfig; success: boolean }>(`/admin/ai-config/${feature}`, { method: "PUT", body: JSON.stringify(data) }),
 
   getPlanPricing: () => req<{ plans: PlanPricingItem[] }>("/admin/plan-pricing"),
@@ -345,10 +345,26 @@ export const api = {
   },
 };
 
+// Phase 3: the real apiKey/fallbackApiKey are NEVER sent to the browser —
+// only whether one is set (hasApiKey) and a masked last-4-chars preview
+// (apiKeyPreview), computed server-side from the encrypted-at-rest value.
 export type AiConfig = {
   id: string | null; feature: string; label: string; provider: string; model: string;
-  apiKey: string | null; systemPrompt: string | null; isEnabled: boolean;
-  fallbackProvider: string | null; fallbackModel: string | null; fallbackApiKey: string | null;
+  hasApiKey: boolean; apiKeyPreview: string | null;
+  systemPrompt: string | null; isEnabled: boolean;
+  fallbackProvider: string | null; fallbackModel: string | null;
+  hasFallbackApiKey: boolean; fallbackApiKeyPreview: string | null;
+};
+
+// What the PUT endpoint accepts: everything from AiConfig except the
+// preview/has-key fields (those are read-only, server-computed), plus
+// optional plaintext apiKey/fallbackApiKey — omit a key entirely to leave
+// it untouched, or send "" to explicitly clear it.
+export type AiConfigWrite = Partial<
+  Omit<AiConfig, "hasApiKey" | "apiKeyPreview" | "hasFallbackApiKey" | "fallbackApiKeyPreview">
+> & {
+  apiKey?: string;
+  fallbackApiKey?: string;
 };
 
 export type PlanPricingItem = {

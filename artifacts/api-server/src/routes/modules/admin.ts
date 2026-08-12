@@ -8,6 +8,7 @@ import { signAdminToken } from "../../lib/jwt";
 import { invalidatePlanCache } from "../../middlewares/plan-check";
 import type { AdminRequest } from "../../middlewares/admin-auth";
 import { invalidateAICache } from "../../lib/ai";
+import { encryptSecret, decryptSecret, maskSecret } from "../../lib/crypto";
 import { invalidateFeatureCache } from "../../middlewares/feature-check";
 import { verifyAndMigratePassword } from "../../lib/auth-utils";
 import bcrypt from "bcryptjs";
@@ -899,15 +900,37 @@ const DEFAULT_AI_FEATURES = [
   { feature: "weekly_diet_chart",  label: "Weekly AI Diet Chart",            provider: "google", model: "gemini-2.0-flash" },
 ];
 
+/** Strips the real apiKey/fallbackApiKey out of a config row before it goes
+ * to the browser — replaces each with hasXxx + xxxPreview (last 4 chars of
+ * the DECRYPTED value, computed here, server-side only). */
+function sanitizeConfigForResponse(row: Record<string, unknown>): Record<string, unknown> {
+  const { apiKey, fallbackApiKey, ...rest } = row;
+
+  const decryptForPreview = (val: unknown): string | null => {
+    if (typeof val !== "string" || !val) return null;
+    try { return decryptSecret(val); } catch { return null; }
+  };
+  const plainKey = decryptForPreview(apiKey);
+  const plainFallbackKey = decryptForPreview(fallbackApiKey);
+
+  return {
+    ...rest,
+    hasApiKey: Boolean(plainKey),
+    apiKeyPreview: plainKey ? maskSecret(plainKey) : null,
+    hasFallbackApiKey: Boolean(plainFallbackKey),
+    fallbackApiKeyPreview: plainFallbackKey ? maskSecret(plainFallbackKey) : null,
+  };
+}
+
 router.get("/admin/ai-config", requireAdmin, async (_req: AdminRequest, res) => {
   try {
     const rows = await db.select().from(aiConfigTable);
     const defaults = { id: null, isEnabled: true, apiKey: null, systemPrompt: null, fallbackProvider: null, fallbackModel: null, fallbackApiKey: null };
     if (rows.length === 0) {
-      res.json({ configs: DEFAULT_AI_FEATURES.map(f => ({ ...f, ...defaults })) });
+      res.json({ configs: DEFAULT_AI_FEATURES.map(f => sanitizeConfigForResponse({ ...f, ...defaults })) });
     } else {
       const configMap = new Map(rows.map(r => [r.feature, r]));
-      const configs = DEFAULT_AI_FEATURES.map(f => configMap.get(f.feature) || { ...f, ...defaults });
+      const configs = DEFAULT_AI_FEATURES.map(f => sanitizeConfigForResponse(configMap.get(f.feature) || { ...f, ...defaults }));
       res.json({ configs });
     }
   } catch { res.status(500).json({ error: "Failed to fetch AI config" }); }
@@ -919,23 +942,36 @@ router.put("/admin/ai-config/:feature", requireAdmin, async (req: AdminRequest, 
     const { provider, model, apiKey, systemPrompt, isEnabled, fallbackProvider, fallbackModel, fallbackApiKey } = req.body as Record<string, unknown>;
     const providerStr = (provider as string) || "gemini";
     const modelStr = (model as string) || "gemini-2.0-flash";
-    const apiKeyStr = (apiKey as string) || null;
     const systemPromptStr = (systemPrompt as string) || null;
-    // Fallback fields are all optional — an empty string from a cleared
-    // form field means "no fallback", stored as null, not "".
+    // Fallback provider/model are simple "replace whatever's there" fields —
+    // an empty string means "no fallback", stored as null.
     const fallbackProviderStr = (fallbackProvider as string)?.trim() || null;
     const fallbackModelStr = (fallbackModel as string)?.trim() || null;
-    const fallbackApiKeyStr = (fallbackApiKey as string)?.trim() || null;
     const label = DEFAULT_AI_FEATURES.find(f => f.feature === feature)?.label || feature;
     const existing = await db.select().from(aiConfigTable).where(eq(aiConfigTable.feature, feature)).limit(1);
+    const existingRow = existing[0];
+
+    // API keys use 3-way semantics, since the browser never has the real
+    // key to send back: field OMITTED (undefined) = leave whatever's
+    // already stored untouched; field explicitly "" = clear it; field with
+    // a real value = encrypt and store as the new override.
+    const resolveKeyUpdate = (incoming: unknown, existingEncrypted: string | null | undefined): string | null | undefined => {
+      if (incoming === undefined) return existingEncrypted ?? null; // untouched
+      const trimmed = (incoming as string).trim();
+      if (trimmed === "") return null; // explicit clear
+      return encryptSecret(trimmed); // new value
+    };
+    const apiKeyToStore = resolveKeyUpdate(apiKey, existingRow?.apiKey);
+    const fallbackApiKeyToStore = resolveKeyUpdate(fallbackApiKey, existingRow?.fallbackApiKey);
+
     let result;
-    if (existing.length === 0) {
-      [result] = await db.insert(aiConfigTable).values({ feature, label, provider: providerStr, model: modelStr, apiKey: apiKeyStr, systemPrompt: systemPromptStr, isEnabled: isEnabled !== false, fallbackProvider: fallbackProviderStr, fallbackModel: fallbackModelStr, fallbackApiKey: fallbackApiKeyStr }).returning();
+    if (!existingRow) {
+      [result] = await db.insert(aiConfigTable).values({ feature, label, provider: providerStr, model: modelStr, apiKey: apiKeyToStore ?? null, systemPrompt: systemPromptStr, isEnabled: isEnabled !== false, fallbackProvider: fallbackProviderStr, fallbackModel: fallbackModelStr, fallbackApiKey: fallbackApiKeyToStore ?? null }).returning();
     } else {
-      [result] = await db.update(aiConfigTable).set({ provider: providerStr, model: modelStr, apiKey: apiKeyStr, systemPrompt: systemPromptStr, isEnabled: Boolean(isEnabled), fallbackProvider: fallbackProviderStr, fallbackModel: fallbackModelStr, fallbackApiKey: fallbackApiKeyStr, updatedAt: new Date() }).where(eq(aiConfigTable.feature, feature)).returning();
+      [result] = await db.update(aiConfigTable).set({ provider: providerStr, model: modelStr, apiKey: apiKeyToStore ?? null, systemPrompt: systemPromptStr, isEnabled: Boolean(isEnabled), fallbackProvider: fallbackProviderStr, fallbackModel: fallbackModelStr, fallbackApiKey: fallbackApiKeyToStore ?? null, updatedAt: new Date() }).where(eq(aiConfigTable.feature, feature)).returning();
     }
     invalidateAICache(feature);
-    res.json({ config: result, success: true });
+    res.json({ config: sanitizeConfigForResponse(result), success: true });
   } catch { res.status(500).json({ error: "Failed to update AI config" }); }
 });
 

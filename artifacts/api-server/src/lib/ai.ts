@@ -40,6 +40,7 @@ import { eq } from "drizzle-orm";
 import { callDeepSeek } from "./nvidia";
 import { cache } from "./redis";
 import { logger } from "./logger";
+import { decryptSecret } from "./crypto";
 
 /**
  * Classified AI-provider error — lets callers (routes) distinguish WHY a
@@ -159,10 +160,10 @@ async function getConfig(feature: string): Promise<CachedConfig> {
     ? {
         provider: row.provider ?? "nvidia",
         model: row.model ?? "meta/llama-3.3-70b-instruct",
-        apiKey: row.apiKey ?? null,
+        apiKey: safeDecrypt(row.apiKey, feature, "apiKey"),
         fallbackProvider: row.fallbackProvider ?? null,
         fallbackModel: row.fallbackModel ?? null,
-        fallbackApiKey: row.fallbackApiKey ?? null,
+        fallbackApiKey: safeDecrypt(row.fallbackApiKey, feature, "fallbackApiKey"),
         isEnabled: row.isEnabled ?? true,
         expiresAt: now + CACHE_TTL_MS,
       }
@@ -179,6 +180,20 @@ async function getConfig(feature: string): Promise<CachedConfig> {
 
   CONFIG_CACHE.set(feature, config);
   return config;
+}
+
+/** Decrypts a stored key, treating decryption failure as "no key configured"
+ * (rather than crashing the whole request) — the caller then falls back to
+ * the provider's global env-var key, which is the same behavior as if no
+ * per-feature override had been set at all. */
+function safeDecrypt(value: string | null, feature: string, field: string): string | null {
+  if (!value) return null;
+  try {
+    return decryptSecret(value);
+  } catch (err) {
+    logger.error({ err, feature, field }, "[ai] failed to decrypt stored API key, falling back to global key");
+    return null;
+  }
 }
 
 function getGlobalKey(provider: string): string | null {
