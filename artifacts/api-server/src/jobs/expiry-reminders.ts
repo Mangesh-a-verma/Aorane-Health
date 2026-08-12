@@ -26,9 +26,19 @@ export function startExpiryReminderJob() {
     try {
       // FIX 4: Correct daysLeft calculation using proper date diff
       // The previous code used getDate() which only extracted the day — month/year were being ignored
+      //
+      // FIX (this pass): `date - date` in Postgres already returns a plain
+      // integer (number of days) — it does NOT return an interval. Wrapping
+      // it in EXTRACT(DAY FROM ...) is invalid because EXTRACT only accepts
+      // date/time/interval types, not a bare integer, so Postgres has no
+      // matching function overload and throws
+      // "function pg_catalog.extract(unknown, integer) does not exist" —
+      // which silently crashed this entire cron job on every run, meaning
+      // NO subscription expiry reminder (email or push) was ever actually
+      // sent. The subtraction alone already gives the correct day count.
       const result = await pool.query(`
         SELECT s.user_id, u.phone, u.email, up.full_name, u.plan, s.expires_at,
-          EXTRACT(DAY FROM (s.expires_at::date - CURRENT_DATE)) AS days_left
+          (s.expires_at::date - CURRENT_DATE) AS days_left
         FROM subscriptions s
         JOIN users u ON s.user_id = u.id
         LEFT JOIN user_profiles up ON up.user_id = u.id
@@ -101,7 +111,7 @@ export function startExpiryReminderJob() {
     try {
       const result = await pool.query(`
         SELECT s.user_id, u.phone, u.email, up.full_name, u.plan, s.next_renewal_at,
-          EXTRACT(DAY FROM (s.next_renewal_at::date - CURRENT_DATE)) AS days_to_renewal
+          (s.next_renewal_at::date - CURRENT_DATE) AS days_to_renewal
         FROM subscriptions s
         JOIN users u ON s.user_id = u.id
         LEFT JOIN user_profiles up ON up.user_id = u.id
