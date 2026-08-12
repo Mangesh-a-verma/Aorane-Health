@@ -7,8 +7,8 @@ const steps = [
     icon: Smartphone,
     title: "Download & Sign Up",
     desc: "Create your free account in 60 seconds. OTP login — no passwords needed. Available on Android (Play Store ID: in.aorane.app).",
-    color: "#0747A6",
-    bg: "#EEF4FF",
+    color: "#05473C",
+    bg: "#E6F4F1",
   },
   {
     num: "02",
@@ -46,7 +46,8 @@ export default function HowItWorks() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <span className="text-xs font-bold text-[#10B981] bg-[#10B981]/10 px-3 py-1 rounded-full uppercase tracking-widest">
+          <span className="inline-flex items-center gap-2 text-xs font-bold text-[#05473C] glass-panel-soft px-3 py-1.5 rounded-full uppercase tracking-widest">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00C79A]" />
             How It Works
           </span>
           <h2 className="font-display mt-4 text-3xl sm:text-4xl font-medium text-gray-900">
@@ -85,11 +86,6 @@ export default function HowItWorks() {
                     {step.num}
                   </div>
                 </div>
-
-                {i < steps.length - 1 && (
-                  <div className="lg:hidden absolute top-8 left-[calc(50%+32px)] w-[calc(100%-64px)] flex items-center justify-center">
-                  </div>
-                )}
 
                 <h3 className="text-base font-extrabold text-gray-900 mb-2">{step.title}</h3>
                 <p className="text-sm text-gray-500 leading-relaxed">{step.desc}</p>

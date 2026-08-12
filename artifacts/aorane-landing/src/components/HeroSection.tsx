@@ -44,17 +44,17 @@ function B2CDashboard() {
             <Heart className="w-4 h-4 text-red-500" />
             <span className="text-xs font-semibold text-gray-600">Heart Rate</span>
           </div>
-          <span className="text-lg font-bold text-[#0747A6]">78 <span className="text-xs font-normal text-gray-400">bpm</span></span>
+          <span className="text-lg font-bold text-[#05473C]">78 <span className="text-xs font-normal text-gray-400">bpm</span></span>
         </div>
         <ResponsiveContainer width="100%" height={70}>
           <AreaChart data={heartData}>
             <defs>
               <linearGradient id="hrGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#0747A6" stopOpacity={0.15} />
-                <stop offset="95%" stopColor="#0747A6" stopOpacity={0} />
+                <stop offset="5%" stopColor="#05473C" stopOpacity={0.15} />
+                <stop offset="95%" stopColor="#05473C" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <Area type="monotone" dataKey="bpm" stroke="#0747A6" strokeWidth={2} fill="url(#hrGrad)" dot={false} />
+            <Area type="monotone" dataKey="bpm" stroke="#05473C" strokeWidth={2} fill="url(#hrGrad)" dot={false} />
             <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} formatter={(v) => [`${v} bpm`, ""]} />
           </AreaChart>
         </ResponsiveContainer>
@@ -64,7 +64,7 @@ function B2CDashboard() {
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <p className="text-xs font-semibold text-gray-500 mb-3">Activity</p>
           <div className="flex items-center justify-center relative">
-            <ActivityRing value={75} size={80} color="#0747A6" bg="#EEF4FF" />
+            <ActivityRing value={75} size={80} color="#05473C" bg="#E6F4F1" />
             <div className="absolute inset-0 flex items-center justify-center">
               <ActivityRing value={60} size={56} color="#10B981" bg="#F0FDF9" />
             </div>
@@ -77,7 +77,7 @@ function B2CDashboard() {
           <p className="text-xs font-semibold text-gray-500 mb-2">Sleep</p>
           <ResponsiveContainer width="100%" height={80}>
             <BarChart data={sleepData} layout="vertical" margin={{ left: -20 }}>
-              <Bar dataKey="hours" fill="#0747A6" radius={4} />
+              <Bar dataKey="hours" fill="#05473C" radius={4} />
               <XAxis type="number" hide />
               <YAxis type="category" dataKey="stage" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
               <Tooltip contentStyle={{ fontSize: 11 }} formatter={(v) => [`${v}h`, ""]} />

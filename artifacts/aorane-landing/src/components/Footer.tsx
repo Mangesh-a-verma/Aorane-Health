@@ -121,11 +121,11 @@ export default function Footer() {
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#10B981" }} />
               All systems operational
             </span>
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ color: "#0747A6", background: "#EFF6FF" }}>
-              ISO 27001 CERTIFIED
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ color: "#05473C", background: "#00C79A1A" }}>
+              ISO 27001 ALIGNED
             </span>
             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ color: "#6B7280", background: "#E5E7EB" }}>
-              DPDPA COMPLIANT
+              DPDPA 2023 ALIGNED
             </span>
           </div>
         </div>

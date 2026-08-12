@@ -123,7 +123,7 @@ const businessPlans: BusinessPlan[] = [
     yearlyPricePerSeat: 169,
     minSeats: 10,
     crmPrice: 499,
-    accentColor: "#0747A6",
+    accentColor: "#05473C",
     features: [
       "All PRO App Features per Member",
       "Employees Health Track",
@@ -143,8 +143,8 @@ const businessPlans: BusinessPlan[] = [
     minSeats: 20,
     crmPrice: "free",
     badge: "RECOMMENDED",
-    badgeColor: "#0747A6",
-    accentColor: "#0747A6",
+    badgeColor: "#00C79A",
+    accentColor: "#00C79A",
     features: [
       "All MAX App Features per Member",
       "Everything in Pro Plan",
@@ -608,7 +608,7 @@ export default function PricingSection({
                 <button
                   onClick={() => setTab("individual")}
                   className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    tab === "individual" ? "bg-[#0747A6] text-white shadow" : "text-gray-500 hover:text-gray-700"
+                    tab === "individual" ? "bg-[#05473C] text-white shadow" : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
                   Individual & Family
@@ -616,7 +616,7 @@ export default function PricingSection({
                 <button
                   onClick={() => setTab("business")}
                   className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    tab === "business" ? "bg-[#0747A6] text-white shadow" : "text-gray-500 hover:text-gray-700"
+                    tab === "business" ? "bg-[#05473C] text-white shadow" : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
                   For Business
@@ -626,12 +626,12 @@ export default function PricingSection({
 
             {/* Monthly/Yearly toggle */}
             <div className="flex items-center gap-3 bg-white rounded-2xl px-4 py-2 border border-gray-200 shadow-sm">
-              <span className={`text-sm font-semibold ${!isYearly ? "text-[#0747A6]" : "text-gray-400"}`}>
+              <span className={`text-sm font-semibold ${!isYearly ? "text-[#05473C]" : "text-gray-400"}`}>
                 Monthly
               </span>
               <button
                 onClick={() => setIsYearly(!isYearly)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${isYearly ? "bg-[#0747A6]" : "bg-gray-200"}`}
+                className={`relative w-11 h-6 rounded-full transition-colors ${isYearly ? "bg-[#05473C]" : "bg-gray-200"}`}
               >
                 <div
                   className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
@@ -639,7 +639,7 @@ export default function PricingSection({
                   }`}
                 />
               </button>
-              <span className={`text-sm font-semibold ${isYearly ? "text-[#0747A6]" : "text-gray-400"}`}>
+              <span className={`text-sm font-semibold ${isYearly ? "text-[#05473C]" : "text-gray-400"}`}>
                 Yearly
               </span>
               {isYearly && (
@@ -686,10 +686,10 @@ export default function PricingSection({
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-8 mx-auto max-w-2xl"
               >
-                <div className="flex items-center justify-between gap-4 bg-gradient-to-r from-[#0747A6]/8 to-[#10B981]/8 border border-[#0747A6]/20 rounded-2xl px-5 py-4">
+                <div className="flex items-center justify-between gap-4 bg-gradient-to-r from-[#05473C]/8 to-[#00C79A]/8 border border-[#05473C]/20 rounded-2xl px-5 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-[#0747A6]/10 flex items-center justify-center shrink-0">
-                      <Building2 className="w-4 h-4 text-[#0747A6]" />
+                    <div className="w-9 h-9 rounded-xl bg-[#05473C]/10 flex items-center justify-center shrink-0">
+                      <Building2 className="w-4 h-4 text-[#05473C]" />
                     </div>
                     <div>
                       <p className="text-sm font-bold text-gray-900">Full Business Portal</p>
@@ -702,7 +702,7 @@ export default function PricingSection({
                     href="https://business.aorane.com/#pricing"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-white bg-[#0747A6] px-4 py-2.5 rounded-xl hover:bg-[#0a3d8a] transition-colors whitespace-nowrap"
+                    className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-white bg-[#05473C] px-4 py-2.5 rounded-xl hover:bg-[#033a30] transition-colors whitespace-nowrap"
                   >
                     View Portal <ArrowRight className="w-3 h-3" />
                   </a>

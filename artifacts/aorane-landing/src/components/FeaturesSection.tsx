@@ -34,8 +34,8 @@ const b2cFeatures = [
     icon: Users,
     title: "Family Health Hub",
     desc: "Create a family group (up to 4 members) and monitor health of parents, children, and elders — all in one account.",
-    color: "#0747A6",
-    bg: "#EEF4FF",
+    color: "#05473C",
+    bg: "#E6F4F1",
   },
   {
     icon: Lock,
@@ -72,8 +72,8 @@ const b2bFeatures = [
     icon: Building2,
     title: "Organization Portal",
     desc: "Manage 1000+ employees, track department health scores, generate compliance reports in one click.",
-    color: "#0747A6",
-    bg: "#EEF4FF",
+    color: "#05473C",
+    bg: "#E6F4F1",
   },
   {
     icon: Brain,
@@ -150,12 +150,13 @@ export default function FeaturesSection({ audience, onNotifyClick }: FeaturesSec
           viewport={{ once: true }}
           className="text-center mb-10"
         >
-          <span className="text-xs font-bold text-[#10B981] bg-[#10B981]/10 px-3 py-1 rounded-full uppercase tracking-widest">
+          <span className="inline-flex items-center gap-2 text-xs font-bold text-[#05473C] glass-panel-soft px-3 py-1.5 rounded-full uppercase tracking-widest">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00C79A]" />
             {audience === "b2c" ? "Features" : "Enterprise Features"}
           </span>
-          <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold text-gray-900">
+          <h2 className="font-display mt-4 text-3xl sm:text-4xl font-medium text-gray-900">
             {title.pre}{" "}
-            <span className="gradient-text">{title.highlight}</span>
+            <span className="gradient-text-teal italic">{title.highlight}</span>
           </h2>
           <p className="mt-2 text-gray-500 max-w-xl mx-auto text-sm">
             {audience === "b2c"

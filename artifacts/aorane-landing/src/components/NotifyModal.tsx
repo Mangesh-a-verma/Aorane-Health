@@ -104,7 +104,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 pt-6 pb-4" style={{ background: "linear-gradient(135deg, #0747A6 0%, #1565C0 100%)" }}>
+        <div className="px-6 pt-6 pb-4" style={{ background: "linear-gradient(135deg, #05473C 0%, #082F28 100%)" }}>
           <button
             type="button"
             aria-label="Close"
@@ -143,7 +143,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                       placeholder="Full name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#00C79A] focus:ring-2 focus:ring-[#00C79A]/25"
                     />
                   </div>
                 </div>
@@ -156,7 +156,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                     maxLength={3}
                     value={age}
                     onChange={(e) => setAge(e.target.value.replace(/\D/g, ""))}
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#00C79A] focus:ring-2 focus:ring-[#00C79A]/25"
                   />
                 </div>
               </div>
@@ -172,7 +172,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                       className="py-2.5 text-sm font-medium rounded-xl border transition-all"
                       style={
                         gender === g
-                          ? { background: "#0747A6", color: "white", borderColor: "#0747A6" }
+                          ? { background: "#05473C", color: "white", borderColor: "#05473C" }
                           : { background: "white", color: "#374151", borderColor: "#E5E7EB" }
                       }
                     >
@@ -191,7 +191,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                     placeholder="your@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#00C79A] focus:ring-2 focus:ring-[#00C79A]/25"
                   />
                 </div>
               </div>
@@ -208,7 +208,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                     placeholder="+91 98765 43210"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#00C79A] focus:ring-2 focus:ring-[#00C79A]/25"
                   />
                 </div>
               </div>
@@ -220,7 +220,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                 onClick={sendOtp}
                 disabled={!isFormValid || otpSending}
                 className="w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ background: isFormValid ? "#0747A6" : "#9CA3AF", color: "white" }}
+                style={{ background: isFormValid ? "#05473C" : "#9CA3AF", color: "white" }}
               >
                 {otpSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 {otpSending ? "Sending OTP..." : "Verify via Email OTP"}
@@ -236,8 +236,8 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
           {step === "otp" && (
             <div className="space-y-5">
               <div className="text-center">
-                <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                  <Mail className="w-7 h-7 text-blue-600" />
+                <div className="w-14 h-14 bg-[#E6F4F1] rounded-2xl flex items-center justify-center mx-auto mb-3">
+                  <Mail className="w-7 h-7 text-[#05473C]" />
                 </div>
                 <h3 className="font-bold text-gray-900">OTP sent to your email</h3>
                 <p className="text-sm text-gray-500 mt-1">
@@ -257,7 +257,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                   placeholder="_ _ _ _ _ _"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  className="w-full px-4 py-3 text-center text-xl font-bold tracking-[0.5em] border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                  className="w-full px-4 py-3 text-center text-xl font-bold tracking-[0.5em] border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#00C79A] focus:ring-2 focus:ring-[#00C79A]/25"
                 />
               </div>
 
@@ -272,7 +272,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                 onClick={handleSubmit}
                 disabled={otp.length !== 6 || submitting}
                 className="w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                style={{ background: otp.length === 6 ? "#0747A6" : "#9CA3AF", color: "white" }}
+                style={{ background: otp.length === 6 ? "#05473C" : "#9CA3AF", color: "white" }}
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                 {submitting ? "Submitting..." : "Verify & Register"}
@@ -293,7 +293,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                       type="button"
                       onClick={sendOtp}
                       disabled={otpSending}
-                      className="text-blue-500 hover:underline disabled:opacity-50"
+                      className="text-[#05473C] hover:underline disabled:opacity-50"
                     >
                       {otpSending ? "Sending..." : "Resend OTP"}
                     </button>
@@ -313,21 +313,21 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
                 <h3 className="text-xl font-extrabold text-gray-900">You're registered! 🎉</h3>
                 <p className="text-sm text-gray-500 mt-2">
                   Hi <span className="font-medium text-gray-700">{name}</span>! When{" "}
-                  <span className="font-medium text-blue-600">
+                  <span className="font-medium text-[#05473C]">
                     {featureName || "this feature"}
                   </span>{" "}
                   launches, you'll be the first to know at{" "}
                   <span className="font-medium text-gray-700">{email}</span>.
                 </p>
               </div>
-              <div className="bg-blue-50 rounded-2xl px-4 py-3 text-xs text-blue-700">
+              <div className="bg-[#E6F4F1] rounded-2xl px-4 py-3 text-xs text-[#05473C]">
                 💡 In the meantime, download the Aorane app — all live features are free!
               </div>
               <button
                 type="button"
                 onClick={onClose}
                 className="w-full py-3 rounded-2xl font-bold text-sm"
-                style={{ background: "#0747A6", color: "white" }}
+                style={{ background: "#05473C", color: "white" }}
               >
                 Close
               </button>

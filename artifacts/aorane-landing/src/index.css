@@ -163,12 +163,6 @@
     box-shadow: var(--shadow-card-hover);
     transform: translateY(-2px);
   }
-  .gradient-text {
-    background: linear-gradient(135deg, #0747A6 0%, #10B981 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
   .gradient-text-teal {
     background: linear-gradient(120deg, var(--teal-deep), var(--teal-bright));
     -webkit-background-clip: text;
@@ -180,9 +174,6 @@
   }
   .blue-gradient {
     background: linear-gradient(135deg, #0747A6 0%, #1565C0 100%);
-  }
-  .green-gradient {
-    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
   }
   .teal-deep-gradient {
     background: linear-gradient(135deg, var(--teal-deep), #082F28);

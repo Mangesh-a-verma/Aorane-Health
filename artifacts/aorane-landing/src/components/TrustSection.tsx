@@ -6,8 +6,8 @@ const compliance = [
     icon: Shield,
     title: "DPDPA 2023 Aligned",
     desc: "We follow India's Digital Personal Data Protection Act (DPDPA 2023) principles — consent-based data collection, user rights, and data minimization.",
-    color: "#0747A6",
-    bg: "#EEF4FF",
+    color: "#05473C",
+    bg: "#E6F4F1",
   },
   {
     icon: Lock,
@@ -58,7 +58,8 @@ export default function TrustSection() {
           viewport={{ once: true }}
           className="text-center mb-14"
         >
-          <span className="text-xs font-bold text-[#7C3AED] bg-[#7C3AED]/10 px-3 py-1 rounded-full uppercase tracking-widest">
+          <span className="inline-flex items-center gap-2 text-xs font-bold text-[#05473C] glass-panel-soft px-3 py-1.5 rounded-full uppercase tracking-widest">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00C79A]" />
             Trust & Security
           </span>
           <h2 className="font-display mt-4 text-3xl sm:text-4xl font-medium text-gray-900">

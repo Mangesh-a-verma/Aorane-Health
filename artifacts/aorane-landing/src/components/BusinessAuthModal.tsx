@@ -96,12 +96,12 @@ export default function BusinessAuthModal({ defaultTab = "signin", onClose }: Pr
           <div className="px-8 pt-8 pb-2">
             <div className="flex items-center gap-2.5 mb-6">
               <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg, #0EA5E9, #10B981)", boxShadow: "0 0 20px rgba(14,165,233,0.4)" }}>
+                style={{ background: "linear-gradient(135deg, #00C79A, #E8B84B)", boxShadow: "0 0 20px rgba(0,199,154,0.4)" }}>
                 <Heart size={18} className="text-white" />
               </div>
               <div>
                 <span className="font-bold text-lg"
-                  style={{ background: "linear-gradient(90deg,#38BDF8,#34D399)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                  style={{ background: "linear-gradient(90deg,#00C79A,#E8B84B)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                   Aorane
                 </span>
                 <span className="text-white/35 text-xs ml-1.5">Business</span>
@@ -114,9 +114,9 @@ export default function BusinessAuthModal({ defaultTab = "signin", onClose }: Pr
                 <button key={t} onClick={() => setTab(t)}
                   className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all"
                   style={{
-                    background: tab === t ? "linear-gradient(135deg,#0EA5E9,#10B981)" : "transparent",
+                    background: tab === t ? "linear-gradient(135deg,#00C79A,#E8B84B)" : "transparent",
                     color: tab === t ? "#fff" : "rgba(255,255,255,0.4)",
-                    boxShadow: tab === t ? "0 4px 12px rgba(14,165,233,0.3)" : "none",
+                    boxShadow: tab === t ? "0 4px 12px rgba(0,199,154,0.3)" : "none",
                   }}>
                   {t === "signin" ? "Sign In" : "Sign Up Free"}
                 </button>
@@ -133,13 +133,13 @@ export default function BusinessAuthModal({ defaultTab = "signin", onClose }: Pr
             <div className="mt-5 text-center text-xs text-white/25">
               {tab === "signin" ? (
                 <>New to Aorane Business?{" "}
-                  <button onClick={() => setTab("signup")} className="font-semibold" style={{ color: "#38BDF8" }}>
+                  <button onClick={() => setTab("signup")} className="font-semibold" style={{ color: "#00C79A" }}>
                     Create free account
                   </button>
                 </>
               ) : (
                 <>Already registered?{" "}
-                  <button onClick={() => setTab("signin")} className="font-semibold" style={{ color: "#38BDF8" }}>
+                  <button onClick={() => setTab("signin")} className="font-semibold" style={{ color: "#00C79A" }}>
                     Sign in here
                   </button>
                 </>
@@ -199,7 +199,7 @@ function SignInForm({ onClose }: { onClose: () => void }) {
           placeholder="admin@yourorg.com" required
           className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none placeholder-white/20 transition-all"
           style={inputStyle}
-          onFocus={e => { e.target.style.borderColor = "rgba(14,165,233,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.1)"; }}
+          onFocus={e => { e.target.style.borderColor = "rgba(0,199,154,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(0,199,154,0.1)"; }}
           onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.10)"; e.target.style.boxShadow = "none"; }}
         />
       </div>
@@ -211,7 +211,7 @@ function SignInForm({ onClose }: { onClose: () => void }) {
             placeholder="••••••••" required
             className="w-full rounded-xl px-3.5 py-2.5 pr-10 text-sm outline-none placeholder-white/20 transition-all"
             style={inputStyle}
-            onFocus={e => { e.target.style.borderColor = "rgba(14,165,233,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.1)"; }}
+            onFocus={e => { e.target.style.borderColor = "rgba(0,199,154,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(0,199,154,0.1)"; }}
             onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.10)"; e.target.style.boxShadow = "none"; }}
           />
           <button type="button" onClick={() => setShowPass(!showPass)}
@@ -223,7 +223,7 @@ function SignInForm({ onClose }: { onClose: () => void }) {
 
       <button type="submit" disabled={loading}
         className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:scale-100 mt-2"
-        style={{ background: "linear-gradient(135deg,#0EA5E9,#10B981)", boxShadow: "0 8px 20px rgba(14,165,233,0.3)" }}>
+        style={{ background: "linear-gradient(135deg,#00C79A,#E8B84B)", boxShadow: "0 8px 20px rgba(0,199,154,0.3)" }}>
         {loading ? <Loader2 size={16} className="animate-spin" /> : <><span>Sign In</span><ArrowRight size={15} /></>}
       </button>
     </form>
@@ -279,9 +279,9 @@ function SignUpForm({ onClose }: { onClose: () => void }) {
           <div key={label} className="flex items-center gap-1.5 flex-1 min-w-0">
             <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
               style={{
-                background: i + 1 < step ? "linear-gradient(135deg,#0EA5E9,#10B981)" :
-                  i + 1 === step ? "rgba(14,165,233,0.25)" : "rgba(255,255,255,0.06)",
-                border: i + 1 === step ? "1px solid rgba(14,165,233,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                background: i + 1 < step ? "linear-gradient(135deg,#00C79A,#E8B84B)" :
+                  i + 1 === step ? "rgba(0,199,154,0.25)" : "rgba(255,255,255,0.06)",
+                border: i + 1 === step ? "1px solid rgba(0,199,154,0.5)" : "1px solid rgba(255,255,255,0.08)",
                 color: i + 1 <= step ? "#fff" : "rgba(255,255,255,0.25)",
               }}>
               {i + 1 < step ? <CheckCircle2 size={12} /> : i + 1}
@@ -290,7 +290,7 @@ function SignUpForm({ onClose }: { onClose: () => void }) {
               style={{ color: i + 1 === step ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)" }}>
               {label}
             </span>
-            {i < 2 && <div className="flex-1 h-px" style={{ background: i + 1 < step ? "rgba(14,165,233,0.4)" : "rgba(255,255,255,0.08)" }} />}
+            {i < 2 && <div className="flex-1 h-px" style={{ background: i + 1 < step ? "rgba(0,199,154,0.4)" : "rgba(255,255,255,0.08)" }} />}
           </div>
         ))}
       </div>
@@ -310,8 +310,8 @@ function SignUpForm({ onClose }: { onClose: () => void }) {
               <button key={t.value} onClick={() => set("orgType", t.value)}
                 className="flex items-center gap-2 p-3 rounded-xl text-left text-sm transition-all hover:scale-[1.02]"
                 style={{
-                  background: form.orgType === t.value ? "rgba(14,165,233,0.15)" : "rgba(255,255,255,0.04)",
-                  border: form.orgType === t.value ? "1px solid rgba(14,165,233,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                  background: form.orgType === t.value ? "rgba(0,199,154,0.15)" : "rgba(255,255,255,0.04)",
+                  border: form.orgType === t.value ? "1px solid rgba(0,199,154,0.5)" : "1px solid rgba(255,255,255,0.08)",
                   color: form.orgType === t.value ? "#fff" : "rgba(255,255,255,0.45)",
                 }}>
                 <span>{t.icon}</span>
@@ -321,7 +321,7 @@ function SignUpForm({ onClose }: { onClose: () => void }) {
           </div>
           <button onClick={() => form.orgType && setStep(2)} disabled={!form.orgType}
             className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-40 disabled:scale-100"
-            style={{ background: "linear-gradient(135deg,#0EA5E9,#10B981)", boxShadow: "0 6px 18px rgba(14,165,233,0.3)" }}>
+            style={{ background: "linear-gradient(135deg,#00C79A,#E8B84B)", boxShadow: "0 6px 18px rgba(0,199,154,0.3)" }}>
             Continue <ChevronRight size={15} />
           </button>
         </div>
@@ -341,7 +341,7 @@ function SignUpForm({ onClose }: { onClose: () => void }) {
                 onChange={e => set(f.key, e.target.value)} placeholder={f.placeholder}
                 className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none placeholder-white/20 transition-all"
                 style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = "rgba(14,165,233,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.1)"; }}
+                onFocus={e => { e.target.style.borderColor = "rgba(0,199,154,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(0,199,154,0.1)"; }}
                 onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.10)"; e.target.style.boxShadow = "none"; }}
               />
             </div>
@@ -355,7 +355,7 @@ function SignUpForm({ onClose }: { onClose: () => void }) {
             <button onClick={() => form.name && form.contactEmail && setStep(3)}
               disabled={!form.name || !form.contactEmail}
               className="flex-1 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] disabled:opacity-40"
-              style={{ background: "linear-gradient(135deg,#0EA5E9,#10B981)", boxShadow: "0 4px 14px rgba(14,165,233,0.25)" }}>
+              style={{ background: "linear-gradient(135deg,#00C79A,#E8B84B)", boxShadow: "0 4px 14px rgba(0,199,154,0.25)" }}>
               Continue <ChevronRight size={14} />
             </button>
           </div>
@@ -375,7 +375,7 @@ function SignUpForm({ onClose }: { onClose: () => void }) {
                 onChange={e => set(f.key, e.target.value)} placeholder={f.placeholder}
                 className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none placeholder-white/20 transition-all"
                 style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = "rgba(14,165,233,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.1)"; }}
+                onFocus={e => { e.target.style.borderColor = "rgba(0,199,154,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(0,199,154,0.1)"; }}
                 onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.10)"; e.target.style.boxShadow = "none"; }}
               />
             </div>
@@ -389,7 +389,7 @@ function SignUpForm({ onClose }: { onClose: () => void }) {
             <button onClick={handleSubmit}
               disabled={loading || !form.adminName || !form.adminPassword || !form.confirmPassword}
               className="flex-1 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] disabled:opacity-40"
-              style={{ background: "linear-gradient(135deg,#0EA5E9,#10B981)", boxShadow: "0 4px 14px rgba(14,165,233,0.25)" }}>
+              style={{ background: "linear-gradient(135deg,#00C79A,#E8B84B)", boxShadow: "0 4px 14px rgba(0,199,154,0.25)" }}>
               {loading ? <Loader2 size={15} className="animate-spin" /> : "Create Account & Enter Portal"}
             </button>
           </div>

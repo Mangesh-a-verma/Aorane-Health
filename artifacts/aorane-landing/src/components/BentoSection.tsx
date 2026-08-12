@@ -18,13 +18,13 @@ const ecgData = ecgPoints.map((v, i) => ({ i, v }));
 
 const sleepPhases = [
   { phase: "Awake", fill: "#94A3B8" },
-  { phase: "REM", fill: "#0747A6" },
+  { phase: "REM", fill: "#05473C" },
   { phase: "Core", fill: "#10B981" },
   { phase: "Deep", fill: "#7C3AED" },
 ];
 
 const radialData = [
-  { name: "Stand", value: 85, fill: "#0747A6" },
+  { name: "Stand", value: 85, fill: "#05473C" },
   { name: "Move", value: 72, fill: "#10B981" },
   { name: "Exercise", value: 60, fill: "#F59E0B" },
 ];
@@ -106,7 +106,7 @@ export default function BentoSection() {
               <Moon className="w-4 h-4 text-[#7C3AED]" />
               <p className="text-xs font-semibold text-gray-500">Sleep Score</p>
             </div>
-            <p className="text-3xl font-extrabold text-[#0747A6]">87<span className="text-base font-normal text-gray-400">/100</span></p>
+            <p className="text-3xl font-extrabold text-[#7C3AED]">87<span className="text-base font-normal text-gray-400">/100</span></p>
             <p className="text-xs text-gray-400 mt-1">7h 32m • Deep: 1h 48m</p>
             <div className="flex gap-1 mt-2">
               {[40, 65, 90, 75, 30].map((h, i) => (
@@ -124,22 +124,22 @@ export default function BentoSection() {
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-[#0747A6]/10 rounded-xl flex items-center justify-center">
-                  <Zap className="w-4 h-4 text-[#0747A6]" />
+                <div className="w-8 h-8 bg-[#05473C]/10 rounded-xl flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-[#05473C]" />
                 </div>
                 <p className="text-xs font-semibold text-gray-500">24h Heart Rate</p>
               </div>
-              <span className="text-sm font-bold text-[#0747A6]">Avg 72 bpm</span>
+              <span className="text-sm font-bold text-[#05473C]">Avg 72 bpm</span>
             </div>
             <ResponsiveContainer width="100%" height={85}>
               <AreaChart data={bpmData}>
                 <defs>
                   <linearGradient id="bpmGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0747A6" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#0747A6" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#05473C" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#05473C" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <Area type="monotone" dataKey="bpm" stroke="#0747A6" strokeWidth={2} fill="url(#bpmGrad)" dot={false} />
+                <Area type="monotone" dataKey="bpm" stroke="#05473C" strokeWidth={2} fill="url(#bpmGrad)" dot={false} />
                 <Tooltip contentStyle={{ fontSize: 11 }} formatter={(v: number) => [`${v.toFixed(0)} bpm`, ""]} />
               </AreaChart>
             </ResponsiveContainer>

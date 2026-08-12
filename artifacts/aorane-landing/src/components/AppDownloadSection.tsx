@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Smartphone, Star, Shield, Download, Heart, Activity, Apple, Droplets } from "lucide-react";
+import { Smartphone, Shield, Heart, Activity, Apple, Droplets } from "lucide-react";
 
 function PhoneMockup() {
   return (
@@ -82,11 +82,14 @@ function PhoneMockup() {
       </div>
 
       <div className="absolute -left-8 bottom-20 glass-panel rounded-2xl p-2.5 w-28">
-        <div className="flex items-center gap-1 mb-1">
-          {[1,2,3,4,5].map(i => <Star key={i} className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />)}
+        <div className="flex items-center gap-1.5 mb-1">
+          <div className="w-5 h-5 bg-[#00C79A]/15 rounded-lg flex items-center justify-center">
+            <Shield className="w-3 h-3 text-[#05473C]" />
+          </div>
+          <p className="text-[10px] font-bold text-gray-800">Data Privacy</p>
         </div>
-        <p className="text-[9px] text-gray-600">"Best health app in India!"</p>
-        <p className="text-[9px] font-bold text-gray-400 mt-0.5">— Play Store</p>
+        <p className="text-[9px] text-gray-500">Built for India</p>
+        <p className="text-[9px] font-bold text-[#05473C] mt-0.5">DPDPA aligned</p>
       </div>
     </div>
   );
@@ -103,7 +106,7 @@ export default function AppDownloadSection() {
             viewport={{ once: true }}
           >
             <span className="inline-block text-xs font-bold text-white/60 bg-white/10 px-3 py-1 rounded-full uppercase tracking-widest mb-6">
-              Available Now
+              Launching Soon
             </span>
             <h2 className="font-display text-4xl sm:text-5xl font-medium text-white leading-tight mb-5">
               Download Aorane.{" "}
