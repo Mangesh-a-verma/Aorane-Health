@@ -565,11 +565,18 @@ async function callFallback(
   } catch (fallbackErr) {
     await recordProviderFailure(fallbackProvider);
     logger.error({ feature, fallbackProvider, err: fallbackErr }, "[ai] fallback provider ALSO failed");
-    // Both failed — the fallback's error is usually more actionable (it's
-    // the last thing that actually ran), but if we only got here because
-    // the circuit was already open (no primaryErr), surface the fallback's
-    // real error either way.
-    throw primaryErr ?? fallbackErr;
+    // Both failed. Previously this silently re-threw only the primary's
+    // error, so the caller (and end user) had no way to tell a fallback
+    // was even attempted, let alone that it failed too — made incidents
+    // like a provider deprecating a model much harder to diagnose from
+    // the app-side error alone. Now the message names both providers and
+    // both underlying errors explicitly.
+    const primaryMsg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr ?? "circuit open");
+    const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+    throw new AIProviderError(
+      "provider_error",
+      `Both providers failed for feature "${feature}". Primary (${config.provider}): ${primaryMsg} | Fallback (${fallbackProvider}): ${fallbackMsg}`,
+    );
   }
 }
 

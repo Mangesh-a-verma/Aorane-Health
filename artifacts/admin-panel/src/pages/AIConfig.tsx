@@ -15,9 +15,9 @@ const PROVIDERS = [
 
 const MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]> = {
   google: [
-    { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
-    { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
-    { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
+    { value: "gemini-3.5-flash", label: "Gemini 3.5 Flash (recommended)" },
+    { value: "gemini-3.6-flash", label: "Gemini 3.6 Flash (newest)" },
+    { value: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite (cheapest/fastest)" },
   ],
   nvidia: [
     { value: "deepseek-ai/deepseek-v3.2", label: "DeepSeek V3.2" },
@@ -41,14 +41,14 @@ const MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]> = {
 };
 
 const DEFAULT_FEATURES: AiConfig[] = [
-  { id: null, feature: "food_ai", label: "Food AI Analysis", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
-  { id: null, feature: "medical_ai", label: "Medical AI Assistant", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
-  { id: null, feature: "smart_scan", label: "Smart Scan (OCR + AI)", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
-  { id: null, feature: "water_ai", label: "Water Intake Suggestions", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
-  { id: null, feature: "stress_ai", label: "Stress & Sleep Analysis", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
-  { id: null, feature: "blood_ai", label: "Blood Report Analysis", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
-  { id: null, feature: "meal_planner", label: "AI Meal Planner", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
-  { id: null, feature: "health_suggestions", label: "Daily Health Suggestions", provider: "google", model: "gemini-2.0-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "food_ai", label: "Food AI Analysis", provider: "google", model: "gemini-3.5-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "medical_ai", label: "Medical AI Assistant", provider: "google", model: "gemini-3.5-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "smart_scan", label: "Smart Scan (OCR + AI)", provider: "google", model: "gemini-3.5-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "water_ai", label: "Water Intake Suggestions", provider: "google", model: "gemini-3.5-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "stress_ai", label: "Stress & Sleep Analysis", provider: "google", model: "gemini-3.5-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "blood_ai", label: "Blood Report Analysis", provider: "google", model: "gemini-3.5-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "meal_planner", label: "AI Meal Planner", provider: "google", model: "gemini-3.5-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
+  { id: null, feature: "health_suggestions", label: "Daily Health Suggestions", provider: "google", model: "gemini-3.5-flash", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
   { id: null, feature: "health_prediction", label: "Monthly Disease Risk Prediction", provider: "nvidia", model: "deepseek-ai/deepseek-v3.2", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
   { id: null, feature: "weekly_diet_chart", label: "Weekly AI Diet Chart", provider: "nvidia", model: "deepseek-ai/deepseek-v3.2", hasApiKey: false, apiKeyPreview: null, systemPrompt: null, isEnabled: true, fallbackProvider: null, fallbackModel: null, hasFallbackApiKey: false, fallbackApiKeyPreview: null },
 ];

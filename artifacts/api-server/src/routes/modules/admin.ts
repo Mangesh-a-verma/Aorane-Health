@@ -890,14 +890,14 @@ router.get("/admin/revenue", requireAdmin, async (req: AdminRequest, res) => {
 // Defaults below use "google" (Gemini) since that's the provider actually
 // in use for this project — NVIDIA is not currently configured/used.
 const DEFAULT_AI_FEATURES = [
-  { feature: "food_ai",            label: "Food AI Analysis (text + photo)", provider: "google", model: "gemini-2.0-flash" },
-  { feature: "medical_ai",         label: "Medical Report Scan AI",          provider: "google", model: "gemini-2.0-flash" },
-  { feature: "smart_scan",         label: "Smart Scan (OCR + AI)",           provider: "google", model: "gemini-2.0-flash" },
-  { feature: "stress_ai",          label: "Stress & Sleep Analysis",         provider: "google", model: "gemini-2.0-flash" },
-  { feature: "meal_planner",       label: "AI Meal Planner & Swap",          provider: "google", model: "gemini-2.0-flash" },
-  { feature: "health_suggestions", label: "Daily Health Suggestions",        provider: "google", model: "gemini-2.0-flash" },
-  { feature: "health_prediction",  label: "Monthly Disease Risk Prediction", provider: "google", model: "gemini-2.0-flash" },
-  { feature: "weekly_diet_chart",  label: "Weekly AI Diet Chart",            provider: "google", model: "gemini-2.0-flash" },
+  { feature: "food_ai",            label: "Food AI Analysis (text + photo)", provider: "google", model: "gemini-3.5-flash" },
+  { feature: "medical_ai",         label: "Medical Report Scan AI",          provider: "google", model: "gemini-3.5-flash" },
+  { feature: "smart_scan",         label: "Smart Scan (OCR + AI)",           provider: "google", model: "gemini-3.5-flash" },
+  { feature: "stress_ai",          label: "Stress & Sleep Analysis",         provider: "google", model: "gemini-3.5-flash" },
+  { feature: "meal_planner",       label: "AI Meal Planner & Swap",          provider: "google", model: "gemini-3.5-flash" },
+  { feature: "health_suggestions", label: "Daily Health Suggestions",        provider: "google", model: "gemini-3.5-flash" },
+  { feature: "health_prediction",  label: "Monthly Disease Risk Prediction", provider: "google", model: "gemini-3.5-flash" },
+  { feature: "weekly_diet_chart",  label: "Weekly AI Diet Chart",            provider: "google", model: "gemini-3.5-flash" },
 ];
 
 /** Strips the real apiKey/fallbackApiKey out of a config row before it goes
@@ -941,7 +941,7 @@ router.put("/admin/ai-config/:feature", requireAdmin, async (req: AdminRequest, 
     const feature = String(req.params.feature);
     const { provider, model, apiKey, systemPrompt, isEnabled, fallbackProvider, fallbackModel, fallbackApiKey } = req.body as Record<string, unknown>;
     const providerStr = (provider as string) || "gemini";
-    const modelStr = (model as string) || "gemini-2.0-flash";
+    const modelStr = (model as string) || "gemini-3.5-flash";
     const systemPromptStr = (systemPrompt as string) || null;
     // Fallback provider/model are simple "replace whatever's there" fields —
     // an empty string means "no fallback", stored as null.
