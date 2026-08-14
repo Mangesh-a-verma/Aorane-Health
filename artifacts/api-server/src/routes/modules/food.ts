@@ -475,7 +475,7 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
       // already retries on 429/5xx with backoff, see lib/ai.ts).
       const promptText = `You are a certified Indian dietitian and nutrition expert. Carefully look at this food image and identify what food or meal is shown. Visually estimate the serving size based on the image, and provide highly accurate macro-nutrients (Calories, Protein, Carbs, Fat) for that specific estimated serving size.
 
-Return ONLY a valid JSON object (no markdown, no explanation, no extra text) with exactly these fields:
+Respond with ONLY the JSON object below and nothing else — no markdown code fences, no preamble, no restating these instructions, no explanation before or after. The very first character of your response must be "{" and the very last must be "}". Fields, exactly these:
 {
   "foodNameEn": "English name of the food (e.g. Grilled Sandwich, Dal Makhani, Poha)",
   "calories": 280,
@@ -510,7 +510,7 @@ All numeric values must be numbers (not strings). dietaryTags must be an array. 
         jsonStr = await callAI(
           "food_ai",
           [{ role: "user", content: promptText, media: { mimeType: mimeType || "image/jpeg", data: imageBase64 } }],
-          { maxTokens: 1200, temperature: 0.2 },
+          { maxTokens: 2200, temperature: 0.2 },
         );
       } catch (aiErr) {
         req.log.error({ err: aiErr }, "[FoodScan] AI photo analysis failed");
@@ -789,7 +789,7 @@ Return ONLY valid JSON:
 }`;
 
     try {
-      const jsonStr = await callAI("food_ai", [{ role: "user", content: prompt }], { maxTokens: 1200 });
+      const jsonStr = await callAI("food_ai", [{ role: "user", content: prompt }], { maxTokens: 1800 });
       const result = JSON.parse(jsonStr);
       const response = { ...result, weatherContext: weather, fromCache: false };
       await cache.set(cacheKey, JSON.stringify(response), WEATHER_CACHE_TTL);

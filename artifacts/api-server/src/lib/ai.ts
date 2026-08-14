@@ -279,6 +279,21 @@ async function callGoogleProvider(
     promptFeedback?: { blockReason?: string };
   };
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  const finishReason = data.candidates?.[0]?.finishReason;
+  if (finishReason === "MAX_TOKENS") {
+    // Response was cut off mid-generation before it finished — this
+    // previously returned the truncated (often invalid/incomplete-JSON)
+    // text as if the call had SUCCEEDED, so callAI() never saw it as a
+    // failure and the Phase 2 fallback never got a chance to run. Now
+    // it's a real error, so a genuinely-too-small maxTokens (or a more
+    // verbose model than expected) correctly triggers the fallback
+    // provider instead of surfacing a confusing "couldn't parse" error
+    // to the end user with no automatic recovery attempted.
+    throw new AIProviderError(
+      "provider_error",
+      `Gemini response was truncated (hit the ${maxTokens}-token limit before finishing). Increase maxTokens for this call, or a shorter/tighter prompt is needed.`,
+    );
+  }
   if (!text.trim()) {
     // No usable text back — usually Gemini's safety filter blocked the
     // image/prompt (promptFeedback.blockReason) or the response was cut
