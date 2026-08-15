@@ -106,7 +106,8 @@ export async function rawRequest<T>(
   method: string,
   path: string,
   body?: Record<string, unknown>,
-  auth = true
+  auth = true,
+  timeoutMs = 15000
 ): Promise<T> {
   // FIX CB2: Remov console log to fix path leak.
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -115,12 +116,22 @@ export async function rawRequest<T>(
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
-  // 15s timeout — previously 60s "to handle Render cold start" but:
+  // Default 15s timeout for normal (fast) API calls — previously 60s "to
+  // handle Render cold start" but:
   // 1. Keep-alive is now fixed (running in production), so cold starts are rare
   // 2. A 60s timeout meant the app appeared frozen for a full minute on errors
   // 3. If Render is genuinely cold, warmupServer() handles that separately
+  //
+  // AI-heavy endpoints (photo scan, medical report scan, etc.) now pass a
+  // longer timeoutMs explicitly (see the `api.*` calls below) — a normal
+  // successful AI photo analysis routinely takes 10-20s on its own, and
+  // the server's own retry+fallback logic can legitimately take longer
+  // still if the primary provider needs to fail over. The old blanket 15s
+  // was aborting genuinely-still-working requests before the server could
+  // even respond (confirmed in production logs: a food scan that
+  // eventually succeeded server-side was aborted client-side at ~15s).
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   let res: Response;
   try {
@@ -242,9 +253,10 @@ async function request<T>(
   method: string,
   path: string,
   body?: Record<string, unknown>,
-  auth = true
+  auth = true,
+  timeoutMs?: number
 ): Promise<T> {
-  return rawRequest<T>(method, path, body, auth);
+  return rawRequest<T>(method, path, body, auth, timeoutMs);
 }
 
 export const api = {
@@ -346,7 +358,7 @@ export const api = {
       }>;
       weatherTip: string;
       fallback?: boolean;
-    }>("POST", "/food/weather-suggestions", {}),
+    }>("POST", "/food/weather-suggestions", {}, true, 45000),
 
   // AI food scan — History → DB → Cache → Gemini (4-level, cost-optimized)
   scanFood: (data: { foodName?: string; imageBase64?: string; mimeType?: string }) =>
@@ -362,7 +374,7 @@ export const api = {
       fromDb: boolean;
       fromHistory: boolean;
       historyCount?: number;
-    }>("POST", "/food/scan", data as Record<string, unknown>),
+    }>("POST", "/food/scan", data as Record<string, unknown>, true, 45000),
 
   // ── Exercise ───────────────────────────────────────────
   getExerciseLogs: (date: string) =>
@@ -436,7 +448,7 @@ export const api = {
         urgencyLevel?: string;
         followUpRequired?: boolean;
       };
-    }>("POST", "/medical/scan", data),
+    }>("POST", "/medical/scan", data, true, 45000),
 
   deleteMedicalReport: (id: string) =>
     request<{ success: boolean }>("DELETE", `/medical/reports/${id}`),
@@ -774,7 +786,7 @@ export const api = {
       medicineName?: string; genericName?: string; uses?: string;
       commonDosage?: string; sideEffects?: string[]; warnings?: string[];
       message?: string;
-    }>("POST", "/ai/smart-scan", data as Record<string, unknown>),
+    }>("POST", "/ai/smart-scan", data as Record<string, unknown>, true, 45000),
 
   // ── Health Intelligence (DeepSeek AI) ─────────────────────
   getHealthPrediction: () =>
