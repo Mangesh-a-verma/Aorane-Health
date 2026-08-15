@@ -90,8 +90,16 @@ function mediaArray(m?: AIMedia | AIMedia[]): AIMedia[] {
   return Array.isArray(m) ? m : [m];
 }
 
-const DEFAULT_TIMEOUT_MS = 45_000;
-const MAX_RETRIES = 2; // total attempts = 1 + MAX_RETRIES
+// Tuned down from 45s/3-attempts after Phase 2 added cross-provider
+// fallback: retrying the SAME provider up to 3 times before even trying
+// the fallback made worst-case total latency (primary retries + fallback
+// retries) exceed the mobile app's own request timeout, causing the
+// client to abort before the server could finish (observed in production:
+// a 26.7s round trip that the app gave up on). Now the primary fails over
+// to the fallback faster, and the fallback gets a fair timeout budget of
+// its own within the client's patience window.
+const DEFAULT_TIMEOUT_MS = 25_000;
+const MAX_RETRIES = 1; // total attempts = 1 + MAX_RETRIES
 
 /**
  * fetch() with a hard timeout (AbortController) and retry-with-backoff on

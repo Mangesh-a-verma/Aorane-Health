@@ -276,6 +276,32 @@ router.post("/food/scan", requireAuth, async (req: AuthRequest, res) => {
       return;
     }
 
+    // ── Input hardening for photo scans ─────────────────────────────────────
+    // Catches malformed/oversized/wrong-type uploads BEFORE they burn an AI
+    // call and quota — previously a bad image just went straight to the AI
+    // provider and surfaced as a confusing "Could not parse AI response" or
+    // provider error several steps downstream, with no clear cause.
+    if (imageBase64) {
+      const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"]);
+      if (mimeType && !ALLOWED_MIME_TYPES.has(mimeType.toLowerCase())) {
+        res.status(400).json({ error: `Unsupported image type "${mimeType}". Please use JPEG, PNG, WEBP, or HEIC.` });
+        return;
+      }
+      // Base64 is ~4/3 the size of the decoded bytes — 12MB of base64 text
+      // is roughly a 9MB image, generous for a phone camera photo while
+      // still rejecting accidental multi-page-PDF-as-base64 style mistakes
+      // (and the token/cost blowup that would cause).
+      const MAX_BASE64_LENGTH = 12 * 1024 * 1024;
+      if (imageBase64.length > MAX_BASE64_LENGTH) {
+        res.status(413).json({ error: "Image is too large. Please use a smaller photo (under ~9MB)." });
+        return;
+      }
+      if (!/^[A-Za-z0-9+/]+={0,2}$/.test(imageBase64.replace(/\s/g, ""))) {
+        res.status(400).json({ error: "Image data is corrupted or not valid base64. Please try taking the photo again." });
+        return;
+      }
+    }
+
     // ── Level 1: Personal History (ZERO AI cost — fastest) ──────────────────
     if (searchTerm) {
       const [historyMatch] = await db.select({
@@ -789,7 +815,7 @@ Return ONLY valid JSON:
 }`;
 
     try {
-      const jsonStr = await callAI("food_ai", [{ role: "user", content: prompt }], { maxTokens: 1800 });
+      const jsonStr = await callAI("food_ai", [{ role: "user", content: prompt }], { maxTokens: 2200 });
       const result = JSON.parse(jsonStr);
       const response = { ...result, weatherContext: weather, fromCache: false };
       await cache.set(cacheKey, JSON.stringify(response), WEATHER_CACHE_TTL);
