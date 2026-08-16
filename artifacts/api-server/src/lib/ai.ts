@@ -98,8 +98,19 @@ function mediaArray(m?: AIMedia | AIMedia[]): AIMedia[] {
 // a 26.7s round trip that the app gave up on). Now the primary fails over
 // to the fallback faster, and the fallback gets a fair timeout budget of
 // its own within the client's patience window.
-const DEFAULT_TIMEOUT_MS = 25_000;
-const MAX_RETRIES = 1; // total attempts = 1 + MAX_RETRIES
+// Tightened further after production evidence showed requests being cut
+// off at ~30s consistently (client "request aborted" logs) — well BELOW
+// our previous 45s client-side timeout, which strongly suggests some
+// external ceiling (very possibly Render's own infrastructure) that our
+// app-level timeout can't override. Since we can't lengthen our way out
+// of an external ceiling, the only real fix is to make our own worst-case
+// processing time comfortably fit inside it. Retries-within-a-provider
+// are now ZERO — with Phase 2's cross-provider fallback in place,
+// retrying the SAME (possibly-struggling) provider before trying a
+// DIFFERENT one is pure wasted time that eats into an already-tight
+// budget for no benefit.
+const DEFAULT_TIMEOUT_MS = 13_000;
+const MAX_RETRIES = 0; // total attempts = 1 + MAX_RETRIES — rely on cross-provider fallback instead of same-provider retries
 
 /**
  * fetch() with a hard timeout (AbortController) and retry-with-backoff on
