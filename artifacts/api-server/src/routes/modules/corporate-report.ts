@@ -232,6 +232,9 @@ Be direct, specific, and evidence-based. Reference ICMR/WHO guidelines where rel
       NVIDIA_KEY,
       2048,
       0.5,
+      undefined, // use default model
+      55000, // preserve original generous timeout — this is an admin report generation task, not a latency-critical mobile scan
+      2, // preserve original retry count
     );
   } catch (err) {
     logger.error({ err }, "Corporate AI insights generation failed");

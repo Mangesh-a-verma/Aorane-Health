@@ -15,14 +15,31 @@ export async function callDeepSeek(
   maxTokens = 4096,
   temperature = 0.6,
   model = "meta/llama-3.3-70b-instruct",
+  timeoutMs = 13000,
+  maxRetries = 0,
 ): Promise<string> {
-  const MAX_RETRIES = 2;
+  // FIX (production incident): this used to hardcode timeoutMs=55000 and
+  // MAX_RETRIES=2 unconditionally — completely disconnected from the
+  // DEFAULT_TIMEOUT_MS/MAX_RETRIES tuning in ai.ts. When this is called as
+  // the Phase 2 FALLBACK for a user-facing photo scan, that meant the
+  // fallback alone could take up to ~165 seconds (55s x 3 attempts) even
+  // though the primary was tuned to fail fast at 13s — confirmed in
+  // production logs where a scan's fallback attempt took 150+ seconds and
+  // the mobile app had long since given up and disconnected by then.
+  //
+  // Now this defaults to the SAME tightened 13s/0-retries budget as the
+  // rest of the AI layer (used via callNvidiaProvider in ai.ts, i.e. the
+  // food-scan fallback path). callers that genuinely need a longer,
+  // retried budget (e.g. corporate-report.ts, which isn't blocking on a
+  // mobile client's short timeout) pass their own timeoutMs/maxRetries
+  // explicitly instead of relying on a shared, silently-mismatched default.
+  const MAX_RETRIES = maxRetries;
   let res: Response | undefined;
   let lastErr: unknown;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 55000);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       res = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
         method: "POST",
@@ -63,7 +80,7 @@ export async function callDeepSeek(
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`AI API error ${res.status}: ${err}`);
+    throw new Error(`NVIDIA AI API error ${res.status} for model "${model}": ${err.slice(0, 300)}`);
   }
 
   const data = await res.json() as {
