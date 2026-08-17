@@ -15,7 +15,7 @@ export async function callDeepSeek(
   maxTokens = 4096,
   temperature = 0.6,
   model = "meta/llama-3.3-70b-instruct",
-  timeoutMs = 13000,
+  timeoutMs = 20000,
   maxRetries = 0,
 ): Promise<string> {
   // FIX (production incident): this used to hardcode timeoutMs=55000 and

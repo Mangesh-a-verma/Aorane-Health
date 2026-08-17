@@ -109,8 +109,21 @@ function mediaArray(m?: AIMedia | AIMedia[]): AIMedia[] {
 // retrying the SAME (possibly-struggling) provider before trying a
 // DIFFERENT one is pure wasted time that eats into an already-tight
 // budget for no benefit.
-const DEFAULT_TIMEOUT_MS = 13_000;
-const MAX_RETRIES = 0; // total attempts = 1 + MAX_RETRIES — rely on cross-provider fallback instead of same-provider retries
+// CORRECTED after production evidence: 13s was too aggressive. Logs showed
+// Gemini/NVIDIA legitimately taking 12-20s to fully process an image and
+// generate the JSON response — our own 13s timeout was firing and killing
+// calls that would very likely have succeeded a few seconds later, not
+// because a provider was stuck, but because photo analysis genuinely
+// takes that long. (This also means the earlier ~30s "external ceiling"
+// theory was likely a red herring — this log shows clean, unambiguous
+// 13s self-inflicted timeouts with no client involvement at all, so the
+// real constraint was always our own settings, not some Render platform
+// limit.) Since the mobile app now waits up to 45s for these specific
+// endpoints, there's real room: 20s per provider comfortably covers
+// observed legitimate completion times (12-14s) with margin, and
+// 20s+20s=40s worst case still leaves ~5s under the client's 45s timeout.
+const DEFAULT_TIMEOUT_MS = 20_000;
+const MAX_RETRIES = 0; // still 0 — rely on cross-provider fallback, not same-provider retries
 
 /**
  * fetch() with a hard timeout (AbortController) and retry-with-backoff on
