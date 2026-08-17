@@ -1,3 +1,10 @@
+// Legacy Replit-era static Expo Go OTA publisher: starts Metro, downloads
+// the bundled JS + assets, and writes a self-hosted manifest that an Expo
+// Go client can scan/load. NOT part of the EAS Build / Android release
+// pipeline (see eas.json + Codemagic config for the actual app build) —
+// this only produces a browsable web preview. Kept because it still works
+// standalone if that preview workflow is ever needed again; run via
+// `pnpm publish:ota-legacy`, not `pnpm build`.
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");

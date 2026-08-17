@@ -231,12 +231,12 @@ export const sleepLogsTable = pgTable("sleep_logs", {
   loggedAt: timestamp("logged_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
-  // WHERE user_id=$1 AND sleep_date=$2 (3 call sites: POST /health/sleep
-  // dedup check, PUT /health/sleep/:date, GET /health/sleep/:date) and
-  // WHERE user_id=$1 ORDER BY sleep_date DESC LIMIT N (GET
-  // /health/sleep/history) — exact match for lib/scoring.ts's dashboard
-  // query too.
-  userSleepDateIdx: index("idx_sleep_logs_user_sleep_date").on(t.userId, t.sleepDate),
+  // One row per user per calendar date. Unique (not just indexed) so a
+  // duplicate POST — retry after timeout, offline-sync replay — can't
+  // create a second row for the same date, which previously caused
+  // lib/scoring.ts's SUM(sleep_hours) to double-count sleep hours and
+  // corrupt the Health Score. POST/PUT now upsert on this constraint.
+  userSleepDateIdx: uniqueIndex("idx_sleep_logs_user_sleep_date").on(t.userId, t.sleepDate),
 }));
 
 export const insertExerciseLogSchema = createInsertSchema(exerciseLogsTable).omit({ id: true, createdAt: true });

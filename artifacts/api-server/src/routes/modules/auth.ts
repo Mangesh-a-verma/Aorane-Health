@@ -382,19 +382,34 @@ router.post("/auth/google", async (req, res) => {
     }
 
     let googleData: { sub?: string; email: string; name?: string; picture?: string; aud?: string; error_description?: string };
-    const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+
+    // GOOGLE_CLIENT_ID may hold multiple comma-separated client IDs
+    // (web / Android / iOS all map to the same Firebase/Google project).
+    // Fail closed: if this isn't configured, reject the request instead
+    // of silently skipping audience verification — an unconfigured
+    // server should never accept Google tokens issued for someone
+    // else's OAuth client.
+    const ALLOWED_GOOGLE_CLIENT_IDS = (process.env.GOOGLE_CLIENT_ID ?? "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    if (ALLOWED_GOOGLE_CLIENT_IDS.length === 0) {
+      logger.error("[auth/google] GOOGLE_CLIENT_ID is not configured — rejecting Google sign-in");
+      res.status(500).json({ error: "Google sign-in is not available right now" });
+      return;
+    }
 
     if (googleAccessToken) {
-      // --- FIX C-3: Strict Audience verification for Access Tokens ---
       const tokenInfoRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${googleAccessToken}`);
       if (!tokenInfoRes.ok) {
         res.status(401).json({ error: "Invalid Google access token" });
         return;
       }
       const tokenInfo = await tokenInfoRes.json() as { aud?: string };
-      
-      // Check if token belongs to AORANE
-      if (GOOGLE_CLIENT_ID && tokenInfo.aud && tokenInfo.aud !== GOOGLE_CLIENT_ID) {
+
+      // Check the token belongs to one of AORANE's own OAuth clients
+      if (!tokenInfo.aud || !ALLOWED_GOOGLE_CLIENT_IDS.includes(tokenInfo.aud)) {
         res.status(401).json({ error: "Google access token audience mismatch! (Security Block)" });
         return;
       }
@@ -420,8 +435,8 @@ router.post("/auth/google", async (req, res) => {
         res.status(401).json({ error: "Invalid Google token" });
         return;
       }
-      // Verify the token was issued for this app
-      if (GOOGLE_CLIENT_ID && googleData.aud && googleData.aud !== GOOGLE_CLIENT_ID) {
+      // Verify the token was issued for one of AORANE's own OAuth clients
+      if (!googleData.aud || !ALLOWED_GOOGLE_CLIENT_IDS.includes(googleData.aud)) {
         res.status(401).json({ error: "Google token audience mismatch" });
         return;
       }

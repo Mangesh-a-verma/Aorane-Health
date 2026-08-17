@@ -20,11 +20,26 @@ export interface AuthRequest extends Request {
 // on every request.
 const PLAN_CACHE_TTL_SECONDS = 120;
 
+// Redis is a cache here, not a source of truth — every value it holds is
+// re-derivable from Postgres. So a Redis failure should never be treated
+// differently from a Redis miss: swallow the error and fall through to
+// the DB lookup, same fail-open policy the DB calls below already use.
+// (Previously an unguarded cache.get() would throw on a Redis outage and
+// propagate out of requireAuth's try/catch as a 401 for every request —
+// the opposite of the intended "don't lock everyone out" design.)
+async function safeCacheGet(key: string): Promise<string | null> {
+  try {
+    return await cache.get(key);
+  } catch (error) {
+    logger.error({ err: error, key }, "[Auth] Redis get failed");
+    return null;
+  }
+}
+
 async function getCurrentPlan(userId: string, fallbackPlan: string): Promise<string> {
   const cacheKey = `user_plan:${userId}`;
   
-  // Added: await for the Redis network call
-  const cached = await cache.get(cacheKey);
+  const cached = await safeCacheGet(cacheKey);
   if (cached) return cached;
   
   try {
@@ -81,7 +96,7 @@ export async function invalidateUserPlanCache(userId: string): Promise<void> {
 
 async function isAccountActive(userId: string): Promise<boolean> {
   const cacheKey = `user_active:${userId}`;
-  const cached = await cache.get(cacheKey);
+  const cached = await safeCacheGet(cacheKey);
   if (cached !== null && cached !== undefined) return cached === "1";
 
   try {
@@ -113,9 +128,11 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
   try {
     const payload = verifyUserToken(token);
 
-    // A5: Token revocation — reject tokens issued before last logout
-    // Added: await for the Redis network call
-    const logoutTs = await cache.get(`logout:user:${payload.userId}`);
+    // A5: Token revocation — reject tokens issued before last logout.
+    // A Redis failure here falls through as "no logout recorded" (same
+    // fail-open policy as everywhere else in this file) rather than
+    // rejecting the request.
+    const logoutTs = await safeCacheGet(`logout:user:${payload.userId}`);
     if (logoutTs) {
       const decoded = payload as unknown as { iat?: number };
       const iat = decoded.iat ?? 0;
@@ -153,7 +170,7 @@ export async function optionalAuth(req: AuthRequest, res: Response, next: NextFu
       const payload = verifyUserToken(token);
       
       // Added: await for the Redis network call
-      const logoutTs = await cache.get(`logout:user:${payload.userId}`);
+      const logoutTs = await safeCacheGet(`logout:user:${payload.userId}`);
       
       const decoded = payload as unknown as { iat?: number };
       const iat = decoded.iat ?? 0;

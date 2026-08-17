@@ -1,0 +1,1 @@
+CREATE INDEX "idx_wearable_data_user_synced_at" ON "wearable_data" USING btree ("user_id","synced_at");

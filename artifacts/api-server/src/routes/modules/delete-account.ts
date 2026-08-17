@@ -2,9 +2,15 @@
  * DELETE ACCOUNT — POST /users/delete-account  (requireAuth)
  *
  * Fix: @supabase/supabase-js removed — not installed in api-server.
- * Storage cleanup is handled via SQL CASCADE (all child tables have
- * ON DELETE CASCADE on user_id). Profile photo URL is nulled out.
- * Supabase Storage file purge can be added later as a background job.
+ *
+ * The user row is soft-deleted (deleted_at set, PII anonymized), not
+ * hard-deleted — this preserves referential integrity for financial
+ * records (subscriptions/payments, kept for accounting/legal retention).
+ * Because it's a soft delete, ON DELETE CASCADE on user_id never fires,
+ * so every other table holding personal/health data is deleted
+ * explicitly below (CHILD_TABLES + EXTRA_DELETE_QUERIES). Profile photo
+ * URL is nulled out via user_profiles deletion. Supabase Storage file
+ * purge can be added later as a background job.
  */
 
 import { Router } from "express";
@@ -61,9 +67,20 @@ async function validateDeletionOtp(
 }
 
 // ─── Tables to explicitly delete from (belt + CASCADE suspenders) ────────────
-
+// CASCADE on user_id never fires here because we soft-delete the user row
+// (UPDATE, not DELETE) — see step 1 below. So this list IS the actual
+// cleanup mechanism, not a backup. Kept in sync with every table in
+// lib/db/src/schema/*.ts that has `references(() => usersTable.id, {
+// onDelete: "cascade" })` on user_id — re-check that list before adding a
+// new schema table so it doesn't silently survive a deletion request.
+//
+// Intentionally NOT included (financial/audit retention, not a bug):
+//   subscriptions, payments — kept for accounting/legal history; the route
+//   already cancels the active subscription in step 2 without deleting the
+//   row, and payments use ON DELETE SET NULL so they never reference PII
+//   after this route anonymizes the user's phone/email in step 1.
 const CHILD_TABLES = [
-  "user_auth_providers", // OAuth-linked identities (email, provider ID) — CASCADE never fires on a soft-delete, so this needs explicit cleanup too
+  "user_auth_providers", // OAuth-linked identities (email, provider ID)
   "user_profiles",
   "user_preferences",
   "user_privacy_settings",
@@ -83,9 +100,31 @@ const CHILD_TABLES = [
   "daily_health_scores",
   "daily_food_summaries",
   "notification_preferences",
+  "notifications",
+  "push_tokens",
+  "app_sessions",
+  "offline_queue",
   "wearable_connections",
+  "wearable_data",
   "ai_usage_logs",
+  "daily_suggestions",
+  "health_predictions",
+  "weekly_diet_charts",
+  "whatsapp_subscriptions",
+  "blood_donors",
+  "accident_emergency_logs",
+  "emergency_contacts",
+  "blood_request_flags",
+  "family_members",
+  "org_members",
 ] as const;
+
+// Tables where the user can appear in a column other than "user_id",
+// or where deleting by user_id alone wouldn't catch every row.
+const EXTRA_DELETE_QUERIES: { sql: string; label: string }[] = [
+  { sql: `DELETE FROM referrals WHERE referrer_id = $1 OR referred_id = $1`, label: "referrals" },
+  { sql: `DELETE FROM family_groups WHERE owner_id = $1`, label: "family_groups" }, // cascades to remaining family_members
+];
 
 // ─── Route ───────────────────────────────────────────────────────────────────
 
@@ -187,6 +226,15 @@ router.post("/users/delete-account", requireAuth, async (req: AuthRequest, res) 
     for (const table of CHILD_TABLES) {
       await pool.query(`DELETE FROM ${table} WHERE user_id = $1`, [userId]).catch((err) =>
         req.log.warn({ err, table }, `[deleteAccount] delete ${table} non-fatal`)
+      );
+    }
+
+    // 3b. Tables where the user isn't in a plain "user_id" column
+    // (referrals: referrer_id/referred_id; family_groups: owner_id, which
+    // cascades to any remaining family_members rows for that group).
+    for (const { sql, label } of EXTRA_DELETE_QUERIES) {
+      await pool.query(sql, [userId]).catch((err) =>
+        req.log.warn({ err, table: label }, `[deleteAccount] delete ${label} non-fatal`)
       );
     }
 

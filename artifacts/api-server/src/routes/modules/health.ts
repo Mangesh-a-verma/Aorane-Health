@@ -80,7 +80,7 @@ function calculateCalories(
 router.post("/health/exercise/calculate", requireAuth, async (req: AuthRequest, res) => {
   try {
     const body = req.body as Record<string, unknown>;
-    const exerciseType = (body.exerciseType as string) || "walking";
+    const exerciseType = (body.exerciseType as string) || "Walking"; // must match a MET_VALUES key exactly (case-sensitive) or it silently falls to the generic MET fallback
     // Accept both durationMinutes and durationMin (mobile alias)
     const durationMinutes = Number(body.durationMinutes ?? body.durationMin ?? 30);
     const intensity = (body.intensity as string) || "moderate";
@@ -280,8 +280,13 @@ router.post("/health/score/:date/compute", requireAuth, async (req: AuthRequest,
 router.get("/health/scores/history", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { days = "30" } = req.query as { days?: string };
+    // Bound + validate like the sibling /health/sleep/history route below —
+    // an unbounded value let a caller request an arbitrarily large range,
+    // and a non-numeric value (parseInt → NaN) produced invalid SQL
+    // ("INTERVAL 'NaN days'") instead of a clean 400.
+    const daysNum = Math.min(Math.max(parseInt(days) || 30, 1), 365);
     const result = await pool.query(
-      `SELECT * FROM daily_health_scores WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${parseInt(days)} days' ORDER BY score_date`,
+      `SELECT * FROM daily_health_scores WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${daysNum} days' ORDER BY score_date`,
       [req.userId!]
     );
     res.json({ scores: result.rows });
@@ -322,11 +327,23 @@ router.post("/health/sleep", requireAuth, async (req: AuthRequest, res) => {
       res.status(400).json({ error: `quality must be one of: ${validQualities.join(", ")}` });
       return;
     }
+    // One row per (user_id, sleep_date) — enforced by a unique index.
+    // A duplicate POST for a date already logged (client retry after a
+    // timeout, offline-sync replay) now merges into the existing row
+    // instead of inserting a second one, which previously let
+    // SUM(sleep_hours) double-count a night's sleep in the Health Score.
     const result = await pool.query(
       `INSERT INTO sleep_logs (user_id, sleep_date, sleep_hours, bedtime, wake_time, quality, notes, is_offline_entry, logged_at)
        VALUES ($1, $2, $3, $4, $5, $6::sleep_quality, $7, $8, NOW())
-       ON CONFLICT (id) DO NOTHING
-       RETURNING *`,
+       ON CONFLICT (user_id, sleep_date) DO UPDATE SET
+         sleep_hours = EXCLUDED.sleep_hours,
+         bedtime = EXCLUDED.bedtime,
+         wake_time = EXCLUDED.wake_time,
+         quality = EXCLUDED.quality,
+         notes = EXCLUDED.notes,
+         is_offline_entry = EXCLUDED.is_offline_entry,
+         logged_at = NOW()
+       RETURNING *, (xmax = 0) AS inserted`,
       [
         req.userId!,
         String(sleepDate),
@@ -338,18 +355,10 @@ router.post("/health/sleep", requireAuth, async (req: AuthRequest, res) => {
         Boolean(isOfflineEntry ?? false),
       ]
     );
-    const log = result.rows[0];
-    if (!log) {
-      const existing = await pool.query(
-        `SELECT * FROM sleep_logs WHERE user_id=$1 AND sleep_date=$2 ORDER BY logged_at DESC LIMIT 1`,
-        [req.userId!, String(sleepDate)]
-      );
-      res.status(200).json({ success: true, log: existing.rows[0], updated: false });
-      return;
-    }
+    const { inserted, ...log } = result.rows[0];
     upsertDailyActivityScore(req.userId!).catch(() => {});
     upsertDailyHealthScore(req.userId!).catch(() => {});
-    res.status(201).json({ success: true, log, sleepHours: hours });
+    res.status(inserted ? 201 : 200).json({ success: true, log, sleepHours: hours, updated: !inserted });
   } catch (e) {
     res.status(500).json({ error: "Failed to log sleep", detail: (e as Error).message });
   }

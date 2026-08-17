@@ -466,31 +466,27 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
   "healthTip": "1 sentence health tip in English"
 }`;
 
+      let jsonStr: string;
       try {
-        const jsonStr = await callAI("food_ai", [{ role: "user", content: prompt }], { maxTokens: 1500, temperature: 0.3 });
-        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-        result = jsonMatch ? JSON.parse(jsonMatch[0]) : { foodNameEn: searchTerm, calories: 150, proteinG: 4, carbsG: 25, fatG: 3, fiberG: 2, servingSizeG: 100, servingDescription: "~100g (estimate)", category: "food", dietaryTags: [], vitamins: {}, healthTip: "Nutrition values are estimated — please verify." };
-      } catch {
-        // AI unavailable — return a generic estimate so user can still log food
-        result = {
-          foodNameEn: searchTerm,
-          calories: 150,
-          proteinG: 4,
-          carbsG: 25,
-          fatG: 3,
-          fiberG: 2,
-          sodiumMg: 100,
-          sugarG: 2,
-          servingSizeG: 100,
-          servingDescription: "~100g (estimated)",
-          category: "food",
-          dietaryTags: [],
-          vitamins: {},
-          glycemicIndex: null,
-          healthTip: "AI analysis unavailable — nutrition values are estimated. Please update manually if needed.",
-          _aiEstimate: true,
-        };
+        jsonStr = await callAI("food_ai", [{ role: "user", content: prompt }], { maxTokens: 1500, temperature: 0.3 });
+      } catch (aiErr) {
+        // AI unavailable — fail explicitly rather than fabricating
+        // nutrition numbers. A hardcoded generic estimate here previously
+        // got saved into food_logs (feeding the Health Score) and into
+        // the AI-discovered-foods cache below, where enough hits could
+        // even auto-promote it into the verified food database.
+        req.log.error({ err: aiErr }, "[FoodSearch] AI text analysis failed");
+        res.status(502).json({ error: `AI food lookup failed: ${aiErr instanceof Error ? aiErr.message : "Unknown error"}. Please try again or enter nutrition manually.` });
+        return;
       }
+
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        req.log.warn({ text: jsonStr.slice(0, 300) }, "[FoodSearch] AI text analysis: no JSON in response");
+        res.status(502).json({ error: "Could not parse AI response. Please try again or enter the food manually." });
+        return;
+      }
+      result = JSON.parse(jsonMatch[0]);
     } else if (imageBase64) {
       // Image-based food scan — routed through the standard callAI()
       // abstraction (feature key "food_ai", same as the text-search path

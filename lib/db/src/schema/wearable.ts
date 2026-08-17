@@ -46,6 +46,11 @@ export const wearableDataTable = pgTable("wearable_data", {
   // and unlike wearable_connections (a handful of rows per user), this
   // table grows with every sync over time.
   userRecordedAtIdx: index("idx_wearable_data_user_recorded_at").on(t.userId, t.recordedAt),
+  // lib/scoring.ts's Health Score query filters/sorts on synced_at, not
+  // recorded_at — a different column, previously uncovered by any index,
+  // forcing a per-user scan of this ever-growing table on every score
+  // computation.
+  userSyncedAtIdx: index("idx_wearable_data_user_synced_at").on(t.userId, t.syncedAt),
 }));
 
 export const offlineQueueTable = pgTable("offline_queue", {

@@ -6,7 +6,7 @@
   "scripts": {
     "start": "expo start",
     "dev": "pnpm web:export && node web-server.js",
-    "build": "node scripts/build.js",
+    "publish:ota-legacy": "node scripts/build.js",
     "serve": "node server/serve.js",
     "web:export": "expo export --platform web --output-dir dist --clear",
     "typecheck": "tsc -p tsconfig.json --noEmit",
