@@ -12,6 +12,7 @@ import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/lib/api";
+import { storage } from "@/lib/storage";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { GoogleSignin, isSuccessResponse, isErrorWithCode, statusCodes } from "@react-native-google-signin/google-signin";
@@ -204,7 +205,17 @@ export default function LoginScreen() {
         result.isNewUser,
         result.onboardingStep
       );
-      router.replace("/(tabs)/" as never);
+
+      // Same post-login routing as verify-otp.tsx (email/phone/firebase flows) —
+      // new or incomplete-onboarding users go to onboarding, otherwise PIN
+      // setup (first login) or straight to the dashboard.
+      const onboardingDone = !result.isNewUser && (result.onboardingStep ?? 0) >= 5;
+      if (!onboardingDone) {
+        router.replace("/(onboarding)/" as never);
+      } else {
+        const pinSetAlready = await storage.isPinSet();
+        router.replace(pinSetAlready ? "/(tabs)/dashboard" : "/(auth)/setup-pin");
+      }
     } catch (err: unknown) {
       if (isErrorWithCode(err)) {
         if (err.code === statusCodes.SIGN_IN_CANCELLED) return;
