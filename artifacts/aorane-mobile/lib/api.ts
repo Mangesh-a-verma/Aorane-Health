@@ -282,9 +282,9 @@ export const api = {
       "POST", "/auth/verify-email-otp", { email, otp, languageCode }, false
     ),
 
-  googleLogin: (accessToken: string) =>
-    request<{ accessToken: string; refreshToken: string; isNewUser: boolean; user: { id: string; plan: string } }>(
-      "POST", "/auth/google", { accessToken }, false
+  googleLogin: (idToken: string) =>
+    request<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep?: number; user: { id: string; plan: string; languageCode?: string } }>(
+      "POST", "/auth/google", { idToken }, false
     ),
 
   firebaseLogin: (idToken: string, phone: string, languageCode = "hi") =>

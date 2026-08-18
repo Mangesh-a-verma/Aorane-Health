@@ -14,6 +14,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { GoogleSignin, isSuccessResponse, isErrorWithCode, statusCodes } from "@react-native-google-signin/google-signin";
+
+// Web Client ID from Google Cloud Console (OAuth 2.0 Client IDs → "Aorane Health", Web application type).
+// This is the audience the backend's /auth/google route verifies against — not the Android client.
+// Public identifier, safe to embed (same as any OAuth client ID shipped in an app).
+const GOOGLE_WEB_CLIENT_ID = "145783039315-m1vgfekobq5nkkf90rns4nb9khh6amcv.apps.googleusercontent.com";
 
 const { width: W, height: H } = Dimensions.get("window");
 
@@ -70,6 +76,7 @@ export default function LoginScreen() {
   const [emailFocused, setEmailFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [loginMode, setLoginMode] = useState<"otp" | "email" | "pin">(WHATSAPP_OTP_ENABLED ? "otp" : "email");
   const [pin, setPin] = useState("");
@@ -156,6 +163,10 @@ export default function LoginScreen() {
     } finally { setWhatsappLoading(false); }
   };
 
+  useEffect(() => {
+    GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID });
+  }, []);
+
   const handlePinLogin = async () => {
     if (phone.length !== 10) { Alert.alert(t("phoneRequired"), t("invalidNumberMsg")); return; }
     if (pin.length < 4) { Alert.alert(t("pinRequired"), t("pinRequiredMsg")); return; }
@@ -171,10 +182,45 @@ export default function LoginScreen() {
     } finally { setIsLoading(false); }
   };
 
+  const handleGoogleLogin = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setGoogleLoading(true);
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      if (!isSuccessResponse(response)) return; // user cancelled the picker — no error to show
+
+      const idToken = response.data.idToken;
+      if (!idToken) {
+        Alert.alert(t("loginFailed"), "Could not get Google credentials. Please try again.");
+        return;
+      }
+
+      const result = await api.googleLogin(idToken);
+      await loginWithToken(
+        result.accessToken,
+        result.refreshToken,
+        { id: result.user.id, email: response.data.user.email, plan: result.user.plan || "free", languageCode: result.user.languageCode || lang },
+        result.isNewUser,
+        result.onboardingStep
+      );
+      router.replace("/(tabs)/" as never);
+    } catch (err: unknown) {
+      if (isErrorWithCode(err)) {
+        if (err.code === statusCodes.SIGN_IN_CANCELLED) return;
+        if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          Alert.alert(t("loginFailed"), "Google Play Services is not available on this device.");
+          return;
+        }
+      }
+      Alert.alert(t("loginFailed"), err instanceof Error ? err.message : t("loginFailed"));
+    } finally { setGoogleLoading(false); }
+  };
+
   const isPhoneActive = phone.length === 10;
   const isEmailActive = email.length > 5 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const isActive = loginMode === "email" ? isEmailActive : isPhoneActive;
-  const anyLoading = isLoading || whatsappLoading;
+  const anyLoading = isLoading || whatsappLoading || googleLoading;
 
   const orb1Y = orb1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -24] });
   const orb2Y = orb2Anim.interpolate({ inputRange: [0, 1], outputRange: [0, 20] });
@@ -425,7 +471,32 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
+              {/* Divider + Google Sign-In */}
+              <View style={s.dividerRow}>
+                <View style={s.dividerLine} />
+                <Text style={s.dividerText}>OR</Text>
+                <View style={s.dividerLine} />
+              </View>
 
+              <TouchableOpacity
+                onPress={handleGoogleLogin}
+                disabled={anyLoading}
+                accessibilityRole="button"
+                accessibilityLabel="Continue with Google"
+                activeOpacity={0.88}
+                style={s.googleBtn}
+              >
+                {googleLoading ? (
+                  <ActivityIndicator color={PRIMARY} />
+                ) : (
+                  <>
+                    <View style={s.googleIcon}>
+                      <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>G</Text>
+                    </View>
+                    <Text style={s.googleText}>Continue with Google</Text>
+                  </>
+                )}
+              </TouchableOpacity>
 
               {loginMode === "pin" && (
                 <Text style={s.pinHint}>{t("pinHint")}</Text>
