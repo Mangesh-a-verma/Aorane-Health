@@ -13,6 +13,15 @@ import { startWinBackJob } from "./jobs/win-back";
 
 const app: Express = express();
 
+// Render sits behind its own reverse proxy, which always sets
+// X-Forwarded-For. Without this, express-rate-limit can't safely
+// determine a request's real IP (it logs a ValidationError on every
+// startup as a warning — harmless, but noisy, and worth fixing properly).
+// `1` = trust exactly one hop of proxy (Render's own edge), not an
+// arbitrary chain — appropriate here since Render terminates TLS itself
+// and sits directly in front of this service.
+app.set("trust proxy", 1);
+
 // SECURITY-FIX: Strict whitelist of allowed domains to prevent unauthorized access.
 const ALLOWED_ORIGINS: string[] = [
   "https://aorane.com",

@@ -122,8 +122,16 @@ function mediaArray(m?: AIMedia | AIMedia[]): AIMedia[] {
 // endpoints, there's real room: 20s per provider comfortably covers
 // observed legitimate completion times (12-14s) with margin, and
 // 20s+20s=40s worst case still leaves ~5s under the client's 45s timeout.
-const DEFAULT_TIMEOUT_MS = 20_000;
-const MAX_RETRIES = 0; // still 0 — rely on cross-provider fallback, not same-provider retries
+// CORRECTED after production evidence: three separate real requests all
+// got cut off by the CLIENT at almost exactly 30.0-30.5 seconds — despite
+// the mobile app's own JS timeout being set to 45s for these endpoints.
+// This points to a hard ceiling OUTSIDE our control (most likely the
+// native Android/OkHttp networking layer under React Native's fetch,
+// which can have its own default socket timeout independent of an
+// AbortController). Both provider attempts (primary + fallback) need to
+// fit inside ~30s TOTAL: 14s x 2 = 28s, ~2s margin.
+const DEFAULT_TIMEOUT_MS = 14_000;
+const MAX_RETRIES = 0; // rely on cross-provider fallback, not same-provider retries
 
 /**
  * fetch() with a hard timeout (AbortController) and retry-with-backoff on
@@ -543,87 +551,180 @@ export async function callAI(
   }
 
   const hasFallback = Boolean(config.fallbackProvider);
-  // Only skip straight to fallback if a fallback actually exists — with no
-  // fallback configured there's nothing to gain from pre-emptively refusing,
-  // so always attempt the primary provider in that case.
-  const primaryCircuitOpen = hasFallback && (await isCircuitOpen(config.provider));
 
-  if (!primaryCircuitOpen) {
+  // No fallback configured — original single-provider behavior, unchanged.
+  if (!hasFallback) {
     try {
       const result = await callProvider(config.provider, config.model, resolvedKey, messages, maxTokens, temp);
       await recordProviderSuccess(config.provider);
       return result;
-    } catch (primaryErr) {
+    } catch (err) {
       await recordProviderFailure(config.provider);
-
-      if (!hasFallback) throw primaryErr;
-
-      logger.warn(
-        { feature, provider: config.provider, err: primaryErr },
-        "[ai] primary provider failed, attempting fallback",
-      );
-      return callFallback(feature, config, messages, maxTokens, temp, primaryErr);
+      throw err;
     }
   }
 
-  logger.warn(
-    { feature, provider: config.provider },
-    "[ai] primary provider circuit is open, skipping straight to fallback",
-  );
-  return callFallback(feature, config, messages, maxTokens, temp, null);
+  const primaryCircuitOpen = await isCircuitOpen(config.provider);
+
+  // Primary already known-bad (recent repeated failures) — skip straight
+  // to fallback alone. No point hedging against a provider we already
+  // know is struggling.
+  if (primaryCircuitOpen) {
+    logger.warn({ feature, provider: config.provider }, "[ai] primary provider circuit is open, skipping straight to fallback");
+    return callFallbackOnly(feature, config, messages, maxTokens, temp);
+  }
+
+  return callWithHedgedFallback(feature, config, resolvedKey, messages, maxTokens, temp);
 }
 
-/** Attempts the configured fallback provider. Throws the ORIGINAL primary
- * error (not the fallback's) if no fallback is usable, so the caller sees
- * the more meaningful failure; throws a combined error if both fail. */
-async function callFallback(
+/**
+ * Hedged fallback (Phase 2.1): starts the primary immediately; if it
+ * hasn't succeeded within HEDGE_DELAY_MS, the fallback is started TOO,
+ * running in parallel with the still-in-flight primary — whichever
+ * succeeds first wins. Replaces the old "wait for primary to fully fail,
+ * THEN start fallback" design, which could not fit two ~14s+ sequential
+ * AI calls inside the ~30s ceiling confirmed in production (repeated
+ * client-side aborts at ~30.0-30.5s across multiple real scans).
+ *
+ * HEDGE_DELAY_MS = 13s, not a shorter value like 6-8s: production logs
+ * show LEGITIMATE successful Gemini photo analysis normally takes
+ * 12-14s, not under 8s. At 13s, hedging mostly only fires on requests
+ * genuinely running long, without pre-emptively double-calling on ones
+ * about to succeed on their own a second later. Honest tradeoff: the
+ * fallback DOES get called more often than "only on outright failures"
+ * — but only on the slower half of requests, not on every single scan.
+ */
+const HEDGE_DELAY_MS = 13_000;
+
+async function callWithHedgedFallback(
+  feature: string,
+  config: CachedConfig,
+  primaryKey: string,
+  messages: AIMessage[],
+  maxTokens: number,
+  temp: number,
+): Promise<string> {
+  const primaryProvider = config.provider;
+  const primaryPromise = callProvider(primaryProvider, config.model, primaryKey, messages, maxTokens, temp);
+  // Track primary settlement without throwing here — bookkeeping (circuit
+  // breaker) happens once, exactly when the promise actually settles,
+  // regardless of whether it "wins" a race below.
+  const primarySettled = primaryPromise
+    .then((value) => { void recordProviderSuccess(primaryProvider); return { ok: true as const, value }; })
+    .catch((err) => { void recordProviderFailure(primaryProvider); return { ok: false as const, err }; });
+
+  const hedgeTimeout = new Promise<{ ok: false; timedOut: true }>((resolve) =>
+    setTimeout(() => resolve({ ok: false, timedOut: true }), HEDGE_DELAY_MS),
+  );
+
+  const firstOutcome = await Promise.race([
+    primarySettled,
+    hedgeTimeout,
+  ]);
+
+  if (firstOutcome.ok) {
+    return firstOutcome.value;
+  }
+
+  // Either primary failed quickly, or it's just running past the hedge
+  // delay — in both cases, bring the fallback in now.
+  const fallbackProvider = config.fallbackProvider!;
+  const fallbackKey = config.fallbackApiKey || getGlobalKey(fallbackProvider);
+  const fallbackModel = config.fallbackModel || fallbackProvider;
+  const fallbackCircuitOpen = await isCircuitOpen(fallbackProvider);
+
+  if (!fallbackKey || fallbackCircuitOpen) {
+    // No usable fallback right now — just wait out the primary alone.
+    const settled = "timedOut" in firstOutcome ? await primarySettled : firstOutcome;
+    if (settled.ok) return settled.value;
+    throw settled.err;
+  }
+
+  logger.info(
+    { feature, provider: primaryProvider, fallbackProvider },
+    "timedOut" in firstOutcome
+      ? `[ai] primary still running after ${HEDGE_DELAY_MS}ms, hedging with fallback in parallel`
+      : "[ai] primary failed quickly, starting fallback",
+  );
+
+  const fallbackPromise = callProvider(fallbackProvider, fallbackModel, fallbackKey, messages, maxTokens, temp);
+  const fallbackSettled = fallbackPromise
+    .then((value) => { void recordProviderSuccess(fallbackProvider); return { ok: true as const, value }; })
+    .catch((err) => { void recordProviderFailure(fallbackProvider); return { ok: false as const, err }; });
+
+  // If primary already failed (not just a hedge-timeout), only the
+  // fallback is still in flight — wait on that alone. Otherwise (genuine
+  // hedge-timeout case) both are running — take whichever succeeds.
+  const alreadyFailedPrimary = !("timedOut" in firstOutcome);
+  const second = alreadyFailedPrimary
+    ? await fallbackSettled
+    : await firstSuccessOrLastFailure([primarySettled, fallbackSettled]);
+
+  if (second.ok) return second.value;
+
+  // Both failed — surface both errors explicitly so this is diagnosable
+  // from a single log line instead of just seeing whichever failed last.
+  const primaryResult = alreadyFailedPrimary ? firstOutcome : await primarySettled;
+  const primaryMsg = !primaryResult.ok && "err" in primaryResult
+    ? (primaryResult.err instanceof Error ? primaryResult.err.message : String(primaryResult.err))
+    : "unknown";
+  const fallbackMsg = !second.ok ? (second.err instanceof Error ? second.err.message : String(second.err)) : "unknown";
+  logger.error({ feature, primaryProvider, fallbackProvider, primaryMsg, fallbackMsg }, "[ai] both primary and fallback failed (hedged race)");
+  throw new AIProviderError(
+    "provider_error",
+    `Both providers failed for feature "${feature}". Primary (${primaryProvider}): ${primaryMsg} | Fallback (${fallbackProvider}): ${fallbackMsg}`,
+  );
+}
+
+/** Resolves with the FIRST settlement that succeeds — as soon as any one
+ * of them does, without waiting for the others (true race-for-success).
+ * Only waits for all of them if every single one fails, in which case it
+ * resolves with the last failure to arrive. */
+async function firstSuccessOrLastFailure<T>(
+  settlements: Promise<{ ok: true; value: T } | { ok: false; err: unknown }>[],
+): Promise<{ ok: true; value: T } | { ok: false; err: unknown }> {
+  return new Promise((resolve) => {
+    let remaining = settlements.length;
+    let lastFailure: { ok: false; err: unknown } = { ok: false, err: new Error("no settlements provided") };
+    for (const settlement of settlements) {
+      settlement.then((result) => {
+        if (result.ok) {
+          resolve(result);
+        } else {
+          lastFailure = result;
+          remaining -= 1;
+          if (remaining === 0) resolve(lastFailure);
+        }
+      });
+    }
+  });
+}
+
+/** Fallback-only path (primary circuit already known-open) — no hedging
+ * needed since there's nothing to race against. */
+async function callFallbackOnly(
   feature: string,
   config: CachedConfig,
   messages: AIMessage[],
   maxTokens: number,
   temp: number,
-  primaryErr: unknown,
 ): Promise<string> {
-  const fallbackProvider = config.fallbackProvider;
-  if (!fallbackProvider) {
-    if (primaryErr) throw primaryErr;
-    throw new AIProviderError("provider_error", `Primary provider circuit open for feature "${feature}" and no fallback configured.`);
-  }
-
+  const fallbackProvider = config.fallbackProvider!;
   const fallbackKey = config.fallbackApiKey || getGlobalKey(fallbackProvider);
   if (!fallbackKey) {
-    logger.warn({ feature, fallbackProvider }, "[ai] fallback provider has no API key configured, giving up");
-    if (primaryErr) throw primaryErr;
     throw new AIProviderError("missing_key", `No API key for fallback provider "${fallbackProvider}" (feature: "${feature}").`);
   }
-
   const fallbackModel = config.fallbackModel || fallbackProvider;
-  if ((await isCircuitOpen(fallbackProvider))) {
-    logger.error({ feature, fallbackProvider }, "[ai] fallback provider's circuit is ALSO open — both providers down");
-    if (primaryErr) throw primaryErr;
+  if (await isCircuitOpen(fallbackProvider)) {
     throw new AIProviderError("provider_error", `Both primary and fallback providers are currently unavailable for feature "${feature}".`);
   }
-
   try {
     const result = await callProvider(fallbackProvider, fallbackModel, fallbackKey, messages, maxTokens, temp);
     await recordProviderSuccess(fallbackProvider);
-    logger.info({ feature, fallbackProvider }, "[ai] fallback provider succeeded");
     return result;
-  } catch (fallbackErr) {
+  } catch (err) {
     await recordProviderFailure(fallbackProvider);
-    logger.error({ feature, fallbackProvider, err: fallbackErr }, "[ai] fallback provider ALSO failed");
-    // Both failed. Previously this silently re-threw only the primary's
-    // error, so the caller (and end user) had no way to tell a fallback
-    // was even attempted, let alone that it failed too — made incidents
-    // like a provider deprecating a model much harder to diagnose from
-    // the app-side error alone. Now the message names both providers and
-    // both underlying errors explicitly.
-    const primaryMsg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr ?? "circuit open");
-    const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
-    throw new AIProviderError(
-      "provider_error",
-      `Both providers failed for feature "${feature}". Primary (${config.provider}): ${primaryMsg} | Fallback (${fallbackProvider}): ${fallbackMsg}`,
-    );
+    throw err;
   }
 }
 

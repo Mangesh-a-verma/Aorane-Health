@@ -117,6 +117,25 @@ router.post("/medical/scan", requireAuth, requireFeature("medical_report"), asyn
       res.status(400).json({ error: `Maximum ${MAX_PAGES} pages allowed per scan. Please split into multiple scans.` }); return;
     }
 
+    // ── Input hardening (same pattern as food.ts's photo-scan validation) ──
+    // Catches malformed/oversized/wrong-type uploads BEFORE they burn an AI
+    // call and quota — checked per-page since a multi-page report can have
+    // one bad page mixed in with otherwise-valid ones.
+    const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"]);
+    const MAX_BASE64_LENGTH_PER_PAGE = 12 * 1024 * 1024; // ~9MB decoded, generous for a phone photo
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i];
+      if (!ALLOWED_MIME_TYPES.has(page.mimeType.toLowerCase())) {
+        res.status(400).json({ error: `Page ${i + 1}: unsupported image type "${page.mimeType}". Please use JPEG, PNG, WEBP, or HEIC.` }); return;
+      }
+      if (!page.data || page.data.length > MAX_BASE64_LENGTH_PER_PAGE) {
+        res.status(413).json({ error: `Page ${i + 1}: image is too large. Please use a smaller photo (under ~9MB).` }); return;
+      }
+      if (!/^[A-Za-z0-9+/]+={0,2}$/.test(page.data.replace(/\s/g, ""))) {
+        res.status(400).json({ error: `Page ${i + 1}: image data is corrupted or not valid base64. Please try taking the photo again.` }); return;
+      }
+    }
+
     const reportType = body.reportType || "blood_test";
 
     const prompt = `You are a senior Indian pathologist and healthcare expert. You will be shown ${pages.length} image${pages.length > 1 ? "s, which are MULTIPLE PAGES of the SAME medical report" : ""}. Analyze ${pages.length > 1 ? "all pages together as one combined document" : "this medical report image"} carefully. Extract precise key-value pairs of the results (e.g., "Sugar (Fasting)": "100 mg/dL") from across ${pages.length > 1 ? "every page" : "the report"}. Append a strict medical disclaimer to the overall assessment, stating that this is an AI analysis and not a substitute for professional medical advice.
