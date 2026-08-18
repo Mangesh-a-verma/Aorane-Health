@@ -258,6 +258,7 @@ async function callNvidiaProvider(
   apiKey: string,
   maxTokens: number,
   temp: number,
+  timeoutMs?: number,
 ): Promise<string> {
   const openaiMessages = messages.map(m => {
     const imgs = mediaArray(m.media);
@@ -276,7 +277,7 @@ async function callNvidiaProvider(
     return { role: m.role, content: m.content };
   });
 
-  return callDeepSeek(openaiMessages as any, apiKey, maxTokens, temp, model);
+  return callDeepSeek(openaiMessages as any, apiKey, maxTokens, temp, model, timeoutMs);
 }
 
 async function callGoogleProvider(
@@ -285,6 +286,7 @@ async function callGoogleProvider(
   apiKey: string,
   maxTokens: number,
   temp: number,
+  timeoutMs?: number,
 ): Promise<string> {
   const systemMsg = messages.find((m: any) => m.role === "system");
   const chatMsgs = messages
@@ -311,6 +313,7 @@ async function callGoogleProvider(
   const res = await fetchWithRetry(
     `${getGeminiBaseUrl()}/v1beta/models/${model}:generateContent?key=${apiKey}`,
     { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+    timeoutMs,
   );
   if (!res.ok) await throwForBadResponse(res, "Google Gemini");
 
@@ -354,6 +357,7 @@ async function callAnthropicProvider(
   model: string,
   apiKey: string,
   maxTokens: number,
+  timeoutMs?: number,
 ): Promise<string> {
   const systemMsg = messages.find((m: any) => m.role === "system");
   const chatMsgs = messages
@@ -390,7 +394,7 @@ async function callAnthropicProvider(
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
-  });
+  }, timeoutMs);
   if (!res.ok) await throwForBadResponse(res, "Anthropic");
 
   const data = await res.json() as { content?: Array<{ text?: string }> };
@@ -408,6 +412,7 @@ async function callOpenAIProvider(
   apiKey: string,
   maxTokens: number,
   temp: number,
+  timeoutMs?: number,
 ): Promise<string> {
   const openaiMessages = messages.map(m => {
     const imgs = mediaArray(m.media);
@@ -433,7 +438,7 @@ async function callOpenAIProvider(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ model, messages: openaiMessages, max_tokens: maxTokens, temperature: temp }),
-  });
+  }, timeoutMs);
   if (!res.ok) await throwForBadResponse(res, "OpenAI");
 
   const data = await res.json() as {
@@ -448,7 +453,8 @@ async function callOpenAIProvider(
 }
 
 /** Dispatches to the right provider implementation. Shared by both the
- * primary attempt and the fallback attempt in callAI(). */
+ * primary attempt and the fallback attempt in callAI(). timeoutMs is
+ * optional — omit it to use each provider's own default. */
 async function callProvider(
   provider: string,
   model: string,
@@ -456,18 +462,19 @@ async function callProvider(
   messages: AIMessage[],
   maxTokens: number,
   temp: number,
+  timeoutMs?: number,
 ): Promise<string> {
   switch (provider) {
     case "nvidia":
-      return callNvidiaProvider(messages, model, apiKey, maxTokens, temp);
+      return callNvidiaProvider(messages, model, apiKey, maxTokens, temp, timeoutMs);
     case "google":
-      return callGoogleProvider(messages, model, apiKey, maxTokens, temp);
+      return callGoogleProvider(messages, model, apiKey, maxTokens, temp, timeoutMs);
     case "anthropic":
-      return callAnthropicProvider(messages, model, apiKey, maxTokens);
+      return callAnthropicProvider(messages, model, apiKey, maxTokens, timeoutMs);
     case "openai":
-      return callOpenAIProvider(messages, model, apiKey, maxTokens, temp);
+      return callOpenAIProvider(messages, model, apiKey, maxTokens, temp, timeoutMs);
     default:
-      return callNvidiaProvider(messages, model, apiKey, maxTokens, temp);
+      return callNvidiaProvider(messages, model, apiKey, maxTokens, temp, timeoutMs);
   }
 }
 
@@ -552,10 +559,12 @@ export async function callAI(
 
   const hasFallback = Boolean(config.fallbackProvider);
 
-  // No fallback configured — original single-provider behavior, unchanged.
+  // No fallback configured — single-provider call, but still give it the
+  // full ~28s budget (not the tighter 14s meant for a hedged race) since
+  // there's no backup to hedge against here and no parallelism to manage.
   if (!hasFallback) {
     try {
-      const result = await callProvider(config.provider, config.model, resolvedKey, messages, maxTokens, temp);
+      const result = await callProvider(config.provider, config.model, resolvedKey, messages, maxTokens, temp, HEDGE_DELAY_MS + FALLBACK_TIMEOUT_MS);
       await recordProviderSuccess(config.provider);
       return result;
     } catch (err) {
@@ -593,8 +602,23 @@ export async function callAI(
  * about to succeed on their own a second later. Honest tradeoff: the
  * fallback DOES get called more often than "only on outright failures"
  * — but only on the slower half of requests, not on every single scan.
+ *
+ * PRIMARY_TIMEOUT_MS / FALLBACK_TIMEOUT_MS (not just DEFAULT_TIMEOUT_MS):
+ * production evidence showed a single shared 14s timeout for BOTH legs
+ * barely gave primary any real extra runway after hedging kicked in at
+ * 13s (its own 14s timeout fired just 1 second later) — a scan where
+ * both providers were genuinely a bit slow that moment failed outright
+ * even though hedging had, in principle, given it a second chance.
+ * Since primary running in the background past the hedge point costs
+ * nothing extra (the fallback is racing independently), it now gets a
+ * much longer runway (27s from its own start). The fallback still gets
+ * a fair, full window of its own (15s from ITS start at t=13s, ending at
+ * t=28s) — worst case stays at max(27s, 28s) = 28s, still with margin
+ * under the confirmed ~30s ceiling.
  */
 const HEDGE_DELAY_MS = 13_000;
+const PRIMARY_TIMEOUT_MS = 27_000;
+const FALLBACK_TIMEOUT_MS = 15_000;
 
 async function callWithHedgedFallback(
   feature: string,
@@ -605,7 +629,7 @@ async function callWithHedgedFallback(
   temp: number,
 ): Promise<string> {
   const primaryProvider = config.provider;
-  const primaryPromise = callProvider(primaryProvider, config.model, primaryKey, messages, maxTokens, temp);
+  const primaryPromise = callProvider(primaryProvider, config.model, primaryKey, messages, maxTokens, temp, PRIMARY_TIMEOUT_MS);
   // Track primary settlement without throwing here — bookkeeping (circuit
   // breaker) happens once, exactly when the promise actually settles,
   // regardless of whether it "wins" a race below.
@@ -647,7 +671,7 @@ async function callWithHedgedFallback(
       : "[ai] primary failed quickly, starting fallback",
   );
 
-  const fallbackPromise = callProvider(fallbackProvider, fallbackModel, fallbackKey, messages, maxTokens, temp);
+  const fallbackPromise = callProvider(fallbackProvider, fallbackModel, fallbackKey, messages, maxTokens, temp, FALLBACK_TIMEOUT_MS);
   const fallbackSettled = fallbackPromise
     .then((value) => { void recordProviderSuccess(fallbackProvider); return { ok: true as const, value }; })
     .catch((err) => { void recordProviderFailure(fallbackProvider); return { ok: false as const, err }; });
@@ -719,7 +743,7 @@ async function callFallbackOnly(
     throw new AIProviderError("provider_error", `Both primary and fallback providers are currently unavailable for feature "${feature}".`);
   }
   try {
-    const result = await callProvider(fallbackProvider, fallbackModel, fallbackKey, messages, maxTokens, temp);
+    const result = await callProvider(fallbackProvider, fallbackModel, fallbackKey, messages, maxTokens, temp, HEDGE_DELAY_MS + FALLBACK_TIMEOUT_MS);
     await recordProviderSuccess(fallbackProvider);
     return result;
   } catch (err) {
