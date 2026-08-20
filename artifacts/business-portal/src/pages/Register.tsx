@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
+import { getAttribution, track, BusinessEvents } from "@workspace/analytics";
 
 const PRIMARY = "#005d90";
 const TEAL = "#006b56";
@@ -128,14 +129,23 @@ export default function Register() {
     if (form.adminPassword.length < 8) { setError("Password must be at least 8 characters"); return; }
     setIsLoading(true); setError("");
     try {
+      // A visitor arriving here from an approved enquiry (e.g. sales sends a
+      // registration link after a demo call) carries ?enquiryId=... in the
+      // URL — link the new org back to that enquiry so the funnel can be
+      // reported end-to-end. Self-serve signups simply have none of this,
+      // which is the normal path and not an error.
+      const enquiryId = new URLSearchParams(window.location.search).get("enquiryId") || undefined;
       const res = await api.register({
         orgType: form.orgType, name: form.name, contactEmail: form.contactEmail,
         contactPhone: form.contactPhone, city: form.city, state: form.state,
         gstin: form.gstin, adminName: form.adminName, adminPassword: form.adminPassword,
         totalSeats: parseInt(form.totalSeats) || 50,
+        enquiryId,
+        attribution: getAttribution(),
       });
       const { admin, org } = await api.getMe(res.token);
       login(res.token, admin, org);
+      track(BusinessEvents.BUSINESS_REGISTER_COMPLETE, { orgType: form.orgType }, "marketing");
       navigate("/dashboard");
     } catch (err) {
       setError((err as Error).message || "Registration failed. Please try again.");

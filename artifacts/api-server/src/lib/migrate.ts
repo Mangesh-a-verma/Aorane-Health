@@ -1617,6 +1617,16 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS plan_status TEXT DEFAULT 'active'`,
 
     // ══════════════════════════════════════════════════════════════════════════
+    // MARKETING ATTRIBUTION — first-party UTM/click-id snapshot on enquiries
+    // and organizations, plus the enquiry→organization link. See
+    // lib/db/src/schema/platform.ts (AttributionData) for the JSON shape.
+    // Additive + nullable, so every existing row keeps working unchanged.
+    // ══════════════════════════════════════════════════════════════════════════
+    `ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS attribution JSONB`,
+    `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS attribution JSONB`,
+    `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS enquiry_id UUID REFERENCES enquiries(id) ON DELETE SET NULL`,
+
+    // ══════════════════════════════════════════════════════════════════════════
     // ORG SEAT PLANS — Set yearly prices (₹169/seat/month × 12 = ₹2028, ₹211/seat/month × 12 = ₹2532)
     // Fix: yearly_price is NUMERIC — cannot compare to '' (empty string), only IS NULL
     // ══════════════════════════════════════════════════════════════════════════

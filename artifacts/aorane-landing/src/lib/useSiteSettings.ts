@@ -41,6 +41,8 @@ export function useSiteSettings(): SiteSettings {
   return s;
 }
 
+import { getAttribution, track, ConsumerEvents } from "@workspace/analytics";
+
 export function postEnquiry(payload: {
   type: "expert" | "investor_deck" | "general";
   name: string;
@@ -55,11 +57,13 @@ export function postEnquiry(payload: {
   return fetch(`${API_BASE}/api/enquiries`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, attribution: getAttribution() }),
   })
     .then(async (r) => {
       const d = await r.json().catch(() => ({}));
       if (!r.ok) return { success: false, error: d.error || "Submit failed" };
+      const eventName = payload.type === "investor_deck" ? ConsumerEvents.INVESTOR_DECK_REQUEST : "enquiry_submit";
+      track(eventName, { enquiryType: payload.type, source: payload.source }, "marketing");
       return d;
     })
     .catch(() => ({ success: false, error: "Network error" }));

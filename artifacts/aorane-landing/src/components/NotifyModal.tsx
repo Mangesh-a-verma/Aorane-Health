@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X, Bell, Mail, Phone, User, Send, CheckCircle, Loader2, ShieldCheck } from "lucide-react";
+import { getAttribution, track, ConsumerEvents } from "@workspace/analytics";
 
 const API_BASE = import.meta.env.VITE_API_URL
   ? (import.meta.env.VITE_API_URL as string).replace(/\/$/, "")
@@ -78,6 +79,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
           source: "notify_popup",
           message: JSON.stringify({ age, gender, feature: featureName || "general" }),
           otp,
+          attribution: getAttribution(),
         }),
       });
       const d = await r.json().catch(() => ({}));
@@ -86,6 +88,7 @@ export default function NotifyModal({ featureName, onClose }: NotifyModalProps) 
         setSubmitting(false);
         return;
       }
+      track(ConsumerEvents.NOTIFY_ME_SUBMIT, { feature: featureName || "general" }, "marketing");
       setStep("done");
     } catch {
       setError("Network error — please check your internet connection");

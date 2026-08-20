@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { logger } from "../../lib/logger";
-import { db, pool, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable, subscriptionsTable, companySettingsTable, stressLogsTable, userPrivacySettingsTable } from "@workspace/db";
+import { db, pool, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable, subscriptionsTable, companySettingsTable, stressLogsTable, userPrivacySettingsTable, enquiriesTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte, desc, ilike, sql } from "drizzle-orm";
 import { requireBusinessAuth } from "../../middlewares/business-auth";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -17,6 +17,7 @@ import {
 import { sendInvoiceEmail } from "../../lib/invoice-email";
 import { sendBusinessWelcomeEmail, sendCorporatePaymentWelcomeEmail, sendTeamMemberJoinedEmail } from "../../lib/welcome-email";
 import { getNextInvoiceNumber } from "../../lib/invoice-number";
+import { sanitizeAttribution } from "../../lib/attribution";
 
 const router = Router();
 
@@ -32,7 +33,7 @@ router.post("/business/register", async (req, res) => {
       return;
     }
 
-    const { orgType, name, contactEmail, contactPhone, city, state, countryCode = "IN", gstin, industry, companySize, hospitalType, bedCount, nabhAccredited, gymType, memberCount, irdaiLicense, totalSeats = 10, adminName, adminPassword } = req.body as Record<string, unknown>;
+    const { orgType, name, contactEmail, contactPhone, city, state, countryCode = "IN", gstin, industry, companySize, hospitalType, bedCount, nabhAccredited, gymType, memberCount, irdaiLicense, totalSeats = 10, adminName, adminPassword, enquiryId, attribution } = req.body as Record<string, unknown>;
 
     if (!orgType || !name || !contactEmail || !adminName || !adminPassword) {
       res.status(400).json({ error: "Organization type, name, email, admin name and password required" });
@@ -57,6 +58,30 @@ router.post("/business/register", async (req, res) => {
       return;
     }
 
+    // ── Marketing attribution linkage (best-effort, never blocks registration) ──
+    // A company either arrives here having already filled the "Talk to an
+    // expert"/demo enquiry (enquiryId links back to it, and its attribution
+    // snapshot is inherited if this request didn't send its own), or it
+    // self-registers straight from the pricing page (attribution captured
+    // fresh, no enquiry). Either is a normal, expected path.
+    let linkedEnquiryId: string | undefined;
+    let orgAttribution = sanitizeAttribution(attribution) ?? null;
+    if (typeof enquiryId === "string" && enquiryId.length > 0) {
+      try {
+        const [enquiry] = await db
+          .select({ id: enquiriesTable.id, attribution: enquiriesTable.attribution })
+          .from(enquiriesTable)
+          .where(eq(enquiriesTable.id, enquiryId))
+          .limit(1);
+        if (enquiry) {
+          linkedEnquiryId = enquiry.id;
+          if (!orgAttribution && enquiry.attribution) orgAttribution = enquiry.attribution;
+        }
+      } catch {
+        // Invalid/malformed enquiryId (e.g. not a UUID) — ignore, registration proceeds without the link.
+      }
+    }
+
     const orgCode = generateOrgCode();
     const [org] = await db.insert(organizationsTable).values({
       orgType: orgType as "corporate" | "hospital" | "gym" | "insurance" | "ngo" | "yoga" | "school" | "other",
@@ -77,6 +102,8 @@ router.post("/business/register", async (req, res) => {
       memberCount: memberCount ? Number(memberCount) : undefined,
       irdaiLicense: irdaiLicense as string,
       totalSeats: Number(totalSeats),
+      enquiryId: linkedEnquiryId,
+      attribution: orgAttribution,
     }).returning();
 
     const passwordHash = await bcrypt.hash(adminPassword as string, 12);

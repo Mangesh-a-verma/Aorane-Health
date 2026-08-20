@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { track, BusinessEvents } from "@workspace/analytics";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/toaster";
@@ -82,6 +83,12 @@ function PublicOnlyRoute({ component: Component }: { component: React.ComponentT
 }
 
 function Router() {
+  const [location] = useLocation();
+  useEffect(() => {
+    if (location === "/") track(BusinessEvents.BUSINESS_LANDING_VIEW, { path: location }, "marketing");
+    else if (location === "/register") track(BusinessEvents.BUSINESS_REGISTER_START, { path: location }, "marketing");
+  }, [location]);
+
   return (
     <Switch>
       {/* FIXED: Removed PublicOnlyRoute from Landing so it's always accessible */}

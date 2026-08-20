@@ -5,6 +5,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { Resend } from "resend";
 import { requireAdmin, type AdminRequest } from "../../middlewares/admin-auth";
 import { logger } from "../../lib/logger";
+import { sanitizeAttribution } from "../../lib/attribution";
 
 const router: IRouter = Router();
 
@@ -143,7 +144,7 @@ router.post("/leads/send-otp", async (req, res) => {
 // ─── Public: Submit enquiry ──────────────────────────────────────────────────
 router.post("/enquiries", async (req, res) => {
   try {
-    const { type, name, email, mobile, city, accountType, companyName, message, source, otp } = req.body || {};
+    const { type, name, email, mobile, city, accountType, companyName, message, source, otp, attribution } = req.body || {};
     if (!type || !name || !email) { res.status(400).json({ error: "type, name, email required" }); return; }
     if (!/^\S+@\S+\.\S+$/.test(email)) { res.status(400).json({ error: "Invalid email" }); return; }
     const allowedTypes = ["expert", "investor_deck", "general", "notify_me"];
@@ -171,6 +172,7 @@ router.post("/enquiries", async (req, res) => {
       companyName: companyName || null,
       message: message || null,
       source: source || null,
+      attribution: sanitizeAttribution(attribution) || null,
     }).returning();
 
     sendEnquiryEmail({ type, name, email, mobile, city, accountType, companyName, message, source }).then(async () => {

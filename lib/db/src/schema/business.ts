@@ -7,10 +7,12 @@ import {
   uuid,
   pgEnum,
   decimal,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
+import { enquiriesTable, type AttributionData } from "./platform";
 
 export const orgTypeEnum = pgEnum("org_type", [
   "corporate",
@@ -57,6 +59,16 @@ export const organizationsTable = pgTable("organizations", {
   customPriceValidUntil: timestamp("custom_price_valid_until", { withTimezone: true }),
   customPriceAppliedBy: text("custom_price_applied_by"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  // Links back to the enquiry (demo request / "talk to expert") that led to
+  // this organization being created, when one exists. Nullable — plenty of
+  // orgs self-register directly from the pricing page with no prior enquiry.
+  // ON DELETE SET NULL: losing the source enquiry should never take the
+  // paying organization down with it.
+  enquiryId: uuid("enquiry_id").references(() => enquiriesTable.id, { onDelete: "set null" }),
+  // Same first-touch/last-touch acquisition snapshot as enquiries.attribution
+  // — captured client-side at registration if the enquiry linkage above
+  // isn't present (self-serve signups skip the enquiry step entirely).
+  attribution: jsonb("attribution").$type<AttributionData>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

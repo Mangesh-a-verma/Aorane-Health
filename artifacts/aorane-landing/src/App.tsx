@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { track, ConsumerEvents } from "@workspace/analytics";
 import LandingPage from "@/pages/LandingPage";
 import FeaturesPage from "@/pages/FeaturesPage";
 import PricingPage from "@/pages/PricingPage";
@@ -24,6 +25,10 @@ function ScrollToTop() {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
+    const eventName = location === "/pricing" ? ConsumerEvents.PRICING_VIEW
+      : location === "/features" ? ConsumerEvents.FEATURE_VIEW
+      : ConsumerEvents.LANDING_PAGE_VIEW;
+    track(eventName, { path: location });
   }, [location]);
   return null;
 }

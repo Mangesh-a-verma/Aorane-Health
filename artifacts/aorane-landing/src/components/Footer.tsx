@@ -1,6 +1,7 @@
 import { Mail, Phone, MapPin, Twitter, Facebook } from "lucide-react";
 import { Link } from "wouter";
 import { useSiteSettings } from "@/lib/useSiteSettings";
+import { track, ConsumerEvents } from "@workspace/analytics";
 
 export default function Footer() {
   const year = new Date().getFullYear();
@@ -93,6 +94,7 @@ export default function Footer() {
                 {col.links.map((l) => {
                   const isInternal = l.href.startsWith("/") && !l.href.includes("://") && !l.href.includes("#");
                   const cls = "text-sm transition-colors hover:text-gray-900";
+                  const isStoreLink = l.label === "Android App" && l.href === s.androidPlayStoreUrl;
                   return (
                     <li key={l.label}>
                       {isInternal ? (
@@ -100,7 +102,12 @@ export default function Footer() {
                           {l.label}
                         </Link>
                       ) : (
-                        <a href={l.href} className={cls} style={{ color: "#6B7280" }}>
+                        <a
+                          href={l.href}
+                          className={cls}
+                          style={{ color: "#6B7280" }}
+                          onClick={isStoreLink ? () => track(ConsumerEvents.PLAY_STORE_CLICK, { location: "footer" }) : undefined}
+                        >
                           {l.label}
                         </a>
                       )}

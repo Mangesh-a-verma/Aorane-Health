@@ -217,6 +217,31 @@ export const companySettingsTable = pgTable("company_settings", {
 export type CompanySettings = typeof companySettingsTable.$inferSelect;
 
 // ─── Enquiries (lead capture from landing/business portal) ───────────────────
+// Marketing acquisition context captured client-side at the moment a lead
+// or event is generated. Kept as a single JSONB column rather than a dozen
+// flat columns — it's one coherent snapshot, not independently-queried
+// fields, and it grows over time without a migration every time we track
+// one more param. Never put PII beyond what the form already collects, and
+// never put health/medical data in here — this is the boundary that keeps
+// marketing/ad platforms away from health data.
+export interface AttributionSnapshot {
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
+  gclid?: string;
+  fbclid?: string;
+  referrer?: string;
+  landingPage?: string;
+  capturedAt?: string; // ISO timestamp of this touch
+}
+
+export interface AttributionData {
+  firstTouch?: AttributionSnapshot;
+  lastTouch?: AttributionSnapshot;
+}
+
 export const enquiriesTable = pgTable("enquiries", {
   id: uuid("id").primaryKey().defaultRandom(),
   type: text("type").notNull(),                    // 'expert' | 'investor_deck' | 'general'
@@ -231,6 +256,10 @@ export const enquiriesTable = pgTable("enquiries", {
   status: text("status").notNull().default("new"), // 'new' | 'contacted' | 'closed'
   adminNotes: text("admin_notes"),
   notifiedAt: timestamp("notified_at", { withTimezone: true }),
+  // First-touch/last-touch UTM + click-id snapshot, sanitized server-side
+  // before storage. Nullable — older rows and enquiries submitted without
+  // any campaign context simply have no attribution, which is expected.
+  attribution: jsonb("attribution").$type<AttributionData>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
