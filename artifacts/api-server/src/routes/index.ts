@@ -27,6 +27,7 @@ import supportRouter from "./modules/support";
 import enquiriesRouter from "./modules/enquiries";
 import corporateReportRouter from "./modules/corporate-report";
 import deleteAccountRouter from "./modules/delete-account";
+import subscriptionGoogleRouter from "./modules/subscription-google";
 
 const router: IRouter = Router();
 
@@ -58,5 +59,6 @@ router.use(supportRouter);
 router.use(enquiriesRouter);
 router.use(corporateReportRouter);
 router.use(deleteAccountRouter);
+router.use(subscriptionGoogleRouter);
 
 export default router;

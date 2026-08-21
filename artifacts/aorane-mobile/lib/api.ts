@@ -110,7 +110,7 @@ export async function rawRequest<T>(
   timeoutMs = 15000
 ): Promise<T> {
   // FIX CB2: Remov console log to fix path leak.
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = { "Content-Type": "application/json", "X-Client-Platform": Platform.OS };
   if (auth) {
     const token = await getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -699,7 +699,19 @@ export const api = {
   cancelSubscription: () =>
     request<{ success: boolean; message: string; expiresAt?: string }>("DELETE", "/payment/subscription/cancel"),
   getSubscriptionStatus: () =>
-    request<{ subscription: { id: string; plan: string; status: string; expiresAt: string; autoRenew: boolean; nextRenewalAt: string | null; razorpaySubscriptionId: string | null } | null; plan: string }>("GET", "/payment/subscription"),
+    request<{ subscription: { id: string; plan: string; status: string; expiresAt: string; autoRenew: boolean; nextRenewalAt: string | null; razorpaySubscriptionId: string | null; provider?: string | null; providerProductId?: string | null } | null; plan: string }>("GET", "/payment/subscription"),
+
+  // ── Google Play Billing (Android native subscriptions) ──────
+  // The client only ever sends the raw productId + purchaseToken it got
+  // from Play Billing — plan/expiry/entitlement are always resolved and
+  // verified server-side against Google's own API. See
+  // api-server/src/routes/modules/subscription-google.ts.
+  verifyGooglePurchase: (productId: string, purchaseToken: string) =>
+    request<{ success: boolean; message: string; plan: string; expiresAt: string; inviteCode?: string | null; accessToken?: string; refreshToken?: string }>(
+      "POST", "/payment/google/verify-purchase", { productId, purchaseToken }
+    ),
+  cancelGoogleSubscription: () =>
+    request<{ success: boolean; message: string; expiresAt?: string; manageUrl?: string }>("DELETE", "/payment/google/cancel"),
 
   // ── Scorecard ──────────────────────────────────────────────
   getScorecard: () =>

@@ -43,6 +43,13 @@
       "when": 1787203360657,
       "tag": "0005_outgoing_lorna_dane",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787282937774,
+      "tag": "0006_peaceful_tarot",
+      "breakpoints": true
     }
   ]
 }

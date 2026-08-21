@@ -146,6 +146,16 @@ router.post("/payment/promo/validate", requireAuth, async (req: AuthRequest, res
 // FIX 3: billingCycle param added — "monthly" | "yearly"
 router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
   try {
+    // Play Store policy requires Android in-app digital-content purchases to
+    // go through Google Play Billing, not an external gateway. The Android
+    // app itself now calls /payment/google/verify-purchase instead of this
+    // route — this check is a server-side backstop against a tampered/old
+    // client build still hitting the Razorpay path directly.
+    const clientPlatform = req.headers["x-client-platform"];
+    if (clientPlatform === "android") {
+      res.status(400).json({ error: "Please update the app to continue — purchases on Android now use Google Play Billing." });
+      return;
+    }
     const { plan, promoCode, billingCycle = "monthly" } = req.body as {
       plan: string;
       promoCode?: string;
@@ -349,6 +359,13 @@ router.post("/payment/verify", requireAuth, async (req: AuthRequest, res) => {
 //         but yearly one-time is handled via /payment/order route above.
 router.post("/payment/subscription/create", requireAuth, async (req: AuthRequest, res) => {
   try {
+    // See /payment/order above — same Android/Play Billing policy backstop
+    // applies to recurring digital-content subscriptions too.
+    const clientPlatform = req.headers["x-client-platform"];
+    if (clientPlatform === "android") {
+      res.status(400).json({ error: "Please update the app to continue — subscriptions on Android now use Google Play Billing." });
+      return;
+    }
     const { plan, promoCode, billingCycle = "monthly" } = req.body as {
       plan: string;
       promoCode?: string;

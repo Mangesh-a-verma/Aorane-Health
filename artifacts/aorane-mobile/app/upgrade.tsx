@@ -13,6 +13,13 @@ import { refreshTokensFromServer } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { storage } from "@/lib/storage";
 import { logSilentError } from "@/lib/silentCatch";
+import {
+  isGooglePlayBillingSupported,
+  purchaseSubscription as purchaseGooglePlaySubscription,
+  completePurchase as completeGooglePlayPurchase,
+  openPlayStoreSubscriptions,
+  type AoranePlanKey,
+} from "@/lib/billing/googlePlayBilling";
 
 declare global {
   interface Window {
@@ -142,6 +149,7 @@ function SuccessOverlay({ plan, inviteCode, onDone }: { plan: string; inviteCode
 type ActiveSubscription = {
   id: string; plan: string; status: string; expiresAt: string;
   autoRenew: boolean; nextRenewalAt: string | null; razorpaySubscriptionId: string | null;
+  provider?: string | null; providerProductId?: string | null;
 } | null;
 
 export default function UpgradeScreen() {
@@ -256,6 +264,7 @@ export default function UpgradeScreen() {
   }, [refreshUser, stopSubPolling]);
 
   const handleCancelSubscription = async () => {
+    const isGooglePlaySub = activeSubscription?.provider === "google_play";
     Alert.alert(
       "Cancel Autopay",
       "Your plan will remain active until expiry after cancelling autopay. Are you sure?",
@@ -267,10 +276,15 @@ export default function UpgradeScreen() {
           onPress: async () => {
             setLoadingSubscription(true);
             try {
-              const res = await api.cancelSubscription();
+              const res = isGooglePlaySub ? await api.cancelGoogleSubscription() : await api.cancelSubscription();
               const statusRes = await api.getSubscriptionStatus();
               setActiveSubscription(statusRes.subscription);
               Alert.alert("Autopay Cancelled", res.message || "Autopay cancelled. Plan remains active until expiry.");
+              if (isGooglePlaySub) {
+                // Google Play's own subscription center is the primary
+                // supported cancellation/management UX — offer it too.
+                openPlayStoreSubscriptions().catch(() => {});
+              }
             } catch (e: unknown) {
               Alert.alert("Error", (e as Error).message || "Could not cancel. Please try again.");
             } finally { setLoadingSubscription(false); }
@@ -281,6 +295,9 @@ export default function UpgradeScreen() {
   };
 
   const handleSubscriptionUpgrade = async () => {
+    if (isGooglePlayBillingSupported()) {
+      return handleGooglePlaySubscriptionUpgrade();
+    }
     setLoading(true);
     try {
       const subRes = await api.createSubscription(selectedPlan, promoCode.trim().toUpperCase() || undefined);
@@ -308,6 +325,54 @@ export default function UpgradeScreen() {
       }
     } catch (e: unknown) {
       Alert.alert("Error", (e as Error).message || "Autopay setup failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Android native subscription purchase via Google Play Billing ────────
+  // Replaces the external-browser Razorpay checkout for Android. The native
+  // Play Billing sheet opens in-app; the resulting productId + purchaseToken
+  // are sent to the backend for server-side verification against Google's
+  // own API before anything is unlocked — see lib/billing/googlePlayBilling.ts
+  // and api-server's /payment/google/verify-purchase.
+  const handleGooglePlaySubscriptionUpgrade = async () => {
+    if (selectedPlan !== "pro" && selectedPlan !== "max" && selectedPlan !== "family") {
+      Alert.alert("Error", "Please select a valid plan.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const purchase = await purchaseGooglePlaySubscription(selectedPlan as AoranePlanKey);
+      const verifyRes = await api.verifyGooglePurchase(purchase.productId, purchase.purchaseToken);
+
+      if (!verifyRes.success) {
+        Alert.alert("Error", verifyRes.message || "Could not verify your purchase. If you were charged, please contact support.");
+        setLoading(false);
+        return;
+      }
+
+      // Only finalize with Play Billing AFTER the backend confirms
+      // activation — finishing the transaction before that would let the
+      // purchase drop out of Play's pending queue without our server ever
+      // having granted the entitlement.
+      await completeGooglePlayPurchase({ purchaseToken: purchase.purchaseToken, productId: purchase.productId, isAutoRenewing: true }).catch((err) => {
+        logSilentError("google-play-finish-transaction", err);
+      });
+
+      if (verifyRes.accessToken) await storage.setToken(verifyRes.accessToken);
+      if (verifyRes.refreshToken) await storage.setRefreshToken(verifyRes.refreshToken);
+      const statusRes = await api.getSubscriptionStatus();
+      setActiveSubscription(statusRes.subscription);
+      if (verifyRes.inviteCode) setFamilyInviteCode(verifyRes.inviteCode);
+      if (refreshUser) await refreshUser();
+      setSuccess(true);
+    } catch (e: unknown) {
+      const message = (e as Error).message || "";
+      // User closing the Play Billing sheet is not an error worth alarming them about.
+      if (!/cancel/i.test(message)) {
+        Alert.alert("Error", message || "Purchase failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -462,6 +527,14 @@ export default function UpgradeScreen() {
 
   const handleUpgrade = async () => {
     if (isAutopay) { return handleSubscriptionUpgrade(); }
+    if (isGooglePlayBillingSupported()) {
+      // Defense-in-depth: the one-time toggle is hidden on Android (see
+      // render below), but if this is ever reached anyway, route to Play
+      // Billing rather than falling through to the external-browser
+      // Razorpay flow, which Play Store policy prohibits for Android
+      // in-app digital purchases.
+      return handleGooglePlaySubscriptionUpgrade();
+    }
     setLoading(true);
     try {
       const orderRes = await api.createPaymentOrder(selectedPlan, promoCode.trim().toUpperCase() || undefined);
@@ -551,18 +624,27 @@ export default function UpgradeScreen() {
         )}
 
         {/* Autopay Toggle */}
-        <GlassCard style={{ marginBottom: 16 }}>
-          <View style={{ padding: 4, flexDirection: "row", borderRadius: 18 }}>
-            <TouchableOpacity onPress={() => setIsAutopay(true)} style={{ flex: 1, paddingVertical: 11, borderRadius: 16, alignItems: "center", backgroundColor: isAutopay ? "#E8622A" : "transparent" }}>
-              <Text style={{ color: isAutopay ? "#FFF" : (isDark ? "rgba(255,255,255,0.55)" : "rgba(10,22,40,0.5)"), fontFamily: "Inter_700Bold", fontSize: 13 }}>🔄 Auto-debit Monthly</Text>
-              {isAutopay && <Text style={{ color: "rgba(255,255,255,0.75)", fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 2 }}>Recommended • Cancel anytime</Text>}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setIsAutopay(false)} style={{ flex: 1, paddingVertical: 11, borderRadius: 16, alignItems: "center", backgroundColor: !isAutopay ? (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.12)") : "transparent" }}>
-              <Text style={{ color: !isAutopay ? (isDark ? "#F0F8FF" : "#1a1a2e") : (isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.4)"), fontFamily: "Inter_700Bold", fontSize: 13 }}>💳 Pay Once</Text>
-              {!isAutopay && <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.4)", fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 2 }}>1 month only</Text>}
-            </TouchableOpacity>
-          </View>
-        </GlassCard>
+        {/* On Android, every purchase must go through Google Play Billing
+            (Play Store policy for digital content/features) — Play Billing
+            only offers auto-renewing subscriptions for this kind of
+            product, so the one-time "Pay Once" option is Android-only
+            hidden and autopay is forced on. Web/other platforms keep both
+            options via the existing Razorpay flow. */}
+        {!isGooglePlayBillingSupported() && (
+          <GlassCard style={{ marginBottom: 16 }}>
+            <View style={{ padding: 4, flexDirection: "row", borderRadius: 18 }}>
+              <TouchableOpacity onPress={() => setIsAutopay(true)} style={{ flex: 1, paddingVertical: 11, borderRadius: 16, alignItems: "center", backgroundColor: isAutopay ? "#E8622A" : "transparent" }}>
+                <Text style={{ color: isAutopay ? "#FFF" : (isDark ? "rgba(255,255,255,0.55)" : "rgba(10,22,40,0.5)"), fontFamily: "Inter_700Bold", fontSize: 13 }}>🔄 Auto-debit Monthly</Text>
+                {isAutopay && <Text style={{ color: "rgba(255,255,255,0.75)", fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 2 }}>Recommended • Cancel anytime</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setIsAutopay(false)} style={{ flex: 1, paddingVertical: 11, borderRadius: 16, alignItems: "center", backgroundColor: !isAutopay ? (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,119,182,0.12)") : "transparent" }}>
+                <Text style={{ color: !isAutopay ? (isDark ? "#F0F8FF" : "#1a1a2e") : (isDark ? "rgba(255,255,255,0.45)" : "rgba(10,22,40,0.4)"), fontFamily: "Inter_700Bold", fontSize: 13 }}>💳 Pay Once</Text>
+                {!isAutopay && <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.4)", fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 2 }}>1 month only</Text>}
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        )}
+
 
         <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 12 }}>Choose a Plan</Text>
         <View style={{ gap: 12, marginBottom: 16 }}>
