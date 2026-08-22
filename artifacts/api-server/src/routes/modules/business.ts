@@ -596,6 +596,11 @@ router.post("/business/enroll", requireAuth, async (req, res) => {
     const [org] = await db.select().from(organizationsTable).where(and(eq(organizationsTable.orgCode, orgCode), eq(organizationsTable.isActive, true)));
     if (!org) { res.status(404).json({ error: "Organization not found or inactive" }); return; }
 
+    if (!(await hasActiveOrgPayment(org.id))) {
+      res.status(403).json({ error: "This organization does not have an active subscription yet. Please contact your company admin." });
+      return;
+    }
+
     const existing = await db.select().from(orgMembersTable).where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, userId)));
     if (existing.length) { res.status(409).json({ error: "Already enrolled in this organization" }); return; }
 
@@ -680,6 +685,11 @@ router.post("/business/use-enrollment-code", requireAuth, async (req, res) => {
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, enrollCode.orgId));
     if (!org || !org.isActive) { res.status(404).json({ error: "Organization not found or inactive" }); return; }
 
+    if (!(await hasActiveOrgPayment(org.id))) {
+      res.status(403).json({ error: "This organization's subscription is not active right now. Please contact your company admin." });
+      return;
+    }
+
     // Check if user already enrolled in this org
     const existing = await db.select().from(orgMembersTable)
       .where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, userId)));
@@ -732,11 +742,7 @@ router.post("/business/use-enrollment-code", requireAuth, async (req, res) => {
 router.post("/business/enrollment-codes", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
     // PAYMENT GATE: only orgs with an active payment can create enrollment codes
-    const [activePayment] = await db.select({ id: orgPaymentsTable.id })
-      .from(orgPaymentsTable)
-      .where(and(eq(orgPaymentsTable.orgId, req.orgId!), eq(orgPaymentsTable.status, "success")))
-      .limit(1);
-    if (!activePayment) {
+    if (!(await hasActiveOrgPayment(req.orgId!))) {
       res.status(403).json({ error: "Active subscription required to create enrollment codes. Please complete payment first." });
       return;
     }
@@ -1700,6 +1706,25 @@ function generateOrgCode(): string {
   let code = "";
   for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
+}
+
+// ─── Org payment gate — the single source of truth for "is this org allowed
+// to grant employees a plan right now" ───────────────────────────────────
+// A successful orgPaymentsTable row is the only thing that answers this —
+// organizations.isActive is a separate, generic admin on/off switch (used
+// for suspending abusive orgs etc.) and must never be treated as "has paid".
+// Used at every point that grants an employee a plan: creating enrollment
+// codes, AND — this is the part that was missing — redeeming them (both the
+// org-code path and the enrollment-code path). A code that was legitimately
+// created while the org was paid must stop working the moment the org's
+// payment lapses; checking only at creation time let a stale/leftover code
+// keep minting free Pro/Max plans indefinitely.
+async function hasActiveOrgPayment(orgId: string): Promise<boolean> {
+  const [activePayment] = await db.select({ id: orgPaymentsTable.id })
+    .from(orgPaymentsTable)
+    .where(and(eq(orgPaymentsTable.orgId, orgId), eq(orgPaymentsTable.status, "success")))
+    .limit(1);
+  return !!activePayment;
 }
 
 export default router;

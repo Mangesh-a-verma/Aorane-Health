@@ -1627,6 +1627,18 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS enquiry_id UUID REFERENCES enquiries(id) ON DELETE SET NULL`,
 
     // ══════════════════════════════════════════════════════════════════════════
+    // Fix: schema.ts declared subscriptions.org_id and subscription_events.org_id
+    // (added when the org-billing/enrollment-code work landed) but the generated
+    // drizzle migration 0006 never included the ALTER TABLE for either column —
+    // a drizzle-kit generation gap, not an intentional change. Every insert into
+    // either table fails without these, since Drizzle always references every
+    // declared column. Fixed properly via migration 0007; mirrored here as the
+    // usual safety net for deploys that only run this legacy path.
+    // ══════════════════════════════════════════════════════════════════════════
+    `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES organizations(id) ON DELETE CASCADE`,
+    `ALTER TABLE subscription_events ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES organizations(id) ON DELETE SET NULL`,
+
+    // ══════════════════════════════════════════════════════════════════════════
     // ORG SEAT PLANS — Set yearly prices (₹169/seat/month × 12 = ₹2028, ₹211/seat/month × 12 = ₹2532)
     // Fix: yearly_price is NUMERIC — cannot compare to '' (empty string), only IS NULL
     // ══════════════════════════════════════════════════════════════════════════
