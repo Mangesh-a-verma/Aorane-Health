@@ -339,6 +339,7 @@
 }
 .neu-pill[data-active="false"]:hover {
   color: #05473C;
+  background: rgba(255,255,255,0.6);
 }
 .no-scrollbar {
   scrollbar-width: none;
@@ -346,4 +347,20 @@
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+/* Visible-but-subtle scrollbar — used where we want the user to clearly
+   see a control (like the industry tabs) is scrollable, unlike no-scrollbar. */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(5,71,60,0.25) transparent;
+}
+.thin-scrollbar::-webkit-scrollbar {
+  height: 5px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(5,71,60,0.25);
+  border-radius: 9999px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
 }

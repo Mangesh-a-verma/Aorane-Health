@@ -133,8 +133,8 @@ function PricingCard({
   return (
     <div className={`relative overflow-hidden flex flex-col h-full rounded-[2.5rem] p-8 md:p-10 transition-all duration-500 ease-out border backdrop-blur-2xl
       ${highlighted
-        ? "bg-gradient-to-br from-[#05473C]/95 to-[#05473C]/95 border-white/20 text-white shadow-[0_32px_64px_rgba(0,93,144,0.3)] scale-100 lg:scale-105 z-10"
-        : "bg-white/40 border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] hover:-translate-y-2 hover:shadow-[0_24px_48px_rgba(0,0,0,0.08)] hover:bg-white/60"}`}>
+        ? "bg-gradient-to-br from-[#05473C]/95 to-[#05473C]/95 border-white/20 text-white shadow-[0_32px_64px_rgba(0,93,144,0.3)] scale-100 lg:scale-105 z-10 hover:-translate-y-1 hover:shadow-[0_40px_72px_rgba(0,93,144,0.4)]"
+        : "bg-white/40 border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] hover:-translate-y-2 hover:border-[#05473C]/40 hover:shadow-[0_24px_48px_rgba(5,71,60,0.12)] hover:bg-white/70"}`}>
 
       <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/70 to-transparent opacity-50" />
 
@@ -524,20 +524,25 @@ export default function Landing() {
             </p>
           </Reveal>
 
-          <Reveal delay={0.05} className="mb-14 -mx-6 px-6 md:mx-0 md:px-0">
-            <div className="neu-surface flex md:inline-flex md:justify-center gap-1 max-w-full mx-auto overflow-x-auto no-scrollbar w-max md:w-auto">
-              {segments.map((seg, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveIndustry(i)}
-                  data-active={activeIndustry === i}
-                  className="neu-pill flex items-center gap-2 px-4 md:px-5 py-2.5 text-[13px] md:text-sm font-bold whitespace-nowrap flex-shrink-0"
-                >
-                  <Icon name={seg.icon} size={18} color={activeIndustry === i ? PRIMARY : "#9CA3AF"} />
-                  {seg.title}
-                </button>
-              ))}
+          <Reveal delay={0.05} className="mb-14 -mx-6 px-6 md:mx-0 md:px-0 relative">
+            <div className="overflow-x-auto thin-scrollbar md:overflow-visible">
+              <div className="neu-surface flex md:inline-flex md:justify-center gap-1 w-max md:w-auto mx-auto md:mx-auto">
+                {segments.map((seg, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveIndustry(i)}
+                    data-active={activeIndustry === i}
+                    className="neu-pill flex items-center gap-2 px-4 md:px-5 py-2.5 text-[13px] md:text-sm font-bold whitespace-nowrap flex-shrink-0"
+                  >
+                    <Icon name={seg.icon} size={18} color={activeIndustry === i ? PRIMARY : "#9CA3AF"} />
+                    {seg.title}
+                  </button>
+                ))}
+              </div>
             </div>
+            {/* Fade hint on mobile so a partially-visible last tab reads as
+                "scroll for more" instead of looking like clipped/broken text. */}
+            <div className="pointer-events-none absolute top-0 right-0 h-[calc(100%-0px)] w-12 bg-gradient-to-l from-[#F5F8F6] via-[#F5F8F6]/70 to-transparent md:hidden" />
           </Reveal>
 
           <Reveal delay={0.1}>
@@ -727,7 +732,10 @@ export default function Landing() {
               <h2 className="text-3xl md:text-5xl font-display font-medium text-gray-900 tracking-tight mb-6">
                 Per-Seat Pricing. Zero Hidden Costs.
               </h2>
-              <p className="text-lg md:text-xl text-gray-500 font-medium mb-10">Pay only for your team size. Cancel anytime.</p>
+              <p className="text-lg md:text-xl text-gray-500 font-medium mb-3">Pay only for your team size. Cancel anytime.</p>
+              <p className="text-sm text-gray-400 font-medium mb-10">
+                No enterprise-only minimums — plans start from just 10 seats, so growing teams and SMEs aren't priced out.
+              </p>
 
               <div className="neu-surface inline-flex gap-1">
                 <button
@@ -755,19 +763,19 @@ export default function Landing() {
             <Reveal delay={0.1}>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch max-w-6xl mx-auto">
                 <PricingCard
-                  plan={plansForDisplay.max.label}
-                  perSeatPrice={billingCycle === "monthly" ? plansForDisplay.max.pricePerSeat : plansForDisplay.max.yearlyPricePerSeat}
-                  minSeats={10}
-                  features={plansForDisplay.max.features}
-                  savePercent={billingCycle === "yearly" ? maxSave : undefined}
-                />
-                <PricingCard
                   plan={plansForDisplay.pro.label}
                   perSeatPrice={billingCycle === "monthly" ? plansForDisplay.pro.pricePerSeat : plansForDisplay.pro.yearlyPricePerSeat}
                   minSeats={20}
                   features={plansForDisplay.pro.features}
-                  highlighted
                   savePercent={billingCycle === "yearly" ? proSave : undefined}
+                />
+                <PricingCard
+                  plan={plansForDisplay.max.label}
+                  perSeatPrice={billingCycle === "monthly" ? plansForDisplay.max.pricePerSeat : plansForDisplay.max.yearlyPricePerSeat}
+                  minSeats={10}
+                  features={plansForDisplay.max.features}
+                  highlighted
+                  savePercent={billingCycle === "yearly" ? maxSave : undefined}
                 />
                 <PricingCard
                   plan="Custom"
