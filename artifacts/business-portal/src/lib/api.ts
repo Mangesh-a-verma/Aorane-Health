@@ -296,4 +296,15 @@ export const api = {
 
   sendReportEmail: (month: string) =>
     request<{ success: boolean; sentTo: string }>("/business/report/email", { method: "POST", body: JSON.stringify({ month }) }),
+
+  // ESG/CSRD (ESRS S1) readiness summary — Phase 2. Reshapes the same real
+  // monthly report data into ESRS S1 categories; not a certified audit
+  // (see the `disclaimer` field returned alongside it).
+  getEsgSummary: (month: string) =>
+    request<{ esg: {
+      month: string; monthLabel: string;
+      org: { name: string; industry: string | null };
+      disclaimer: string; hasData: boolean;
+      categories: { key: string; esrsRef: string; title: string; value: string; detail: string }[];
+    } }>(`/business/report/esg-summary?month=${month}`),
 };

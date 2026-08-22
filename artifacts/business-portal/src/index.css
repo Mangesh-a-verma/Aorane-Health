@@ -340,3 +340,10 @@
 .neu-pill[data-active="false"]:hover {
   color: #05473C;
 }
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

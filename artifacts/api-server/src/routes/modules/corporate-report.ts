@@ -433,6 +433,102 @@ router.post("/business/report/email", requireBusinessAuth, async (req: BusinessR
   }
 });
 
+// ─── ESG / CSRD (ESRS S1 — Own Workforce) readiness summary ───────────────────
+// Phase 2 of the differentiation roadmap: reshape the SAME real aggregate data
+// already computed by buildReportData() into the categories EU CSRD's ESRS S1
+// standard asks companies to disclose about their own workforce. This is a
+// self-assessment aid, not a certified audit — the response says so
+// explicitly, and every number traces back to the org's own real health data,
+// nothing invented for this endpoint.
+interface EsgSummary {
+  month: string;
+  monthLabel: string;
+  org: { name: string; industry: string | null };
+  disclaimer: string;
+  hasData: boolean;
+  categories: {
+    key: string;
+    esrsRef: string;
+    title: string;
+    value: string;
+    detail: string;
+  }[];
+}
+
+function buildEsgSummary(report: ReportData): EsgSummary {
+  const disclaimer = "This is a self-assessment aid built from your organization's own aggregate wellness data. It is not a certified CSRD/ESRS audit — please review with your compliance or sustainability team before using it in a formal disclosure.";
+
+  if (!report.averages) {
+    return {
+      month: report.month,
+      monthLabel: formatMonthLabel(report.month),
+      org: { name: report.org.name, industry: report.org.industry },
+      disclaimer,
+      hasData: false,
+      categories: [],
+    };
+  }
+
+  const engagementPct = report.totalMembers > 0 ? Math.round((report.activeMembers / report.totalMembers) * 100) : 0;
+  const stressRiskPct = report.gradeDistribution
+    ? Math.round(((report.gradeDistribution.needsImprovement) / Math.max(report.totalMembers, 1)) * 100)
+    : 0;
+
+  return {
+    month: report.month,
+    monthLabel: formatMonthLabel(report.month),
+    org: { name: report.org.name, industry: report.org.industry },
+    disclaimer,
+    hasData: true,
+    categories: [
+      {
+        key: "workforce_wellbeing_coverage",
+        esrsRef: "ESRS S1-11 (Social protection / wellbeing measures)",
+        title: "Workforce Wellbeing Program Coverage",
+        value: `${engagementPct}%`,
+        detail: `${report.activeMembers} of ${report.totalMembers} enrolled employees had at least one recorded wellness data point this month.`,
+      },
+      {
+        key: "health_safety_score",
+        esrsRef: "ESRS S1-14 (Health & safety metrics)",
+        title: "Aggregate Workforce Health Score",
+        value: `${report.averages.healthScore}/100`,
+        detail: `Average composite health score across nutrition, exercise, sleep, stress and medicine adherence for enrolled employees.`,
+      },
+      {
+        key: "work_related_stress_risk",
+        esrsRef: "ESRS S1-14 (Work-related ill health indicators)",
+        title: "Elevated Stress / Burnout-Risk Share",
+        value: `${stressRiskPct}%`,
+        detail: `Share of the enrolled workforce whose monthly grade fell in the "Needs Improvement" band, aggregate and anonymized only.`,
+      },
+      {
+        key: "rest_and_recovery",
+        esrsRef: "ESRS S1-15 (Work-life balance)",
+        title: "Average Sleep & Recovery Score",
+        value: `${report.averages.sleepScore}/100`,
+        detail: `Average sleep-quality score, used as a proxy indicator for rest and recovery across the enrolled workforce.`,
+      },
+    ],
+  };
+}
+
+router.get("/business/report/esg-summary", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const orgId = req.orgId!;
+    const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      res.status(400).json({ error: "Invalid month format. Use YYYY-MM." });
+      return;
+    }
+    const report = await buildReportData(orgId, month);
+    res.json({ esg: buildEsgSummary(report) });
+  } catch (err) {
+    logger.error({ err }, "ESG summary generation failed");
+    res.status(500).json({ error: "Failed to generate ESG summary" });
+  }
+});
+
 export default router;
 
 // ─── Monthly Auto-Email Cron ──────────────────────────────────────────────────

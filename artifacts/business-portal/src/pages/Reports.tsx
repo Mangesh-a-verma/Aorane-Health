@@ -273,6 +273,13 @@ export default function Reports() {
     staleTime: 30 * 60 * 1000,
   });
 
+  const { data: esgData, isLoading: esgLoading } = useQuery({
+    queryKey: ["esg-summary", month],
+    queryFn: () => api.getEsgSummary(month),
+    enabled: !!reportData?.report?.activeMembers,
+    staleTime: 30 * 60 * 1000,
+  });
+
   const emailMutation = useMutation({
     mutationFn: () => api.sendReportEmail(month),
     onSuccess: () => {
@@ -298,6 +305,7 @@ export default function Reports() {
 
   const report = reportData?.report;
   const insights = insightsData?.insights as string | null | undefined;
+  const esg = esgData?.esg;
   const gradeStyle = getGradeStyle(report?.grade ?? null);
 
   // Derived state flags
@@ -504,6 +512,42 @@ export default function Reports() {
                 <strong>Data note:</strong> Report covers {report!.dataPoints.toLocaleString()} health log entries from {report!.activeMembers} active members in {formatMonthLabel(month)}.
                 All data is anonymized and aggregated per <strong>DPDP Act 2023</strong>. Individual employee data is never shared.
               </span>
+            </div>
+
+            {/* ESG / CSRD readiness — Phase 2 */}
+            <div className="rounded-xl border border-border overflow-hidden no-print">
+              <div className="px-5 py-4 border-b border-border bg-muted/30">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <FileText size={15} className="text-primary" />
+                  ESG / CSRD Readiness Summary
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Your workforce wellbeing data, mapped to ESRS S1 (Own Workforce) disclosure categories
+                </p>
+              </div>
+              <div className="p-5">
+                {esgLoading ? (
+                  <div className="text-sm text-muted-foreground">Loading ESG summary…</div>
+                ) : esg && esg.hasData ? (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                      {esg.categories.map((c) => (
+                        <div key={c.key} className="rounded-lg border border-border p-4 bg-card">
+                          <div className="text-[10px] font-bold text-primary/70 uppercase tracking-wide mb-1">{c.esrsRef}</div>
+                          <div className="text-xl font-bold text-foreground mb-1">{c.value}</div>
+                          <div className="text-xs font-semibold text-foreground mb-1">{c.title}</div>
+                          <div className="text-[11px] text-muted-foreground leading-relaxed">{c.detail}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <strong>Note:</strong> {esg.disclaimer}
+                    </p>
+                  </>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Not enough enrolled member data yet to build an ESG summary for this month.</div>
+                )}
+              </div>
             </div>
           </>
         )}

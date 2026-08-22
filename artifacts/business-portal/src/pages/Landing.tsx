@@ -66,6 +66,10 @@ const faqs = [
     q: "Can we cancel or downgrade anytime?",
     a: "Yes, there are no long-term lock-in contracts required. You can adjust your seat count or cancel at any time from your account settings.",
   },
+  {
+    q: "Does Aorane help with ESG or CSRD workforce reporting?",
+    a: "Yes. Your Reports page includes an ESG/CSRD readiness summary that maps your organization's aggregate wellbeing data (program coverage, health score, stress-risk share, and rest & recovery) to ESRS S1 (Own Workforce) categories. It's a self-assessment aid to help your compliance team get started — not a certified audit.",
+  },
 ];
 
 // ==========================================
@@ -458,42 +462,46 @@ export default function Landing() {
         {/* ENGAGEMENT — the core differentiator, stated honestly (see Differentiation
             & Whitespace Strategy). Replaces the old marquee ticker + fabricated
             stat bar with one truthful comparison, plus a real live number once
-            the platform has enough enrolled members for it to be meaningful. */}
-        <div ref={engagementRef} className="bg-white py-16 md:py-20 px-6 border-y border-gray-100">
-          <div className="max-w-5xl mx-auto">
+            the platform has enough enrolled members for it to be meaningful.
+            Kept deliberately compact and left-aligned throughout (mobile and
+            desktop) instead of the previous wide two-column grid, which left
+            too much empty space and mixed text alignments across breakpoints. */}
+        <div ref={engagementRef} className="bg-white py-10 md:py-14 px-6 border-y border-gray-100">
+          <div className="max-w-4xl mx-auto">
             <Reveal>
-              <div className="glass-panel-soft rounded-[2rem] p-8 md:p-12 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-8 md:gap-12 items-center">
-                <div>
-                  <div className="inline-flex items-center gap-2 bg-[#05473C]/10 text-[#05473C] rounded-full px-4 py-2 mb-5 font-bold text-xs tracking-wide uppercase">
-                    <Icon name="query_stats" size={16} /> Why engagement is different here
-                  </div>
-                  <p className="text-lg md:text-xl text-gray-800 leading-relaxed font-medium mb-3">
-                    Most workplace wellness programs see just <span className="font-bold text-[#05473C]">20–35% employee participation</span> — because they ask people to log in for work. <span className="text-gray-500 text-base font-normal">(Industry research, 2026)</span>
-                  </p>
-                  <p className="text-base text-gray-500 leading-relaxed">
-                    Aorane employees join with the same app they already use for themselves. There's no separate portal to remember — so your dashboard reflects what people actually do, not who filled in a survey.
-                  </p>
-                </div>
-                <div className="text-center md:text-right md:min-w-[220px]">
+              <div className="glass-panel-soft rounded-3xl p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-6 md:gap-8">
+                <div className="flex-shrink-0 flex md:flex-col items-center md:items-start gap-4 md:gap-2 md:w-44 text-left">
                   {engagement?.sampleSufficient && engagement.engagementRatePercent !== null ? (
                     <>
-                      <div className="text-5xl md:text-6xl font-display font-medium text-[#05473C] leading-none tracking-tight tabular-nums">
+                      <div className="text-4xl md:text-5xl font-display font-medium text-[#05473C] leading-none tracking-tight tabular-nums">
                         {engagementCount}%
                       </div>
-                      <div className="text-sm text-gray-500 font-semibold mt-3">
-                        of enrolled employees active in the last 7 days — live across Aorane Business
+                      <div className="text-xs text-gray-500 font-semibold leading-snug">
+                        active in the last 7 days — live
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="w-16 h-16 rounded-2xl bg-[#05473C]/10 flex items-center justify-center mx-auto md:ml-auto md:mr-0 mb-3">
-                        <Icon name="bolt" size={28} color={PRIMARY} />
+                      <div className="w-12 h-12 rounded-2xl bg-[#05473C]/10 flex items-center justify-center flex-shrink-0">
+                        <Icon name="bolt" size={24} color={PRIMARY} />
                       </div>
-                      <div className="text-sm text-gray-500 font-semibold max-w-[220px] mx-auto md:mx-0">
-                        Built for participation without a mandatory login.
+                      <div className="text-xs text-gray-500 font-semibold leading-snug">
+                        Built for participation<br className="hidden md:block" /> without a mandatory login.
                       </div>
                     </>
                   )}
+                </div>
+
+                <div className="md:border-l md:border-gray-200 md:pl-8 text-left">
+                  <div className="inline-flex items-center gap-2 bg-[#05473C]/10 text-[#05473C] rounded-full px-3.5 py-1.5 mb-3 font-bold text-[11px] tracking-wide uppercase">
+                    <Icon name="query_stats" size={14} /> Why engagement is different here
+                  </div>
+                  <p className="text-base md:text-lg text-gray-800 leading-relaxed font-medium mb-2">
+                    Most workplace wellness programs see just <span className="font-bold text-[#05473C]">20–35% employee participation</span> — because they ask people to log in for work. <span className="text-gray-500 text-sm font-normal">(Industry research, 2026)</span>
+                  </p>
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    Aorane employees join with the same app they already use for themselves — so your dashboard reflects what people actually do, not who filled in a survey.
+                  </p>
                 </div>
               </div>
             </Reveal>
@@ -516,14 +524,14 @@ export default function Landing() {
             </p>
           </Reveal>
 
-          <Reveal delay={0.05} className="flex justify-center mb-14">
-            <div className="neu-surface inline-flex flex-wrap justify-center gap-1 max-w-full">
+          <Reveal delay={0.05} className="mb-14 -mx-6 px-6 md:mx-0 md:px-0">
+            <div className="neu-surface flex md:inline-flex md:justify-center gap-1 max-w-full mx-auto overflow-x-auto no-scrollbar w-max md:w-auto">
               {segments.map((seg, i) => (
                 <button
                   key={i}
                   onClick={() => setActiveIndustry(i)}
                   data-active={activeIndustry === i}
-                  className="neu-pill flex items-center gap-2 px-4 md:px-5 py-2.5 text-[13px] md:text-sm font-bold whitespace-nowrap"
+                  className="neu-pill flex items-center gap-2 px-4 md:px-5 py-2.5 text-[13px] md:text-sm font-bold whitespace-nowrap flex-shrink-0"
                 >
                   <Icon name={seg.icon} size={18} color={activeIndustry === i ? PRIMARY : "#9CA3AF"} />
                   {seg.title}
@@ -642,6 +650,63 @@ export default function Landing() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ESG & COMPLIANCE — Phase 2 of the differentiation roadmap. Positions
+            Aorane as a shortcut to ESRS S1 (Own Workforce) reporting, using
+            language that matches what the authenticated Reports page actually
+            generates — no claim here outruns the product. */}
+        <section className="py-20 md:py-28 px-6 bg-white border-t border-gray-100">
+          <div className="max-w-5xl mx-auto">
+            <Reveal>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+                <div>
+                  <div className="inline-flex items-center gap-2 bg-[#05473C]/10 text-[#05473C] rounded-full px-4 py-2 mb-6 font-bold text-xs tracking-wide uppercase">
+                    <Icon name="fact_check" size={16} /> ESG & Compliance
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-display font-medium text-gray-900 tracking-tight mb-5">
+                    A Head Start on ESG Workforce Reporting
+                  </h3>
+                  <p className="text-[15px] md:text-base text-gray-600 leading-relaxed mb-6">
+                    New ESG frameworks like the EU's CSRD ask companies to disclose workforce wellbeing data under ESRS S1 (Own Workforce). Aorane Business maps your existing aggregate health data into those categories automatically — a self-assessment aid your compliance team can start from, not a substitute for a certified audit.
+                  </p>
+                  <ul className="flex flex-col gap-3 m-0 p-0 list-none">
+                    {[
+                      "Workforce wellbeing program coverage",
+                      "Aggregate health & safety score",
+                      "Work-related stress / burnout-risk share",
+                      "Rest & recovery (sleep) indicator",
+                    ].map((item, i) => (
+                      <li key={i} className="flex items-start gap-3 text-sm text-gray-700 font-medium">
+                        <Icon name="check_circle" size={18} color={TEAL} className="mt-0.5 flex-shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-gray-50 rounded-3xl p-6 md:p-8 border border-gray-100">
+                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4">Sample — ESRS S1 mapping</div>
+                  {[
+                    { ref: "ESRS S1-11", label: "Wellbeing Program Coverage", value: "—" },
+                    { ref: "ESRS S1-14", label: "Aggregate Health Score", value: "—" },
+                    { ref: "ESRS S1-14", label: "Stress / Burnout-Risk Share", value: "—" },
+                    { ref: "ESRS S1-15", label: "Rest & Recovery Indicator", value: "—" },
+                  ].map((row, i) => (
+                    <div key={i} className={`flex items-center justify-between py-3.5 ${i !== 0 ? "border-t border-gray-200" : ""}`}>
+                      <div>
+                        <div className="text-[10px] font-bold text-[#05473C]/70 uppercase tracking-wide">{row.ref}</div>
+                        <div className="text-sm font-semibold text-gray-800">{row.label}</div>
+                      </div>
+                      <div className="text-lg font-bold text-gray-300 font-mono-num">{row.value}</div>
+                    </div>
+                  ))}
+                  <p className="text-[11px] text-gray-400 mt-4 leading-relaxed">
+                    Populated automatically from your organization's real data on the Reports page once employees are enrolled.
+                  </p>
                 </div>
               </div>
             </Reveal>
