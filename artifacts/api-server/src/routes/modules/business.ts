@@ -587,6 +587,25 @@ router.get("/business/members/:userId/stress", requireBusinessAuth, async (req: 
   }
 });
 
+// ─── Org payment gate — the single source of truth for "is this org allowed
+// to grant employees a plan right now" ───────────────────────────────────
+// A successful orgPaymentsTable row is the only thing that answers this —
+// organizations.isActive is a separate, generic admin on/off switch (used
+// for suspending abusive orgs etc.) and must never be treated as "has paid".
+// Used at every point that grants an employee a plan: creating enrollment
+// codes, AND — this is the part that was missing — redeeming them (both the
+// org-code path and the enrollment-code path). A code that was legitimately
+// created while the org was paid must stop working the moment the org's
+// payment lapses; checking only at creation time let a stale/leftover code
+// keep minting free Pro/Max plans indefinitely.
+async function hasActiveOrgPayment(orgId: string): Promise<boolean> {
+  const [activePayment] = await db.select({ id: orgPaymentsTable.id })
+    .from(orgPaymentsTable)
+    .where(and(eq(orgPaymentsTable.orgId, orgId), eq(orgPaymentsTable.status, "success")))
+    .limit(1);
+  return !!activePayment;
+}
+
 router.post("/business/enroll", requireAuth, async (req, res) => {
   try {
     const { orgCode } = req.body as { orgCode: string };
@@ -1453,6 +1472,75 @@ router.get("/business/billing/seat-plans", requireBusinessAuth, async (_req: Bus
   }
 });
 
+// ─── PUBLIC MARKETING ENDPOINTS (no auth — safe, non-sensitive, aggregate-only) ─
+
+// Public pricing — same seat-plan data shown on the business landing page.
+// Unauthenticated on purpose: pricing is public information by definition.
+router.get("/business/public/plans", async (_req, res) => {
+  try {
+    const plans = await getAllSeatPlans();
+    res.json({ plans, gstRate: GST_RATE * 100, aoraneState: AORANE_STATE });
+  } catch (e) {
+    logger.error({ err: e }, "public plans error");
+    res.status(500).json({ error: "Failed to fetch plans" });
+  }
+});
+
+// Public, platform-wide (not per-org) 7-day engagement rate — used by the
+// landing page's "built for engagement" stat. Deliberately aggregate-only
+// (no org names, no individual data) and gated behind a minimum sample size
+// so a handful of pilot orgs can never produce a misleadingly high/low
+// percentage. Reuses the exact same "active in last 7 days" definition as
+// the authenticated /business/health-analytics endpoint (any dailyHealthScoresTable
+// row for the user within the last 7 days), just summed across every active org
+// instead of one.
+const MIN_SAMPLE_SIZE_FOR_PUBLIC_STAT = 50;
+
+router.get("/business/public/engagement-stat", async (_req, res) => {
+  try {
+    const activeOrgs = await db.select({ id: organizationsTable.id })
+      .from(organizationsTable)
+      .where(eq(organizationsTable.isActive, true));
+    const orgIds = activeOrgs.map((o: any) => o.id);
+    if (!orgIds.length) {
+      res.json({ sampleSufficient: false, totalMembers: 0, activeLast7Days: 0, engagementRatePercent: null });
+      return;
+    }
+
+    const memberRows = await db.select({ userId: orgMembersTable.userId })
+      .from(orgMembersTable)
+      .where(and(inArray(orgMembersTable.orgId, orgIds), eq(orgMembersTable.isActive, true)));
+    const memberIds = Array.from(new Set(memberRows.map((m: any) => m.userId)));
+
+    if (memberIds.length < MIN_SAMPLE_SIZE_FOR_PUBLIC_STAT) {
+      res.json({ sampleSufficient: false, totalMembers: memberIds.length, activeLast7Days: 0, engagementRatePercent: null });
+      return;
+    }
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const scores = await db.select({ userId: dailyHealthScoresTable.userId })
+      .from(dailyHealthScoresTable)
+      .where(and(
+        inArray(dailyHealthScoresTable.userId, memberIds),
+        gte(dailyHealthScoresTable.scoreDate, sevenDaysAgo)
+      ));
+    const activeLast7Days = new Set(scores.map((s: any) => s.userId)).size;
+    const engagementRatePercent = Math.round((activeLast7Days / memberIds.length) * 100);
+
+    res.json({
+      sampleSufficient: true,
+      totalMembers: memberIds.length,
+      activeLast7Days,
+      engagementRatePercent,
+    });
+  } catch (e) {
+    logger.error({ err: e }, "public engagement-stat error");
+    // Fail closed: the landing page treats a non-200 as "no stat available"
+    // and falls back to the industry-benchmark comparison copy instead.
+    res.status(500).json({ error: "Failed to compute engagement stat" });
+  }
+});
+
 router.post("/business/billing/seat-order", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
     const { plan, seats, billingCycle, orgGstin, orgState } = req.body as { plan: string; seats: number; billingCycle: "monthly" | "yearly"; orgGstin?: string; orgState?: string };
@@ -1706,25 +1794,6 @@ function generateOrgCode(): string {
   let code = "";
   for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
-}
-
-// ─── Org payment gate — the single source of truth for "is this org allowed
-// to grant employees a plan right now" ───────────────────────────────────
-// A successful orgPaymentsTable row is the only thing that answers this —
-// organizations.isActive is a separate, generic admin on/off switch (used
-// for suspending abusive orgs etc.) and must never be treated as "has paid".
-// Used at every point that grants an employee a plan: creating enrollment
-// codes, AND — this is the part that was missing — redeeming them (both the
-// org-code path and the enrollment-code path). A code that was legitimately
-// created while the org was paid must stop working the moment the org's
-// payment lapses; checking only at creation time let a stale/leftover code
-// keep minting free Pro/Max plans indefinitely.
-async function hasActiveOrgPayment(orgId: string): Promise<boolean> {
-  const [activePayment] = await db.select({ id: orgPaymentsTable.id })
-    .from(orgPaymentsTable)
-    .where(and(eq(orgPaymentsTable.orgId, orgId), eq(orgPaymentsTable.status, "success")))
-    .limit(1);
-  return !!activePayment;
 }
 
 export default router;

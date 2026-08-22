@@ -311,3 +311,32 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* ── Neumorphic (soft-UI) tokens ──────────────────────────────────────────
+   Used narrowly and on purpose, per the design roadmap: only for the
+   pricing billing-cycle toggle and the industry-solutions tab picker.
+   Everywhere else stays flat/glass — mixing neumorphism into data-dense
+   cards hurts legibility, so it's kept to these two controls only. */
+.neu-surface {
+  background: #F1F5F3;
+  border-radius: 9999px;
+  padding: 6px;
+  box-shadow: inset 0 0 0 1px rgba(5,71,60,0.04), 7px 7px 16px rgba(163,177,170,0.38), -7px -7px 16px rgba(255,255,255,0.9);
+}
+.neu-pill {
+  border-radius: 9999px;
+  transition: box-shadow 0.25s ease, color 0.2s ease, background 0.2s ease;
+}
+.neu-pill[data-active="true"] {
+  background: #FFFFFF;
+  color: #05473C;
+  box-shadow: 3px 3px 8px rgba(163,177,170,0.35), -3px -3px 8px rgba(255,255,255,0.9);
+}
+.neu-pill[data-active="false"] {
+  background: transparent;
+  color: #6B7280;
+  box-shadow: none;
+}
+.neu-pill[data-active="false"]:hover {
+  color: #05473C;
+}

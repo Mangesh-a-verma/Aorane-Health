@@ -239,6 +239,15 @@ export const api = {
 
   getSeatPlans: () => request<{ plans: Record<string, { label: string; pricePerSeat: number; yearlyPricePerSeat: number }>; gstRate: number }>("/business/billing/seat-plans"),
 
+  // Public marketing endpoints — unauthenticated, safe to call from the
+  // logged-out landing page. Real pricing + a real, aggregate-only,
+  // minimum-sample-gated engagement rate (see api-server for the guard).
+  getPublicPlans: () =>
+    request<{ plans: Record<string, { label: string; pricePerSeat: number; yearlyPricePerSeat: number; features: string[]; discountPercent: number; offerLabel: string | null }>; gstRate: number }>("/business/public/plans"),
+
+  getPublicEngagementStat: () =>
+    request<{ sampleSufficient: boolean; totalMembers: number; activeLast7Days: number; engagementRatePercent: number | null }>("/business/public/engagement-stat"),
+
   // Legacy billing (kept for backward compat)
   createBillingOrder: (plan: string, billing: string) =>
     request<{ paymentId: string; razorpayOrderId: string | null; razorpayKeyId: string | null; amount: number; plan: string; planLabel: string; seats: number; isTestMode: boolean }>("/business/billing/order", { method: "POST", body: JSON.stringify({ plan, billing }) }),
