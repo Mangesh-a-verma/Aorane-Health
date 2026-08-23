@@ -314,4 +314,9 @@ export const api = {
   // show the same status before they embed the badge elsewhere.
   getCertificationStatus: (orgId: string) =>
     request<{ orgName: string; month: string; certified: boolean; engagementPct: number; avgHealthScore: number; thresholds: { minEngagementPct: number; minAvgHealthScore: number } }>(`/business/public/certification/${orgId}`),
+
+  // Smart Alerts — Phase 4. Computed live from real data, no stored
+  // notifications table; see api-server for exact conditions.
+  getAlerts: () =>
+    request<{ alerts: { id: string; severity: "info" | "warning" | "critical"; title: string; detail: string; href: string }[] }>("/business/alerts"),
 };

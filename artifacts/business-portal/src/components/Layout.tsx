@@ -105,6 +105,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     navigate("/members");
   };
 
+  // Smart Alerts (notification bell) — real, computed server-side.
+  const [alerts, setAlerts] = useState<{ id: string; severity: "info" | "warning" | "critical"; title: string; detail: string; href: string }[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const alertsBoxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    api.getAlerts()
+      .then((res) => setAlerts(res.alerts))
+      .catch(() => setAlerts([]))
+      .finally(() => setAlertsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (alertsBoxRef.current && !alertsBoxRef.current.contains(e.target as Node)) setAlertsOpen(false);
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
   const orgTypeLabels: Record<string, string> = {
     corporate: "Corporate",
     hospital: "Hospital",
@@ -275,6 +296,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex-1 sm:hidden" />
+          <button
+            onClick={() => navigate("/members")}
+            className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground sm:hidden"
+            aria-label="Search members"
+          >
+            <Search size={18} />
+          </button>
           <div className="flex items-center gap-1.5">
             {isPaidActive && org?.orgCode && (
               <span className="hidden md:inline-flex items-center pill-chip bg-secondary/10 text-secondary border border-secondary/20 font-mono-data mr-1">
@@ -289,12 +317,47 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             >
               <HelpCircle size={18} />
             </a>
-            <button
-              className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-              aria-label="Notifications"
-            >
-              <Bell size={18} />
-            </button>
+            <div className="relative" ref={alertsBoxRef}>
+              <button
+                className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground relative"
+                aria-label="Notifications"
+                onClick={() => setAlertsOpen((v) => !v)}
+              >
+                <Bell size={18} />
+                {alerts.length > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
+                )}
+              </button>
+              {alertsOpen && (
+                <div className="absolute top-full right-0 mt-2 w-80 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-50">
+                  <div className="px-4 py-3 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Notifications</span>
+                  </div>
+                  {alertsLoading ? (
+                    <div className="p-4 text-xs text-muted-foreground text-center">Loading…</div>
+                  ) : alerts.length > 0 ? (
+                    <div className="max-h-80 overflow-y-auto">
+                      {alerts.map((a) => (
+                        <Link key={a.id} href={a.href}>
+                          <a
+                            onClick={() => setAlertsOpen(false)}
+                            className="flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border last:border-0"
+                          >
+                            <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${a.severity === "critical" ? "bg-red-500" : a.severity === "warning" ? "bg-amber-500" : "bg-primary"}`} />
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-foreground">{a.title}</div>
+                              <div className="text-xs text-muted-foreground mt-0.5">{a.detail}</div>
+                            </div>
+                          </a>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-xs text-muted-foreground text-center">You're all caught up 🎉</div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </header>
 

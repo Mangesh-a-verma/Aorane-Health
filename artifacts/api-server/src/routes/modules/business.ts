@@ -1113,6 +1113,50 @@ router.get("/business/analytics", requireBusinessAuth, async (req: BusinessReque
 });
 
 // ─── ANNOUNCEMENTS ────────────────────────────────────────────────────────────
+// ─── Smart Alerts (notification bell) — Phase 4 polish ────────────────────
+// No new table: computed live, each turn, from data the portal already
+// has (payment status, health analytics, seat capacity). Each alert links
+// to the exact page that resolves it. Deliberately conservative — only
+// surfaces something when there's a real, specific condition to flag.
+router.get("/business/alerts", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const orgId = req.orgId!;
+    const alerts: { id: string; severity: "info" | "warning" | "critical"; title: string; detail: string; href: string }[] = [];
+
+    const [activePayment] = await db.select({ id: orgPaymentsTable.id }).from(orgPaymentsTable)
+      .where(and(eq(orgPaymentsTable.orgId, orgId), eq(orgPaymentsTable.status, "success"))).limit(1);
+    if (!activePayment) {
+      alerts.push({ id: "no-active-payment", severity: "warning", title: "Subscription not active", detail: "Activate your plan to start onboarding employees.", href: "/billing" });
+    }
+
+    const [org] = await db.select({ totalSeats: organizationsTable.totalSeats, usedSeats: organizationsTable.usedSeats })
+      .from(organizationsTable).where(eq(organizationsTable.id, orgId));
+    if (org && org.totalSeats > 0 && org.usedSeats / org.totalSeats >= 0.9) {
+      alerts.push({ id: "seats-almost-full", severity: "warning", title: "Seats almost full", detail: `${org.usedSeats} of ${org.totalSeats} seats used — consider upgrading.`, href: "/billing" });
+    }
+
+    const memberRows = await db.select({ userId: orgMembersTable.userId }).from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.isActive, true)));
+    const memberIds = memberRows.map((m: any) => m.userId);
+    if (memberIds.length > 0) {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const recentStress = await db.select({ stressScore: stressLogsTable.stressScore }).from(stressLogsTable)
+        .where(and(inArray(stressLogsTable.userId, memberIds), gte(stressLogsTable.loggedAt, sevenDaysAgo)));
+      if (recentStress.length > 0) {
+        const avgStress = recentStress.reduce((a: number, r: any) => a + r.stressScore, 0) / recentStress.length;
+        if (avgStress >= 75) {
+          alerts.push({ id: "high-stress", severity: "critical", title: "Elevated team stress this week", detail: `Average stress score is ${Math.round(avgStress)}/100 — consider a wellness check-in.`, href: "/dashboard" });
+        }
+      }
+    }
+
+    res.json({ alerts });
+  } catch (e) {
+    logger.error({ err: e }, "alerts computation error");
+    res.status(500).json({ error: "Failed to compute alerts" });
+  }
+});
+
 router.get("/business/announcements", requireBusinessAuth, async (req: BusinessRequest, res) => {
   try {
     const items = await db.select().from(orgAnnouncementsTable)
