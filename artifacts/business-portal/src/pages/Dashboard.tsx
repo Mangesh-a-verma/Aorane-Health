@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
-import { api, type Overview, type HealthAnalytics, type MemberStress, type MemberSearchResult } from "@/lib/api";
+import { useLocation } from "wouter";
+import { api, type Overview, type HealthAnalytics, type MemberStress, type MemberSearchResult, type Member } from "@/lib/api";
 import {
   Users, Server, TrendingUp, Activity, Copy, Check,
   Building2, MapPin, Mail, Phone, Shield, Heart, Droplets, Dumbbell, Pill,
   AlertTriangle, UserCheck, UserX, Zap, Search, Brain, X as XIcon, Loader2,
+  UserPlus, FileText, Megaphone, QrCode, ArrowRight, Clock,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -66,6 +68,7 @@ function HealthCircle({ label, value, color, icon: Icon }: {
 
 export default function Dashboard() {
   const { admin, org, isPaidActive, subscriptionLoading } = useAuth();
+  const [, navigate] = useLocation();
   const [greeting, setGreeting] = useState(getGreeting());
   useEffect(() => {
     const id = setInterval(() => setGreeting(getGreeting()), 60_000);
@@ -74,6 +77,7 @@ export default function Dashboard() {
   const firstName = admin?.fullName?.split(" ")[0] || "there";
   const [overview, setOverview] = useState<Overview | null>(null);
   const [analytics, setAnalytics] = useState<HealthAnalytics | null>(null);
+  const [recentMembers, setRecentMembers] = useState<Member[]>([]);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
@@ -90,6 +94,10 @@ export default function Dashboard() {
   useEffect(() => {
     api.overview().then(setOverview).catch(console.error).finally(() => setLoading(false));
     api.getHealthAnalytics().then(setAnalytics).catch(console.error).finally(() => setAnalyticsLoading(false));
+    api.members().then((res) => {
+      const sorted = [...res.members].sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime());
+      setRecentMembers(sorted.slice(0, 4));
+    }).catch(console.error);
   }, []);
 
   const copyCode = () => {
@@ -440,6 +448,71 @@ export default function Dashboard() {
             )}
           </div>
         )}
+
+        {/* Recent Enrollments + Quick Actions — real data, matches the
+            business-CRM reference layout's bottom-widget row. */}
+        <div className="grid md:grid-cols-2 gap-4 mb-6">
+          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <UserPlus size={18} className="text-primary" />
+                <h2 className="font-semibold text-[#0D1F33]">Recent Enrollments</h2>
+              </div>
+              <button onClick={() => navigate("/members")} className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+                View all <ArrowRight size={12} />
+              </button>
+            </div>
+            {recentMembers.length > 0 ? (
+              <div className="space-y-1">
+                {recentMembers.map((m) => (
+                  <div key={m.memberId} className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-[#F8FAFC] transition-colors">
+                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary text-xs font-bold">
+                      {(m.fullName || "?").split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-[#0D1F33] truncate">{m.fullName || "Unnamed member"}</div>
+                      <div className="text-[11px] text-[#9CA3AF] flex items-center gap-1">
+                        <Clock size={10} /> {new Date(m.joinedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-[#9CA3AF] text-center py-6">No enrollments yet</div>
+            )}
+          </div>
+
+          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
+            <div className="flex items-center gap-2.5 mb-4">
+              <Zap size={18} className="text-primary" />
+              <h2 className="font-semibold text-[#0D1F33]">Quick Actions</h2>
+            </div>
+            <div className="space-y-1">
+              {[
+                { icon: QrCode, label: "Generate Enrollment Code", desc: "Create a new code for employees to join", path: "/codes" },
+                { icon: FileText, label: "Generate Health Report", desc: "Create a detailed monthly analytics report", path: "/reports" },
+                { icon: Megaphone, label: "Send Announcement", desc: "Send updates to all enrolled members", path: "/communications" },
+                { icon: Server, label: "Manage Seats", desc: "View and manage your seat allocation", path: "/billing" },
+              ].map((action) => (
+                <button
+                  key={action.path}
+                  onClick={() => navigate(action.path)}
+                  className="w-full flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-lg hover:bg-[#F8FAFC] transition-colors text-left"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <action.icon size={16} className="text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-[#0D1F33]">{action.label}</div>
+                    <div className="text-[11px] text-[#9CA3AF] truncate">{action.desc}</div>
+                  </div>
+                  <ArrowRight size={14} className="text-[#D1D5DB] shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {/* Health Analytics Section */}
         <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 mb-6">
