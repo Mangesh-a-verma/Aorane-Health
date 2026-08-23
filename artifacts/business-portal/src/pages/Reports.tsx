@@ -314,6 +314,10 @@ export default function Reports() {
   const insights = insightsData?.insights as string | null | undefined;
   const esg = esgData?.esg;
   const cert = certData;
+  const [certLinkCopied, setCertLinkCopied] = useState(false);
+  const certBadgeUrl = org?.id
+    ? `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}/api/business/public/certification/${org.id}/badge.svg`
+    : "";
   const gradeStyle = getGradeStyle(report?.grade ?? null);
 
   // Derived state flags
@@ -573,22 +577,38 @@ export default function Reports() {
                 {certLoading ? (
                   <div className="text-sm text-muted-foreground">Checking certification status…</div>
                 ) : cert ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                    <img
-                      src={`${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}/api/business/public/certification/${org!.id}/badge.svg`}
-                      alt="Aorane Health certification badge"
-                      className="h-14 w-auto"
-                    />
-                    <div className="flex-1 text-xs text-muted-foreground">
-                      {cert.certified ? (
-                        <span>Certified for {cert.month}. Copy the embed code below to add it to your careers page.</span>
-                      ) : (
-                        <span>
-                          Not yet certified for {cert.month} — needs at least {cert.thresholds.minEngagementPct}% weekly engagement (currently {cert.engagementPct}%) and an average health score of {cert.thresholds.minAvgHealthScore}+ (currently {cert.avgHealthScore}).
-                        </span>
-                      )}
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+                      <img
+                        src={certBadgeUrl}
+                        alt="Aorane Health certification badge"
+                        className="h-14 w-auto"
+                      />
+                      <div className="flex-1 text-xs text-muted-foreground">
+                        {cert.certified ? (
+                          <span>Certified for {cert.month}. Copy the link below to embed this badge on your careers page.</span>
+                        ) : (
+                          <span>
+                            Not yet certified for {cert.month} — needs at least {cert.thresholds.minEngagementPct}% weekly engagement (currently {cert.engagementPct}%) and an average health score of {cert.thresholds.minAvgHealthScore}+ (currently {cert.avgHealthScore}).
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                    <div className="flex items-center gap-2 bg-muted/40 border border-border rounded-lg px-3 py-2">
+                      <code className="flex-1 text-[11px] text-muted-foreground truncate">{certBadgeUrl}</code>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(certBadgeUrl).then(() => {
+                            setCertLinkCopied(true);
+                            setTimeout(() => setCertLinkCopied(false), 2500);
+                          });
+                        }}
+                        className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 shrink-0"
+                      >
+                        <Copy size={12} /> {certLinkCopied ? "Copied!" : "Copy link"}
+                      </button>
+                    </div>
+                  </>
                 ) : (
                   <div className="text-sm text-muted-foreground">Certification status unavailable right now.</div>
                 )}

@@ -1569,8 +1569,14 @@ async function computeCertification(orgId: string) {
   return { orgName: org.name, month, certified, engagementPct, avgHealthScore, thresholds: CERTIFICATION_THRESHOLDS };
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 router.get("/business/public/certification/:orgId", async (req, res) => {
   try {
+    if (!UUID_RE.test(req.params.orgId)) {
+      res.status(400).json({ error: "Invalid organization ID format. This must be the organization's internal UUID, not its enrollment/org code." });
+      return;
+    }
     const result = await computeCertification(req.params.orgId);
     if (!result) { res.status(404).json({ error: "Organization not found" }); return; }
     res.json(result);
@@ -1582,6 +1588,10 @@ router.get("/business/public/certification/:orgId", async (req, res) => {
 
 router.get("/business/public/certification/:orgId/badge.svg", async (req, res) => {
   try {
+    if (!UUID_RE.test(req.params.orgId)) {
+      res.status(400).send("");
+      return;
+    }
     const result = await computeCertification(req.params.orgId);
     const certified = result?.certified ?? false;
     const label = certified ? "Aorane Health-Certified" : "Aorane Health — Not Yet Certified";
