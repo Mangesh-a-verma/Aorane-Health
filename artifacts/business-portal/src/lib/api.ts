@@ -307,4 +307,10 @@ export const api = {
       disclaimer: string; hasData: boolean;
       categories: { key: string; esrsRef: string; title: string; value: string; detail: string }[];
     } }>(`/business/report/esg-summary?month=${month}`),
+
+  // "Aorane Health-Certified Workplace" — Phase 4. Public on purpose (see
+  // api-server for why), but exposed here too so the org's own portal can
+  // show the same status before they embed the badge elsewhere.
+  getCertificationStatus: (orgId: string) =>
+    request<{ orgName: string; month: string; certified: boolean; engagementPct: number; avgHealthScore: number; thresholds: { minEngagementPct: number; minAvgHealthScore: number } }>(`/business/public/certification/${orgId}`),
 };

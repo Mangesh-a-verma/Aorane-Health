@@ -77,7 +77,7 @@ export interface ReportData {
   gradeColor: string | null;
 }
 
-async function buildReportData(orgId: string, month: string): Promise<ReportData> {
+export async function buildReportData(orgId: string, month: string): Promise<ReportData> {
   const { start, end } = getMonthRange(month);
 
   const [org] = await db

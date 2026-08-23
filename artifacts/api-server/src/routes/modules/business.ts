@@ -18,6 +18,7 @@ import { sendInvoiceEmail } from "../../lib/invoice-email";
 import { sendBusinessWelcomeEmail, sendCorporatePaymentWelcomeEmail, sendTeamMemberJoinedEmail } from "../../lib/welcome-email";
 import { getNextInvoiceNumber } from "../../lib/invoice-number";
 import { sanitizeAttribution } from "../../lib/attribution";
+import { buildReportData } from "./corporate-report";
 
 const router = Router();
 
@@ -1538,6 +1539,68 @@ router.get("/business/public/engagement-stat", async (_req, res) => {
     // Fail closed: the landing page treats a non-200 as "no stat available"
     // and falls back to the industry-benchmark comparison copy instead.
     res.status(500).json({ error: "Failed to compute engagement stat" });
+  }
+});
+
+// ─── "Aorane Health-Certified Workplace" — real, threshold-based, public ──
+// From the Differentiation & Whitespace Strategy: a shareable certification
+// an org can display on their careers page / LinkedIn once real usage
+// clears a bar. Deliberately conservative, real thresholds computed from
+// the SAME data as the authenticated monthly report — nothing invented.
+// Public by design (that's the point of a badge someone can verify), but
+// only exposes: org name, pass/fail, and the month it was computed for —
+// never member-level data or the org's enrollment code.
+const CERTIFICATION_THRESHOLDS = { minEngagementPct: 50, minAvgHealthScore: 65 };
+
+async function computeCertification(orgId: string) {
+  const [org] = await db.select({ id: organizationsTable.id, name: organizationsTable.name, isActive: organizationsTable.isActive })
+    .from(organizationsTable).where(eq(organizationsTable.id, orgId));
+  if (!org || !org.isActive) return null;
+
+  const month = new Date().toISOString().slice(0, 7);
+  const report = await buildReportData(orgId, month);
+  const engagementPct = report.totalMembers > 0 ? Math.round((report.activeMembers / report.totalMembers) * 100) : 0;
+  const avgHealthScore = report.averages?.healthScore ?? 0;
+
+  const certified = report.totalMembers >= 10
+    && engagementPct >= CERTIFICATION_THRESHOLDS.minEngagementPct
+    && avgHealthScore >= CERTIFICATION_THRESHOLDS.minAvgHealthScore;
+
+  return { orgName: org.name, month, certified, engagementPct, avgHealthScore, thresholds: CERTIFICATION_THRESHOLDS };
+}
+
+router.get("/business/public/certification/:orgId", async (req, res) => {
+  try {
+    const result = await computeCertification(req.params.orgId);
+    if (!result) { res.status(404).json({ error: "Organization not found" }); return; }
+    res.json(result);
+  } catch (e) {
+    logger.error({ err: e }, "certification status error");
+    res.status(500).json({ error: "Failed to compute certification status" });
+  }
+});
+
+router.get("/business/public/certification/:orgId/badge.svg", async (req, res) => {
+  try {
+    const result = await computeCertification(req.params.orgId);
+    const certified = result?.certified ?? false;
+    const label = certified ? "Aorane Health-Certified" : "Aorane Health — Not Yet Certified";
+    const fill = certified ? "#05473C" : "#9CA3AF";
+    const accent = certified ? "#00C79A" : "#D1D5DB";
+    const width = certified ? 268 : 300;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="56" viewBox="0 0 ${width} 56">
+  <rect width="${width}" height="56" rx="14" fill="${fill}"/>
+  <circle cx="28" cy="28" r="12" fill="${accent}"/>
+  ${certified ? `<path d="M22 28l4 4 8-8" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : `<path d="M28 20v10M28 33v1" stroke="white" stroke-width="2.5" stroke-linecap="round"/>`}
+  <text x="50" y="24" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="white">${label}</text>
+  <text x="50" y="39" font-family="Arial, sans-serif" font-size="9" fill="rgba(255,255,255,0.7)">${result?.orgName ?? "Aorane Business"} · ${result?.month ?? ""}</text>
+</svg>`;
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(svg);
+  } catch (e) {
+    logger.error({ err: e }, "certification badge error");
+    res.status(500).send("");
   }
 });
 

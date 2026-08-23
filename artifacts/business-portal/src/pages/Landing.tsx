@@ -718,6 +718,51 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* WHY WE'RE DIFFERENT — one score + family reach + a shareable badge.
+            Phase 4 of the differentiation roadmap. Family visibility here
+            describes a real, already-live capability of the Aorane consumer
+            app (via its Family plan) — worded carefully so it never implies
+            it's automatically bundled into a business seat. */}
+        <section className="py-20 md:py-28 px-6 bg-gradient-to-b from-gray-50 to-white">
+          <div className="max-w-6xl mx-auto">
+            <Reveal className="text-center mb-14">
+              <h2 className="text-3xl md:text-4xl font-display font-medium text-gray-900 tracking-tight">
+                What No Other Workplace Wellness Platform Offers
+              </h2>
+            </Reveal>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <Reveal delay={0.05}>
+                <div className="bg-white rounded-3xl p-8 md:p-10 border border-gray-100 shadow-sm h-full">
+                  <div className="w-12 h-12 rounded-2xl bg-[#05473C]/10 flex items-center justify-center mb-6">
+                    <Icon name="family_restroom" size={24} color={PRIMARY} />
+                  </div>
+                  <h3 className="text-xl font-display font-medium text-gray-900 mb-3">One Score, Reaching the Whole Household</h3>
+                  <p className="text-[15px] text-gray-600 leading-relaxed mb-4">
+                    Most workplace wellness platforms stop at the employee. Aorane's app already supports family health visibility through its Family plan — so employees who want to can extend the same tracking to the people they take care of at home, entirely on their own terms.
+                  </p>
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    A personal, opt-in feature of the Aorane app — not something added to your business seats.
+                  </p>
+                </div>
+              </Reveal>
+              <Reveal delay={0.1}>
+                <div className="bg-white rounded-3xl p-8 md:p-10 border border-gray-100 shadow-sm h-full">
+                  <div className="w-12 h-12 rounded-2xl bg-[#05473C]/10 flex items-center justify-center mb-6">
+                    <Icon name="workspace_premium" size={24} color={PRIMARY} />
+                  </div>
+                  <h3 className="text-xl font-display font-medium text-gray-900 mb-3">A Badge You Can Actually Show Off</h3>
+                  <p className="text-[15px] text-gray-600 leading-relaxed mb-4">
+                    Once your organization clears real, transparent usage thresholds — meaningful weekly engagement and a healthy average team score — you unlock an "Aorane Health-Certified Workplace" badge to embed on your careers page or LinkedIn.
+                  </p>
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    Computed monthly from your own real data — available from your Reports page after signup.
+                  </p>
+                </div>
+              </Reveal>
+            </div>
+          </div>
+        </section>
+
         {/* PRICING SECTION — with neumorphic monthly/annual toggle, wired to
             real seat-plan pricing from the API when available. */}
         <section id="pricing" className="py-24 md:py-32 px-6 relative overflow-hidden">

@@ -9,7 +9,7 @@ import {
   Activity, Utensils, Droplets, Moon, Brain, Pill,
   Users, BarChart3, Sparkles, ChevronLeft, ChevronRight,
   CheckCircle, AlertCircle, Loader2, UserPlus, Copy, Share2,
-  ClipboardList, QrCode,
+  ClipboardList, QrCode, Award,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -280,6 +280,13 @@ export default function Reports() {
     staleTime: 30 * 60 * 1000,
   });
 
+  const { data: certData, isLoading: certLoading } = useQuery({
+    queryKey: ["certification-status", org?.id],
+    queryFn: () => api.getCertificationStatus(org!.id),
+    enabled: !!org?.id,
+    staleTime: 30 * 60 * 1000,
+  });
+
   const emailMutation = useMutation({
     mutationFn: () => api.sendReportEmail(month),
     onSuccess: () => {
@@ -306,6 +313,7 @@ export default function Reports() {
   const report = reportData?.report;
   const insights = insightsData?.insights as string | null | undefined;
   const esg = esgData?.esg;
+  const cert = certData;
   const gradeStyle = getGradeStyle(report?.grade ?? null);
 
   // Derived state flags
@@ -546,6 +554,43 @@ export default function Reports() {
                   </>
                 ) : (
                   <div className="text-sm text-muted-foreground">Not enough enrolled member data yet to build an ESG summary for this month.</div>
+                )}
+              </div>
+            </div>
+
+            {/* Certification badge — Phase 4 */}
+            <div className="rounded-xl border border-border overflow-hidden no-print">
+              <div className="px-5 py-4 border-b border-border bg-muted/30">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <Award size={15} className="text-primary" />
+                  Aorane Health-Certified Workplace
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  A shareable badge for your careers page or LinkedIn, based on this month's real usage
+                </p>
+              </div>
+              <div className="p-5">
+                {certLoading ? (
+                  <div className="text-sm text-muted-foreground">Checking certification status…</div>
+                ) : cert ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <img
+                      src={`${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}/api/business/public/certification/${org!.id}/badge.svg`}
+                      alt="Aorane Health certification badge"
+                      className="h-14 w-auto"
+                    />
+                    <div className="flex-1 text-xs text-muted-foreground">
+                      {cert.certified ? (
+                        <span>Certified for {cert.month}. Copy the embed code below to add it to your careers page.</span>
+                      ) : (
+                        <span>
+                          Not yet certified for {cert.month} — needs at least {cert.thresholds.minEngagementPct}% weekly engagement (currently {cert.engagementPct}%) and an average health score of {cert.thresholds.minAvgHealthScore}+ (currently {cert.avgHealthScore}).
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Certification status unavailable right now.</div>
                 )}
               </div>
             </div>
