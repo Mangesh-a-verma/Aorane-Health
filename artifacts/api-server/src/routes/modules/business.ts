@@ -1284,7 +1284,7 @@ router.get("/business/health-analytics", requireBusinessAuth, async (req: Busine
       .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.isActive, true)));
     const memberIds = memberRows.map((m: any) => m.userId);
     if (!memberIds.length) {
-      res.json({ totalMembers: 0, activeToday: 0, activeLast7Days: 0, avgHealthScore: 0, avgFood: 0, avgWater: 0, avgExercise: 0, avgMedicine: 0, healthyCount: 0, atRiskCount: 0, inactiveCount: 0, dailyActiveTrend: [], avgStressScore: null, highStressCount: 0, moderateStressCount: 0, lowStressCount: 0, stressTrackedCount: 0 });
+      res.json({ totalMembers: 0, activeToday: 0, activeLast7Days: 0, avgHealthScore: 0, healthScoreTrendPct: null, avgFood: 0, avgWater: 0, avgExercise: 0, avgMedicine: 0, healthyCount: 0, atRiskCount: 0, inactiveCount: 0, dailyActiveTrend: [], avgStressScore: null, highStressCount: 0, moderateStressCount: 0, lowStressCount: 0, stressTrackedCount: 0 });
       return;
     }
 
@@ -1373,11 +1373,24 @@ router.get("/business/health-analytics", requireBusinessAuth, async (req: Busine
     const lowStressCount = stressValues.filter(v => v < 40).length;
     const stressTrackedCount = stressValues.length;
 
+    // ── Week-over-week Org Health Index trend (real, from the same
+    // 30-day `scores` already fetched above — no new query needed) ──
+    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const thisWeekScores = scores.filter(s => s.scoreDate >= sevenDaysAgo);
+    const lastWeekScores = scores.filter(s => s.scoreDate >= fourteenDaysAgo && s.scoreDate < sevenDaysAgo);
+    const avg = (arr: typeof scores) => arr.length ? arr.reduce((a, s) => a + s.healthScore, 0) / arr.length : null;
+    const avgThisWeek = avg(thisWeekScores);
+    const avgLastWeek = avg(lastWeekScores);
+    const healthScoreTrendPct = (avgThisWeek !== null && avgLastWeek !== null && avgLastWeek > 0)
+      ? Math.round(((avgThisWeek - avgLastWeek) / avgLastWeek) * 100)
+      : null;
+
     res.json({
       totalMembers: memberIds.length,
       activeToday: activeTodayIds.size,
       activeLast7Days: activeUserIds7.size,
       avgHealthScore: Math.round(sumHealth / scoredCount),
+      healthScoreTrendPct,
       avgFood: Math.round(sumFood / scoredCount),
       avgWater: Math.round(sumWater / scoredCount),
       avgExercise: Math.round(sumExercise / scoredCount),

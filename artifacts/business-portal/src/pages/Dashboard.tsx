@@ -178,7 +178,15 @@ export default function Dashboard() {
             {analytics && analytics.totalMembers > 0 && (
               <div className="rounded-xl bg-card/70 backdrop-blur border border-border px-4 py-3 min-w-[160px]">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Org Health Index</div>
-                <div className="kpi-number text-2xl text-primary mt-1">{analytics.avgHealthScore}<span className="text-base text-muted-foreground font-normal">/100</span></div>
+                <div className="flex items-end gap-2 mt-1">
+                  <div className="kpi-number text-2xl text-primary">{analytics.avgHealthScore}<span className="text-base text-muted-foreground font-normal">/100</span></div>
+                  {analytics.healthScoreTrendPct !== null && (
+                    <span className={`text-[11px] font-semibold mb-1 flex items-center gap-0.5 ${analytics.healthScoreTrendPct >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                      {analytics.healthScoreTrendPct >= 0 ? "▲" : "▼"} {Math.abs(analytics.healthScoreTrendPct)}%
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">vs last 7 days</div>
               </div>
             )}
           </div>
@@ -514,9 +522,9 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Health Analytics Section */}
+        {/* Health Metric Circles */}
         <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 mb-6">
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="font-bold text-[#0D1F33]">Aggregate Health Analytics</h2>
               <p className="text-xs text-[#9CA3AF] mt-0.5">Privacy-safe — no individual data shown. DPDP Act 2023 compliant.</p>
@@ -525,83 +533,107 @@ export default function Dashboard() {
               <Shield size={11} className="text-[#0077B6]" /> Aggregate only
             </div>
           </div>
-
           {analyticsLoading ? (
-            <div className="flex items-center justify-center h-48">
+            <div className="flex items-center justify-center h-24">
               <div className="w-8 h-8 border-2 border-[#0077B6]/30 border-t-[#0077B6] rounded-full animate-spin" />
             </div>
           ) : (
             <>
-              {/* Health Metric Circles — always shown, zeros when no data */}
-              <div className="flex justify-around flex-wrap gap-4 mb-4 py-4 bg-[#F8FAFC] rounded-xl">
+              <div className="flex justify-around flex-wrap gap-4 py-4 bg-[#F8FAFC] rounded-xl">
                 <HealthCircle label="Nutrition" value={analytics?.avgFood ?? 0} color="#F59E0B" icon={Heart} />
                 <HealthCircle label="Hydration" value={analytics?.avgWater ?? 0} color="#0EA5E9" icon={Droplets} />
                 <HealthCircle label="Exercise" value={analytics?.avgExercise ?? 0} color="#10B981" icon={Dumbbell} />
                 <HealthCircle label="Medicine" value={analytics?.avgMedicine ?? 0} color="#8B5CF6" icon={Pill} />
               </div>
               {(!analytics || analytics.totalMembers === 0) && (
-                <div className="flex items-center gap-2 text-xs text-[#9CA3AF] justify-center mb-4 bg-[#F8FAFC] rounded-lg px-3 py-2 border border-[#E5E7EB]">
+                <div className="flex items-center gap-2 text-xs text-[#9CA3AF] justify-center mt-4 bg-[#F8FAFC] rounded-lg px-3 py-2 border border-[#E5E7EB]">
                   <Heart size={12} className="text-[#D1D5DB]" />
                   Data appears when employees log health activities in the Aorane app
                 </div>
               )}
-
-              <div className="grid md:grid-cols-2 gap-5">
-                {/* Daily Active Trend */}
-                <div>
-                  <h3 className="text-sm font-semibold text-[#374151] mb-3">Daily Active Users (Last 14 days)</h3>
-                  {trendData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={160}>
-                      <BarChart data={trendData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
-                        <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} />
-                        <Tooltip
-                          contentStyle={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 12 }}
-                          formatter={(v: number) => [v, "Active Users"]}
-                        />
-                        <Bar dataKey="count" fill="#0077B6" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-40 flex items-center justify-center text-sm text-[#9CA3AF]">No trend data yet</div>
-                  )}
-                </div>
-
-                {/* Health Distribution Pie */}
-                <div>
-                  <h3 className="text-sm font-semibold text-[#374151] mb-3">Member Health Distribution</h3>
-                  {healthDistData.some(d => d.value > 0) ? (
-                    <div className="flex items-center gap-4">
-                      <PieChart width={120} height={120}>
-                        <Pie data={healthDistData} cx={55} cy={55} innerRadius={30} outerRadius={55}
-                          dataKey="value" paddingAngle={3}>
-                          {healthDistData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                        </Pie>
-                        <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 12 }} />
-                      </PieChart>
-                      <div className="flex flex-col gap-2.5 flex-1">
-                        {[
-                          { label: "Healthy", count: analytics?.healthyCount ?? 0, color: "#10B981", icon: UserCheck },
-                          { label: "At Risk", count: analytics?.atRiskCount ?? 0, color: "#F59E0B", icon: AlertTriangle },
-                          { label: "Inactive", count: analytics?.inactiveCount ?? 0, color: "#9CA3AF", icon: UserX },
-                        ].map(({ label, count, color, icon: Icon }) => (
-                          <div key={label} className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
-                            <Icon size={12} style={{ color }} className="shrink-0" />
-                            <span className="text-xs text-[#374151] flex-1">{label}</span>
-                            <span className="text-xs font-bold text-[#0D1F33]">{count}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="h-40 flex items-center justify-center text-sm text-[#9CA3AF]">No distribution data yet</div>
-                  )}
-                </div>
-              </div>
             </>
           )}
+        </div>
+
+        {/* Daily Active Users + Member Health Distribution — two
+            standalone cards, matching the reference layout's side-by-side
+            chart cards instead of being sub-sections of one big block. */}
+        <div className="grid md:grid-cols-2 gap-4 mb-6">
+          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-[#0D1F33]">Daily Active Users</h3>
+              <span className="text-[11px] text-[#9CA3AF] bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg px-2.5 py-1">Last 14 days</span>
+            </div>
+            {analyticsLoading ? (
+              <div className="h-48 flex items-center justify-center">
+                <div className="w-7 h-7 border-2 border-[#0077B6]/30 border-t-[#0077B6] rounded-full animate-spin" />
+              </div>
+            ) : trendData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={trendData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
+                  <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 12 }}
+                    formatter={(v: number) => [v, "Active Users"]}
+                  />
+                  <Bar dataKey="count" fill="#0077B6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-48 flex items-center justify-center text-sm text-[#9CA3AF]">No trend data yet</div>
+            )}
+          </div>
+
+          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-[#0D1F33]">Member Health Distribution</h3>
+              <span className="text-[11px] text-[#9CA3AF] bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg px-2.5 py-1">Health Status</span>
+            </div>
+            {analyticsLoading ? (
+              <div className="h-48 flex items-center justify-center">
+                <div className="w-7 h-7 border-2 border-[#0077B6]/30 border-t-[#0077B6] rounded-full animate-spin" />
+              </div>
+            ) : healthDistData.some(d => d.value > 0) ? (
+              <div className="flex items-center gap-6 py-2">
+                <div className="relative shrink-0">
+                  <PieChart width={140} height={140}>
+                    <Pie data={healthDistData} cx={70} cy={70} innerRadius={44} outerRadius={68}
+                      dataKey="value" paddingAngle={3}>
+                      {healthDistData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 12 }} />
+                  </PieChart>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <div className="text-xl font-bold text-[#0D1F33]">{analytics?.totalMembers ?? 0}</div>
+                    <div className="text-[10px] text-[#9CA3AF]">Members</div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 flex-1">
+                  {[
+                    { label: "Healthy", count: analytics?.healthyCount ?? 0, color: "#10B981", icon: UserCheck },
+                    { label: "At Risk", count: analytics?.atRiskCount ?? 0, color: "#F59E0B", icon: AlertTriangle },
+                    { label: "Inactive", count: analytics?.inactiveCount ?? 0, color: "#9CA3AF", icon: UserX },
+                  ].map(({ label, count, color, icon: Icon }) => {
+                    const total = analytics?.totalMembers || 1;
+                    const pct = Math.round((count / total) * 100);
+                    return (
+                      <div key={label} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
+                        <Icon size={13} style={{ color }} className="shrink-0" />
+                        <span className="text-sm text-[#374151] flex-1">{label}</span>
+                        <span className="text-sm font-bold text-[#0D1F33]">{count}</span>
+                        <span className="text-xs text-[#9CA3AF] w-10 text-right">({pct}%)</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="h-48 flex items-center justify-center text-sm text-[#9CA3AF]">No distribution data yet</div>
+            )}
+          </div>
         </div>
 
         {/* Bottom Row */}

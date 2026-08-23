@@ -90,6 +90,7 @@ export interface HealthAnalytics {
   activeToday: number;
   activeLast7Days: number;
   avgHealthScore: number;
+  healthScoreTrendPct: number | null;
   avgFood: number;
   avgWater: number;
   avgExercise: number;
