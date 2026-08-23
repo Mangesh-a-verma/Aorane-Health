@@ -7,7 +7,7 @@ import {
   Users, Server, TrendingUp, Activity, Copy, Check,
   Building2, MapPin, Mail, Phone, Shield, Heart, Droplets, Dumbbell, Pill,
   AlertTriangle, UserCheck, UserX, Zap, Search, Brain, X as XIcon, Loader2,
-  UserPlus, FileText, Megaphone, QrCode, ArrowRight, Clock,
+  UserPlus, FileText, Megaphone, QrCode, ArrowRight, Clock, CreditCard,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -210,15 +210,18 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <div className="mb-6 rounded-xl p-5 border border-amber-200 bg-amber-50">
-              <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="mb-6 rounded-xl p-5 border border-indigo-100 bg-indigo-50/60 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                <CreditCard size={18} className="text-indigo-600" />
+              </div>
+              <div className="flex-1 flex items-center justify-between flex-wrap gap-4">
                 <div>
-                  <div className="text-amber-900 text-sm font-semibold mb-1">Activate Your Subscription</div>
-                  <div className="text-amber-800 text-xs">
-                    Your Organization Enrollment Code will be available once your plan is active. Complete payment to start onboarding employees.
+                  <div className="text-indigo-900 text-sm font-semibold mb-1">Activate Your Subscription</div>
+                  <div className="text-indigo-700/80 text-xs">
+                    Your Organization Enrollment Code will be available once your plan is active.
                   </div>
                 </div>
-                <a href="/billing" className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-all">
+                <a href="/billing" className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-all shrink-0">
                   Go to Billing
                 </a>
               </div>
@@ -244,24 +247,24 @@ export default function Dashboard() {
           // Use real avgStressScore if available, else fall back to proxy
           const stressIdx = hasRealData ? analytics.avgStressScore! : Math.max(0, 100 - (analytics.avgHealthScore || 0));
           const level = stressIdx < 30 ? "Low" : stressIdx < 55 ? "Moderate" : stressIdx < 75 ? "High" : "Critical";
-          const colors: Record<string, { bg: string; text: string; bar: string; badge: string }> = {
-            Low:      { bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-800", bar: "#10B981", badge: "bg-emerald-100 text-emerald-700" },
-            Moderate: { bg: "bg-amber-50 border-amber-200",   text: "text-amber-800",   bar: "#F59E0B", badge: "bg-amber-100 text-amber-700" },
-            High:     { bg: "bg-orange-50 border-orange-200", text: "text-orange-800",  bar: "#F97316", badge: "bg-orange-100 text-orange-700" },
-            Critical: { bg: "bg-red-50 border-red-200",       text: "text-red-800",     bar: "#EF4444", badge: "bg-red-100 text-red-700" },
+          const colors: Record<string, { text: string; bar: string; badge: string; accent: string }> = {
+            Low:      { text: "text-emerald-700", bar: "#10B981", badge: "bg-emerald-50 text-emerald-700 border border-emerald-200", accent: "#10B981" },
+            Moderate: { text: "text-amber-700",   bar: "#F59E0B", badge: "bg-amber-50 text-amber-700 border border-amber-200",     accent: "#F59E0B" },
+            High:     { text: "text-orange-700",  bar: "#F97316", badge: "bg-orange-50 text-orange-700 border border-orange-200", accent: "#F97316" },
+            Critical: { text: "text-red-700",     bar: "#EF4444", badge: "bg-red-50 text-red-700 border border-red-200",         accent: "#EF4444" },
           };
           const c = colors[level];
           const totalTracked = analytics.totalMembers;
           return (
-            <div className={`mb-6 rounded-2xl border p-5 ${c.bg}`}>
+            <div className="mb-6 rounded-xl bg-white border border-[#E5E7EB] p-5" style={{ borderLeft: `3px solid ${c.accent}` }}>
               <div className="flex items-center justify-between flex-wrap gap-4 mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: c.bar + "20" }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: c.bar + "15" }}>
                     <Zap size={18} style={{ color: c.bar }} />
                   </div>
                   <div>
-                    <div className={`font-display font-bold text-lg ${c.text}`}>Workforce Stress Level</div>
-                    <div className={`text-xs ${c.text} opacity-70`}>
+                    <div className="font-display font-bold text-lg text-[#0D1F33]">Workforce Stress Level</div>
+                    <div className="text-xs text-[#9CA3AF]">
                       {hasRealData
                         ? `Real-time data from ${analytics.stressTrackedCount} member${analytics.stressTrackedCount !== 1 ? "s" : ""} using Stress Tracker — last 30 days`
                         : "Estimated from health score (no stress logs yet)"}
@@ -269,11 +272,11 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className={`kpi-number text-4xl ${c.text}`}>{stressIdx}<span className="text-base font-normal opacity-60">%</span></div>
+                  <div className={`kpi-number text-4xl ${c.text}`}>{stressIdx}<span className="text-base font-normal text-[#9CA3AF]">%</span></div>
                   <span className={`pill-chip font-semibold ${c.badge}`}>{level}</span>
                 </div>
               </div>
-              <div className="h-2 bg-black/10 rounded-full overflow-hidden mb-3">
+              <div className="h-2 bg-[#F1F5F9] rounded-full overflow-hidden mb-3">
                 <div className="h-full rounded-full transition-all duration-700" style={{ width: `${stressIdx}%`, background: c.bar }} />
               </div>
               {hasRealData ? (
@@ -283,9 +286,9 @@ export default function Dashboard() {
                     { label: "Moderate", count: analytics.moderateStressCount, color: "#F59E0B", pct: Math.round((analytics.moderateStressCount / analytics.stressTrackedCount) * 100) },
                     { label: "Low / Calm", count: analytics.lowStressCount, color: "#10B981", pct: Math.round((analytics.lowStressCount / analytics.stressTrackedCount) * 100) },
                   ].map(({ label, count, color, pct }) => (
-                    <div key={label} className="rounded-xl bg-white/60 px-3 py-2 text-center">
+                    <div key={label} className="rounded-xl bg-[#F8FAFC] border border-[#E5E7EB] px-3 py-2 text-center">
                       <div className="font-display font-bold text-xl" style={{ color }}>{count}</div>
-                      <div className="text-[10px] text-gray-500 uppercase tracking-wider">{label}</div>
+                      <div className="text-[10px] text-[#9CA3AF] uppercase tracking-wider">{label}</div>
                       <div className="text-[11px] font-medium" style={{ color }}>{pct}%</div>
                     </div>
                   ))}
@@ -297,9 +300,9 @@ export default function Dashboard() {
                     { label: "At Risk", count: analytics.atRiskCount, color: "#F59E0B", pct: Math.round((analytics.atRiskCount / totalTracked) * 100) },
                     { label: "Inactive", count: analytics.inactiveCount, color: "#EF4444", pct: Math.round((analytics.inactiveCount / totalTracked) * 100) },
                   ].map(({ label, count, color, pct }) => (
-                    <div key={label} className="rounded-xl bg-white/60 px-3 py-2 text-center">
+                    <div key={label} className="rounded-xl bg-[#F8FAFC] border border-[#E5E7EB] px-3 py-2 text-center">
                       <div className="font-display font-bold text-xl" style={{ color }}>{count}</div>
-                      <div className="text-[10px] text-gray-500 uppercase tracking-wider">{label}</div>
+                      <div className="text-[10px] text-[#9CA3AF] uppercase tracking-wider">{label}</div>
                       <div className="text-[11px] font-medium" style={{ color }}>{pct}%</div>
                     </div>
                   ))}
@@ -311,14 +314,14 @@ export default function Dashboard() {
 
         {/* Employee Stress Lookup */}
         {!analyticsLoading && (
-          <div className="mb-6 rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50 p-5">
+          <div className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
                 <Brain size={18} className="text-violet-600" />
               </div>
               <div>
-                <div className="font-display font-bold text-lg text-violet-900">Employee Stress Lookup</div>
-                <div className="text-xs text-violet-600/70">Search by name or Aorane ID — individual stress data (DPDP compliant)</div>
+                <div className="font-display font-bold text-lg text-[#0D1F33]">Employee Stress Lookup</div>
+                <div className="text-xs text-[#9CA3AF]">Search by name or Aorane ID — individual stress data (DPDP compliant)</div>
               </div>
             </div>
 
@@ -327,7 +330,7 @@ export default function Dashboard() {
               <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                 {stressSearching
                   ? <Loader2 size={15} className="text-violet-400 animate-spin" />
-                  : <Search size={15} className="text-violet-400" />
+                  : <Search size={15} className="text-[#9CA3AF]" />
                 }
               </div>
               <input
@@ -335,7 +338,7 @@ export default function Dashboard() {
                 value={stressQuery}
                 onChange={(e) => handleStressSearch(e.target.value)}
                 placeholder="Type employee name or Aorane ID (min 4 chars)…"
-                className="w-full pl-9 pr-10 py-2.5 text-sm bg-white border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-300 placeholder-gray-400"
+                className="w-full pl-9 pr-10 py-2.5 text-sm bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-200 focus:bg-white placeholder-gray-400"
               />
               {(stressQuery || selectedStressUser) && (
                 <button
