@@ -295,6 +295,12 @@ export const api = {
   getMe: () =>
     request<{ user: { id: string; phone: string; email: string; plan: string; languageCode: string } }>("GET", "/auth/me"),
 
+  // Revokes the current session token server-side and, when a device push
+  // token is supplied, deactivates that token's registration so this device
+  // stops receiving push notifications for the logging-out account.
+  logout: (pushToken?: string) =>
+    request<{ success: boolean }>("POST", "/auth/logout", pushToken ? { pushToken } : undefined),
+
   // ── Users / Profile ────────────────────────────────────
   getProfile: () =>
     request<{ profile: Record<string, unknown>; user: { plan: string; phone: string; email: string }; preferences: Record<string, unknown>; conditions: Array<Record<string, unknown>>; goals: Record<string, unknown> }>("GET", "/users/profile"),

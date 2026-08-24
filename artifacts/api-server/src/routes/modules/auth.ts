@@ -653,11 +653,28 @@ router.post("/auth/verify-email-otp", async (req, res) => {
 
 // ─── PIN Login ───────────────────────────────────────────────────────────────
 // A5: Logout — revoke token by recording logout timestamp in cache
+//
+// Also accepts an optional `pushToken` (the calling device's Expo push
+// token). When present, that token's push_tokens row is deactivated for
+// this user so the physical device stops receiving push notifications for
+// the account that just logged out — otherwise a device that gets handed
+// to a different user keeps getting the previous account's push
+// notifications indefinitely, since the token itself doesn't change on
+// logout/login. This must happen in the same request as the logout-cache
+// write above (not a separate call) because it revokes the token that
+// authenticated this very request.
 router.post("/auth/logout", requireAuth, async (req: AuthRequest, res) => {
   try {
     const nowSec = Math.floor(Date.now() / 1000);
+    const { pushToken } = req.body as { pushToken?: string };
     await cache.set(`logout:user:${req.userId}`, String(nowSec), 30 * 24 * 3600);
     await pool.query(`UPDATE users SET last_logout_at = NOW() WHERE id = $1`, [req.userId]).catch(() => {});
+    if (typeof pushToken === "string" && pushToken.trim().length >= 10) {
+      await pool.query(
+        `UPDATE push_tokens SET is_active = false WHERE user_id = $1 AND token = $2`,
+        [req.userId, pushToken]
+      ).catch(() => {});
+    }
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Logout failed" });
