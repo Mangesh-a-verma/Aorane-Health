@@ -629,7 +629,16 @@ export default function WearableScreen() {
                   <TouchableOpacity
                     key={p.id}
                     disabled={connectingHC}
-                    onPress={() => { if (isHC) connectHealthConnect(); }}
+                    onPress={() => {
+                      // BUG FIX: previously this silently did nothing for any
+                      // non-Health-Connect provider (e.g. Apple HealthKit on
+                      // iOS, where it's the ONLY card shown) while its own
+                      // subtitle claimed "Tap to authorize Health Connect" —
+                      // a dead button with a misleading label. Not implemented
+                      // yet, so say so instead of no-op'ing.
+                      if (isHC) connectHealthConnect();
+                      else Alert.alert("Coming Soon", `${meta.name} integration is not available yet.`);
+                    }}
                     style={styles.providerBtn}
                     activeOpacity={0.8}
                   >
@@ -644,10 +653,10 @@ export default function WearableScreen() {
                           {meta.name}
                         </Text>
                         <Text style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 2 }}>
-                          {connectingHC ? "Connecting..." : "Tap to authorize Health Connect"}
+                          {isHC ? (connectingHC ? "Connecting..." : "Tap to authorize Health Connect") : "Coming soon"}
                         </Text>
                       </View>
-                      {connectingHC && (
+                      {connectingHC && isHC && (
                         <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 10 }} />
                       )}
                     </LinearGradient>

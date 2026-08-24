@@ -17,10 +17,20 @@ import { HealthConnectStatus } from "./types";
 
 export type SyncResult =
   | { outcome: "skipped_cooldown" }
+  | { outcome: "skipped_in_progress" }
   | { outcome: "skipped_platform" }
   | { outcome: "not_connected" }
   | { outcome: "synced"; hasData: boolean }
   | { outcome: "error"; message: string };
+
+// Module-level lock (not a React ref) so it's shared across EVERY entry
+// point below regardless of which component/hook called in — the
+// automatic foreground sync (useHealthSync.ts's runSync -> smartSync) and
+// the manual "Connect/Force Sync" button (HealthConnectButton.tsx ->
+// connectAndSync -> forceSync) previously had no shared guard, so a manual
+// tap landing in the same window as an automatic sync could trigger two
+// concurrent readAndPush() calls, each inserting its own wearable_data row.
+let isSyncInFlight = false;
 
 /** Last 24 hours — matches the granularity the backend health-score
  *  computation expects (one sync == "today's" rollup). */
@@ -31,24 +41,30 @@ function last24HoursRange() {
 }
 
 async function readAndPush(): Promise<SyncResult> {
-  const initialized = await hc.initialize();
-  if (!initialized) return { outcome: "not_connected" };
-
-  const raw = await hc.readAllRecords(last24HoursRange());
-  const metrics = aggregateHealthMetrics(raw);
-
+  if (isSyncInFlight) return { outcome: "skipped_in_progress" };
+  isSyncInFlight = true;
   try {
-    const result = await api.syncHealthConnect(metrics);
+    const initialized = await hc.initialize();
+    if (!initialized) return { outcome: "not_connected" };
 
-    const today = new Date().toISOString().split("T")[0];
-    // Best-effort — a failure to recompute the score should not make the
-    // sync itself look like it failed; the next sync/report load recomputes.
-    await api.computeHealthScore(today).catch((e) => console.warn("[HealthSync] computeHealthScore failed:", e));
+    const raw = await hc.readAllRecords(last24HoursRange());
+    const metrics = aggregateHealthMetrics(raw);
 
-    await SyncStorage.setLastSync();
-    return { outcome: "synced", hasData: result.hasData ?? hasAnyData(metrics) };
-  } catch (err) {
-    return { outcome: "error", message: (err as Error)?.message || "Sync failed" };
+    try {
+      const result = await api.syncHealthConnect(metrics);
+
+      const today = new Date().toISOString().split("T")[0];
+      // Best-effort — a failure to recompute the score should not make the
+      // sync itself look like it failed; the next sync/report load recomputes.
+      await api.computeHealthScore(today).catch((e) => console.warn("[HealthSync] computeHealthScore failed:", e));
+
+      await SyncStorage.setLastSync();
+      return { outcome: "synced", hasData: result.hasData ?? hasAnyData(metrics) };
+    } catch (err) {
+      return { outcome: "error", message: (err as Error)?.message || "Sync failed" };
+    }
+  } finally {
+    isSyncInFlight = false;
   }
 }
 

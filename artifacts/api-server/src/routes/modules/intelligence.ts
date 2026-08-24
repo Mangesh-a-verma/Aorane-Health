@@ -31,6 +31,7 @@ import { requireFeature } from "../../middlewares/feature-check";
 import { incrementUsage } from "../../middlewares/plan-limits";
 import { getWeatherContext } from "../../lib/weather";
 import { calculateCaloriesBurned, getMet, MET_VALUES } from "../../lib/met";
+import { todayIST } from "../../lib/dateUtils";
 
 const router = Router();
 
@@ -71,10 +72,17 @@ const GOAL_CALORIE_MULT: Record<string, number> = {
  * prediction and diet chart. Both features reset together on Monday.
  */
 function getCurrentWeekStart(): string {
-  const now = new Date();
-  const day = now.getDay(); // 0=Sun … 6=Sat
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday
-  const monday = new Date(now.getFullYear(), now.getMonth(), diff);
+  // IST-anchored (matches scoring.ts/suggestions.ts) — using server-local/UTC
+  // `new Date()` here meant a request between ~18:30-24:00 UTC (00:00-05:30
+  // IST) could resolve to the previous IST calendar day, and therefore the
+  // previous week's Monday, near a week boundary.
+  const [y, m, d] = todayIST().split("-").map(Number);
+  // Treat the IST calendar date as a plain Y/M/D and compute its Monday
+  // using UTC getters, so no further timezone shift is introduced.
+  const asUTC = new Date(Date.UTC(y, m - 1, d));
+  const day = asUTC.getUTCDay(); // 0=Sun … 6=Sat
+  const diff = asUTC.getUTCDate() - day + (day === 0 ? -6 : 1); // Monday
+  const monday = new Date(Date.UTC(asUTC.getUTCFullYear(), asUTC.getUTCMonth(), diff));
   return monday.toISOString().split("T")[0]; // "2025-01-06"
 }
 

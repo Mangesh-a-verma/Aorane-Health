@@ -284,6 +284,27 @@ router.post("/ai/smart-scan", requireAuth, requireFeature("smart_scan"), async (
       imageBase64 = imageBase64.split("base64,")[1];
     }
 
+    // ── Input hardening for photo scans ─────────────────────────────────────
+    // Same checks food.ts/medical.ts already apply to their scan endpoints —
+    // catches malformed/oversized/wrong-type uploads before they burn an AI
+    // call and quota.
+    {
+      const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"]);
+      if (mimeType && !ALLOWED_MIME_TYPES.has(mimeType.toLowerCase())) {
+        res.status(400).json({ error: `Unsupported image type "${mimeType}". Please use JPEG, PNG, WEBP, or HEIC.` });
+        return;
+      }
+      const MAX_BASE64_LENGTH = 12 * 1024 * 1024;
+      if (imageBase64.length > MAX_BASE64_LENGTH) {
+        res.status(413).json({ error: "Image is too large. Please use a smaller photo (under ~9MB)." });
+        return;
+      }
+      if (!/^[A-Za-z0-9+/]+={0,2}$/.test(imageBase64.replace(/\s/g, ""))) {
+        res.status(400).json({ error: "Image data is corrupted or not valid base64. Please try taking the photo again." });
+        return;
+      }
+    }
+
     // Check photo scan limit before calling AI (input already validated above,
     // so quota is only consumed for requests that will actually reach the AI)
     const limitCheck = await checkAndUseAILimit(userId, "ai_food_scan_photo_daily", planType);
@@ -332,7 +353,10 @@ For medical_report:
 For medicine:
 { "type": "medicine", "confidence": 0.88, "medicineName": "Name", "genericName": "Generic", "uses": "What it treats", "commonDosage": "Typical adult dose", "sideEffects": ["Side effect 1"], "warnings": ["Warning"], "disclaimer": "Always follow your doctor's prescription." }
 
-If no food or medical info is visible, return {"error": "No recognized items found."}`;
+For unknown (nothing recognizable):
+{ "type": "unknown", "message": "No recognized items found." }
+
+Always include a "type" field matching one of: "food", "medical_report", "medicine", "unknown". Never omit it.`;
 
     const payload: import("../../lib/ai").AIMessage[] = [{
       role: "user",
@@ -387,7 +411,39 @@ If no food or medical info is visible, return {"error": "No recognized items fou
       return;
     }
 
-    res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
+    const detectedType = result.type as string | undefined;
+
+    // Quota was speculatively charged against the food bucket above (before
+    // we knew what the image actually was, since that's the only gate we
+    // can apply before spending the real Gemini call). Reconcile now that
+    // the type is known:
+    let responseUsage = { remaining: limitCheck.remaining, limit: limitCheck.limit };
+
+    if (detectedType === "medical_report" || detectedType === "medicine") {
+      // This is a medical-quota consumer (lab report / medicine packet), not
+      // a food scan — refund the food unit and charge the correct bucket
+      // instead, so a user can't bypass the (much stricter, monthly)
+      // medical-scan limit by going through the food-scan path.
+      await refundAIUsage(userId, "ai_food_scan_photo_daily");
+      const medicalCheck = await checkAndUseAILimit(userId, "ai_medical_scan_daily", planType);
+      if (!medicalCheck.allowed) {
+        sendLimitBlocked(res, "ai_medical_scan_daily", medicalCheck.usedToday, medicalCheck.limit, planType, medicalCheck.planRequired);
+        return;
+      }
+      responseUsage = { remaining: medicalCheck.remaining, limit: medicalCheck.limit };
+    } else if (detectedType !== "food") {
+      // "unknown", missing type, or any other unrecognized shape — nothing
+      // useful was returned, so this should not be billed and must not be
+      // shown to the user as a silent blank result.
+      await refundAIUsage(userId, "ai_food_scan_photo_daily");
+      res.status(422).json({
+        error: "Could not recognize this as food, a medical report, or a medicine. Try a clearer, well-lit photo.",
+        code: "unrecognized_image",
+      });
+      return;
+    }
+
+    res.json({ ...result, aiUsage: responseUsage });
     await cache.set(cacheKey, JSON.stringify(result), SMART_SCAN_CACHE_TTL_SECONDS);
   } catch (err) {
     req.log.error({ err }, "smart-scan error");

@@ -3,6 +3,28 @@ import { computeScientificScore } from "./scoring";
 import { todayIST, istDayBounds } from "./dateUtils";
 
 /**
+ * This file intentionally holds TWO DIFFERENT metrics, not two competing
+ * implementations of the same one — do not merge them:
+ *
+ *  - upsertDailyHealthScore() is a thin wrapper around scoring.ts's
+ *    computeScientificScore() — a weighted, scientific 0-100 "Health Score"
+ *    (BMI, nutrition quality, sleep, stress, MET-based exercise, vitals)
+ *    stored in daily_health_scores. This is `periodAvgScore` in reports.
+ *
+ *  - upsertDailyActivityScore() below computes a separate, simpler
+ *    fixed-point "did you engage with the app today" percentage (meals
+ *    logged / water goal % / any exercise session / any stress check-in /
+ *    medicine adherence) stored in daily_activity_scores. This is
+ *    `activePercent` in reports.
+ *
+ * Both are called together after log actions and consumed together (e.g.
+ * buildPredictions()/calcHealthAge() in the mobile app's reportLogic.ts take
+ * both periodAvgScore AND activePercent as separate inputs) — they are
+ * deliberately two different dimensions (score quality vs. engagement
+ * consistency), not duplicate/competing calculations of the same thing.
+ */
+
+/**
  * Recalculate and save today's scientific health score to daily_health_scores.
  * Call this after ANY log action (food, water, exercise, medicine, sleep, stress).
  */
@@ -12,7 +34,8 @@ export async function upsertDailyHealthScore(userId: string): Promise<void> {
 }
 
 /**
- * Recalculate and upsert a user's daily activity score.
+ * Recalculate and upsert a user's daily ACTIVITY (engagement) score — a
+ * distinct metric from the scientific health score above; see file header.
  * Call this after ANY log action (food, water, exercise, medicine, stress).
  */
 export async function upsertDailyActivityScore(userId: string): Promise<void> {
