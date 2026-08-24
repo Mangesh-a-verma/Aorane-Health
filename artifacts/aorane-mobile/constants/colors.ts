@@ -1,3 +1,8 @@
+// See the header comment on `DS` in lib/theme.ts — that's the primary,
+// actively-maintained token source. This file (reached via
+// hooks/useColors.ts) currently only backs components/GlassCard.tsx and
+// app/+not-found.tsx, and hasn't been reconciled with DS's color values
+// yet — don't assume the two agree on any given token.
 const colors = {
   light: {
     text: "#0A1628",
