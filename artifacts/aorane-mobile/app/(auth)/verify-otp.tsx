@@ -149,7 +149,15 @@ export default function VerifyOtpScreen() {
       }
       setResendTimer(30);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch { }
+    } catch (err: unknown) {
+      // BUG FIX: this used to fail silently — tapping "Resend" while
+      // offline/on a backend error did nothing with zero feedback, so it
+      // just looked broken. Reuse this screen's existing inline error
+      // banner (same one the main verify flow already uses above).
+      const msg = err instanceof Error ? err.message : "Could not resend the code. Please try again.";
+      setErrorMsg(msg);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
   };
 
   const filled = otp.filter(Boolean).length;
@@ -162,7 +170,7 @@ export default function VerifyOtpScreen() {
       <View style={s.blob2} />
 
       <View style={[s.container, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.8} style={s.backWrap}>
+        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.8} style={s.backWrap} accessibilityLabel="Go back" accessibilityRole="button">
           <View style={s.backBtn}>
             <Ionicons name="arrow-back" size={20} color={C.primary} />
           </View>

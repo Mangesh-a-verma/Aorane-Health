@@ -89,8 +89,8 @@ export default function LanguageSelectScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { paddingHorizontal: 24, paddingBottom: 16 },
-  title: { fontSize: 24, fontWeight: "800", marginBottom: 6 },
-  subtitle: { fontSize: 14, fontWeight: "500" },
+  title: { fontSize: 24, fontFamily: "Inter_700Bold", marginBottom: 6 },
+  subtitle: { fontSize: 14, fontFamily: "Inter_500Medium" },
   list: { paddingHorizontal: 20, paddingBottom: 20, gap: 10 },
   card: {
     flexDirection: "row",
@@ -99,8 +99,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 18,
   },
-  nativeName: { fontSize: 17, fontWeight: "700" },
-  englishName: { fontSize: 12, fontWeight: "500", marginTop: 2 },
+  nativeName: { fontSize: 17, fontFamily: "Inter_700Bold" },
+  englishName: { fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 2 },
   checkCircle: {
     width: 26, height: 26, borderRadius: 13,
     backgroundColor: "#0077B6",
@@ -109,5 +109,5 @@ const styles = StyleSheet.create({
   footer: { paddingHorizontal: 24, paddingTop: 8 },
   continueBtn: { borderRadius: 16, overflow: "hidden" },
   continueGradient: { paddingVertical: 16, alignItems: "center", justifyContent: "center" },
-  continueText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  continueText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
 });

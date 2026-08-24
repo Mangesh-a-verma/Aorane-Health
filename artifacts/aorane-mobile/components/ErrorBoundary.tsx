@@ -17,10 +17,10 @@ function DefaultFallback({ error, resetError }: ErrorFallbackProps) {
 
 const ef = StyleSheet.create({
   wrap:    { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: "#FFF8F3" },
-  title:   { fontSize: 18, fontWeight: "700", color: "#E8622A", marginBottom: 10 },
+  title:   { fontSize: 18, fontFamily: "Inter_700Bold", color: "#E8622A", marginBottom: 10 },
   msg:     { fontSize: 13, color: "#6B7280", textAlign: "center", marginBottom: 20, lineHeight: 20 },
   btn:     { backgroundColor: "#E8622A", paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
-  btnText: { color: "#FFF", fontSize: 14, fontWeight: "600" },
+  btnText: { color: "#FFF", fontSize: 14, fontFamily: "Inter_600SemiBold" },
 });
 
 export type ErrorBoundaryProps = PropsWithChildren<{

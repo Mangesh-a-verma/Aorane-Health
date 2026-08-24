@@ -210,7 +210,7 @@ export default function EditProfileScreen() {
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
         style={[ss.header, { paddingTop: topPad + 10 }]}
       >
-        <TouchableOpacity onPress={() => router.back()} style={ss.backBtn} activeOpacity={0.8}>
+        <TouchableOpacity onPress={() => router.back()} style={ss.backBtn} activeOpacity={0.8} accessibilityLabel="Go back" accessibilityRole="button">
           <Ionicons name="chevron-back" size={22} color="#FFF" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -417,7 +417,7 @@ export default function EditProfileScreen() {
 
 const ss = StyleSheet.create({
   header:      { paddingHorizontal: 16, paddingBottom: 18, flexDirection: "row", alignItems: "center", gap: 12 },
-  backBtn:     { width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
+  backBtn:     { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
   headerTitle: { color: "#FFF", fontSize: 20, fontFamily: "Inter_700Bold" },
   headerSub:   { color: "rgba(255,255,255,0.75)", fontSize: 12, fontFamily: "Inter_400Regular" },
   saveBtn:     { backgroundColor: "rgba(255,255,255,0.22)", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },

@@ -184,12 +184,12 @@ const s = StyleSheet.create({
   },
   title: {
     fontSize: 13,
-    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
     color: "#0D1F33",
   },
   titleGray: {
     fontSize: 13,
-    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
     color: "#9CA3AF",
   },
   sub: {
@@ -211,7 +211,7 @@ const s = StyleSheet.create({
   installBtnText: {
     color: "#FFF",
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
   },
   comingSoonBadge: {
     backgroundColor: "#F3F4F6",
@@ -222,6 +222,6 @@ const s = StyleSheet.create({
   comingSoonText: {
     fontSize: 10,
     color: "#9CA3AF",
-    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
   },
 });

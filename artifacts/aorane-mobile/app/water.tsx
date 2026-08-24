@@ -119,7 +119,7 @@ export default function WaterScreen() {
       <ScrollView contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: 100, paddingHorizontal: 16 }}>
 
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 }} accessibilityLabel="Go back" accessibilityRole="button">
             <Ionicons name="arrow-back" size={20} color={"#0077B6"} />
           </TouchableOpacity>
           <View>
@@ -160,14 +160,14 @@ export default function WaterScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: "row", gap: 8 }}>
                 {DRINK_TYPES.map(d => (
-                  <TouchableOpacity key={d.key} onPress={() => setSelectedDrink(d.key)} style={{ alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: selectedDrink === d.key ? d.color : "transparent", backgroundColor: selectedDrink === d.key ? d.color + "20" : ("rgba(0,119,182,0.06)") }}>
+                  <TouchableOpacity activeOpacity={0.8} key={d.key} onPress={() => setSelectedDrink(d.key)} style={{ alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: selectedDrink === d.key ? d.color : "transparent", backgroundColor: selectedDrink === d.key ? d.color + "20" : ("rgba(0,119,182,0.06)") }}>
                     <Text style={{ fontSize: 24, marginBottom: 4 }}>{d.emoji}</Text>
                     <Text style={{ color: selectedDrink === d.key ? d.color : ("rgba(10,22,40,0.6)"), fontFamily: "Inter_500Medium", fontSize: 11 }}>{d.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </ScrollView>
-            <TouchableOpacity onPress={addGlass} disabled={loading} style={{ marginTop: 16, backgroundColor: "#0077B6", borderRadius: 14, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <TouchableOpacity activeOpacity={0.8} onPress={addGlass} disabled={loading} style={{ marginTop: 16, backgroundColor: "#0077B6", borderRadius: 14, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
               <Ionicons name="add-circle" size={22} color="#FFF" />
               <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>{loading ? "Logging..." : "+ Log 1 Glass"}</Text>
             </TouchableOpacity>

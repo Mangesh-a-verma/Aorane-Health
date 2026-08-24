@@ -114,11 +114,11 @@ function NumberRow({
         </View>
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <TouchableOpacity onPress={() => { if (value > min) { Haptics.selectionAsync(); onChange(value - 1); } }} style={styles.stepBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => { if (value > min) { Haptics.selectionAsync(); onChange(value - 1); } }} style={styles.stepBtn}>
           <Ionicons name="remove" size={16} color={C.primary} />
         </TouchableOpacity>
         <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 16, minWidth: 36, textAlign: "center" }}>{value} {unit}</Text>
-        <TouchableOpacity onPress={() => { if (value < max) { Haptics.selectionAsync(); onChange(value + 1); } }} style={styles.stepBtn}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => { if (value < max) { Haptics.selectionAsync(); onChange(value + 1); } }} style={styles.stepBtn}>
           <Ionicons name="add" size={16} color={C.primary} />
         </TouchableOpacity>
       </View>
@@ -303,7 +303,7 @@ export default function NotificationSettingsScreen() {
       {/* Header */}
       <LinearGradient colors={["#E8622A", "#F5A623"]} style={{ paddingTop: topPad + 10, paddingHorizontal: 18, paddingBottom: 20 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" accessibilityRole="button">
             <Ionicons name="chevron-back" size={22} color="#FFF" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -350,13 +350,13 @@ export default function NotificationSettingsScreen() {
               Some phones (Xiaomi, Vivo, Oppo, Realme) delay or batch reminders to save battery. Tap below to allow Aorane to send reminders exactly on time.
             </Text>
             <View style={{ flexDirection: "row", gap: 10 }}>
-              <TouchableOpacity
+              <TouchableOpacity activeOpacity={0.8}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); requestExactAlarmPermission(); }}
                 style={{ flex: 1, borderRadius: 12, borderWidth: 1.5, borderColor: C.primary, paddingVertical: 10, alignItems: "center" }}
               >
                 <Text style={{ color: C.primary, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>Allow Exact Alarms</Text>
               </TouchableOpacity>
-              <TouchableOpacity
+              <TouchableOpacity activeOpacity={0.8}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); requestIgnoreBatteryOptimizations(); }}
                 style={{ flex: 1, borderRadius: 12, borderWidth: 1.5, borderColor: C.primary, paddingVertical: 10, alignItems: "center" }}
               >
@@ -429,7 +429,7 @@ export default function NotificationSettingsScreen() {
             </View>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {["05:00","06:00","06:30","07:00","07:30","08:00","08:30","09:00"].map(t => (
-                <TouchableOpacity key={t} onPress={() => { Haptics.selectionAsync(); update("wakeUpTime", t); }}
+                <TouchableOpacity activeOpacity={0.8} key={t} onPress={() => { Haptics.selectionAsync(); update("wakeUpTime", t); }}
                   style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
                     borderColor: settings.wakeUpTime === t ? C.primary : C.border,
                     backgroundColor: settings.wakeUpTime === t ? C.primary + "15" : "#FAFAFA" }}>
@@ -457,7 +457,7 @@ export default function NotificationSettingsScreen() {
             </View>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {["20:00","21:00","21:30","22:00","22:30","23:00","23:30","00:00"].map(t => (
-                <TouchableOpacity key={t} onPress={() => { Haptics.selectionAsync(); update("bedTime", t); }}
+                <TouchableOpacity activeOpacity={0.8} key={t} onPress={() => { Haptics.selectionAsync(); update("bedTime", t); }}
                   style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
                     borderColor: settings.bedTime === t ? "#7C3AED" : C.border,
                     backgroundColor: settings.bedTime === t ? "#7C3AED15" : "#FAFAFA" }}>
@@ -541,7 +541,7 @@ export default function NotificationSettingsScreen() {
             <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, marginBottom: 12, lineHeight: 17 }}>
               Check exactly what's scheduled on this device right now, and when each reminder will actually fire.
             </Text>
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               onPress={runDiagnostics}
               disabled={diagLoading}
               style={{ borderRadius: 12, borderWidth: 1.5, borderColor: C.primary, paddingVertical: 10, alignItems: "center", opacity: diagLoading ? 0.6 : 1 }}
@@ -608,7 +608,7 @@ export default function NotificationSettingsScreen() {
       {/* Save Bar */}
       {isDirty && (
         <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#FFF", borderTopWidth: 1, borderTopColor: C.border, padding: 16, paddingBottom: insets.bottom + 10 }}>
-          <TouchableOpacity onPress={save} disabled={saving} style={[styles.saveBtn, saving && { opacity: 0.7 }]}>
+          <TouchableOpacity activeOpacity={0.8} onPress={save} disabled={saving} style={[styles.saveBtn, saving && { opacity: 0.7 }]}>
             <LinearGradient colors={[C.primary, C.accent]} style={styles.saveBtnGrad}>
               {saving ? (
                 <ActivityIndicator size="small" color="#FFF" />

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal,
-  TextInput, Alert, ActivityIndicator, Platform, Dimensions, FlatList,
+  TextInput, Alert, ActivityIndicator, Platform, Dimensions, FlatList, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -103,6 +103,7 @@ export default function ExerciseScreen() {
   const insets = useSafeAreaInsets();
   const [logs,             setLogs]             = useState<ExerciseLog[]>([]);
   const [isLoading,        setIsLoading]        = useState(true);
+  const [refreshing,       setRefreshing]       = useState(false);
   const [showModal,        setShowModal]        = useState(false);
   const [activeCategory,   setActiveCategory]   = useState<Category>("All");
 
@@ -126,6 +127,7 @@ export default function ExerciseScreen() {
       setLogs(data.logs as ExerciseLog[]);
     } catch { }
     setIsLoading(false);
+    setRefreshing(false);
   }, []);
 
   useEffect(() => { loadLogs(); }, [loadLogs]);
@@ -269,6 +271,9 @@ export default function ExerciseScreen() {
         ref={scrollRef}
         contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadLogs(); }} tintColor={P} colors={[P]} />
+        }
       >
         {/* ── Stats card ── */}
         <View style={s.card}>
@@ -411,7 +416,7 @@ export default function ExerciseScreen() {
                         <Text style={s.sessionEntryName}>{entry.exerciseType}</Text>
                         <Text style={s.sessionEntryDetail}>{detailParts}</Text>
                       </View>
-                      <TouchableOpacity onPress={() => removeFromSession(entry.id)} style={s.removeBtn}>
+                      <TouchableOpacity onPress={() => removeFromSession(entry.id)} style={s.removeBtn} accessibilityLabel={`Remove ${entry.exerciseType}`} accessibilityRole="button">
                         <Trash2 size={15} color="#EF4444" strokeWidth={2} />
                       </TouchableOpacity>
                     </View>

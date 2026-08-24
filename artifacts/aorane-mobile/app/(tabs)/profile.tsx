@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Switch, Alert, Platform, Dimensions, Modal,
+  Switch, Alert, Platform, Dimensions, Modal, ActivityIndicator, RefreshControl,
 } from "react-native";
 import AoraneLogo from "@/components/AoraneLogo";
 import { router, useFocusEffect } from "expo-router";
@@ -29,6 +29,12 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const [profile, setProfile] = useState<Record<string, unknown>>({});
   const [privacy, setPrivacy] = useState<Record<string, boolean>>({});
+  // Only gates the very first load — loadProfile() is also re-run on every
+  // focus (see useFocusEffect below), and we don't want the whole screen
+  // to flash back to a spinner every time the user switches back to this
+  // tab, only on the initial mount before any data has ever loaded.
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const { lang, setLang } = useLanguage();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
@@ -38,7 +44,10 @@ export default function ProfileScreen() {
       const [p, priv] = await Promise.allSettled([api.getProfile(), api.getPrivacy()]);
       if (p.status === "fulfilled")    setProfile(p.value.profile as Record<string, unknown>);
       if (priv.status === "fulfilled") setPrivacy(priv.value.privacy as Record<string, boolean>);
-    } catch { }
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
   useEffect(() => { loadProfile(); }, []);
@@ -49,8 +58,18 @@ export default function ProfileScreen() {
   }, [loadProfile]));
 
   const togglePrivacy = async (key: string, value: boolean) => {
+    const previous = privacy[key];
     setPrivacy((p) => ({ ...p, [key]: value }));
-    try { await api.updatePrivacy({ [key]: value }); } catch { }
+    try {
+      await api.updatePrivacy({ [key]: value });
+    } catch {
+      // BUG FIX: this used to fail silently, leaving the switch showing
+      // the NEW value while the server still had the OLD one — the UI
+      // was lying about what got saved. Revert the optimistic update and
+      // tell the user.
+      setPrivacy((p) => ({ ...p, [key]: previous }));
+      Alert.alert("Couldn't save", "Failed to update this privacy setting. Please check your connection and try again.");
+    }
   };
 
   const handleLogout = () => {
@@ -91,6 +110,15 @@ export default function ProfileScreen() {
     { key: "shareMedicineDetails",label: "Medicine Details", desc: "Sensitive — OFF",     icon: "medical-outline"  as const, sensitive: true },
   ];
 
+  if (isLoading) {
+    return (
+      <View style={[s.root, { alignItems: "center", justifyContent: "center" }]}>
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: DS.color.bgSoft }]} />
+        <ActivityIndicator size="large" color={DS.color.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={s.root}>
       <View style={[StyleSheet.absoluteFill, { backgroundColor: DS.color.bgSoft }]} />
@@ -99,6 +127,9 @@ export default function ProfileScreen() {
         ref={scrollRef}
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadProfile(); }} tintColor={P} colors={[P]} />
+        }
       >
         {/* ── Hero section ── */}
         <LinearGradient

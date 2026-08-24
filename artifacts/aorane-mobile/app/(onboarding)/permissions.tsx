@@ -180,7 +180,7 @@ export default function PermissionsScreen() {
                         <Ionicons name="checkmark" size={16} color="#10B981" />
                       </View>
                     ) : isDenied ? (
-                      <TouchableOpacity onPress={() => requestPermission(perm.key)} style={[styles.statusBtn, { backgroundColor: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.25)" }]} activeOpacity={0.8}>
+                      <TouchableOpacity onPress={() => requestPermission(perm.key)} style={[styles.statusBtn, { backgroundColor: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.25)" }]} activeOpacity={0.8} accessibilityLabel={`Retry ${perm.title} permission`} accessibilityRole="button">
                         <Ionicons name="refresh" size={14} color="#EF4444" />
                       </TouchableOpacity>
                     ) : isAsking ? (
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   benefitRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
   benefitTxt: { fontSize: 11 },
 
-  statusBtn: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", borderWidth: 1, flexShrink: 0 },
+  statusBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", borderWidth: 1, flexShrink: 0 },
   allowBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12 },
   allowTxt: { color: "#FFF", fontSize: 13 },
 

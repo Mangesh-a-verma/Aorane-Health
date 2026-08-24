@@ -564,7 +564,7 @@ function UpgradeScreenContent({ config, onClose }: { config?: UpgradeModalConfig
 
         {/* Header */}
         <LinearGradient colors={["#E8622A", "#F5A623"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ borderRadius: 20, padding: 20, marginBottom: 20, flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <TouchableOpacity onPress={goBack} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" }}>
+          <TouchableOpacity onPress={goBack} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" }} accessibilityLabel="Go back" accessibilityRole="button">
             <Ionicons name="arrow-back" size={20} color="#FFF" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>

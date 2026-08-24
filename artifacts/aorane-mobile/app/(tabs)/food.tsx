@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   TextInput, Modal, Alert, ActivityIndicator, FlatList,
-  Platform, Dimensions, Animated,
+  Platform, Dimensions, Animated, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -125,6 +125,7 @@ export default function FoodScreen() {
   const [logs,         setLogs]         = useState<FoodLog[]>([]);
   const [totalCal,     setTotalCal]     = useState(0);
   const [loading,      setLoading]      = useState(true);
+  const [refreshing,   setRefreshing]   = useState(false);
   const [showModal,    setShowModal]    = useState(false);
   const [activeMeal,   setActiveMeal]   = useState<MealType>("breakfast");
   const [text,         setText]         = useState("");
@@ -176,6 +177,7 @@ export default function FoodScreen() {
       setTotalCal(l.reduce((s, i) => s + Number(i.calories), 0));
     } catch { }
     setLoading(false);
+    setRefreshing(false);
   }, []);
 
   const loadFavs = useCallback(async () => {
@@ -414,7 +416,7 @@ export default function FoodScreen() {
         }
         <View style={s.headerRow}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <TouchableOpacity onPress={() => router.back()} activeOpacity={0.8} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: DS.color.primarySoft, alignItems: "center", justifyContent: "center" }}>
+            <TouchableOpacity onPress={() => router.back()} activeOpacity={0.8} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: DS.color.primarySoft, alignItems: "center", justifyContent: "center" }} accessibilityLabel="Go back" accessibilityRole="button">
               <Ionicons name="arrow-back" size={19} color={P} />
             </TouchableOpacity>
             <View>
@@ -430,6 +432,16 @@ export default function FoodScreen() {
       </View>
 
       {/* ── Calorie Summary Card ── */}
+      {loading ? (
+        // BUG FIX: this card previously always rendered from `logs`
+        // (which starts empty), so it showed "Consumed 0 / Remaining
+        // 2000" while data was still loading — indistinguishable from a
+        // genuinely empty day. Show a loading placeholder instead until
+        // the real logs arrive.
+        <View style={[s.summaryCard, { marginHorizontal: 16, marginTop: 12, marginBottom: 4, minHeight: 140, alignItems: "center", justifyContent: "center" }]}>
+          <ActivityIndicator color={P} size="small" />
+        </View>
+      ) : (
       <View style={[s.summaryCard, { marginHorizontal: 16, marginTop: 12, marginBottom: 4 }]}>
         <View style={s.calRow}>
           {[
@@ -490,6 +502,7 @@ export default function FoodScreen() {
           </View>
         )}
       </View>
+      )}
 
       {/* ── Nutrition Report Buttons ── */}
       <View style={{ flexDirection: "row", gap: 8, marginHorizontal: 16, marginTop: 8 }}>
@@ -554,7 +567,13 @@ export default function FoodScreen() {
       {loading ? (
         <ActivityIndicator color={P} size="large" style={{ marginTop: 40 }} />
       ) : (
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 90, paddingTop: 12 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 90, paddingTop: 12 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadLogs(); }} tintColor={P} colors={[P]} />
+          }
+        >
           {MEAL_TYPES.map((mt) => {
             const ml   = MEAL_META[mt];
             const mLogs = grouped[mt];

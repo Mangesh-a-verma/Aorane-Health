@@ -76,7 +76,7 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
-function GlassCard({ children, style }: { children: React.ReactNode; style?: object }) {
+function UpgradeGlassCard({ children, style }: { children: React.ReactNode; style?: object }) {
   const isDark = useColorScheme() === "dark";
   return (
     <LinearGradient colors={isDark ? ["rgba(56,189,248,0.18)","rgba(45,212,191,0.08)"] : ["rgba(255,255,255,0.9)","rgba(186,230,253,0.45)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[{ borderRadius: 20, padding: 1.5 }, style]}>
@@ -583,7 +583,7 @@ export default function UpgradeScreen() {
 
         {/* Header */}
         <LinearGradient colors={["#E8622A", "#F5A623"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ borderRadius: 20, padding: 20, marginBottom: 20, flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" }} accessibilityLabel="Go back" accessibilityRole="button">
             <Ionicons name="arrow-back" size={20} color="#FFF" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -594,7 +594,7 @@ export default function UpgradeScreen() {
         </LinearGradient>
 
         {(user?.plan as string) !== "free" && (
-          <GlassCard style={{ marginBottom: 16 }}>
+          <UpgradeGlassCard style={{ marginBottom: 16 }}>
             <View style={{ padding: 16 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: activeSubscription?.autoRenew ? 12 : 0 }}>
                 <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#10B98122", alignItems: "center", justifyContent: "center" }}>
@@ -620,7 +620,7 @@ export default function UpgradeScreen() {
                 </TouchableOpacity>
               )}
             </View>
-          </GlassCard>
+          </UpgradeGlassCard>
         )}
 
         {/* Autopay Toggle */}
@@ -631,7 +631,7 @@ export default function UpgradeScreen() {
             hidden and autopay is forced on. Web/other platforms keep both
             options via the existing Razorpay flow. */}
         {!isGooglePlayBillingSupported() && (
-          <GlassCard style={{ marginBottom: 16 }}>
+          <UpgradeGlassCard style={{ marginBottom: 16 }}>
             <View style={{ padding: 4, flexDirection: "row", borderRadius: 18 }}>
               <TouchableOpacity onPress={() => setIsAutopay(true)} style={{ flex: 1, paddingVertical: 11, borderRadius: 16, alignItems: "center", backgroundColor: isAutopay ? "#E8622A" : "transparent" }}>
                 <Text style={{ color: isAutopay ? "#FFF" : (isDark ? "rgba(255,255,255,0.55)" : "rgba(10,22,40,0.5)"), fontFamily: "Inter_700Bold", fontSize: 13 }}>🔄 Auto-debit Monthly</Text>
@@ -642,7 +642,7 @@ export default function UpgradeScreen() {
                 {!isAutopay && <Text style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(10,22,40,0.4)", fontFamily: "Inter_400Regular", fontSize: 10, marginTop: 2 }}>1 month only</Text>}
               </TouchableOpacity>
             </View>
-          </GlassCard>
+          </UpgradeGlassCard>
         )}
 
 
@@ -685,7 +685,7 @@ export default function UpgradeScreen() {
           ))}
         </View>
 
-        <GlassCard style={{ marginBottom: 16 }}>
+        <UpgradeGlassCard style={{ marginBottom: 16 }}>
           <View style={{ padding: 16 }}>
             <Text style={{ color: isDark ? "#F0F8FF" : "#1a1a2e", fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 10 }}>Promo Code</Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
@@ -701,7 +701,7 @@ export default function UpgradeScreen() {
             </View>
             {promoMsg ? <Text style={{ color: discount > 0 ? "#10B981" : "#DC2626", fontFamily: "Inter_500Medium", fontSize: 12, marginTop: 8 }}>{promoMsg}</Text> : null}
           </View>
-        </GlassCard>
+        </UpgradeGlassCard>
 
         <LinearGradient colors={isDark ? ["rgba(255,255,255,0.06)","rgba(255,255,255,0.02)"] : ["rgba(255,255,255,0.8)","rgba(240,249,255,0.6)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 18, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,119,182,0.12)" }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>

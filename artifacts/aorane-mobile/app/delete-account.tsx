@@ -517,6 +517,8 @@ export default function DeleteAccountScreen() {
           style={s.backBtn}
           hitSlop={12}
           disabled={state.step === "deleting" || state.step === "done"}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
         >
           <ChevronLeft size={22} color={DS.color.text} strokeWidth={2} />
         </TouchableOpacity>
