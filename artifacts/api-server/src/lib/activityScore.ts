@@ -1,9 +1,6 @@
 import { pool } from "@workspace/db";
 import { computeScientificScore } from "./scoring";
-
-function todayIST(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
-}
+import { todayIST, istDayBounds } from "./dateUtils";
 
 /**
  * Recalculate and save today's scientific health score to daily_health_scores.
@@ -20,8 +17,7 @@ export async function upsertDailyHealthScore(userId: string): Promise<void> {
  */
 export async function upsertDailyActivityScore(userId: string): Promise<void> {
   const date = todayIST();
-  const dayStart = `${date}T00:00:00+05:30`;
-  const dayEnd   = `${date}T23:59:59+05:30`;
+  const { dayStart, dayEnd } = istDayBounds(date);
 
   const [foodR, waterR, exR, medSchedR, medTakenR, stressR, prefR] = await Promise.all([
     pool.query(

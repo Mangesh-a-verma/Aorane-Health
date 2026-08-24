@@ -4,6 +4,7 @@ import { db, medicineSchedulesTable, medicineLogsTable } from "@workspace/db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
+import { todayIST, istDayBounds } from "../../lib/dateUtils";
 
 const router = Router();
 
@@ -112,6 +113,11 @@ router.post("/medicine/log", requireAuth, async (req: AuthRequest, res) => {
     if (!scheduleId || !status) {
       res.status(400).json({ error: "scheduleId and status are required" }); return;
     }
+    const [owned] = await db.select({ id: medicineSchedulesTable.id }).from(medicineSchedulesTable)
+      .where(and(eq(medicineSchedulesTable.id, scheduleId as string), eq(medicineSchedulesTable.userId, req.userId!)));
+    if (!owned) {
+      res.status(404).json({ error: "Medicine schedule not found" }); return;
+    }
     const [log] = await db.insert(medicineLogsTable).values({
       userId: req.userId!,
       scheduleId: scheduleId as string,
@@ -132,8 +138,9 @@ router.get("/medicine/logs", requireAuth, async (req: AuthRequest, res) => {
     const { date } = req.query as { date?: string };
     const conditions = [eq(medicineLogsTable.userId, req.userId!)];
     if (date) {
-      conditions.push(gte(medicineLogsTable.scheduledAt, new Date(date + "T00:00:00Z")));
-      conditions.push(lte(medicineLogsTable.scheduledAt, new Date(date + "T23:59:59Z")));
+      const { dayStart, dayEnd } = istDayBounds(date);
+      conditions.push(gte(medicineLogsTable.scheduledAt, new Date(dayStart)));
+      conditions.push(lte(medicineLogsTable.scheduledAt, new Date(dayEnd)));
     }
     const logs = await db.select().from(medicineLogsTable).where(and(...conditions)).orderBy(desc(medicineLogsTable.scheduledAt));
     res.json({ logs });
@@ -144,15 +151,16 @@ router.get("/medicine/logs", requireAuth, async (req: AuthRequest, res) => {
 
 router.get("/medicine/today", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayIST();
+    const { dayStart, dayEnd } = istDayBounds(today);
     const schedules = await db.select().from(medicineSchedulesTable)
       .where(and(eq(medicineSchedulesTable.userId, req.userId!), eq(medicineSchedulesTable.isActive, true)))
       .orderBy(medicineSchedulesTable.medicineName);
     const logs = await db.select().from(medicineLogsTable)
       .where(and(
         eq(medicineLogsTable.userId, req.userId!),
-        gte(medicineLogsTable.scheduledAt, new Date(today + "T00:00:00Z")),
-        lte(medicineLogsTable.scheduledAt, new Date(today + "T23:59:59Z"))
+        gte(medicineLogsTable.scheduledAt, new Date(dayStart)),
+        lte(medicineLogsTable.scheduledAt, new Date(dayEnd))
       ));
     const takenIds = new Set(logs.filter(l => l.status === "taken").map(l => l.scheduleId));
     const result = schedules.map(s => ({
