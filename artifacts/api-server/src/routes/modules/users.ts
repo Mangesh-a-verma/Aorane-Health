@@ -4,6 +4,7 @@ import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { invalidateUserActiveCache } from "../../middlewares/user-auth";
 import { getCumulativeActivePercent } from "../../lib/activityScore";
+import { safeErrorMessage } from "../../lib/logger";
 import { computeScientificScore } from "../../lib/scoring";
 import { calculateAge, MINIMUM_AGE_YEARS } from "../../lib/age";
 import { cache } from "../../lib/redis";
@@ -66,7 +67,7 @@ router.get("/users/profile", requireAuth, async (req: AuthRequest, res) => {
     const msg = (err as Error).message || String(err);
     const cause = (err as any)?.cause?.message || "";
     req.log.error({ msg, cause }, "PROFILE ERROR");
-    res.status(500).json({ error: "Failed to fetch profile", detail: msg });
+    res.status(500).json({ error: "Failed to fetch profile", detail: safeErrorMessage(err) });
   }
 });
 

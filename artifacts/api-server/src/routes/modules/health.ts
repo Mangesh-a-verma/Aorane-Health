@@ -6,6 +6,7 @@ import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { computeScientificScore } from "../../lib/scoring";
 import { istDayBounds } from "../../lib/dateUtils";
+import { safeErrorMessage } from "../../lib/logger";
 
 const router = Router();
 
@@ -114,7 +115,7 @@ router.post("/health/exercise/calculate", requireAuth, async (req: AuthRequest, 
       formula: `MET(${met}) × ${weightKg}kg × ${(durationMinutes/60).toFixed(2)}h × gender(${gender === "female" ? "0.9" : "1.0"}) = ${safeCalories} kcal`,
     });
   } catch (e) {
-    res.status(500).json({ error: "Calculation failed", detail: (e as Error).message });
+    res.status(500).json({ error: "Calculation failed", detail: safeErrorMessage(e) });
   }
 });
 
@@ -156,7 +157,7 @@ router.post("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
       calculation: { weightKg, gender, metValue: finalMet, caloriesBurned: finalCalories },
     });
   } catch (e) {
-    res.status(500).json({ error: "Failed to log exercise", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to log exercise", detail: safeErrorMessage(e) });
   }
 });
 
@@ -191,7 +192,7 @@ router.get("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
     }));
     res.json({ logs });
   } catch (e) {
-    res.status(500).json({ error: "Failed to fetch exercise logs", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to fetch exercise logs", detail: safeErrorMessage(e) });
   }
 });
 
@@ -210,7 +211,7 @@ router.post("/health/water", requireAuth, async (req: AuthRequest, res) => {
     upsertDailyHealthScore(req.userId!).catch(() => {});
     res.status(201).json({ log: result.rows[0] });
   } catch (e) {
-    res.status(500).json({ error: "Failed to log water", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to log water", detail: safeErrorMessage(e) });
   }
 });
 
@@ -228,7 +229,7 @@ router.get("/health/water/:date", requireAuth, async (req: AuthRequest, res) => 
     const goal = prefsRes.rows[0]?.water_goal_glasses || 8;
     res.json({ logs, totalGlasses: total, goal });
   } catch (e) {
-    res.status(500).json({ error: "Failed to fetch water logs", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to fetch water logs", detail: safeErrorMessage(e) });
   }
 });
 
@@ -281,7 +282,7 @@ router.post("/health/score/:date/compute", requireAuth, async (req: AuthRequest,
     const score = await computeDailyScore(req.userId!, date);
     res.json({ score });
   } catch (e) {
-    res.status(500).json({ error: "Failed to compute health score", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to compute health score", detail: safeErrorMessage(e) });
   }
 });
 
@@ -299,7 +300,7 @@ router.get("/health/scores/history", requireAuth, async (req: AuthRequest, res) 
     );
     res.json({ scores: result.rows });
   } catch (e) {
-    res.status(500).json({ error: "Failed to fetch score history", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to fetch score history", detail: safeErrorMessage(e) });
   }
 });
 
@@ -368,7 +369,7 @@ router.post("/health/sleep", requireAuth, async (req: AuthRequest, res) => {
     upsertDailyHealthScore(req.userId!).catch(() => {});
     res.status(inserted ? 201 : 200).json({ success: true, log, sleepHours: hours, updated: !inserted });
   } catch (e) {
-    res.status(500).json({ error: "Failed to log sleep", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to log sleep", detail: safeErrorMessage(e) });
   }
 });
 
@@ -400,7 +401,7 @@ router.put("/health/sleep/:date", requireAuth, async (req: AuthRequest, res) => 
     );
     res.json({ success: true, log: result.rows[0], sleepHours: hours });
   } catch (e) {
-    res.status(500).json({ error: "Failed to update sleep log", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to update sleep log", detail: safeErrorMessage(e) });
   }
 });
 
@@ -418,7 +419,7 @@ router.get("/health/sleep/history", requireAuth, async (req: AuthRequest, res) =
       : null;
     res.json({ logs, count: logs.length, avgHours });
   } catch (e) {
-    res.status(500).json({ error: "Failed to fetch sleep history", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to fetch sleep history", detail: safeErrorMessage(e) });
   }
 });
 
@@ -437,7 +438,7 @@ router.get("/health/sleep/:date", requireAuth, async (req: AuthRequest, res) => 
       isLogged: !!log,
     });
   } catch (e) {
-    res.status(500).json({ error: "Failed to fetch sleep log", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to fetch sleep log", detail: safeErrorMessage(e) });
   }
 });
 
@@ -468,7 +469,7 @@ router.get("/health/score-range", requireAuth, async (req: AuthRequest, res) => 
 
     res.json({ score: avgPct, daysTracked: days, startDate, endDate });
   } catch (e) {
-    res.status(500).json({ error: "Failed to fetch score range", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to fetch score range", detail: safeErrorMessage(e) });
   }
 });
 
@@ -481,7 +482,7 @@ router.get("/health/active-percent", requireAuth, async (req: AuthRequest, res) 
     }
     res.json(data);
   } catch (e) {
-    res.status(500).json({ error: "Failed to fetch active percent", detail: (e as Error).message });
+    res.status(500).json({ error: "Failed to fetch active percent", detail: safeErrorMessage(e) });
   }
 });
 

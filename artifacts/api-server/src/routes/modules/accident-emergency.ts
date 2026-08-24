@@ -138,6 +138,7 @@ router.post("/emergency/accident/sos", requireAuth, async (req: AuthRequest, res
         yourLocation: { lat, lng, address: address || "Detected via GPS" },
         note: "Share this URL with ambulance or police to convey your exact location",
       });
+      return;
     }
 
     // ── Phase 2 (FUTURE — after API approvals): Full automated flow ─────────

@@ -1,7 +1,7 @@
 // Blood Emergency Module — pool.query fix applied
 import { Router } from "express";
 import { createAdminNotif } from "../../lib/notify-admin";
-import { db, pool, bloodDonorsTable, bloodDonationsTable, bloodEmergencyRequestsTable } from "@workspace/db";
+import { db, pool, bloodDonorsTable, bloodDonationsTable, bloodEmergencyRequestsTable, emergencyContactsTable, usersTable } from "@workspace/db";
 import { eq, and, or, ilike, isNull, isNotNull, lt, sql, inArray, ne } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import { cache } from "../../lib/redis";
@@ -130,8 +130,30 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Public shape returned for donor search results — the mobile client only
+// ever reads id/bloodGroup/city/state/isAvailable/distanceKm (see
+// app/blood.tsx's own result type), so this also acts as response
+// minimization: phone, exact lat/lng, userId, otpVerified, and donation
+// history never leave the server for an anonymous/unrelated searcher.
+function toPublicDonor(d: typeof bloodDonorsTable.$inferSelect & { distanceKm?: number }) {
+  return {
+    id: d.id,
+    bloodGroup: d.bloodGroup,
+    city: d.city,
+    state: d.state,
+    isAvailable: d.isAvailable,
+    donationCount: d.donationCount,
+    badges: d.badges,
+    ...(d.distanceKm != null ? { distanceKm: d.distanceKm } : {}),
+  };
+}
+
 // ── Blood Donors Search (supports city OR lat/lng proximity) ──────────────────
-router.get("/blood/donors", async (req, res) => {
+// SECURITY FIX: previously had no requireAuth and returned raw rows
+// (phone number + precise GPS lat/lng) to anyone, unauthenticated — a
+// stalking/harassment risk for users who registered as donors trusting
+// the app's own "OTP verification keeps your identity secure" promise.
+router.get("/blood/donors", requireAuth, async (req, res) => {
   try {
     const { bloodGroup, city, lat, lng, radiusKm = "50" } = req.query as Record<string, string>;
     const now = new Date();
@@ -176,7 +198,7 @@ router.get("/blood/donors", async (req, res) => {
       }
 
       res.json({
-        donors: filtered.slice(0, 20),
+        donors: filtered.slice(0, 20).map(toPublicDonor),
         nearbySearch: true,
         searchedRadiusKm: searchedRadius,
         expanded: searchedRadius !== baseRadius,
@@ -184,7 +206,7 @@ router.get("/blood/donors", async (req, res) => {
       return;
     }
 
-    res.json({ donors: donors.slice(0, 20), nearbySearch: false });
+    res.json({ donors: donors.slice(0, 20).map(toPublicDonor), nearbySearch: false });
   } catch {
     res.status(500).json({ error: "Failed to fetch donors" });
   }
@@ -556,6 +578,46 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
       { requestId: request.id }
     ).catch(() => {});
 
+    // ── Fire-and-forget: notify the requester's own emergency contacts ────────
+    // BUG FIX: emergencyContactsTable + its notifyOnBloodEmergency flag were
+    // written by POST /emergency/contacts but never read anywhere — a
+    // user's designated emergency contact was never actually notified of a
+    // blood emergency. This closes that gap for contacts who are ALSO a
+    // registered Aorane user (matched by phone), reusing the same push
+    // pipeline used for donors below. NOTE: a contact who is not an Aorane
+    // user cannot be reached this way — that requires an SMS integration
+    // with a DLT-approved template (a compliance/provider-setup step, not
+    // just code) plus a mobile UI to actually manage contacts, neither of
+    // which exists yet; this wiring is real but partial until those land.
+    (async () => {
+      try {
+        const contacts = await db.select({ phone: emergencyContactsTable.phone })
+          .from(emergencyContactsTable)
+          .where(and(eq(emergencyContactsTable.userId, req.userId!), eq(emergencyContactsTable.notifyOnBloodEmergency, true)));
+        if (!contacts.length) return;
+
+        const contactPhones = contacts.map(c => c.phone);
+        const matchedUsers = await db.select({ id: usersTable.id })
+          .from(usersTable)
+          .where(inArray(usersTable.phone, contactPhones));
+        if (!matchedUsers.length) return;
+
+        const contactTokens = await getTokensForUsers(matchedUsers.map(u => u.id));
+        if (!contactTokens.length) return;
+
+        await sendExpoPushNotifications(
+          contactTokens,
+          "🩸 Your Emergency Contact Needs Help",
+          `${String(patientName)} (who has you as an emergency contact) needs ${String(resolvedBloodGroup)} blood at ${String(hospitalName)}, ${String(hospitalCity)}.`,
+          { screen: "blood", requestId: request?.id || "" },
+          3600,
+        );
+        logger.info({ notified: contactTokens.length }, "[BloodEmergency] Emergency contacts (app users) notified");
+      } catch (contactErr) {
+        logger.warn({ err: (contactErr as Error).message }, "[BloodEmergency] Emergency-contact notification failed (non-fatal)");
+      }
+    })().catch(() => {});
+
     // ── Fire-and-forget: notify compatible donors (GPS-based if lat/lng given, else city/state) ─
     (async () => {
       try {
@@ -663,7 +725,28 @@ router.post("/blood/emergency/direct", requireAuth, async (req: AuthRequest, res
         }
 
         const tokens = await getTokensForUsers(uids);
-        if (!tokens.length) return;
+        if (!tokens.length) {
+          // BUG FIX: donors were found in the DB, but none of them have an
+          // active push token (uninstalled app, token expired, Expo API
+          // down) — previously this silently returned here while the
+          // requester's app already showed "sent to all donors" (see
+          // res.status(201) above, sent before this async block runs), so
+          // the requester had no way to know zero people were actually
+          // reached. Mirror the "no donors found at all" branch above and
+          // tell them explicitly so they know to share manually.
+          const requesterTokens = await getTokensForUsers([req.userId!]);
+          if (requesterTokens.length) {
+            await sendExpoPushNotifications(
+              requesterTokens,
+              "⚠️ Donors Found, But Couldn't Be Reached",
+              `${uids.length} ${resolvedBloodGroup} donor(s) found nearby, but none could be notified right now. Please share the request on WhatsApp/social media for faster help.`,
+              { screen: "blood", requestId: request?.id || "" },
+              3600,
+            );
+          }
+          logger.warn({ bloodGroup: resolvedBloodGroup, hospitalCity, donorsFound: uids.length }, "[BloodEmergency] Donors found but no active push tokens — requester notified");
+          return;
+        }
 
         // TTL = 3600s (1 hour) — blood emergency notifications are useless after that
         await sendExpoPushNotifications(

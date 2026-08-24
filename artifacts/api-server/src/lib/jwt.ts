@@ -56,12 +56,18 @@ export function signRefreshToken(payload: UserTokenPayload): string {
   return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: "30d" });
 }
 
+// SECURITY: explicit `algorithms` allowlist as defense-in-depth. All four
+// verify calls below previously relied on jsonwebtoken inferring HS256 from
+// the secret being a plain string — not currently exploitable since these
+// secrets are never PEM keys, but pinning it explicitly means a future
+// change (e.g. switching to PEM-based keys) can't silently reopen an
+// algorithm-confusion class of bug.
 export function verifyUserToken(token: string): UserTokenPayload {
-  return jwt.verify(token, JWT_SECRET) as UserTokenPayload;
+  return jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as UserTokenPayload;
 }
 
 export function verifyRefreshToken(token: string): UserTokenPayload {
-  return jwt.verify(token, JWT_REFRESH_SECRET) as UserTokenPayload;
+  return jwt.verify(token, JWT_REFRESH_SECRET, { algorithms: ["HS256"] }) as UserTokenPayload;
 }
 
 // FIX H-3: Admin tokens restricted to 1 day for high-privilege sessions.
@@ -70,7 +76,7 @@ export function signAdminToken(payload: AdminTokenPayload): string {
 }
 
 export function verifyAdminToken(token: string): AdminTokenPayload {
-  return jwt.verify(token, ADMIN_JWT_SECRET) as AdminTokenPayload;
+  return jwt.verify(token, ADMIN_JWT_SECRET, { algorithms: ["HS256"] }) as AdminTokenPayload;
 }
 
 // FIX H-3: Business tokens restricted to 1 day.
@@ -79,5 +85,5 @@ export function signBusinessToken(payload: BusinessTokenPayload): string {
 }
 
 export function verifyBusinessToken(token: string): BusinessTokenPayload {
-  return jwt.verify(token, BUSINESS_JWT_SECRET) as BusinessTokenPayload;
+  return jwt.verify(token, BUSINESS_JWT_SECRET, { algorithms: ["HS256"] }) as BusinessTokenPayload;
 }

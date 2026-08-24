@@ -7,7 +7,7 @@ import { cache } from "../../lib/redis";
 import { signUserToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { logger } from "../../lib/logger";
+import { logger, safeErrorMessage } from "../../lib/logger";
 
 const router = Router();
 
@@ -79,7 +79,8 @@ router.post("/auth/send-otp", async (req, res) => {
     const msg = err instanceof Error ? err.message : String(err);
     const cause = (err as any)?.cause?.message || (err as any)?.cause || "";
     req.log.error({ msg, cause }, "OTP ERROR");
-    res.status(500).json({ error: "Failed to send OTP", detail: msg, cause: String(cause) });
+    const isProd = process.env.NODE_ENV === "production";
+    res.status(500).json({ error: "Failed to send OTP", detail: safeErrorMessage(err), ...(isProd ? {} : { cause: String(cause) }) });
   }
 });
 
@@ -333,7 +334,7 @@ router.post("/auth/firebase-login", async (req, res) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error({ err: msg }, "[Firebase] login error");
-    res.status(500).json({ error: "Firebase login failed", detail: msg });
+    res.status(500).json({ error: "Firebase login failed", detail: safeErrorMessage(err) });
   }
 });
 
@@ -556,8 +557,7 @@ router.post("/auth/send-email-otp", async (req, res) => {
       sent,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ error: "Failed to send email OTP", detail: msg });
+    res.status(500).json({ error: "Failed to send email OTP", detail: safeErrorMessage(err) });
   }
 });
 
