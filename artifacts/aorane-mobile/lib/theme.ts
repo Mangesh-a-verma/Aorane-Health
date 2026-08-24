@@ -1,5 +1,26 @@
 import { Platform, StyleSheet } from "react-native";
 
+/**
+ * DS is the primary, actively-maintained design-token source (~15 screens
+ * import it) — color/radius/font/space/shadow scales all in one place.
+ *
+ * There is a SECOND, separate token source: constants/colors.ts (a full
+ * light+dark palette, reached via hooks/useColors.ts), currently consumed
+ * by only 2 files — components/GlassCard.tsx and app/+not-found.tsx — plus
+ * ~11 screens that define their own local, one-off `const C = {...}`
+ * color objects instead of using either shared source.
+ *
+ * These are NOT reconciled yet: DS.color.primary (#0B84D6) and
+ * colors.light.primary (#0077B6) are two different blues for the same
+ * conceptual role, and several screens' local palettes diverge further
+ * still. Deliberately NOT auto-merged here — picking which value "wins"
+ * for each token, and migrating every consumer to it, changes what the
+ * app visually looks like on every screen touched, which needs to be
+ * verified against a running build (screenshots / a physical device),
+ * not guessed at blind. Until that pass happens, treat DS as the source
+ * for NEW code, and don't assume DS and colors.ts agree on any given
+ * color today.
+ */
 export const DS = {
   color: {
     // ── Backgrounds ──────────────────────────────────────────
