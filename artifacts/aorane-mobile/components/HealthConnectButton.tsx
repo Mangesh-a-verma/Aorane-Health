@@ -7,7 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useHealthConnect } from "../hooks/useHealthConnect";
 
 export function HealthConnectButton() {
-  const { status, isLoading, openInstall, openUpdate, requestPermissions } =
+  const { status, isLoading, permissionDenied, openInstall, openUpdate, requestPermissions } =
     useHealthConnect();
 
   // Still checking
@@ -81,6 +81,27 @@ export function HealthConnectButton() {
           <Text style={s.installBtnText}>Update</Text>
         </TouchableOpacity>
       </View>
+    );
+  }
+
+  // Available, but the user declined the permission dialog last time —
+  // show that clearly instead of silently reverting to the same "Ready"
+  // state, which previously gave zero indication that sync wasn't working.
+  if (status === "available" && permissionDenied && !isLoading) {
+    return (
+      <TouchableOpacity
+        style={[s.card, s.grayCard]}
+        onPress={requestPermissions}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="close-circle-outline" size={20} color="#EF4444" />
+        <View style={{ flex: 1 }}>
+          <Text style={s.titleGray}>Health Connect</Text>
+          <Text style={[s.subGray, { color: "#EF4444" }]}>
+            Permission denied — data sync nahi hoga. Tap to try again.
+          </Text>
+        </View>
+      </TouchableOpacity>
     );
   }
 

@@ -88,7 +88,14 @@ export function deriveActivityRisk(activePct: number): RiskLevel {
   return activePct >= 70 ? "Low" : activePct >= 40 ? "Moderate" : "High";
 }
 
-export function deriveMedicationRisk(medPct: number): RiskLevel {
+// hasSchedule distinguishes "0% because nothing was scheduled" (neutral —
+// nothing to be non-compliant with) from "0% despite an active schedule"
+// (genuinely poor adherence). Without this, a user who has never added a
+// medicine gets flagged "High risk / 0% compliance", which the PDF report
+// (buildHealthReport.ts) already special-cased correctly — this brings the
+// native summary screen in line with it instead of the other way around.
+export function deriveMedicationRisk(medPct: number, hasSchedule: boolean = true): RiskLevel {
+  if (!hasSchedule) return "Low";
   return medPct >= 85 ? "Low" : medPct >= 60 ? "Moderate" : "High";
 }
 
@@ -110,7 +117,9 @@ export function buildRiskCards(d: ReportData, medPct: number): RiskCard[] {
   const activePct = d.scores?.activePercent || 0;
   const sleepRisk = deriveSleepRisk(sleepPct);
   const activityRisk = deriveActivityRisk(activePct);
-  const medRisk = deriveMedicationRisk(medPct);
+  const medsTotal = (d.dailyLogs || []).reduce((s, l) => s + (l?.medicinesTotal || 0), 0);
+  const hasMedSchedule = medsTotal > 0;
+  const medRisk = deriveMedicationRisk(medPct, hasMedSchedule);
 
   return [
     {
@@ -178,8 +187,9 @@ export function buildRiskCards(d: ReportData, medPct: number): RiskCard[] {
       name: "Medication",
       risk: medRisk,
       score: medPct,
-      tip:
-        medRisk === "High"
+      tip: !hasMedSchedule
+        ? "No medication schedules found in the app."
+        : medRisk === "High"
           ? `Only ${medPct}% compliance. Follow your prescribed schedule strictly.`
           : medRisk === "Moderate"
           ? "Some missed doses detected. Set daily reminders."

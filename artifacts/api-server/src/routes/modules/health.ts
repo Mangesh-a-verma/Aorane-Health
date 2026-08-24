@@ -253,8 +253,13 @@ router.get("/health/score/:date", requireAuth, async (req: AuthRequest, res) => 
         grade: "—",
         gradeLabel: "No data yet",
         dataConfidence: 0,
+        // No fabricated values — a real computation failure should never
+        // masquerade as a plausible partial score (e.g. "75% medicine
+        // adherence") that a consumer displays without checking
+        // dataConfidence===0 first (health-report.tsx does; family.tsx's
+        // ScoreBar reads these directly without that check).
         foodScore: 0, exerciseScore: 0, waterScore: 0,
-        medicineScore: 75, sleepScore: 50, bmiScore: 50,
+        medicineScore: 0, sleepScore: 0, bmiScore: 0,
         food: { calories: 0, calorieGoal: 2000, proteinG: 0, proteinGoalG: 50, carbsG: 0, fatG: 0, fiberG: 0, fiberGoalG: 25, meals: 0, mealGoal: 3, micronutrients: { dataAvailable: false, compositeScore: 0, calcium: { mg: 0, goalMg: 800, score: 0 }, iron: { mg: 0, goalMg: 17, score: 0 }, vitaminC: { mg: 0, goalMg: 40, score: 0 }, vitaminB12: { mcg: 0, goalMcg: 1, score: 0 }, vitaminD: { mcg: 0, goalMcg: 10, score: 0 } } },
         exercise: { metMinutesToday: 0, metMinutesGoal: 85.7, durationMinutes: 0, caloriesBurned: 0, sessions: 0 },
         water: { mlConsumed: 0, mlGoal: 2500, glasses: 0 },

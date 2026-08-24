@@ -15,6 +15,10 @@ import { HealthConnectStatus } from "@/lib/health/types";
 export function useHealthConnect() {
   const [status, setStatus] = useState<HealthConnectStatus>("checking");
   const [isLoading, setIsLoading] = useState(false);
+  // Tracks a user-declined permission request so the UI can say so instead
+  // of silently falling back to the same "Ready — tap to connect" state
+  // with no indication anything went wrong.
+  const [permissionDenied, setPermissionDenied] = useState(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   const checkStatus = useCallback(async () => {
@@ -56,8 +60,10 @@ export function useHealthConnect() {
   const requestPermissions = useCallback(async () => {
     if (status !== "available") return false;
     setIsLoading(true);
+    setPermissionDenied(false);
     try {
       const { granted } = await connectAndSync();
+      setPermissionDenied(!granted);
       return granted;
     } finally {
       setIsLoading(false);
@@ -67,6 +73,7 @@ export function useHealthConnect() {
   return {
     status,
     isLoading,
+    permissionDenied,
     isAvailable: status === "available",
     checkStatus,
     openInstall,

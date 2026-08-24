@@ -130,14 +130,36 @@ router.get("/wearable/data", requireAuth, async (req: AuthRequest, res) => {
     const latest = data[0] || null;
     const windowStart = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
     const recent = data.filter((d: any) => d.recordedAt >= windowStart);
-    const withHr = recent.filter((d: any) => d.heartRateAvg);
-    const withSleep = recent.filter((d: any) => d.sleepHours);
-    const withSpo2 = recent.filter((d: any) => d.bloodOxygen);
 
-    const avgSteps = recent.length > 0 ? Math.round(recent.reduce((s: any, d: any) => s + (d.steps || 0), 0) / recent.length) : null;
+    // Each sync row is a ROLLING 24h snapshot (mobile's syncManager.ts reads
+    // "last 24 hours" on every sync, not a delta since the previous sync),
+    // and syncs can happen several times a day (4h cooldown). Consecutive
+    // rows on the same day therefore overlap heavily — summing/averaging
+    // them raw would double- or triple-count calories/active-minutes by
+    // however many times the user synced that day. Dedupe to the single
+    // latest-synced row per IST calendar day first (same "latest row per
+    // day" approach scoring.ts already uses for the health score), then
+    // aggregate across those day-buckets instead of raw rows. A user with
+    // no wearable data at all just yields an empty set here, which already
+    // falls through to null/0 below — no fabricated values.
+    const byDay = new Map<string, (typeof recent)[number]>();
+    for (const d of recent) {
+      const dayKey = new Date(d.recordedAt as unknown as string).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+      const existing = byDay.get(dayKey);
+      if (!existing || new Date(d.recordedAt as unknown as string) > new Date(existing.recordedAt as unknown as string)) {
+        byDay.set(dayKey, d);
+      }
+    }
+    const dailySnapshots = Array.from(byDay.values());
+
+    const withHr = dailySnapshots.filter((d: any) => d.heartRateAvg);
+    const withSleep = dailySnapshots.filter((d: any) => d.sleepHours);
+    const withSpo2 = dailySnapshots.filter((d: any) => d.bloodOxygen);
+
+    const avgSteps = dailySnapshots.length > 0 ? Math.round(dailySnapshots.reduce((s: any, d: any) => s + (d.steps || 0), 0) / dailySnapshots.length) : null;
     const avgHr = withHr.length > 0 ? Math.round(withHr.reduce((s: any, d: any) => s + (d.heartRateAvg || 0), 0) / withHr.length) : null;
-    const totalCalories = recent.reduce((s: any, d: any) => s + parseFloat(d.caloriesBurned || "0"), 0);
-    const totalActiveMin = recent.reduce((s: any, d: any) => s + (d.activeMinutes || 0), 0);
+    const totalCalories = dailySnapshots.reduce((s: any, d: any) => s + parseFloat(d.caloriesBurned || "0"), 0);
+    const totalActiveMin = dailySnapshots.reduce((s: any, d: any) => s + (d.activeMinutes || 0), 0);
     const avgSleep = withSleep.length > 0 ? Math.round(withSleep.reduce((s: any, d: any) => s + parseFloat(d.sleepHours || "0"), 0) / withSleep.length * 10) / 10 : null;
     const avgSpo2 = withSpo2.length > 0 ? Math.round(withSpo2.reduce((s: any, d: any) => s + parseFloat(d.bloodOxygen || "0"), 0) / withSpo2.length * 10) / 10 : null;
 

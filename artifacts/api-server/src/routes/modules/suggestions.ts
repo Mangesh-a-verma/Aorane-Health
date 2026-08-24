@@ -18,6 +18,7 @@ import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { checkAndUseAILimit, refundAIUsage } from "../../lib/aiLimiter";
 import { callAI } from "../../lib/ai";
+import { todayIST, istDayBounds } from "../../lib/dateUtils";
 
 const router = Router();
 
@@ -237,7 +238,11 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const planType = (req.userPlan || "free").toLowerCase();
-    const today = new Date().toISOString().slice(0, 10);
+    // IST-anchored, matching scoring.ts/activityScore.ts — a plain UTC date
+    // slice puts a user logging between 00:00-05:30 IST on "yesterday",
+    // so cached suggestions/today's activity would silently miss what they
+    // just logged.
+    const today = todayIST();
 
     // 1. Check cache — if today's suggestions exist, return them
     //    (BUG FIX: the AI-usage gate below runs AFTER this cache check, so
@@ -308,8 +313,9 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
     // 5. Get today's activity (best-effort)
     let caloriesToday = 0, waterToday = 0, exerciseMinToday = 0;
     try {
-      const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
+      const istBounds = istDayBounds(today);
+      const dayStart = new Date(istBounds.dayStart);
+      const dayEnd = new Date(istBounds.dayEnd);
 
       const [foodLogs, waterLogs, exerciseLogs] = await Promise.allSettled([
         db.select().from(foodLogsTable).where(and(eq(foodLogsTable.userId, userId), gte(foodLogsTable.loggedAt, dayStart), lte(foodLogsTable.loggedAt, dayEnd))),
@@ -395,7 +401,9 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
 // ── POST /suggestions/refresh — Force new AI generation ──────────────────────
 router.post("/suggestions/refresh", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    // Must match the same IST day key /suggestions/daily reads/writes,
+    // otherwise this clears (or misses) the wrong day's cached row.
+    const today = todayIST();
     await db.delete(dailySuggestionsTable).where(
       and(eq(dailySuggestionsTable.userId, req.userId!), eq(dailySuggestionsTable.date, today))
     );

@@ -9,6 +9,10 @@ import { istDayBounds } from "./dateUtils";
  * If a metric has no data → it is excluded from composite entirely.
  * Morning score with zero entries = 0.
  *
+ * NOT a duplicate of activityScore.ts's upsertDailyActivityScore() — that's
+ * a separate, simpler engagement/consistency percentage. See the header
+ * comment in activityScore.ts for how the two relate; do not merge them.
+ *
  * References:
  * WHO Physical Activity Guidelines 2020
  * ICMR Dietary Guidelines for Indians 2024
@@ -567,7 +571,14 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const prefWaterGlasses = parseInt(pref.water_goal_glasses || "0") || null;
 
   const profile = { ...(profileBasicR.rows[0] ?? {}), ...(profileExtR.rows[0] ?? {}) };
-  const weightKg     = parseFloat(profile.weight_kg    || "60");
+  // No fake weight default — a fabricated weight would silently produce a
+  // fabricated BMI (marked hasData:true) and skew BMR/TDEE/calorie/protein
+  // goals, contradicting this module's own "no fake defaults" principle
+  // above. calcBMRandTDEE() already treats a falsy weightKg as "no data"
+  // (returns null), and the freshBmi computation below already requires
+  // weightKg > 0, so leaving this at 0 when unset correctly excludes BMI
+  // from the composite instead of scoring a fictitious value.
+  const weightKg     = parseFloat(profile.weight_kg    || "0");
   const heightCm     = parseFloat(profile.height_cm    || "0");
   const gender       = profile.gender       || "other";
   const activityLevel = profile.activity_level || "moderate";
