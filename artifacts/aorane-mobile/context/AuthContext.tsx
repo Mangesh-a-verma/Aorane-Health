@@ -1,8 +1,16 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { AppState, type AppStateStatus } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { storage } from "@/lib/storage";
 import { api, setUnauthorizedCallback } from "@/lib/api";
 import { logSilentError } from "@/lib/silentCatch";
+import { cancelAllNotifications } from "@/lib/notifications";
+
+// Keep in sync with app/_layout.tsx (push token cache) and
+// app/notification-settings.tsx (notification settings cache) — logout needs
+// to read/clear the exact same AsyncStorage keys those files write to.
+const PUSH_TOKEN_CACHE_KEY = "aorane_push_token_v1";
+const NOTIF_SETTINGS_CACHE_KEY = "aorane_notif_settings_v1";
 
 type User = {
   id: string;
@@ -143,6 +151,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     isAuthenticatedRef.current = false;
+
+    // ── Server-side session + push-token cleanup (best-effort) ─────────────
+    // Must happen BEFORE storage.clearTokens() below, since it needs the
+    // still-valid access token to authenticate the /auth/logout call. Wrapped
+    // so a network failure here never blocks local logout — the user must
+    // always be able to sign out even if the backend is unreachable.
+    try {
+      const pushToken = await AsyncStorage.getItem(PUSH_TOKEN_CACHE_KEY);
+      await api.logout(pushToken || undefined);
+    } catch (e) {
+      logSilentError("auth-logout-api", e as Error);
+    }
+
+    // ── Cancel this user's locally-scheduled reminders ──────────────────────
+    // Without this, water/food/medicine/period notifications scheduled for
+    // the account being logged out keep firing on this device — including
+    // after a different user logs in on the same phone.
+    try {
+      await cancelAllNotifications();
+    } catch (e) {
+      logSilentError("auth-logout-notifications", e as Error);
+    }
+
+    // ── Clear cached notification settings ──────────────────────────────────
+    // Prevents the next user who logs in on this device from briefly
+    // inheriting this user's wake/bed time & water goal before their own
+    // settings load from the backend.
+    try {
+      await AsyncStorage.removeItem(NOTIF_SETTINGS_CACHE_KEY);
+      await AsyncStorage.removeItem(PUSH_TOKEN_CACHE_KEY);
+    } catch (e) {
+      logSilentError("auth-logout-cache-clear", e as Error);
+    }
+
     await storage.clearTokens();
     setState({
       isLoading: false,

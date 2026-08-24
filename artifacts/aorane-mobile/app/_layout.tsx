@@ -93,6 +93,10 @@ function RootLayoutNav() {
 const setupAndroidChannels = setupNotificationChannels;
 
 
+// Keep in sync with context/AuthContext.tsx — logout reads this key back to
+// know which device token to deactivate server-side.
+const PUSH_TOKEN_CACHE_KEY = "aorane_push_token_v1";
+
 // ── Updated Bulletproof Push Token Registration ─────────────────────────────────
 async function registerPushToken() {
   if (Platform.OS === "web") return;
@@ -122,9 +126,12 @@ async function registerPushToken() {
 
     const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     const token = tokenData.data;
-    
+
     // FIX: Removed strict ExponentPushToken check for broader compatibility
     if (token) {
+      // Cached locally so logout() (AuthContext) can tell the server exactly
+      // which device token to deactivate for the account signing out.
+      await AsyncStorage.setItem(PUSH_TOKEN_CACHE_KEY, token).catch(() => {});
       await rawRequest("POST", "/users/push-token", { token, platform: Platform.OS }).catch((err) => {
          console.debug("Failed to send token to backend:", err);
       });
