@@ -4,10 +4,11 @@ import { db, foodLogsTable, foodItemsTable, foodScanCacheTable, userProfilesTabl
 import { eq, and, gte, lte, ilike, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { checkAndUseAILimit } from "../../lib/aiLimiter";
+import { checkAndUseAILimit, refundAIUsage } from "../../lib/aiLimiter";
 import { callAI } from "../../lib/ai";
 import { getWeatherContext } from "../../lib/weather";
 import { cache } from "../../lib/redis";
+import { todayIST, istDayBounds } from "../../lib/dateUtils";
 
 const WEATHER_CACHE_TTL = 6 * 60 * 60; // 6 hours
 
@@ -126,8 +127,9 @@ router.get("/food/logs", requireAuth, async (req: AuthRequest, res) => {
     const { date, startDate, endDate } = req.query as Record<string, string>;
     const conditions = [eq(foodLogsTable.userId, req.userId!)];
     if (date) {
-      conditions.push(gte(foodLogsTable.loggedAt, new Date(date + "T00:00:00Z")));
-      conditions.push(lte(foodLogsTable.loggedAt, new Date(date + "T23:59:59Z")));
+      const { dayStart, dayEnd } = istDayBounds(date);
+      conditions.push(gte(foodLogsTable.loggedAt, new Date(dayStart)));
+      conditions.push(lte(foodLogsTable.loggedAt, new Date(dayEnd)));
     } else if (startDate && endDate) {
       conditions.push(gte(foodLogsTable.loggedAt, new Date(startDate)));
       conditions.push(lte(foodLogsTable.loggedAt, new Date(endDate)));
@@ -476,6 +478,7 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
         // the AI-discovered-foods cache below, where enough hits could
         // even auto-promote it into the verified food database.
         req.log.error({ err: aiErr }, "[FoodSearch] AI text analysis failed");
+        await refundAIUsage(userId, aiFeature);
         res.status(502).json({ error: `AI food lookup failed: ${aiErr instanceof Error ? aiErr.message : "Unknown error"}. Please try again or enter nutrition manually.` });
         return;
       }
@@ -483,10 +486,17 @@ Return ONLY a valid JSON object (no markdown) with these exact fields:
       const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         req.log.warn({ text: jsonStr.slice(0, 300) }, "[FoodSearch] AI text analysis: no JSON in response");
+        await refundAIUsage(userId, aiFeature);
         res.status(502).json({ error: "Could not parse AI response. Please try again or enter the food manually." });
         return;
       }
-      result = JSON.parse(jsonMatch[0]);
+      try {
+        result = JSON.parse(jsonMatch[0]);
+      } catch {
+        await refundAIUsage(userId, aiFeature);
+        res.status(502).json({ error: "Could not parse AI response. Please try again or enter the food manually." });
+        return;
+      }
     } else if (imageBase64) {
       // Image-based food scan — routed through the standard callAI()
       // abstraction (feature key "food_ai", same as the text-search path
@@ -536,6 +546,7 @@ All numeric values must be numbers (not strings). dietaryTags must be an array. 
         );
       } catch (aiErr) {
         req.log.error({ err: aiErr }, "[FoodScan] AI photo analysis failed");
+        await refundAIUsage(userId, aiFeature);
         res.status(502).json({ error: `AI photo analysis failed: ${aiErr instanceof Error ? aiErr.message : "Unknown error"}. Please try again or enter manually.` });
         return;
       }
@@ -543,10 +554,17 @@ All numeric values must be numbers (not strings). dietaryTags must be an array. 
       const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         req.log.warn({ text: jsonStr.slice(0, 300) }, "[FoodScan] AI photo analysis: no JSON in response");
+        await refundAIUsage(userId, aiFeature);
         res.status(502).json({ error: "Could not parse AI response. Please try again or enter the food manually." });
         return;
       }
-      result = JSON.parse(jsonMatch[0]);
+      try {
+        result = JSON.parse(jsonMatch[0]);
+      } catch {
+        await refundAIUsage(userId, aiFeature);
+        res.status(502).json({ error: "Could not parse AI response. Please try again or enter the food manually." });
+        return;
+      }
     } else {
       res.status(400).json({ error: "searchTerm or imageBase64 required" }); return;
     }
@@ -608,11 +626,12 @@ All numeric values must be numbers (not strings). dietaryTags must be an array. 
 router.get("/food/summary/:date", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { date } = req.params;
+    const { dayStart, dayEnd } = istDayBounds(date as string);
     const logs = await db.select().from(foodLogsTable).where(
       and(
         eq(foodLogsTable.userId, req.userId!),
-        gte(foodLogsTable.loggedAt, new Date(date + "T00:00:00Z")),
-        lte(foodLogsTable.loggedAt, new Date(date + "T23:59:59Z"))
+        gte(foodLogsTable.loggedAt, new Date(dayStart)),
+        lte(foodLogsTable.loggedAt, new Date(dayEnd))
       )
     );
     const summary = {
@@ -637,17 +656,18 @@ router.get("/food/summary/:date", requireAuth, async (req: AuthRequest, res) => 
 // ── Weekly Nutrition Summary (last 7 days) ────────────────────────────────────
 router.get("/food/weekly-nutrition", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const today = new Date();
+    const anchor = new Date(`${todayIST()}T12:00:00Z`);
     const days: { date: string; totalCalories: number; totalProteinG: number; totalCarbsG: number; totalFatG: number; totalCalciumMg: number; totalVitaminB12Mcg: number; totalVitaminCMg: number; totalIronMg: number; mealCount: number }[] = [];
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
+      const d = new Date(anchor);
+      d.setUTCDate(d.getUTCDate() - i);
       const dateStr = d.toISOString().slice(0, 10);
+      const { dayStart, dayEnd } = istDayBounds(dateStr);
       const logs = await db.select().from(foodLogsTable).where(
         and(
           eq(foodLogsTable.userId, req.userId!),
-          gte(foodLogsTable.loggedAt, new Date(dateStr + "T00:00:00Z")),
-          lte(foodLogsTable.loggedAt, new Date(dateStr + "T23:59:59Z"))
+          gte(foodLogsTable.loggedAt, new Date(dayStart)),
+          lte(foodLogsTable.loggedAt, new Date(dayEnd))
         )
       );
       days.push({
@@ -682,7 +702,7 @@ router.get("/food/weekly-nutrition", requireAuth, async (req: AuthRequest, res) 
 // ── Monthly Nutrition Summary (last 30 days, grouped by week) ────────────────
 router.get("/food/monthly-nutrition", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const today = new Date();
+    const anchor = new Date(`${todayIST()}T12:00:00Z`);
     const weeks: Array<{
       weekLabel: string; startDate: string; endDate: string;
       totalCalories: number; totalProteinG: number; totalCarbsG: number; totalFatG: number;
@@ -691,18 +711,20 @@ router.get("/food/monthly-nutrition", requireAuth, async (req: AuthRequest, res)
     }> = [];
 
     for (let w = 3; w >= 0; w--) {
-      const endD = new Date(today);
-      endD.setDate(endD.getDate() - w * 7);
+      const endD = new Date(anchor);
+      endD.setUTCDate(endD.getUTCDate() - w * 7);
       const startD = new Date(endD);
-      startD.setDate(startD.getDate() - 6);
+      startD.setUTCDate(startD.getUTCDate() - 6);
       const startStr = startD.toISOString().slice(0, 10);
       const endStr = endD.toISOString().slice(0, 10);
+      const { dayStart } = istDayBounds(startStr);
+      const { dayEnd } = istDayBounds(endStr);
 
       const logs = await db.select().from(foodLogsTable).where(
         and(
           eq(foodLogsTable.userId, req.userId!),
-          gte(foodLogsTable.loggedAt, new Date(startStr + "T00:00:00Z")),
-          lte(foodLogsTable.loggedAt, new Date(endStr + "T23:59:59Z"))
+          gte(foodLogsTable.loggedAt, new Date(dayStart)),
+          lte(foodLogsTable.loggedAt, new Date(dayEnd))
         )
       );
 

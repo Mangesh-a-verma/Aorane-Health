@@ -5,8 +5,9 @@ import { db, stressLogsTable, userProfilesTable, exerciseLogsTable, waterLogsTab
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { checkAndUseAILimit } from "../../lib/aiLimiter";
+import { checkAndUseAILimit, refundAIUsage } from "../../lib/aiLimiter";
 import { callAI } from "../../lib/ai";
+import { todayIST, istDayBounds } from "../../lib/dateUtils";
 
 // ── Work profile → estimated daily work hours map ───────────────────────────
 const WORK_HOURS_MAP: Record<string, number> = {
@@ -88,9 +89,10 @@ router.post("/stress/log", requireAuth, async (req: AuthRequest, res) => {
     // ── Five-Pillar (auto from today's activity data) ───────────────────────
     } else if (stressType === "five_pillar") {
       dbStressType = "five_pillar";
-      const today      = new Date().toISOString().split("T")[0];
-      const todayStart = new Date(`${today}T00:00:00Z`);
-      const todayEnd   = new Date(`${today}T23:59:59Z`);
+      const today = todayIST();
+      const { dayStart: todayStartStr, dayEnd: todayEndStr } = istDayBounds(today);
+      const todayStart = new Date(todayStartStr);
+      const todayEnd   = new Date(todayEndStr);
 
       const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, req.userId!));
 
@@ -180,8 +182,8 @@ router.post("/stress/log", requireAuth, async (req: AuthRequest, res) => {
 // ─────────────────────────────────────────────────────────
 router.get("/stress/today", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const today      = new Date().toISOString().split("T")[0]!;
-    const todayStart = new Date(`${today}T00:00:00Z`);
+    const today      = todayIST();
+    const todayStart = new Date(istDayBounds(today).dayStart);
 
     const logs = await db.select().from(stressLogsTable)
       .where(and(eq(stressLogsTable.userId, req.userId!), gte(stressLogsTable.loggedAt, todayStart)))
@@ -383,11 +385,14 @@ Format as JSON exactly:
             const parsed = JSON.parse(jsonMatch[0]) as { insight?: string; tips?: string[] };
             insight  = parsed.insight || "";
             aiTips   = parsed.tips || [];
+          } else {
+            await refundAIUsage(req.userId!, "ai_stress_insight_daily");
           }
         } catch (err) {
           // Safe to continue with the fallback insight/tips below — but log
           // it so a persistent AI failure (bad key, quota, etc.) is visible.
           logger.warn({ err }, "[Stress] AI insight generation failed — falling back to default insight/tips");
+          await refundAIUsage(req.userId!, "ai_stress_insight_daily");
         }
       }
     }

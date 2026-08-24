@@ -6,32 +6,23 @@ import { api, type Overview, type HealthAnalytics, type MemberStress, type Membe
 import {
   Users, Server, TrendingUp, Activity, Copy, Check,
   Building2, MapPin, Mail, Phone, Shield, Heart, Droplets, Dumbbell, Pill,
-  AlertTriangle, UserCheck, UserX, Zap, Search, Brain, X as XIcon, Loader2,
-  UserPlus, FileText, Megaphone, QrCode, ArrowRight, Clock, CreditCard,
+  AlertTriangle, UserCheck, UserX, Search, X as XIcon, Loader2,
+  FileText, Megaphone, QrCode, ArrowRight, Clock, CreditCard,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from "recharts";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { CardShell, NeuCard, PageHeader, PrivacyNote, StatCard, Avatar } from "@/components/portal/primitives";
 
-
-function StatCard({ label, value, sub, icon: Icon, color }: {
-  label: string; value: string | number; sub?: string;
-  icon: React.ElementType; color: string;
-}) {
-  return (
-    <div className="bg-card border border-border rounded-2xl p-5 hover:border-primary/20 transition-colors">
-      <div className="flex items-start justify-between mb-3">
-        <span className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">{label}</span>
-        <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}1a` }}>
-          <Icon size={16} style={{ color }} />
-        </div>
-      </div>
-      <div className="kpi-number text-3xl text-foreground">{value}</div>
-      {sub && <div className="text-[11px] text-muted-foreground mt-1.5">{sub}</div>}
-    </div>
-  );
-}
+const chartTooltipStyle = {
+  borderRadius: 16,
+  border: "1px solid hsl(var(--border))",
+  background: "hsl(var(--card))",
+  fontSize: 12,
+};
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -50,7 +41,7 @@ function HealthCircle({ label, value, color, icon: Icon }: {
     <div className="flex flex-col items-center gap-2">
       <div className="relative w-16 h-16">
         <svg viewBox="0 0 72 72" className="w-full h-full -rotate-90">
-          <circle cx="36" cy="36" r={r} fill="none" stroke="#F3F4F6" strokeWidth="7" />
+          <circle cx="36" cy="36" r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth="7" />
           <circle cx="36" cy="36" r={r} fill="none" stroke={color} strokeWidth="7"
             strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
         </svg>
@@ -59,8 +50,8 @@ function HealthCircle({ label, value, color, icon: Icon }: {
         </div>
       </div>
       <div>
-        <div className="text-lg font-bold text-[#0D1F33] text-center">{value}%</div>
-        <div className="text-[11px] text-[#6B7280] text-center">{label}</div>
+        <div className="text-lg font-bold text-foreground text-center">{value}%</div>
+        <div className="text-[11px] text-muted-foreground text-center">{label}</div>
       </div>
     </div>
   );
@@ -149,9 +140,9 @@ export default function Dashboard() {
   };
 
   const healthDistData = analytics ? [
-    { name: "Healthy", value: analytics.healthyCount, color: "#10B981" },
-    { name: "At Risk", value: analytics.atRiskCount, color: "#F59E0B" },
-    { name: "Inactive", value: analytics.inactiveCount, color: "#E5E7EB" },
+    { name: "Healthy", value: analytics.healthyCount, color: "oklch(0.68 0.12 162)" },
+    { name: "At Risk", value: analytics.atRiskCount, color: "oklch(0.8 0.13 80)" },
+    { name: "Inactive", value: analytics.inactiveCount, color: "hsl(var(--muted-foreground) / 0.35)" },
   ] : [];
 
   const trendData = (analytics?.dailyActiveTrend || []).slice(-14).map(d => ({
@@ -161,290 +152,243 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="p-6 max-w-6xl mx-auto">
-        {/* Hero Greeting Card */}
-        <div className="mb-6 rounded-2xl p-6 border border-primary/15 bg-gradient-to-br from-primary/5 via-secondary/5 to-transparent relative overflow-hidden">
-          <div className="absolute inset-0 opacity-30 pointer-events-none"
-            style={{ backgroundImage: "radial-gradient(circle at 90% 20%, rgba(0,119,182,0.15), transparent 40%)" }} />
-          <div className="relative flex items-start justify-between flex-wrap gap-4">
-            <div>
-              <h1 className="font-display font-extrabold text-3xl md:text-4xl text-foreground tracking-tight">
-                {greeting.text}, {firstName} <span className="inline-block">{greeting.emoji}</span>
-              </h1>
-              <p className="text-muted-foreground text-sm mt-1.5 max-w-md">
-                Here's what's happening with <span className="font-semibold text-foreground">{org?.name || "your organization"}</span> today.
-              </p>
-            </div>
-            {analytics && analytics.totalMembers > 0 && (
-              <div className="rounded-xl bg-card/70 backdrop-blur border border-border px-4 py-3 min-w-[160px]">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6 lg:space-y-8">
+        <PageHeader
+          eyebrow="Organization overview"
+          title={`${greeting.text}, ${firstName} ${greeting.emoji}`}
+          description={`Here's what's happening with ${org?.name || "your organization"} today. All member insights below are aggregated and consent-based.`}
+          actions={
+            analytics && analytics.totalMembers > 0 ? (
+              <NeuCard variant="inset" className="px-4 py-3 min-w-[160px]">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Org Health Index</div>
                 <div className="flex items-end gap-2 mt-1">
-                  <div className="kpi-number text-2xl text-primary">{analytics.avgHealthScore}<span className="text-base text-muted-foreground font-normal">/100</span></div>
+                  <div className="text-2xl font-bold tracking-tight text-primary">
+                    {analytics.avgHealthScore}<span className="text-base text-muted-foreground font-normal">/100</span>
+                  </div>
                   {analytics.healthScoreTrendPct !== null && (
-                    <span className={`text-[11px] font-semibold mb-1 flex items-center gap-0.5 ${analytics.healthScoreTrendPct >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                    <span className={`text-[11px] font-semibold mb-1 flex items-center gap-0.5 ${analytics.healthScoreTrendPct >= 0 ? "text-[oklch(0.55_0.13_162)]" : "text-destructive"}`}>
                       {analytics.healthScoreTrendPct >= 0 ? "▲" : "▼"} {Math.abs(analytics.healthScoreTrendPct)}%
                     </span>
                   )}
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">vs last 7 days</div>
-              </div>
-            )}
-          </div>
-        </div>
+              </NeuCard>
+            ) : undefined
+          }
+        />
 
         {/* Enrollment Code Banner — only after active subscription */}
         {!subscriptionLoading && (
           isPaidActive ? (
-            <div className="mb-6 rounded-xl p-5 text-white"
-              style={{ background: "linear-gradient(135deg, #0077B6, #1B998B)" }}>
+            <NeuCard className="p-5">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                  <div className="text-white/70 text-sm mb-1">Organization Enrollment Code</div>
-                  <div className="text-3xl font-bold tracking-widest font-mono">{org?.orgCode}</div>
-                  <div className="text-white/60 text-xs mt-1">Share this code with employees to join your organization</div>
+                  <div className="text-muted-foreground text-sm mb-1">Organization Enrollment Code</div>
+                  <div className="text-3xl font-bold tracking-widest font-mono-data text-foreground">{org?.orgCode}</div>
+                  <div className="text-muted-foreground text-xs mt-1">Share this code with employees to join your organization</div>
                 </div>
-                <button onClick={copyCode}
-                  className="flex items-center gap-2 bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl px-4 py-2.5 text-sm font-medium transition-all">
+                <Button variant="brand" onClick={copyCode}>
                   {copied ? <><Check size={15} /> Copied!</> : <><Copy size={15} /> Copy Code</>}
-                </button>
+                </Button>
               </div>
-            </div>
+            </NeuCard>
           ) : (
-            <div className="mb-6 rounded-xl p-5 border border-indigo-100 bg-indigo-50/60 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
-                <CreditCard size={18} className="text-indigo-600" />
-              </div>
+            <NeuCard variant="flat" className="p-5 flex items-center gap-4">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl tone-lavender">
+                <CreditCard size={18} />
+              </span>
               <div className="flex-1 flex items-center justify-between flex-wrap gap-4">
                 <div>
-                  <div className="text-indigo-900 text-sm font-semibold mb-1">Activate Your Subscription</div>
-                  <div className="text-indigo-700/80 text-xs">
+                  <div className="text-foreground text-sm font-semibold mb-1">Activate Your Subscription</div>
+                  <div className="text-muted-foreground text-xs">
                     Your Organization Enrollment Code will be available once your plan is active.
                   </div>
                 </div>
-                <a href="/billing" className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-all shrink-0">
+                <Button variant="brand" onClick={() => navigate("/billing")} className="shrink-0">
                   Go to Billing
-                </a>
+                </Button>
               </div>
-            </div>
+            </NeuCard>
           )
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <StatCard label="Total Members" value={loading ? "..." : overview?.memberCount || 0}
-            sub="Active enrolled users" icon={Users} color="#0077B6" />
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label="Total Members" value={loading ? "…" : overview?.memberCount || 0}
+            hint="Active enrolled users" icon={<Users />} tone="primary" />
           <StatCard label="Seats Used" value={`${org?.usedSeats || 0}/${org?.totalSeats || 0}`}
-            sub={`${seatPct.toFixed(0)}% utilized`} icon={Server} color="#1B998B" />
-          <StatCard label="Active (7 days)" value={analyticsLoading ? "..." : analytics?.activeLast7Days || 0}
-            sub="Users with health data" icon={TrendingUp} color="#F59E0B" />
-          <StatCard label="Avg Health Score" value={analyticsLoading ? "..." : analytics?.avgHealthScore || 0}
-            sub="Out of 100" icon={Activity} color="#10B981" />
-        </div>
+            hint={`${seatPct.toFixed(0)}% utilized`} icon={<Server />} tone="teal" />
+          <StatCard label="Active (7 days)" value={analyticsLoading ? "…" : analytics?.activeLast7Days || 0}
+            hint="Users with health data" icon={<TrendingUp />} tone="amber" />
+          <StatCard label="Avg Health Score" value={analyticsLoading ? "…" : analytics?.avgHealthScore || 0}
+            hint="Out of 100" icon={<Activity />} tone="mint" />
+        </section>
 
         {/* Stress Level Panel — Real Data from mobile stress tracker */}
         {!analyticsLoading && analytics && analytics.totalMembers > 0 && (() => {
           const hasRealData = analytics.stressTrackedCount > 0;
-          // Use real avgStressScore if available, else fall back to proxy
           const stressIdx = hasRealData ? analytics.avgStressScore! : Math.max(0, 100 - (analytics.avgHealthScore || 0));
           const level = stressIdx < 30 ? "Low" : stressIdx < 55 ? "Moderate" : stressIdx < 75 ? "High" : "Critical";
-          const colors: Record<string, { text: string; bar: string; badge: string; accent: string }> = {
-            Low:      { text: "text-emerald-700", bar: "#10B981", badge: "bg-emerald-50 text-emerald-700 border border-emerald-200", accent: "#10B981" },
-            Moderate: { text: "text-amber-700",   bar: "#F59E0B", badge: "bg-amber-50 text-amber-700 border border-amber-200",     accent: "#F59E0B" },
-            High:     { text: "text-orange-700",  bar: "#F97316", badge: "bg-orange-50 text-orange-700 border border-orange-200", accent: "#F97316" },
-            Critical: { text: "text-red-700",     bar: "#EF4444", badge: "bg-red-50 text-red-700 border border-red-200",         accent: "#EF4444" },
+          const colors: Record<string, { text: string; bar: string; badge: "success" | "warning" | "danger"; tone: string }> = {
+            Low:      { text: "text-[oklch(0.5_0.13_162)]", bar: "oklch(0.68 0.12 162)", badge: "success", tone: "tone-mint" },
+            Moderate: { text: "text-[oklch(0.55_0.13_80)]", bar: "oklch(0.8 0.13 80)",   badge: "warning", tone: "tone-amber" },
+            High:     { text: "text-[oklch(0.55_0.16_50)]", bar: "oklch(0.68 0.17 50)",  badge: "warning", tone: "tone-amber" },
+            Critical: { text: "text-destructive",           bar: "hsl(var(--destructive))", badge: "danger", tone: "tone-danger" },
           };
           const c = colors[level];
           const totalTracked = analytics.totalMembers;
           return (
-            <div className="mb-6 rounded-xl bg-white border border-[#E5E7EB] p-5" style={{ borderLeft: `3px solid ${c.accent}` }}>
-              <div className="flex items-center justify-between flex-wrap gap-4 mb-3">
+            <CardShell
+              title="Workforce Stress Level"
+              description={hasRealData
+                ? `Real-time data from ${analytics.stressTrackedCount} member${analytics.stressTrackedCount !== 1 ? "s" : ""} using Stress Tracker — last 30 days`
+                : "Estimated from health score (no stress logs yet)"}
+              action={
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: c.bar + "15" }}>
-                    <Zap size={18} style={{ color: c.bar }} />
-                  </div>
-                  <div>
-                    <div className="font-display font-bold text-lg text-[#0D1F33]">Workforce Stress Level</div>
-                    <div className="text-xs text-[#9CA3AF]">
-                      {hasRealData
-                        ? `Real-time data from ${analytics.stressTrackedCount} member${analytics.stressTrackedCount !== 1 ? "s" : ""} using Stress Tracker — last 30 days`
-                        : "Estimated from health score (no stress logs yet)"}
-                    </div>
-                  </div>
+                  <div className={`text-3xl sm:text-4xl font-bold tracking-tight ${c.text}`}>{stressIdx}<span className="text-base font-normal text-muted-foreground">%</span></div>
+                  <Badge variant={c.badge}>{level}</Badge>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className={`kpi-number text-4xl ${c.text}`}>{stressIdx}<span className="text-base font-normal text-[#9CA3AF]">%</span></div>
-                  <span className={`pill-chip font-semibold ${c.badge}`}>{level}</span>
-                </div>
-              </div>
-              <div className="h-2 bg-[#F1F5F9] rounded-full overflow-hidden mb-3">
+              }
+            >
+              <div className="neu-inset-sm h-2 rounded-full overflow-hidden mb-4">
                 <div className="h-full rounded-full transition-all duration-700" style={{ width: `${stressIdx}%`, background: c.bar }} />
               </div>
               {hasRealData ? (
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: "High Stress", count: analytics.highStressCount, color: "#EF4444", pct: Math.round((analytics.highStressCount / analytics.stressTrackedCount) * 100) },
-                    { label: "Moderate", count: analytics.moderateStressCount, color: "#F59E0B", pct: Math.round((analytics.moderateStressCount / analytics.stressTrackedCount) * 100) },
-                    { label: "Low / Calm", count: analytics.lowStressCount, color: "#10B981", pct: Math.round((analytics.lowStressCount / analytics.stressTrackedCount) * 100) },
-                  ].map(({ label, count, color, pct }) => (
-                    <div key={label} className="rounded-xl bg-[#F8FAFC] border border-[#E5E7EB] px-3 py-2 text-center">
-                      <div className="font-display font-bold text-xl" style={{ color }}>{count}</div>
-                      <div className="text-[10px] text-[#9CA3AF] uppercase tracking-wider">{label}</div>
-                      <div className="text-[11px] font-medium" style={{ color }}>{pct}%</div>
+                    { label: "High Stress", count: analytics.highStressCount, tone: "tone-danger", pct: Math.round((analytics.highStressCount / analytics.stressTrackedCount) * 100) },
+                    { label: "Moderate", count: analytics.moderateStressCount, tone: "tone-amber", pct: Math.round((analytics.moderateStressCount / analytics.stressTrackedCount) * 100) },
+                    { label: "Low / Calm", count: analytics.lowStressCount, tone: "tone-mint", pct: Math.round((analytics.lowStressCount / analytics.stressTrackedCount) * 100) },
+                  ].map(({ label, count, tone, pct }) => (
+                    <div key={label} className={`neu-flat rounded-2xl px-3 py-2.5 text-center ${tone}`}>
+                      <div className="font-bold text-xl">{count}</div>
+                      <div className="text-[10px] uppercase tracking-wider opacity-80">{label}</div>
+                      <div className="text-[11px] font-medium">{pct}%</div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: "Healthy", count: analytics.healthyCount, color: "#10B981", pct: Math.round((analytics.healthyCount / totalTracked) * 100) },
-                    { label: "At Risk", count: analytics.atRiskCount, color: "#F59E0B", pct: Math.round((analytics.atRiskCount / totalTracked) * 100) },
-                    { label: "Inactive", count: analytics.inactiveCount, color: "#EF4444", pct: Math.round((analytics.inactiveCount / totalTracked) * 100) },
-                  ].map(({ label, count, color, pct }) => (
-                    <div key={label} className="rounded-xl bg-[#F8FAFC] border border-[#E5E7EB] px-3 py-2 text-center">
-                      <div className="font-display font-bold text-xl" style={{ color }}>{count}</div>
-                      <div className="text-[10px] text-[#9CA3AF] uppercase tracking-wider">{label}</div>
-                      <div className="text-[11px] font-medium" style={{ color }}>{pct}%</div>
+                    { label: "Healthy", count: analytics.healthyCount, tone: "tone-mint", pct: Math.round((analytics.healthyCount / totalTracked) * 100) },
+                    { label: "At Risk", count: analytics.atRiskCount, tone: "tone-amber", pct: Math.round((analytics.atRiskCount / totalTracked) * 100) },
+                    { label: "Inactive", count: analytics.inactiveCount, tone: "tone-danger", pct: Math.round((analytics.inactiveCount / totalTracked) * 100) },
+                  ].map(({ label, count, tone, pct }) => (
+                    <div key={label} className={`neu-flat rounded-2xl px-3 py-2.5 text-center ${tone}`}>
+                      <div className="font-bold text-xl">{count}</div>
+                      <div className="text-[10px] uppercase tracking-wider opacity-80">{label}</div>
+                      <div className="text-[11px] font-medium">{pct}%</div>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </CardShell>
           );
         })()}
 
         {/* Employee Stress Lookup */}
         {!analyticsLoading && (
-          <div className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
-                <Brain size={18} className="text-violet-600" />
-              </div>
-              <div>
-                <div className="font-display font-bold text-lg text-[#0D1F33]">Employee Stress Lookup</div>
-                <div className="text-xs text-[#9CA3AF]">Search by name or Aorane ID — individual stress data (DPDP compliant)</div>
-              </div>
-            </div>
-
-            {/* Search Input */}
-            <div className="relative mb-3">
-              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                {stressSearching
-                  ? <Loader2 size={15} className="text-violet-400 animate-spin" />
-                  : <Search size={15} className="text-[#9CA3AF]" />
-                }
-              </div>
+          <CardShell
+            title="Employee Stress Lookup"
+            description="Search by name or Aorane ID — individual stress data (DPDP compliant)"
+          >
+            <div className="neu-inset flex h-11 items-center gap-2 rounded-2xl px-3.5 mb-3">
+              {stressSearching ? <Loader2 size={15} className="shrink-0 text-muted-foreground animate-spin" /> : <Search size={15} className="shrink-0 text-muted-foreground" />}
               <input
                 type="text"
                 value={stressQuery}
                 onChange={(e) => handleStressSearch(e.target.value)}
                 placeholder="Type employee name or Aorane ID (min 4 chars)…"
-                className="w-full pl-9 pr-10 py-2.5 text-sm bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-200 focus:bg-white placeholder-gray-400"
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
               {(stressQuery || selectedStressUser) && (
-                <button
-                  onClick={clearStressLookup}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600"
-                >
+                <button onClick={clearStressLookup} className="shrink-0 text-muted-foreground hover:text-foreground">
                   <XIcon size={14} />
                 </button>
               )}
             </div>
 
-            {/* Search Error */}
-            {stressSearchErr && (
-              <div className="text-xs text-red-500 mb-2">{stressSearchErr}</div>
-            )}
+            {stressSearchErr && <div className="text-xs text-destructive mb-2">{stressSearchErr}</div>}
 
-            {/* Search Results Dropdown */}
             {stressResults.length > 0 && !selectedStressUser && (
-              <div className="bg-white border border-violet-200 rounded-xl shadow-lg overflow-hidden mb-3 max-h-48 overflow-y-auto">
+              <div className="neu rounded-2xl overflow-hidden mb-3 max-h-48 overflow-y-auto">
                 {stressResults.map((m) => (
                   <button
                     key={m.userId}
                     onClick={() => handleSelectStressUser(m)}
-                    className="w-full text-left px-4 py-2.5 hover:bg-violet-50 flex items-center gap-3 transition-colors border-b border-violet-50 last:border-0"
+                    className="w-full text-left px-4 py-2.5 hover:bg-secondary/60 flex items-center gap-3 transition-colors border-b border-border/60 last:border-0"
                   >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                      {(m.name || "?").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-gray-800">{m.name || "Unknown"}</div>
-                      <div className="text-[11px] text-gray-400">{m.aoraneId ? `ID: ${m.aoraneId}` : ""} {m.city || ""}</div>
+                    <Avatar name={m.name || "?"} tone="lavender" size="sm" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-foreground truncate">{m.name || "Unknown"}</div>
+                      <div className="text-[11px] text-muted-foreground truncate">{m.aoraneId ? `ID: ${m.aoraneId}` : ""} {m.city || ""}</div>
                     </div>
                   </button>
                 ))}
               </div>
             )}
 
-            {/* No results */}
             {stressQuery.trim().length >= 4 && !stressSearching && stressResults.length === 0 && !selectedStressUser && (
-              <div className="text-xs text-gray-400 mb-2">No members found matching "{stressQuery}"</div>
+              <div className="text-xs text-muted-foreground mb-2">No members found matching "{stressQuery}"</div>
             )}
 
-            {/* Selected Employee Stress Card */}
             {selectedStressUser && (
-              <div className="bg-white rounded-2xl border border-violet-100 p-4">
+              <NeuCard variant="flat" className="p-4">
                 {stressLookupLoading ? (
                   <div className="flex items-center gap-2 py-3 justify-center">
-                    <Loader2 size={16} className="text-violet-400 animate-spin" />
-                    <span className="text-sm text-violet-400">Loading stress data…</span>
+                    <Loader2 size={16} className="text-muted-foreground animate-spin" />
+                    <span className="text-sm text-muted-foreground">Loading stress data…</span>
                   </div>
                 ) : memberStress ? (() => {
                   const score = memberStress.latestScore;
-                  const levelColors: Record<string, { bg: string; text: string; bar: string; badge: string }> = {
-                    "Low":      { bg: "bg-emerald-50",  text: "text-emerald-700", bar: "#10B981", badge: "bg-emerald-100 text-emerald-700" },
-                    "Moderate": { bg: "bg-amber-50",    text: "text-amber-700",   bar: "#F59E0B", badge: "bg-amber-100 text-amber-700" },
-                    "High":     { bg: "bg-orange-50",   text: "text-orange-700",  bar: "#F97316", badge: "bg-orange-100 text-orange-700" },
-                    "Critical": { bg: "bg-red-50",      text: "text-red-700",     bar: "#EF4444", badge: "bg-red-100 text-red-700" },
-                    "No Data":  { bg: "bg-gray-50",     text: "text-gray-500",    bar: "#9CA3AF", badge: "bg-gray-100 text-gray-500" },
+                  const levelTone: Record<string, { text: string; bar: string; badge: "success" | "warning" | "danger" | "outline" }> = {
+                    "Low":      { text: "text-[oklch(0.5_0.13_162)]", bar: "oklch(0.68 0.12 162)", badge: "success" },
+                    "Moderate": { text: "text-[oklch(0.55_0.13_80)]", bar: "oklch(0.8 0.13 80)",   badge: "warning" },
+                    "High":     { text: "text-[oklch(0.55_0.16_50)]", bar: "oklch(0.68 0.17 50)",  badge: "warning" },
+                    "Critical": { text: "text-destructive",           bar: "hsl(var(--destructive))", badge: "danger" },
+                    "No Data":  { text: "text-muted-foreground",      bar: "hsl(var(--muted-foreground))", badge: "outline" },
                   };
-                  const c = levelColors[memberStress.level] || levelColors["No Data"];
+                  const c = levelTone[memberStress.level] || levelTone["No Data"];
                   return (
                     <>
                       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                         <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
-                            {(selectedStressUser.name || "?").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
-                          </div>
+                          <Avatar name={selectedStressUser.name || "?"} tone="lavender" />
                           <div>
-                            <div className="font-bold text-sm text-gray-800">{selectedStressUser.name || "Member"}</div>
-                            <div className="text-[11px] text-gray-400">{memberStress.logsCount} check-in{memberStress.logsCount !== 1 ? "s" : ""} in last 30 days</div>
+                            <div className="font-bold text-sm text-foreground">{selectedStressUser.name || "Member"}</div>
+                            <div className="text-[11px] text-muted-foreground">{memberStress.logsCount} check-in{memberStress.logsCount !== 1 ? "s" : ""} in last 30 days</div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          {memberStress.burnoutRisk && (
-                            <span className="pill-chip bg-red-100 text-red-600 font-semibold text-[10px]">⚠️ Burnout Risk</span>
-                          )}
-                          <span className={`pill-chip font-semibold ${c.badge}`}>{memberStress.level}</span>
-                          <div className={`kpi-number text-2xl ${c.text}`}>
+                          {memberStress.burnoutRisk && <Badge variant="danger">⚠️ Burnout Risk</Badge>}
+                          <Badge variant={c.badge}>{memberStress.level}</Badge>
+                          <div className={`text-2xl font-bold ${c.text}`}>
                             {score !== null ? score : "—"}<span className="text-sm font-normal opacity-60">{score !== null ? "/100" : ""}</span>
                           </div>
                         </div>
                       </div>
                       {score !== null && (
-                        <div className="mb-3">
-                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${score}%`, background: c.bar }} />
-                          </div>
+                        <div className="neu-inset-sm h-1.5 rounded-full overflow-hidden mb-3">
+                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${score}%`, background: c.bar }} />
                         </div>
                       )}
                       <div className="grid grid-cols-2 gap-2 mt-1">
-                        <div className="rounded-xl bg-gray-50 px-3 py-2 text-center">
-                          <div className="font-bold text-base text-gray-800">{memberStress.avgScore !== null ? memberStress.avgScore : "—"}</div>
-                          <div className="text-[10px] text-gray-400 uppercase tracking-wider">30-day Avg</div>
+                        <div className="neu-inset rounded-xl px-3 py-2 text-center">
+                          <div className="font-bold text-base text-foreground">{memberStress.avgScore !== null ? memberStress.avgScore : "—"}</div>
+                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">30-day Avg</div>
                         </div>
-                        <div className="rounded-xl bg-gray-50 px-3 py-2 text-center">
-                          <div className="font-bold text-base text-gray-800">{memberStress.logsCount}</div>
-                          <div className="text-[10px] text-gray-400 uppercase tracking-wider">Check-ins</div>
+                        <div className="neu-inset rounded-xl px-3 py-2 text-center">
+                          <div className="font-bold text-base text-foreground">{memberStress.logsCount}</div>
+                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Check-ins</div>
                         </div>
                       </div>
                       {memberStress.trend.length > 0 && (
                         <div className="mt-3">
-                          <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Stress Trend (Last 14 days)</div>
+                          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Stress Trend (Last 14 days)</div>
                           <ResponsiveContainer width="100%" height={60}>
                             <BarChart data={memberStress.trend} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
                               <YAxis domain={[0, 100]} tick={false} axisLine={false} tickLine={false} />
-                              <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 11 }} formatter={(v: number) => [v, "Stress Score"]} />
+                              <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number) => [v, "Stress Score"]} />
                               <Bar dataKey="score" fill={c.bar} radius={[3, 3, 0, 0]} />
                             </BarChart>
                           </ResponsiveContainer>
@@ -453,36 +397,31 @@ export default function Dashboard() {
                     </>
                   );
                 })() : (
-                  <div className="text-sm text-gray-400 text-center py-3">Could not load stress data for this member.</div>
+                  <div className="text-sm text-muted-foreground text-center py-3">Could not load stress data for this member.</div>
                 )}
-              </div>
+              </NeuCard>
             )}
-          </div>
+          </CardShell>
         )}
 
-        {/* Recent Enrollments + Quick Actions — real data, matches the
-            business-CRM reference layout's bottom-widget row. */}
-        <div className="grid md:grid-cols-2 gap-4 mb-6">
-          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2.5">
-                <UserPlus size={18} className="text-primary" />
-                <h2 className="font-semibold text-[#0D1F33]">Recent Enrollments</h2>
-              </div>
-              <button onClick={() => navigate("/members")} className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+        {/* Recent Enrollments + Quick Actions */}
+        <div className="grid md:grid-cols-2 gap-4">
+          <CardShell
+            title="Recent Enrollments"
+            action={
+              <Button variant="ghost" size="sm" onClick={() => navigate("/members")} className="text-xs font-semibold text-primary">
                 View all <ArrowRight size={12} />
-              </button>
-            </div>
+              </Button>
+            }
+          >
             {recentMembers.length > 0 ? (
               <div className="space-y-1">
                 {recentMembers.map((m) => (
-                  <div key={m.memberId} className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-[#F8FAFC] transition-colors">
-                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary text-xs font-bold">
-                      {(m.fullName || "?").split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase()}
-                    </div>
+                  <div key={m.memberId} className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-xl hover:bg-secondary/50 transition-colors">
+                    <Avatar name={m.fullName || "?"} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-[#0D1F33] truncate">{m.fullName || "Unnamed member"}</div>
-                      <div className="text-[11px] text-[#9CA3AF] flex items-center gap-1">
+                      <div className="text-sm font-medium text-foreground truncate">{m.fullName || "Unnamed member"}</div>
+                      <div className="text-[11px] text-muted-foreground flex items-center gap-1">
                         <Clock size={10} /> {new Date(m.joinedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                       </div>
                     </div>
@@ -490,15 +429,11 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-[#9CA3AF] text-center py-6">No enrollments yet</div>
+              <div className="text-sm text-muted-foreground text-center py-6">No enrollments yet</div>
             )}
-          </div>
+          </CardShell>
 
-          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-            <div className="flex items-center gap-2.5 mb-4">
-              <Zap size={18} className="text-primary" />
-              <h2 className="font-semibold text-[#0D1F33]">Quick Actions</h2>
-            </div>
+          <CardShell title="Quick Actions">
             <div className="space-y-1">
               {[
                 { icon: QrCode, label: "Generate Enrollment Code", desc: "Create a new code for employees to join", path: "/codes" },
@@ -509,143 +444,125 @@ export default function Dashboard() {
                 <button
                   key={action.path}
                   onClick={() => navigate(action.path)}
-                  className="w-full flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-lg hover:bg-[#F8FAFC] transition-colors text-left"
+                  className="w-full flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl hover:bg-secondary/50 transition-colors text-left"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <action.icon size={16} className="text-primary" />
-                  </div>
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl tone-primary">
+                    <action.icon size={16} />
+                  </span>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-[#0D1F33]">{action.label}</div>
-                    <div className="text-[11px] text-[#9CA3AF] truncate">{action.desc}</div>
+                    <div className="text-sm font-medium text-foreground">{action.label}</div>
+                    <div className="text-[11px] text-muted-foreground truncate">{action.desc}</div>
                   </div>
-                  <ArrowRight size={14} className="text-[#D1D5DB] shrink-0" />
+                  <ArrowRight size={14} className="text-muted-foreground/50 shrink-0" />
                 </button>
               ))}
             </div>
-          </div>
+          </CardShell>
         </div>
 
         {/* Health Metric Circles */}
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="font-bold text-[#0D1F33]">Aggregate Health Analytics</h2>
-              <p className="text-xs text-[#9CA3AF] mt-0.5">Privacy-safe — no individual data shown. DPDP Act 2023 compliant.</p>
-            </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-[#9CA3AF] bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg px-2.5 py-1.5">
-              <Shield size={11} className="text-[#0077B6]" /> Aggregate only
-            </div>
-          </div>
+        <CardShell
+          title="Aggregate Health Analytics"
+          description="Privacy-safe — no individual data shown. DPDP Act 2023 compliant."
+          action={
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground neu-flat rounded-lg px-2.5 py-1.5">
+              <Shield size={11} className="text-primary" /> Aggregate only
+            </span>
+          }
+        >
           {analyticsLoading ? (
             <div className="flex items-center justify-center h-24">
-              <div className="w-8 h-8 border-2 border-[#0077B6]/30 border-t-[#0077B6] rounded-full animate-spin" />
+              <Loader2 className="animate-spin text-primary" size={28} />
             </div>
           ) : (
             <>
-              <div className="flex justify-around flex-wrap gap-4 py-4 bg-[#F8FAFC] rounded-xl">
-                <HealthCircle label="Nutrition" value={analytics?.avgFood ?? 0} color="#F59E0B" icon={Heart} />
-                <HealthCircle label="Hydration" value={analytics?.avgWater ?? 0} color="#0EA5E9" icon={Droplets} />
-                <HealthCircle label="Exercise" value={analytics?.avgExercise ?? 0} color="#10B981" icon={Dumbbell} />
-                <HealthCircle label="Medicine" value={analytics?.avgMedicine ?? 0} color="#8B5CF6" icon={Pill} />
+              <div className="flex justify-around flex-wrap gap-4 py-4 neu-inset rounded-2xl">
+                <HealthCircle label="Nutrition" value={analytics?.avgFood ?? 0} color="oklch(0.8 0.13 78)" icon={Heart} />
+                <HealthCircle label="Hydration" value={analytics?.avgWater ?? 0} color="oklch(0.7 0.1 205)" icon={Droplets} />
+                <HealthCircle label="Exercise" value={analytics?.avgExercise ?? 0} color="oklch(0.68 0.12 162)" icon={Dumbbell} />
+                <HealthCircle label="Medicine" value={analytics?.avgMedicine ?? 0} color="oklch(0.7 0.1 292)" icon={Pill} />
               </div>
               {(!analytics || analytics.totalMembers === 0) && (
-                <div className="flex items-center gap-2 text-xs text-[#9CA3AF] justify-center mt-4 bg-[#F8FAFC] rounded-lg px-3 py-2 border border-[#E5E7EB]">
-                  <Heart size={12} className="text-[#D1D5DB]" />
+                <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center mt-4 neu-inset rounded-xl px-3 py-2">
+                  <Heart size={12} className="text-muted-foreground/60" />
                   Data appears when employees log health activities in the Aorane app
                 </div>
               )}
             </>
           )}
-        </div>
+        </CardShell>
 
-        {/* Daily Active Users + Member Health Distribution — two
-            standalone cards, matching the reference layout's side-by-side
-            chart cards instead of being sub-sections of one big block. */}
-        <div className="grid md:grid-cols-2 gap-4 mb-6">
-          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-[#0D1F33]">Daily Active Users</h3>
-              <span className="text-[11px] text-[#9CA3AF] bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg px-2.5 py-1">Last 14 days</span>
-            </div>
+        {/* Daily Active Users + Member Health Distribution */}
+        <div className="grid md:grid-cols-2 gap-4">
+          <CardShell
+            title="Daily Active Users"
+            action={<Badge variant="outline">Last 14 days</Badge>}
+          >
             {analyticsLoading ? (
-              <div className="h-48 flex items-center justify-center">
-                <div className="w-7 h-7 border-2 border-[#0077B6]/30 border-t-[#0077B6] rounded-full animate-spin" />
-              </div>
+              <div className="h-48 flex items-center justify-center"><Loader2 className="animate-spin text-primary" size={24} /></div>
             ) : trendData.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={trendData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
-                  <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 12 }}
-                    formatter={(v: number) => [v, "Active Users"]}
-                  />
-                  <Bar dataKey="count" fill="#0077B6" radius={[4, 4, 0, 0]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number) => [v, "Active Users"]} cursor={{ fill: "hsl(var(--muted))" }} />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[6, 6, 2, 2]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-48 flex items-center justify-center text-sm text-[#9CA3AF]">No trend data yet</div>
+              <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No trend data yet</div>
             )}
-          </div>
+          </CardShell>
 
-          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-[#0D1F33]">Member Health Distribution</h3>
-              <span className="text-[11px] text-[#9CA3AF] bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg px-2.5 py-1">Health Status</span>
-            </div>
+          <CardShell
+            title="Member Health Distribution"
+            action={<Badge variant="outline">Health Status</Badge>}
+          >
             {analyticsLoading ? (
-              <div className="h-48 flex items-center justify-center">
-                <div className="w-7 h-7 border-2 border-[#0077B6]/30 border-t-[#0077B6] rounded-full animate-spin" />
-              </div>
+              <div className="h-48 flex items-center justify-center"><Loader2 className="animate-spin text-primary" size={24} /></div>
             ) : healthDistData.some(d => d.value > 0) ? (
               <div className="flex items-center gap-6 py-2">
                 <div className="relative shrink-0">
                   <PieChart width={140} height={140}>
-                    <Pie data={healthDistData} cx={70} cy={70} innerRadius={44} outerRadius={68}
-                      dataKey="value" paddingAngle={3}>
+                    <Pie data={healthDistData} cx={70} cy={70} innerRadius={44} outerRadius={68} dataKey="value" paddingAngle={3} stroke="none">
                       {healthDistData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                     </Pie>
-                    <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 12 }} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
                   </PieChart>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <div className="text-xl font-bold text-[#0D1F33]">{analytics?.totalMembers ?? 0}</div>
-                    <div className="text-[10px] text-[#9CA3AF]">Members</div>
+                    <div className="text-xl font-bold text-foreground">{analytics?.totalMembers ?? 0}</div>
+                    <div className="text-[10px] text-muted-foreground">Members</div>
                   </div>
                 </div>
                 <div className="flex flex-col gap-3 flex-1">
                   {[
-                    { label: "Healthy", count: analytics?.healthyCount ?? 0, color: "#10B981", icon: UserCheck },
-                    { label: "At Risk", count: analytics?.atRiskCount ?? 0, color: "#F59E0B", icon: AlertTriangle },
-                    { label: "Inactive", count: analytics?.inactiveCount ?? 0, color: "#9CA3AF", icon: UserX },
-                  ].map(({ label, count, color, icon: Icon }) => {
+                    { label: "Healthy", count: analytics?.healthyCount ?? 0, tone: "tone-mint", icon: UserCheck },
+                    { label: "At Risk", count: analytics?.atRiskCount ?? 0, tone: "tone-amber", icon: AlertTriangle },
+                    { label: "Inactive", count: analytics?.inactiveCount ?? 0, tone: "text-muted-foreground", icon: UserX },
+                  ].map(({ label, count, tone, icon: Icon }) => {
                     const total = analytics?.totalMembers || 1;
                     const pct = Math.round((count / total) * 100);
                     return (
                       <div key={label} className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
-                        <Icon size={13} style={{ color }} className="shrink-0" />
-                        <span className="text-sm text-[#374151] flex-1">{label}</span>
-                        <span className="text-sm font-bold text-[#0D1F33]">{count}</span>
-                        <span className="text-xs text-[#9CA3AF] w-10 text-right">({pct}%)</span>
+                        <Icon size={14} className={tone.startsWith("tone-") ? "" : tone} />
+                        <span className="text-sm text-foreground flex-1">{label}</span>
+                        <span className="text-sm font-bold text-foreground">{count}</span>
+                        <span className="text-xs text-muted-foreground w-10 text-right">({pct}%)</span>
                       </div>
                     );
                   })}
                 </div>
               </div>
             ) : (
-              <div className="h-48 flex items-center justify-center text-sm text-[#9CA3AF]">No distribution data yet</div>
+              <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No distribution data yet</div>
             )}
-          </div>
+          </CardShell>
         </div>
 
         {/* Bottom Row */}
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-            <div className="flex items-center gap-2.5 mb-4">
-              <Building2 size={18} className="text-[#0077B6]" />
-              <h2 className="font-semibold text-[#0D1F33]">Organization Details</h2>
-            </div>
+          <CardShell title="Organization Details">
             <div className="space-y-3">
               {[
                 { icon: Building2, label: "Type", value: orgTypeLabels[org?.orgType || ""] || "—" },
@@ -654,46 +571,49 @@ export default function Dashboard() {
                 { icon: Phone, label: "Phone", value: org?.contactPhone || "—" },
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex items-start gap-3">
-                  <Icon size={15} className="text-[#9CA3AF] mt-0.5 shrink-0" />
+                  <Icon size={15} className="text-muted-foreground mt-0.5 shrink-0" />
                   <div>
-                    <div className="text-xs text-[#9CA3AF]">{label}</div>
-                    <div className="text-sm text-[#0D1F33] font-medium">{value}</div>
+                    <div className="text-xs text-muted-foreground">{label}</div>
+                    <div className="text-sm text-foreground font-medium">{value}</div>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </CardShell>
 
-          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-            <div className="flex items-center gap-2.5 mb-4">
-              <Shield size={18} className="text-[#0077B6]" />
-              <h2 className="font-semibold text-[#0D1F33]">Seat Capacity</h2>
-            </div>
+          <CardShell title="Seat Capacity">
             <div className="mb-4">
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-[#6B7280]">Seats used</span>
-                <span className="text-[#0D1F33] font-semibold">{org?.usedSeats} of {org?.totalSeats}</span>
+                <span className="text-muted-foreground">Seats used</span>
+                <span className="text-foreground font-semibold">{org?.usedSeats} of {org?.totalSeats}</span>
               </div>
-              <div className="h-3 bg-[#F3F4F6] rounded-full overflow-hidden">
+              <div className="neu-inset-sm h-3 rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${seatPct}%`, background: seatPct > 90 ? "#EF4444" : "linear-gradient(90deg, #0077B6, #1B998B)" }} />
+                  style={{ width: `${seatPct}%`, background: seatPct > 90 ? "hsl(var(--destructive))" : "linear-gradient(90deg, #0077B6, #1B998B)" }} />
               </div>
-              <div className="text-xs text-[#9CA3AF] mt-2">{org && org.totalSeats - org.usedSeats} seats available</div>
+              <div className="text-xs text-muted-foreground mt-2">{org && org.totalSeats - org.usedSeats} seats available</div>
             </div>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: "Total", value: org?.totalSeats || 0, color: "text-[#0D1F33]" },
-                { label: "Used", value: org?.usedSeats || 0, color: "text-[#0077B6]" },
-                { label: "Free", value: (org?.totalSeats || 0) - (org?.usedSeats || 0), color: "text-emerald-600" },
-              ].map(({ label, value, color }) => (
-                <div key={label} className="bg-[#F8FAFC] rounded-lg p-3 text-center">
-                  <div className={`text-xl font-bold ${color}`}>{value}</div>
-                  <div className="text-xs text-[#9CA3AF]">{label}</div>
+                { label: "Total", value: org?.totalSeats || 0, tone: "text-foreground" },
+                { label: "Used", value: org?.usedSeats || 0, tone: "text-primary" },
+                { label: "Free", value: (org?.totalSeats || 0) - (org?.usedSeats || 0), tone: "text-[oklch(0.5_0.13_162)]" },
+              ].map(({ label, value, tone }) => (
+                <div key={label} className="neu-flat rounded-xl p-3 text-center">
+                  <div className={`text-xl font-bold ${tone}`}>{value}</div>
+                  <div className="text-xs text-muted-foreground">{label}</div>
                 </div>
               ))}
             </div>
-          </div>
+          </CardShell>
         </div>
+
+        <NeuCard variant="glass" className="p-5">
+          <PrivacyNote>
+            Health values reflect what members consented to share with the organization. Individual
+            member health data is never surfaced outside consented, on-demand lookups.
+          </PrivacyNote>
+        </NeuCard>
       </div>
     </Layout>
   );

@@ -5,8 +5,14 @@ import { api } from "@/lib/api";
 import {
   CreditCard, CheckCircle, AlertCircle, RefreshCw, FileText,
   Users, Calendar, IndianRupee, Info, ChevronDown, ChevronUp,
-  RotateCcw, XCircle, CalendarClock
+  RotateCcw, XCircle, CalendarClock, Receipt, Download,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CardShell, EmptyState, NeuCard, PageHeader } from "@/components/portal/primitives";
+import { cn } from "@/lib/utils";
 
 declare global {
   interface Window { Razorpay: new (opts: Record<string, unknown>) => { open(): void }; }
@@ -86,6 +92,8 @@ export default function Billing() {
   const [loadingSubscription, setLoadingSubscription] = useState(true);
   const [cancelling, setCancelling] = useState(false);
   const [seatPlans, setSeatPlans] = useState<Record<string, SeatPlanInfo>>(FALLBACK_SEAT_PLANS);
+  const [invoices, setInvoices] = useState<Record<string, unknown>[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
 
   useEffect(() => {
     api.getSeatPlans()
@@ -110,6 +118,10 @@ export default function Billing() {
       })
       .catch(console.error)
       .finally(() => setLoadingSubscription(false));
+    api.getInvoices()
+      .then((d) => setInvoices(d.invoices || []))
+      .catch(() => setInvoices([]))
+      .finally(() => setInvoicesLoading(false));
   }, []);
 
   const planInfo = seatPlans[selectedPlan] ?? FALLBACK_SEAT_PLANS[selectedPlan];
@@ -222,87 +234,82 @@ export default function Billing() {
   const isActive = org?.isVerified && subscription?.status === "success";
   const expiresAt = subscription?.expires_at ? new Date(subscription.expires_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : null;
 
+  const invoiceField = (inv: Record<string, unknown>, ...keys: string[]) => {
+    for (const k of keys) if (inv[k] != null) return inv[k];
+    return undefined;
+  };
+
   return (
     <Layout>
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="pill-chip bg-primary/10 text-primary uppercase">
-              <CreditCard size={11} /> Subscription
-            </span>
-          </div>
-          <h1 className="font-display font-extrabold text-3xl md:text-4xl text-foreground tracking-tight">Billing &amp; Plans</h1>
-          <p className="text-muted-foreground text-sm mt-1.5">Seat-based pricing — pay only for what you need.</p>
-        </div>
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6 lg:space-y-8">
+        <PageHeader
+          eyebrow="Account"
+          title="Billing & Plans"
+          description="Seat-based pricing — pay only for what you need."
+          actions={<Badge variant="soft"><CreditCard size={11} /> Subscription</Badge>}
+        />
 
         {success && (
-          <div className="mb-5 flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl p-4">
+          <NeuCard variant="flat" className="flex items-center gap-3 p-4 tone-mint">
             <CheckCircle size={18} className="shrink-0" />
             <p className="text-sm font-medium">{success}</p>
-          </div>
+          </NeuCard>
         )}
         {error && (
-          <div className="mb-5 flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4">
+          <NeuCard variant="flat" className="flex items-center gap-3 p-4 tone-danger">
             <AlertCircle size={18} className="shrink-0" />
             <p className="text-sm">{error}</p>
-          </div>
+          </NeuCard>
         )}
 
         {/* Current Plan Status */}
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 mb-6">
+        <CardShell>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#0077B6]/10 flex items-center justify-center">
-                <CreditCard size={20} className="text-[#0077B6]" />
-              </div>
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl tone-primary">
+                <CreditCard size={20} />
+              </span>
               <div>
-                <div className="text-sm font-semibold text-[#0D1F33]">Current Plan</div>
-                <div className="text-xs text-[#6B7280] capitalize">
+                <div className="text-sm font-semibold text-foreground">Current Plan</div>
+                <div className="text-xs text-muted-foreground capitalize">
                   {currentPlan === "basic" ? "Free (Basic)" : currentPlan} · {org?.totalSeats} seats · {org?.usedSeats} used
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {isActive ? (
-                <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full font-medium">✓ Active</span>
-              ) : (
-                <span className="text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 px-3 py-1 rounded-full font-medium">⚠ No Active Plan</span>
-              )}
+              {isActive ? <Badge variant="success">✓ Active</Badge> : <Badge variant="warning">⚠ No Active Plan</Badge>}
               {!loadingSubscription && subscription?.auto_renew && (
-                <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full font-medium flex items-center gap-1">
-                  <RotateCcw size={10} /> Auto-renew ON
-                </span>
+                <Badge variant="soft"><RotateCcw size={10} /> Auto-renew ON</Badge>
               )}
             </div>
           </div>
           {expiresAt && (
-            <div className="mt-3 pt-3 border-t border-[#F3F4F6] flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-                <CalendarClock size={13} className="text-[#0077B6]" />
+            <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <CalendarClock size={13} className="text-primary" />
                 {subscription?.auto_renew ? `Auto-renews on ${expiresAt}` : `Active until ${expiresAt}`}
               </div>
               {subscription?.auto_renew && (
-                <button onClick={handleCancelAutoRenew} disabled={cancelling}
-                  className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 disabled:opacity-50 transition-colors">
+                <Button variant="ghost" size="sm" onClick={handleCancelAutoRenew} disabled={cancelling} className="text-destructive hover:text-destructive">
                   {cancelling ? <RefreshCw size={12} className="animate-spin" /> : <XCircle size={12} />}
                   Cancel auto-renew
-                </button>
+                </Button>
               )}
             </div>
           )}
-        </div>
+        </CardShell>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left: Configuration */}
-          <div className="lg:col-span-2 space-y-5">
+        <Tabs defaultValue="plans">
+          <TabsList className="neu-inset h-auto flex-wrap gap-1 rounded-2xl p-1.5 bg-transparent">
+            <TabsTrigger value="plans" className="rounded-xl px-4 py-2">Plans</TabsTrigger>
+            <TabsTrigger value="checkout" className="rounded-xl px-4 py-2">Purchase Seats</TabsTrigger>
+            <TabsTrigger value="invoices" className="rounded-xl px-4 py-2">Invoices</TabsTrigger>
+          </TabsList>
 
-            {/* Step 1: Choose Plan */}
-            <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 rounded-full bg-[#0077B6] text-white flex items-center justify-center text-xs font-bold">1</div>
-                <h3 className="font-semibold text-[#0D1F33]">Choose Plan</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+          {/* Plans */}
+          <TabsContent value="plans" className="mt-6">
+            <CardShell title="Choose Plan">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {(["pro", "max"] as const).map((key) => {
                   const plan = seatPlans[key] ?? FALLBACK_SEAT_PLANS[key];
                   const isSelected = selectedPlan === key;
@@ -310,233 +317,278 @@ export default function Billing() {
                     ? Math.round((1 - plan.yearlyPricePerSeat / plan.pricePerSeat) * 100)
                     : 0;
                   return (
-                    <button key={key} onClick={() => setSelectedPlan(key)}
-                      className={`relative text-left p-4 rounded-xl border-2 transition-all ${isSelected ? "border-[#0077B6] bg-[#0077B6]/5" : "border-[#E5E7EB] hover:border-[#0077B6]/40"}`}>
-                      {plan.offerLabel && (
-                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">{plan.offerLabel}</div>
-                      )}
-                      {!plan.offerLabel && key === "pro" && (
-                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-[#7C3AED] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Popular</div>
-                      )}
-                      <div className="font-bold text-[#0D1F33] mb-1">{plan.label}</div>
-                      <div className="text-xl font-bold" style={{ color: plan.color }}>
+                    <NeuCard
+                      key={key}
+                      variant={isSelected ? "raised" : "flat"}
+                      className={cn("relative text-left p-5 cursor-pointer transition-all", isSelected && "ring-2 ring-primary/30")}
+                      onClick={() => setSelectedPlan(key)}
+                    >
+                      {plan.offerLabel && <Badge variant="success" className="absolute -top-2.5 left-5">{plan.offerLabel}</Badge>}
+                      {!plan.offerLabel && key === "pro" && <Badge variant="lavender" className="absolute -top-2.5 left-5">Popular</Badge>}
+                      <div className="font-bold text-foreground mb-1">{plan.label}</div>
+                      <div className="text-xl font-bold text-primary">
                         {formatINR(billing === "yearly" ? plan.yearlyPricePerSeat : plan.pricePerSeat)}
-                        <span className="text-xs font-normal text-[#6B7280]">/seat/mo</span>
+                        <span className="text-xs font-normal text-muted-foreground">/seat/mo</span>
                       </div>
                       {plan.discountPercent > 0 && (
-                        <div className="text-[10px] text-emerald-600 font-medium mt-0.5">{plan.discountPercent}% off applied</div>
+                        <div className="text-[10px] text-[oklch(0.5_0.13_162)] font-medium mt-0.5">{plan.discountPercent}% off applied</div>
                       )}
                       {billing === "yearly" && monthlySave > 0 && (
-                        <div className="text-[10px] text-emerald-600 font-medium mt-0.5">Save {monthlySave}% yearly</div>
+                        <div className="text-[10px] text-[oklch(0.5_0.13_162)] font-medium mt-0.5">Save {monthlySave}% yearly</div>
                       )}
                       <ul className="mt-3 space-y-1.5">
                         {plan.features.slice(0, 3).map(f => (
-                          <li key={f} className="flex items-start gap-1.5 text-[11px] text-[#6B7280]">
-                            <CheckCircle size={10} className="text-emerald-500 mt-0.5 shrink-0" />
+                          <li key={f} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                            <CheckCircle size={10} className="text-[oklch(0.68_0.12_162)] mt-0.5 shrink-0" />
                             {f}
                           </li>
                         ))}
                       </ul>
-                    </button>
+                    </NeuCard>
                   );
                 })}
               </div>
-              {/* Full features comparison */}
-              <div className="mt-3 pt-3 border-t border-[#F3F4F6]">
-                <p className="text-xs font-medium text-[#374151] mb-2">{planInfo.label} plan includes:</p>
-                <div className="grid grid-cols-2 gap-1">
+              <div className="mt-4 pt-4 border-t border-border/60">
+                <p className="text-xs font-medium text-foreground mb-2">{planInfo.label} plan includes:</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {planInfo.features.map(f => (
-                    <div key={f} className="flex items-start gap-1.5 text-xs text-[#6B7280]">
-                      <CheckCircle size={11} className="text-emerald-500 mt-0.5 shrink-0" />
+                    <div key={f} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                      <CheckCircle size={11} className="text-[oklch(0.68_0.12_162)] mt-0.5 shrink-0" />
                       {f}
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
+            </CardShell>
+          </TabsContent>
 
-            {/* Step 2: Seats & Billing Cycle */}
-            <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 rounded-full bg-[#0077B6] text-white flex items-center justify-center text-xs font-bold">2</div>
-                <h3 className="font-semibold text-[#0D1F33]">Seats & Billing Cycle</h3>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#374151] mb-1.5">
-                    Number of Seats <span className="text-[#9CA3AF] font-normal">(min {minSeats})</span>
-                  </label>
-                  <div className="flex items-center border border-[#E5E7EB] rounded-xl overflow-hidden bg-white">
-                    <button onClick={() => setSeatCount(c => Math.max(minSeats, c - 10))}
-                      className="px-4 py-3 text-[#0077B6] font-bold text-lg hover:bg-[#F3F4F6] transition-colors">−</button>
-                    <input
-                      type="number"
-                      value={seatCount}
-                      min={minSeats}
-                      step={5}
-                      onChange={e => setSeatCount(Math.max(minSeats, parseInt(e.target.value) || minSeats))}
-                      className="flex-1 text-center py-3 font-bold text-[#0D1F33] focus:outline-none text-lg"
-                    />
-                    <button onClick={() => setSeatCount(c => c + 10)}
-                      className="px-4 py-3 text-[#0077B6] font-bold text-lg hover:bg-[#F3F4F6] transition-colors">+</button>
-                  </div>
-                  <p className="text-xs text-[#9CA3AF] mt-1 flex items-center gap-1">
-                    <Users size={11} /> {org?.usedSeats} currently enrolled
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#374151] mb-1.5">Billing Cycle</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(["monthly", "yearly"] as const).map(b => (
-                      <button key={b} onClick={() => setBilling(b)}
-                        className={`py-3 rounded-xl text-sm font-semibold border-2 transition-all ${billing === b ? "border-[#0077B6] bg-[#0077B6]/5 text-[#0077B6]" : "border-[#E5E7EB] text-[#6B7280]"}`}>
-                        {b === "monthly" ? "Monthly" : <>Yearly {seatPlans[selectedPlan]?.yearlyPricePerSeat > 0 && seatPlans[selectedPlan]?.pricePerSeat > 0 ? <span className="text-[10px] text-emerald-600 font-bold block">Save {Math.round((1 - seatPlans[selectedPlan].yearlyPricePerSeat / seatPlans[selectedPlan].pricePerSeat) * 100)}%</span> : ""}</>}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Step 3: GST Details */}
-            <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 rounded-full bg-[#0077B6] text-white flex items-center justify-center text-xs font-bold">3</div>
-                <h3 className="font-semibold text-[#0D1F33]">GST Details</h3>
-                <span className="text-xs text-[#9CA3AF]">(For invoice — optional)</span>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#374151] mb-1.5">Your State</label>
-                  <select value={orgState} onChange={e => setOrgState(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] bg-white text-[#0D1F33] text-sm focus:outline-none focus:border-[#0077B6] focus:ring-2 focus:ring-[#0077B6]/20 transition-all">
-                    <option value="">Select state</option>
-                    {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  {orgState && (
-                    <p className="text-[11px] mt-1 text-[#6B7280]">
-                      {orgState === AORANE_STATE
-                        ? "Same state as Aorane → CGST + SGST (9% + 9%)"
-                        : "Different state → IGST (18%)"}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#374151] mb-1.5">GSTIN <span className="text-[#9CA3AF] font-normal">(optional)</span></label>
-                  <input type="text" value={orgGstin} onChange={e => setOrgGstin(e.target.value.toUpperCase())}
-                    placeholder="22AAAAA0000A1Z5"
-                    maxLength={15}
-                    className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] bg-white text-[#0D1F33] text-sm font-mono focus:outline-none focus:border-[#0077B6] focus:ring-2 focus:ring-[#0077B6]/20 transition-all" />
-                  <p className="text-[11px] mt-1 text-[#9CA3AF]">For B2B GST invoice</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Order Summary */}
-          <div className="space-y-4">
-            <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 sticky top-6">
-              <h3 className="font-bold text-[#0D1F33] mb-4">Order Summary</h3>
-
-              <div className="space-y-2.5 text-sm mb-4">
-                <div className="flex justify-between text-[#374151]">
-                  <span>Plan</span>
-                  <span className="font-semibold">{planInfo.label} {billing === "yearly" ? "(Yearly)" : "(Monthly)"}</span>
-                </div>
-                <div className="flex justify-between text-[#374151]">
-                  <span>Seats</span>
-                  <span className="font-semibold">{seatCount}</span>
-                </div>
-                <div className="flex justify-between text-[#374151]">
-                  <span>Price/seat{billing === "yearly" ? "/mo" : ""}</span>
-                  <span className="font-semibold">{formatINR(pricePerSeat)}</span>
-                </div>
-                {billing === "yearly" && (
-                  <div className="flex justify-between text-[#374151]">
-                    <span>Months</span>
-                    <span className="font-semibold">12</span>
-                  </div>
-                )}
-                <div className="border-t border-[#F3F4F6] pt-2.5">
-                  <div className="flex justify-between text-[#374151]">
-                    <span>Subtotal</span>
-                    <span className="font-semibold">{formatINR(gst.baseAmount)}</span>
-                  </div>
-
-                  {/* GST breakdown toggle */}
-                  <button onClick={() => setShowInvoice(!showInvoice)}
-                    className="flex items-center gap-1 text-xs text-[#0077B6] mt-2 hover:underline">
-                    <FileText size={11} /> GST Breakdown
-                    {showInvoice ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-                  </button>
-                  {showInvoice && (
-                    <div className="mt-2 bg-[#F8FAFC] rounded-lg p-3 space-y-1.5 text-xs">
-                      <div className="text-[#6B7280] font-medium mb-2">
-                        Invoice No: AOR/{yearlyFY}/XXXX
-                        <div className="text-[10px] text-[#9CA3AF] mt-0.5">HSN: 998313</div>
+          {/* Purchase Seats (real checkout flow) */}
+          <TabsContent value="checkout" className="mt-6">
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-5">
+                <CardShell title="Seats & Billing Cycle">
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1.5">
+                        Number of Seats <span className="text-muted-foreground font-normal">(min {minSeats})</span>
+                      </label>
+                      <div className="neu-inset flex items-center rounded-2xl overflow-hidden">
+                        <button onClick={() => setSeatCount(c => Math.max(minSeats, c - 10))}
+                          className="px-4 py-3 text-primary font-bold text-lg hover:bg-secondary/50 transition-colors">−</button>
+                        <input
+                          type="number"
+                          value={seatCount}
+                          min={minSeats}
+                          step={5}
+                          onChange={e => setSeatCount(Math.max(minSeats, parseInt(e.target.value) || minSeats))}
+                          className="flex-1 text-center py-3 font-bold text-foreground bg-transparent focus:outline-none text-lg"
+                        />
+                        <button onClick={() => setSeatCount(c => c + 10)}
+                          className="px-4 py-3 text-primary font-bold text-lg hover:bg-secondary/50 transition-colors">+</button>
                       </div>
-                      {gst.isSameState ? (
-                        <>
-                          <div className="flex justify-between text-[#374151]"><span>CGST (9%)</span><span>{formatINR(gst.cgstAmount)}</span></div>
-                          <div className="flex justify-between text-[#374151]"><span>SGST (9%)</span><span>{formatINR(gst.sgstAmount)}</span></div>
-                        </>
-                      ) : (
-                        <div className="flex justify-between text-[#374151]"><span>IGST (18%)</span><span>{formatINR(gst.igstAmount)}</span></div>
-                      )}
-                      {!orgState && (
-                        <p className="text-[#9CA3AF] text-[10px] flex items-center gap-1 mt-1">
-                          <Info size={10} /> Select state to see GST type
+                      <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                        <Users size={11} /> {org?.usedSeats} currently enrolled
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1.5">Billing Cycle</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(["monthly", "yearly"] as const).map(b => (
+                          <button key={b} onClick={() => setBilling(b)}
+                            className={cn("py-3 rounded-2xl text-sm font-semibold transition-all", billing === b ? "neu text-primary" : "neu-flat text-muted-foreground")}>
+                            {b === "monthly" ? "Monthly" : <>Yearly {seatPlans[selectedPlan]?.yearlyPricePerSeat > 0 && seatPlans[selectedPlan]?.pricePerSeat > 0 ? <span className="text-[10px] text-[oklch(0.5_0.13_162)] font-bold block">Save {Math.round((1 - seatPlans[selectedPlan].yearlyPricePerSeat / seatPlans[selectedPlan].pricePerSeat) * 100)}%</span> : ""}</>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </CardShell>
+
+                <CardShell title="GST Details" description="For invoice — optional">
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1.5">Your State</label>
+                      <select value={orgState} onChange={e => setOrgState(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl neu-inset bg-transparent text-foreground text-sm focus:outline-none">
+                        <option value="">Select state</option>
+                        {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      {orgState && (
+                        <p className="text-[11px] mt-1 text-muted-foreground">
+                          {orgState === AORANE_STATE
+                            ? "Same state as Aorane → CGST + SGST (9% + 9%)"
+                            : "Different state → IGST (18%)"}
                         </p>
                       )}
                     </div>
-                  )}
-                  <div className="flex justify-between mt-2">
-                    <span className="text-[#374151]">GST (18%)</span>
-                    <span className="font-semibold text-[#374151]">{formatINR(gst.gstAmount)}</span>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1.5">GSTIN <span className="text-muted-foreground font-normal">(optional)</span></label>
+                      <input type="text" value={orgGstin} onChange={e => setOrgGstin(e.target.value.toUpperCase())}
+                        placeholder="22AAAAA0000A1Z5"
+                        maxLength={15}
+                        className="w-full px-3 py-2.5 rounded-xl neu-inset bg-transparent text-foreground text-sm font-mono-data focus:outline-none" />
+                      <p className="text-[11px] mt-1 text-muted-foreground">For B2B GST invoice</p>
+                    </div>
                   </div>
-                </div>
-                <div className="border-t border-[#E5E7EB] pt-2.5 flex justify-between">
-                  <span className="font-bold text-[#0D1F33]">Total</span>
-                  <span className="font-bold text-[#0077B6] text-lg">{formatINR(gst.totalAmount)}</span>
-                </div>
-                {billing === "yearly" && (
-                  <div className="text-[11px] text-emerald-600 text-center bg-emerald-50 rounded-lg py-1.5">
-                    You save {formatINR(((seatPlans[selectedPlan]?.pricePerSeat ?? FALLBACK_SEAT_PLANS[selectedPlan]?.pricePerSeat ?? 0) - pricePerSeat) * seatCount * 12 || 0)} per year
-                  </div>
-                )}
+                </CardShell>
               </div>
 
-              <button
-                onClick={handlePay}
-                disabled={paying || seatCount < 10}
-                className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-                style={{ background: "linear-gradient(135deg, #0077B6, #005E8E)" }}
-              >
-                {paying ? (
-                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
-                ) : (
-                  <><IndianRupee size={15} /> Pay {formatINR(gst.totalAmount)}</>
-                )}
-              </button>
+              {/* Order Summary */}
+              <div>
+                <NeuCard className="p-5 sticky top-6">
+                  <h3 className="font-bold text-foreground mb-4">Order Summary</h3>
+                  <div className="space-y-2.5 text-sm mb-4">
+                    <div className="flex justify-between text-foreground">
+                      <span className="text-muted-foreground">Plan</span>
+                      <span className="font-semibold">{planInfo.label} {billing === "yearly" ? "(Yearly)" : "(Monthly)"}</span>
+                    </div>
+                    <div className="flex justify-between text-foreground">
+                      <span className="text-muted-foreground">Seats</span>
+                      <span className="font-semibold">{seatCount}</span>
+                    </div>
+                    <div className="flex justify-between text-foreground">
+                      <span className="text-muted-foreground">Price/seat{billing === "yearly" ? "/mo" : ""}</span>
+                      <span className="font-semibold">{formatINR(pricePerSeat)}</span>
+                    </div>
+                    {billing === "yearly" && (
+                      <div className="flex justify-between text-foreground">
+                        <span className="text-muted-foreground">Months</span>
+                        <span className="font-semibold">12</span>
+                      </div>
+                    )}
+                    <div className="border-t border-border/60 pt-2.5">
+                      <div className="flex justify-between text-foreground">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span className="font-semibold">{formatINR(gst.baseAmount)}</span>
+                      </div>
 
-              <div className="mt-3 space-y-1.5 text-[11px] text-[#9CA3AF]">
-                <div className="flex items-center gap-1.5"><Calendar size={11} />
-                  Active for {billing === "yearly" ? "12 months" : "1 month"} from payment
-                </div>
-                <div className="flex items-center gap-1.5"><FileText size={11} />
-                  GST invoice sent to {org?.contactEmail || "your email"}
-                </div>
-                <div className="flex items-center gap-1.5"><CheckCircle size={11} className="text-emerald-500" />
-                  Enrollment code ready immediately
-                </div>
-              </div>
+                      <button onClick={() => setShowInvoice(!showInvoice)}
+                        className="flex items-center gap-1 text-xs text-primary mt-2 hover:underline">
+                        <FileText size={11} /> GST Breakdown
+                        {showInvoice ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                      </button>
+                      {showInvoice && (
+                        <div className="mt-2 neu-inset rounded-xl p-3 space-y-1.5 text-xs">
+                          <div className="text-muted-foreground font-medium mb-2">
+                            Invoice No: AOR/{yearlyFY}/XXXX
+                            <div className="text-[10px] text-muted-foreground/70 mt-0.5">HSN: 998313</div>
+                          </div>
+                          {gst.isSameState ? (
+                            <>
+                              <div className="flex justify-between"><span className="text-muted-foreground">CGST (9%)</span><span>{formatINR(gst.cgstAmount)}</span></div>
+                              <div className="flex justify-between"><span className="text-muted-foreground">SGST (9%)</span><span>{formatINR(gst.sgstAmount)}</span></div>
+                            </>
+                          ) : (
+                            <div className="flex justify-between"><span className="text-muted-foreground">IGST (18%)</span><span>{formatINR(gst.igstAmount)}</span></div>
+                          )}
+                          {!orgState && (
+                            <p className="text-muted-foreground text-[10px] flex items-center gap-1 mt-1">
+                              <Info size={10} /> Select state to see GST type
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex justify-between mt-2">
+                        <span className="text-muted-foreground">GST (18%)</span>
+                        <span className="font-semibold text-foreground">{formatINR(gst.gstAmount)}</span>
+                      </div>
+                    </div>
+                    <div className="border-t border-border/60 pt-2.5 flex justify-between">
+                      <span className="font-bold text-foreground">Total</span>
+                      <span className="font-bold text-primary text-lg">{formatINR(gst.totalAmount)}</span>
+                    </div>
+                    {billing === "yearly" && (
+                      <div className="text-[11px] tone-mint text-center rounded-lg py-1.5">
+                        You save {formatINR(((seatPlans[selectedPlan]?.pricePerSeat ?? FALLBACK_SEAT_PLANS[selectedPlan]?.pricePerSeat ?? 0) - pricePerSeat) * seatCount * 12 || 0)} per year
+                      </div>
+                    )}
+                  </div>
 
-              <div className="mt-4 pt-4 border-t border-[#F3F4F6] text-center text-[11px] text-[#9CA3AF]">
-                Secure payments via Razorpay · All amounts in INR · GST applicable
+                  <Button variant="brand" className="w-full" onClick={handlePay} disabled={paying || seatCount < 10}>
+                    {paying ? (
+                      <><RefreshCw size={15} className="animate-spin" /> Processing...</>
+                    ) : (
+                      <><IndianRupee size={15} /> Pay {formatINR(gst.totalAmount)}</>
+                    )}
+                  </Button>
+
+                  <div className="mt-3 space-y-1.5 text-[11px] text-muted-foreground">
+                    <div className="flex items-center gap-1.5"><Calendar size={11} />
+                      Active for {billing === "yearly" ? "12 months" : "1 month"} from payment
+                    </div>
+                    <div className="flex items-center gap-1.5"><FileText size={11} />
+                      GST invoice sent to {org?.contactEmail || "your email"}
+                    </div>
+                    <div className="flex items-center gap-1.5"><CheckCircle size={11} className="text-[oklch(0.68_0.12_162)]" />
+                      Enrollment code ready immediately
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-border/60 text-center text-[11px] text-muted-foreground">
+                    Secure payments via Razorpay · All amounts in INR · GST applicable
+                  </div>
+                </NeuCard>
               </div>
             </div>
-          </div>
-        </div>
+          </TabsContent>
+
+          {/* Invoices */}
+          <TabsContent value="invoices" className="mt-6">
+            <CardShell title="Invoice History" description="Your organization's GST invoices, generated on each successful payment.">
+              {invoicesLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <RefreshCw size={20} className="animate-spin text-primary" />
+                </div>
+              ) : invoices.length === 0 ? (
+                <EmptyState icon={<Receipt />} title="No invoices yet" description="Invoices appear here after your first successful payment." />
+              ) : (
+                <div className="neu-inset overflow-x-auto rounded-2xl">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Invoice</TableHead>
+                        <TableHead className="hidden sm:table-cell">Date</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Receipt</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {invoices.map((inv, i) => {
+                        const number = invoiceField(inv, "invoiceNumber", "invoice_number", "number") as string | undefined;
+                        const date = invoiceField(inv, "createdAt", "created_at", "date") as string | undefined;
+                        const amount = invoiceField(inv, "totalAmount", "total_amount", "amount") as number | undefined;
+                        const status = invoiceField(inv, "status") as string | undefined;
+                        const pdfUrl = invoiceField(inv, "pdfUrl", "pdf_url", "invoiceUrl") as string | undefined;
+                        return (
+                          <TableRow key={number || i}>
+                            <TableCell className="font-medium">{number || `#${i + 1}`}</TableCell>
+                            <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+                              {date ? new Date(date).toLocaleDateString("en-IN") : "—"}
+                            </TableCell>
+                            <TableCell className="font-semibold">{amount != null ? formatINR(Number(amount)) : "—"}</TableCell>
+                            <TableCell>
+                              <Badge variant={status === "paid" || status === "success" ? "success" : "outline"}>{status || "—"}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {pdfUrl ? (
+                                <Button size="sm" variant="ghost" asChild>
+                                  <a href={pdfUrl} target="_blank" rel="noreferrer"><Download size={13} /> PDF</a>
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardShell>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );

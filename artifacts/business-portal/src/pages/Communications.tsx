@@ -1,19 +1,27 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { api, type Announcement } from "@/lib/api";
-import { Send, Megaphone, Bell, Info, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { Send, Megaphone, Bell, Info, AlertTriangle, CheckCircle, Clock, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { CardShell, EmptyState, NeuCard, PageHeader } from "@/components/portal/primitives";
+import { cn } from "@/lib/utils";
 
 const TYPES = [
-  { value: "announcement", label: "Announcement", icon: Megaphone, color: "#0077B6" },
-  { value: "alert",        label: "Alert",        icon: AlertTriangle, color: "#F59E0B" },
-  { value: "reminder",     label: "Reminder",     icon: Bell,         color: "#10B981" },
-  { value: "info",         label: "Info",         icon: Info,         color: "#6366F1" },
+  { value: "announcement", label: "Announcement", icon: Megaphone, tone: "tone-primary" },
+  { value: "alert",        label: "Alert",        icon: AlertTriangle, tone: "tone-amber" },
+  { value: "reminder",     label: "Reminder",     icon: Bell,         tone: "tone-mint" },
+  { value: "info",         label: "Info",         icon: Info,         tone: "tone-lavender" },
 ];
 
 function typeIcon(type: string) {
   const found = TYPES.find(t => t.value === type);
   const Icon = found?.icon || Megaphone;
-  return <Icon size={16} style={{ color: found?.color || "#0077B6" }} />;
+  return <Icon size={16} />;
+}
+
+function typeTone(type: string) {
+  return TYPES.find(t => t.value === type)?.tone || "tone-primary";
 }
 
 function relTime(iso: string) {
@@ -55,44 +63,28 @@ export default function Communications() {
 
   return (
     <Layout>
-      <div className="p-6 max-w-5xl mx-auto space-y-6">
-        {/* Hero */}
-        <div className="flex items-end justify-between flex-wrap gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="pill-chip bg-primary/10 text-primary uppercase">
-                <Megaphone size={11} /> Member Outreach
-              </span>
-            </div>
-            <h1 className="font-display font-extrabold text-3xl md:text-4xl text-foreground tracking-tight">Communications</h1>
-            <p className="text-muted-foreground text-sm mt-1.5">Send announcements and updates to your members instantly.</p>
-          </div>
-          <div className="rounded-2xl bg-card border border-border px-5 py-3 flex items-center gap-3">
-            <Send size={16} className="text-primary" />
-            <div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Sent</div>
-              <div className="kpi-number text-2xl text-foreground">{announcements.length}</div>
-            </div>
-          </div>
-        </div>
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6 lg:space-y-8">
+        <PageHeader
+          eyebrow="People"
+          title="Communications"
+          description="Send announcements and updates to your members instantly."
+          actions={<Badge variant="soft"><Send size={11} /> {announcements.length} sent</Badge>}
+        />
 
-        <div className="grid lg:grid-cols-5 gap-5">
+        <div className="grid lg:grid-cols-5 gap-6">
           {/* Compose */}
           <div className="lg:col-span-2">
-            <div className="bg-card border border-border rounded-2xl p-5">
-              <h2 className="text-sm font-display font-bold text-foreground mb-4 flex items-center gap-2 uppercase tracking-wider">
-                <Send size={14} className="text-primary" /> New Message
-              </h2>
+            <CardShell title="New Message" contentClassName="space-y-3.5">
               {success && (
-                <div className="mb-3 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg p-3">
-                  <CheckCircle size={15} className="text-emerald-600 shrink-0" />
-                  <p className="text-emerald-700 text-xs">{success}</p>
-                </div>
+                <NeuCard variant="flat" className="flex items-center gap-2 p-3 tone-mint">
+                  <CheckCircle size={15} className="shrink-0" />
+                  <p className="text-xs">{success}</p>
+                </NeuCard>
               )}
               {error && (
-                <div className="mb-3 bg-destructive/10 border border-destructive/20 rounded-lg p-3">
-                  <p className="text-destructive text-xs">{error}</p>
-                </div>
+                <NeuCard variant="flat" className="p-3 tone-danger">
+                  <p className="text-xs">{error}</p>
+                </NeuCard>
               )}
               <form onSubmit={handleSend} className="space-y-3.5">
                 <div>
@@ -103,13 +95,12 @@ export default function Communications() {
                         key={t.value}
                         type="button"
                         onClick={() => set("type", t.value)}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
-                          form.type === t.value
-                            ? "border-primary/50 bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:border-primary/30"
-                        }`}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all",
+                          form.type === t.value ? "neu text-primary" : "neu-flat text-muted-foreground",
+                        )}
                       >
-                        <t.icon size={13} style={{ color: form.type === t.value ? "#0077B6" : t.color }} />
+                        <t.icon size={13} />
                         {t.label}
                       </button>
                     ))}
@@ -121,7 +112,7 @@ export default function Communications() {
                     value={form.title}
                     onChange={e => set("title", e.target.value)}
                     placeholder="Message title..."
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                    className="w-full neu-inset rounded-xl px-3.5 py-2.5 text-sm bg-transparent focus:outline-none placeholder:text-muted-foreground"
                   />
                 </div>
                 <div>
@@ -131,67 +122,57 @@ export default function Communications() {
                     onChange={e => set("body", e.target.value)}
                     placeholder="Write your message to members..."
                     rows={5}
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none"
+                    className="w-full neu-inset rounded-xl px-3.5 py-2.5 text-sm bg-transparent focus:outline-none placeholder:text-muted-foreground resize-none"
                   />
                 </div>
-                <button
-                  type="submit"
-                  disabled={sending}
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2.5 rounded-full text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  {sending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={14} />}
+                <Button type="submit" variant="brand" className="w-full" disabled={sending}>
+                  {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                   {sending ? "Sending..." : "Send to All Members"}
-                </button>
+                </Button>
               </form>
-            </div>
+            </CardShell>
           </div>
 
           {/* History */}
           <div className="lg:col-span-3">
-            <div className="bg-card border border-border rounded-2xl">
-              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-                <h2 className="text-sm font-display font-bold text-foreground uppercase tracking-wider">Message History</h2>
-                <span className="pill-chip bg-muted text-muted-foreground tabular-nums">{announcements.length}</span>
-              </div>
+            <CardShell
+              title="Message History"
+              action={<Badge variant="outline">{announcements.length}</Badge>}
+              contentClassName="p-0"
+            >
               {loading ? (
-                <div className="p-5 space-y-3">
-                  {[1, 2, 3].map(i => <div key={i} className="h-20 bg-muted/50 animate-pulse rounded-xl" />)}
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => <div key={i} className="h-20 neu-inset-sm animate-pulse rounded-2xl" />)}
                 </div>
               ) : announcements.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-14 h-14 rounded-full bg-muted/50 flex items-center justify-center mb-3">
-                    <Megaphone size={24} className="text-muted-foreground/50" />
-                  </div>
-                  <p className="font-display font-semibold text-foreground">No messages sent yet</p>
-                  <p className="text-muted-foreground text-xs mt-1">Your announcements will appear here</p>
-                </div>
+                <EmptyState icon={<Megaphone />} title="No messages sent yet" description="Your announcements will appear here" />
               ) : (
-                <div className="divide-y divide-border">
+                <div className="space-y-3">
                   {announcements.map(a => (
-                    <div key={a.id} className="px-5 py-4 hover:bg-muted/20 transition-colors">
+                    <NeuCard key={a.id} variant="flat" className="p-4">
                       <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                        <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", typeTone(a.type))}>
                           {typeIcon(a.type)}
-                        </div>
+                        </span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="font-display font-semibold text-foreground text-sm truncate">{a.title}</p>
+                            <p className="font-semibold text-foreground text-sm truncate">{a.title}</p>
                             <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
                               <Clock size={11} /> {relTime(a.createdAt)}
                             </div>
                           </div>
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.body}</p>
                           <div className="flex items-center gap-2 mt-2">
-                            <span className="pill-chip bg-muted text-muted-foreground capitalize">{a.type}</span>
+                            <Badge variant="outline" className="capitalize">{a.type}</Badge>
                             <span className="text-[10px] text-muted-foreground tabular-nums">Sent to {a.sentCount} members</span>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </NeuCard>
                   ))}
                 </div>
               )}
-            </div>
+            </CardShell>
           </div>
         </div>
       </div>

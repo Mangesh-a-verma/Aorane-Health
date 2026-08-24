@@ -16,7 +16,7 @@ import {
 import { eq, and, gte, lte } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { checkAndUseAILimit } from "../../lib/aiLimiter";
+import { checkAndUseAILimit, refundAIUsage } from "../../lib/aiLimiter";
 import { callAI } from "../../lib/ai";
 
 const router = Router();
@@ -352,7 +352,10 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       cleanJson = cleanJson.trim();
       suggestions = JSON.parse(cleanJson);
     } catch {
-      // Fallback if Gemini fails
+      // Fallback if Gemini fails — the user still gets a usable response, but
+      // it's generic rather than personalized, so refund the quota unit they
+      // paid for a real AI call.
+      await refundAIUsage(userId, "ai_health_suggestions_daily");
       suggestions = {
         greeting: "Hello! Wishing you a wonderful and healthy day ahead! 🙏",
         calorieStatus: { goal: calorieGoal, eaten: caloriesToday, remaining: Math.max(0, calorieGoal - caloriesToday), message: "Keep tracking your calorie goal!" },

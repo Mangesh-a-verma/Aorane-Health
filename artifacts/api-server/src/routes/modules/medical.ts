@@ -4,7 +4,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { requireFeature } from "../../middlewares/feature-check";
-import { checkAndUseAILimit } from "../../lib/aiLimiter";
+import { checkAndUseAILimit, refundAIUsage } from "../../lib/aiLimiter";
 import { callAI, type AIMedia } from "../../lib/ai";
 import { logger } from "../../lib/logger";
 
@@ -179,6 +179,7 @@ Be accurate with Indian medical reference ranges. Flag anything outside normal r
       );
     } catch (aiErr) {
       logger.error({ err: aiErr, userId: req.userId, pageCount: pages.length }, "[Medical] AI analysis failed");
+      await refundAIUsage(req.userId!, "ai_medical_scan_daily");
       res.status(502).json({ error: `AI analysis failed: ${aiErr instanceof Error ? aiErr.message : "Unknown error"}. Please try again.` });
       return;
     }
@@ -186,6 +187,7 @@ Be accurate with Indian medical reference ranges. Flag anything outside normal r
     const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       logger.warn({ text: jsonStr.slice(0, 300), userId: req.userId }, "[Medical] AI response had no parseable JSON");
+      await refundAIUsage(req.userId!, "ai_medical_scan_daily");
       res.status(502).json({ error: "Could not parse AI response. Please try again." });
       return;
     }
@@ -207,6 +209,7 @@ Be accurate with Indian medical reference ranges. Flag anything outside normal r
       analysisResult = JSON.parse(jsonMatch[0]);
     } catch (parseErr) {
       logger.warn({ err: parseErr, userId: req.userId }, "[Medical] AI returned malformed JSON");
+      await refundAIUsage(req.userId!, "ai_medical_scan_daily");
       res.status(502).json({ error: "AI returned an invalid response. Please try again." });
       return;
     }

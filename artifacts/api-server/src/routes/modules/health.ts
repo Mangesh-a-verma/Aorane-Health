@@ -5,6 +5,7 @@ import { pool } from "@workspace/db";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { computeScientificScore } from "../../lib/scoring";
+import { istDayBounds } from "../../lib/dateUtils";
 
 const router = Router();
 
@@ -166,7 +167,8 @@ router.get("/health/exercise", requireAuth, async (req: AuthRequest, res) => {
     const params: unknown[] = [req.userId!];
     if (date) {
       query += ` AND logged_at >= $2 AND logged_at <= $3`;
-      params.push(date + "T00:00:00Z", date + "T23:59:59Z");
+      const { dayStart, dayEnd } = istDayBounds(date);
+      params.push(dayStart, dayEnd);
     }
     query += ` ORDER BY logged_at DESC`;
     const result = await pool.query(query, params);
@@ -215,9 +217,10 @@ router.post("/health/water", requireAuth, async (req: AuthRequest, res) => {
 router.get("/health/water/:date", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { date } = req.params;
+    const { dayStart, dayEnd } = istDayBounds(date as string);
     const logsRes = await pool.query(
       `SELECT * FROM water_logs WHERE user_id=$1 AND logged_at >= $2 AND logged_at <= $3 ORDER BY logged_at`,
-      [req.userId!, date + "T00:00:00Z", date + "T23:59:59Z"]
+      [req.userId!, dayStart, dayEnd]
     );
     const prefsRes = await pool.query(`SELECT water_goal_glasses FROM user_preferences WHERE user_id=$1`, [req.userId!]);
     const logs = logsRes.rows;

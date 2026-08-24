@@ -1,4 +1,5 @@
 import { pool } from "@workspace/db";
+import { istDayBounds } from "./dateUtils";
 
 /**
  * AORANE Scientific Health Score Engine v3
@@ -279,7 +280,7 @@ function scoreSleep(hoursLogged: number | null, quality: string | null, isLogged
   }
   let base: number, optimal = false;
   if      (hoursLogged >= 7 && hoursLogged <= 9)  { base = 100; optimal = true; }
-  else if (hoursLogged >  9 && hoursLogged <= 10) { base = 80;  optimal = true; }
+  else if (hoursLogged >  9 && hoursLogged <= 10) { base = 80; }
   else if (hoursLogged >= 6 && hoursLogged <  7)  { base = 75; }
   else if (hoursLogged >= 5 && hoursLogged <  6)  { base = 45; }
   else if (hoursLogged >  10)                     { base = 60; }
@@ -409,8 +410,7 @@ function buildCompositeScore(
 
 // ─── Main Engine ──────────────────────────────────────────────────────────────
 export async function computeScientificScore(userId: string, date: string): Promise<DailyHealthScore> {
-  const dayStart = date + "T00:00:00+05:30";
-  const dayEnd   = date + "T23:59:59+05:30";
+  const { dayStart, dayEnd } = istDayBounds(date);
 
   // ── Fetch all data in parallel ──────────────────────────────────────────────
   const [
@@ -654,7 +654,8 @@ export async function computeScientificScore(userId: string, date: string): Prom
        health_score=$3, data_confidence_pct=$4,
        food_score=$5, exercise_score=$6, water_score=$7, medicine_score=$8,
        sleep_score=$9, stress_score=$10,
-       total_calories_in=$11, water_glasses=$12, exercise_minutes=$13, fields_logged=$14`,
+       total_calories_in=$11, water_glasses=$12, exercise_minutes=$13, fields_logged=$14,
+       total_possible_fields=$15`,
     [
       userId, date, overallScore, String(dataConfidence),
       foodResult.score ?? 0, exResult.score ?? 0,

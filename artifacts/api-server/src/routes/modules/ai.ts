@@ -146,10 +146,19 @@ Return ONLY valid JSON (no markdown, no extra text):
     try {
       jsonStr = await callAI("meal_planner", payload, { maxTokens: 2000 });
     } catch (apiErr: any) {
+      await refundAIUsage(userId, "ai_meal_planner_daily");
       res.status(502).json({ error: "AI Provider failed to generate response", details: apiErr.message || String(apiErr) });
       return;
     }
-    const plan = JSON.parse(jsonStr);
+    let plan;
+    try {
+      plan = JSON.parse(jsonStr);
+    } catch (parseErr) {
+      await refundAIUsage(userId, "ai_meal_planner_daily");
+      req.log.error({ jsonStrPreview: jsonStr?.slice(0, 500) }, "diet-plan: AI returned non-JSON");
+      res.status(502).json({ error: "AI response could not be read. Please try again." });
+      return;
+    }
     res.json({
       plan,
       generatedAt: new Date().toISOString(),
@@ -192,10 +201,18 @@ Return ONLY valid JSON:
     try {
       jsonStr = await callAI("health_suggestions", payload, { maxTokens: 500 });
     } catch (apiErr: any) {
+      await refundAIUsage(userId, "ai_health_coach_daily");
       res.status(502).json({ error: "AI Provider failed to generate response", details: apiErr.message || String(apiErr) });
       return;
     }
-    const result = JSON.parse(jsonStr);
+    let result;
+    try {
+      result = JSON.parse(jsonStr);
+    } catch {
+      await refundAIUsage(userId, "ai_health_coach_daily");
+      res.status(502).json({ error: "AI response could not be read. Please try again." });
+      return;
+    }
     res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
   } catch {
     res.status(500).json({ error: "Failed to generate health tip" });
@@ -235,10 +252,18 @@ Return ONLY valid JSON:
     try {
       jsonStr = await callAI("meal_planner", payload, { maxTokens: 800 });
     } catch (apiErr: any) {
+      await refundAIUsage(userId, "ai_meal_swap_daily");
       res.status(502).json({ error: "AI Provider failed to generate response", details: apiErr.message || String(apiErr) });
       return;
     }
-    const result = JSON.parse(jsonStr);
+    let result;
+    try {
+      result = JSON.parse(jsonStr);
+    } catch {
+      await refundAIUsage(userId, "ai_meal_swap_daily");
+      res.status(502).json({ error: "AI response could not be read. Please try again." });
+      return;
+    }
     res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
   } catch {
     res.status(500).json({ error: "Failed to generate meal swaps" });
