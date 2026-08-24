@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, pool, usersTable, subscriptionsTable, paymentsTable, promoCodesTable, planPricingTable, familyGroupsTable, familyMembersTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
-import { logger } from "../../lib/logger";
+import { logger, safeErrorMessage } from "../../lib/logger";
 
 import { requireAuth } from "../../middlewares/user-auth";
 import { requireAdmin } from "../../middlewares/admin-auth";
@@ -199,7 +199,7 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
       const order = await createOrder({ amount: finalAmount, receipt: `usr_${req.userId!.substring(0, 8)}` });
       razorpayOrderId = order.id;
     } catch (err) {
-      res.status(502).json({ error: `Payment gateway error: ${err instanceof Error ? err.message : "Razorpay error"}` });
+      res.status(502).json({ error: `Payment gateway error: ${safeErrorMessage(err)}` });
       return;
     }
     const [payment] = await db.insert(paymentsTable).values({

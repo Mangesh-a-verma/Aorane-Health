@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { logger } from "../../lib/logger";
+import { logger, safeErrorMessage } from "../../lib/logger";
 import { upsertDailyActivityScore, upsertDailyHealthScore } from "../../lib/activityScore";
 import { db, stressLogsTable, userProfilesTable, exerciseLogsTable, waterLogsTable, foodLogsTable, medicineLogsTable, medicineSchedulesTable } from "@workspace/db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
@@ -173,7 +173,7 @@ router.post("/stress/log", requireAuth, async (req: AuthRequest, res) => {
     upsertDailyHealthScore(req.userId!).catch(() => {});
     res.status(201).json({ success: true, log, stressScore });
   } catch (err) {
-    res.status(500).json({ error: "Failed to log stress", detail: (err as Error).message });
+    res.status(500).json({ error: "Failed to log stress", detail: safeErrorMessage(err) });
   }
 });
 
