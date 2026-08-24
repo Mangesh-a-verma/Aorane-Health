@@ -454,3 +454,12 @@
 @utility tone-teal    { background: color-mix(in oklab, hsl(var(--secondary)) 18%, transparent); color: hsl(var(--secondary)); }
 @utility tone-lavender{ background: color-mix(in oklab, oklch(0.7 0.1 292) 18%, transparent); color: oklch(0.4 0.1 292); }
 @utility tone-amber   { background: color-mix(in oklab, oklch(0.79 0.13 78) 20%, transparent); color: oklch(0.42 0.09 66); }
+@utility tone-danger  { background: color-mix(in oklab, hsl(var(--destructive)) 14%, transparent); color: hsl(var(--destructive)); }
+
+/* Business-portal CRM shell only — brand gradient chip/button surface,
+   same two brand colors as the pre-existing .gradient-btn/.gradient-text
+   utilities above, just exposed as a plain background utility so the new
+   neumorphic Button "brand" variant (portal/primitives.tsx) can use it. */
+@utility bg-gradient-brand {
+  background: linear-gradient(135deg, #0077B6, #1B998B);
+}

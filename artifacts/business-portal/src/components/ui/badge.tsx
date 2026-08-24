@@ -22,6 +22,15 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-destructive-foreground shadow-xs",
           // @replit shadow-xs" - use badge outline variable
         outline: "text-foreground border [border-color:var(--badge-outline)]",
+        // CRM/portal-only additions (see src/components/portal/primitives.tsx)
+        // — additive, do not touch the variants above used by Landing/Login/Register.
+        soft: "border-transparent tone-primary",
+        success: "border-transparent tone-mint",
+        warning: "border-transparent tone-amber",
+        danger: "border-transparent tone-danger",
+        mint: "border-transparent tone-mint",
+        teal: "border-transparent tone-teal",
+        lavender: "border-transparent tone-lavender",
       },
     },
     defaultVariants: {

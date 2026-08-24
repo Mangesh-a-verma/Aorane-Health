@@ -26,6 +26,11 @@ const buttonVariants = cva(
         // @replit no hover, transparent border
         ghost: "border border-transparent",
         link: "text-primary underline-offset-4 hover:underline",
+        // CRM/portal-only additions (see src/components/portal/primitives.tsx)
+        // — additive, do not touch the variants above used by Landing/Login/Register.
+        neu: "neu-interactive rounded-xl text-foreground",
+        brand:
+          "bg-gradient-brand text-primary-foreground rounded-xl shadow-[var(--portal-neu-raised-sm)] hover:brightness-105 active:translate-y-px active:shadow-none",
       },
       size: {
         // @replit changed sizes
@@ -33,6 +38,7 @@ const buttonVariants = cva(
         sm: "min-h-8 rounded-md px-3 text-xs",
         lg: "min-h-10 rounded-md px-8",
         icon: "h-9 w-9",
+        "icon-sm": "h-8 w-8 rounded-lg",
       },
     },
     defaultVariants: {
