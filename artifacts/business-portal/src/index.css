@@ -364,3 +364,93 @@
 .thin-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   PORTAL/CRM DESIGN TOKENS — Phase 1 of the Lovable UI migration.
+   Scope: the authenticated business-portal shell (Layout.tsx, Dashboard,
+   Members, Analytics, Billing, etc.) ONLY. The marketing Landing page
+   keeps its existing .glass-panel / .glass-panel-soft / .neu-surface /
+   .neu-pill classes exactly as they are — nothing above this block was
+   touched, and nothing below it renames or overrides those.
+
+   These are new, distinctly-named primitives (.neu, .neu-flat, .neu-inset,
+   .glass, etc. — no "-panel"/"-surface" suffix, so there's zero name
+   collision with the landing page's classes). Adapted from the Lovable
+   reference's oklch-based neumorphic scale, re-expressed as a neutral
+   light-grey shadow pair that works with the portal's existing blue/teal
+   HSL palette rather than replacing it — this is a shadow *system*, not a
+   color scheme, so it layers on top of any accent color already in use.
+   ════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Neutral neumorphic shadow pair — intentionally NOT tied to --primary,
+     so this works underneath any accent color already used on a page. */
+  --portal-shadow-light: rgba(255, 255, 255, 0.9);
+  --portal-shadow-dark: rgba(163, 177, 194, 0.32);
+  --portal-shadow-dark-strong: rgba(148, 163, 184, 0.4);
+
+  --portal-neu-raised: 6px 6px 16px var(--portal-shadow-dark), -6px -6px 16px var(--portal-shadow-light);
+  --portal-neu-raised-sm: 3px 3px 8px var(--portal-shadow-dark), -3px -3px 8px var(--portal-shadow-light);
+  --portal-neu-raised-lg: 12px 12px 30px var(--portal-shadow-dark-strong), -10px -10px 26px var(--portal-shadow-light);
+  --portal-neu-inset: inset 4px 4px 10px var(--portal-shadow-dark), inset -4px -4px 10px var(--portal-shadow-light);
+  --portal-neu-inset-sm: inset 2px 2px 5px var(--portal-shadow-dark), inset -2px -2px 5px var(--portal-shadow-light);
+
+  --portal-gradient-surface: linear-gradient(145deg, hsl(0 0% 100%), hsl(210 32% 97%));
+}
+
+@utility neu {
+  background: var(--portal-gradient-surface);
+  box-shadow: var(--portal-neu-raised);
+}
+@utility neu-sm {
+  background: var(--portal-gradient-surface);
+  box-shadow: var(--portal-neu-raised-sm);
+}
+@utility neu-lg {
+  background: var(--portal-gradient-surface);
+  box-shadow: var(--portal-neu-raised-lg);
+}
+@utility neu-flat {
+  background: hsl(var(--card));
+  box-shadow: var(--portal-neu-raised-sm);
+}
+@utility neu-inset {
+  background: hsl(210 30% 95.5%);
+  box-shadow: var(--portal-neu-inset);
+}
+@utility neu-inset-sm {
+  background: hsl(210 30% 95.5%);
+  box-shadow: var(--portal-neu-inset-sm);
+}
+@utility neu-interactive {
+  background: var(--portal-gradient-surface);
+  box-shadow: var(--portal-neu-raised-sm);
+  transition: box-shadow 220ms cubic-bezier(0.4, 0, 0.2, 1), transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    box-shadow: var(--portal-neu-raised);
+    transform: translateY(-1px);
+  }
+  &:active {
+    box-shadow: var(--portal-neu-inset-sm);
+    transform: translateY(0);
+  }
+}
+
+/* Portal-scoped glass — distinct name from the landing page's .glass-panel
+   so both can coexist without any collision or accidental override. */
+@utility glass {
+  background: color-mix(in oklab, hsl(var(--card)) 68%, transparent);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid color-mix(in oklab, white 60%, transparent);
+}
+
+/* Reusable tone chips for stat cards / badges — one accent per semantic
+   meaning, matching the color-discipline principle from the earlier
+   design critique rather than five unrelated hues per screen. */
+@utility tone-primary { background: color-mix(in oklab, hsl(var(--primary)) 14%, transparent); color: hsl(var(--primary)); }
+@utility tone-mint    { background: color-mix(in oklab, oklch(0.78 0.11 168) 20%, transparent); color: oklch(0.38 0.07 168); }
+@utility tone-teal    { background: color-mix(in oklab, hsl(var(--secondary)) 18%, transparent); color: hsl(var(--secondary)); }
+@utility tone-lavender{ background: color-mix(in oklab, oklch(0.7 0.1 292) 18%, transparent); color: oklch(0.4 0.1 292); }
+@utility tone-amber   { background: color-mix(in oklab, oklch(0.79 0.13 78) 20%, transparent); color: oklch(0.42 0.09 66); }
