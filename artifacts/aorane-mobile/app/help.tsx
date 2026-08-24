@@ -217,7 +217,7 @@ export default function HelpScreen() {
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={[s.header, { paddingTop: topPad + 12 }]}
         >
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7} accessibilityLabel="Go back" accessibilityRole="button">
             <ChevronLeft size={22} color="#FFF" strokeWidth={2.5} />
           </TouchableOpacity>
           <View style={{ flex: 1, alignItems: "center" }}>

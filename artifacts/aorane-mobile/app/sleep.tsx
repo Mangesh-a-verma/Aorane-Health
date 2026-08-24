@@ -251,9 +251,11 @@ export default function SleepScreen() {
         >
           {/* Header */}
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               onPress={() => router.back()}
-              style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(139,92,246,0.12)", alignItems: "center", justifyContent: "center", marginRight: 12 }}
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(139,92,246,0.12)", alignItems: "center", justifyContent: "center", marginRight: 12 }}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
             >
               <Ionicons name="arrow-back" size={20} color={"#7C3AED"} />
             </TouchableOpacity>
@@ -379,7 +381,7 @@ export default function SleepScreen() {
             <Text style={[lbl(), { marginTop: 12 }]}>Sleep Quality</Text>
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
               {QUALITY_OPTIONS.map(opt => (
-                <TouchableOpacity
+                <TouchableOpacity activeOpacity={0.8}
                   key={opt.key}
                   onPress={() => { setQuality(opt.key); Haptics.selectionAsync(); }}
                   style={{
@@ -414,7 +416,7 @@ export default function SleepScreen() {
             </View>
 
             {/* Save Button */}
-            <TouchableOpacity
+            <TouchableOpacity activeOpacity={0.8}
               onPress={handleSave}
               disabled={saving}
               style={{ marginTop: 16, borderRadius: 14, overflow: "hidden" }}

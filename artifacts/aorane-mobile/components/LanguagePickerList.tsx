@@ -74,8 +74,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     marginBottom: 10,
   },
-  nativeName: { fontSize: 17, fontWeight: "700" },
-  englishName: { fontSize: 12, fontWeight: "500", marginTop: 2 },
+  nativeName: { fontSize: 17, fontFamily: "Inter_700Bold" },
+  englishName: { fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 2 },
   checkCircle: {
     width: 26, height: 26, borderRadius: 13,
     backgroundColor: "#0077B6",

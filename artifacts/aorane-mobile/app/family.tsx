@@ -555,7 +555,7 @@ export default function FamilyScreen() {
   if (loading) return (
     <View style={{ flex: 1, backgroundColor: bg }}>
       <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 12 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center" }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center" }} accessibilityLabel="Go back" accessibilityRole="button">
           <Ionicons name="arrow-back" size={20} color="#0077B6" />
         </TouchableOpacity>
       </View>
@@ -570,7 +570,7 @@ export default function FamilyScreen() {
     <View style={{ flex: 1, backgroundColor: bg }}>
       <LinearGradient colors={["#BAE6FD60","transparent"]} style={{ position: "absolute", top: 0, left: 0, right: 0, height: 200 }} />
       <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 12, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center" }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center" }} accessibilityLabel="Go back" accessibilityRole="button">
           <Ionicons name="arrow-back" size={20} color="#0077B6" />
         </TouchableOpacity>
         <View>
@@ -616,7 +616,7 @@ export default function FamilyScreen() {
 
       <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center" }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center" }} accessibilityLabel="Go back" accessibilityRole="button">
             <Ionicons name="arrow-back" size={20} color="#0077B6" />
           </TouchableOpacity>
           <View>

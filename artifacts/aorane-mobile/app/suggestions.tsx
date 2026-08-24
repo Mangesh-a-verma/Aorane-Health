@@ -224,7 +224,7 @@ export default function SuggestionsScreen() {
         }
         <View style={{ paddingTop: topPad + 8, paddingHorizontal: 16, paddingBottom: 12 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" accessibilityRole="button">
               <Ionicons name="chevron-back" size={22} color={DS.color.primary} />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>

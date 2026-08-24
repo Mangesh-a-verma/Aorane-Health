@@ -168,13 +168,13 @@ function PlanGate() {
         <View style={{ backgroundColor: DS.color.primarySoft, borderRadius: 12, padding: 12, width: "100%" }}>
           <Text style={{ color: PRIMARY, fontFamily: "Inter_600SemiBold", fontSize: 12, textAlign: "center" }}>🔒 Available on Pro & Max plans</Text>
         </View>
-        <TouchableOpacity onPress={() => router.push("/upgrade" as never)} style={{ width: "100%", borderRadius: 16, overflow: "hidden" }}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.push("/upgrade" as never)} style={{ width: "100%", borderRadius: 16, overflow: "hidden" }}>
           <LinearGradient colors={[PRIMARY, SKY]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ padding: 16, alignItems: "center" }}>
             <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>Upgrade to Pro / Max</Text>
             <Text style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>Powered by Google Gemini AI</Text>
           </LinearGradient>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push("/(tabs)/food" as never)} style={{ paddingVertical: 8 }}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.push("/(tabs)/food" as never)} style={{ paddingVertical: 8 }}>
           <Text style={{ color: PRIMARY, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Search Food by Name instead</Text>
         </TouchableOpacity>
       </View>
@@ -364,13 +364,13 @@ export default function SmartScanScreen() {
           <Animated.View style={[s.btnGroup, { opacity: headerFade }]}>
             {isPremium && (
               <>
-                <TouchableOpacity style={s.cameraBtnWrap} onPress={() => pickAndScan("camera")}>
+                <TouchableOpacity activeOpacity={0.8} style={s.cameraBtnWrap} onPress={() => pickAndScan("camera")}>
                   <LinearGradient colors={[PRIMARY, SKY, ACCENT]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.cameraBtn}>
                     <Ionicons name="camera" size={22} color="#FFF" />
                     <Text style={s.cameraBtnText}>Open Camera</Text>
                   </LinearGradient>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.galleryBtn} onPress={() => pickAndScan("gallery")}>
+                <TouchableOpacity activeOpacity={0.8} style={s.galleryBtn} onPress={() => pickAndScan("gallery")}>
                   <Ionicons name="images-outline" size={20} color={PRIMARY} />
                   <Text style={s.galleryText}>Pick from Gallery</Text>
                 </TouchableOpacity>
@@ -404,7 +404,7 @@ export default function SmartScanScreen() {
                   <Ionicons name="help-circle-outline" size={52} color="#9CA3AF" />
                   <Text style={s.unknownTitle}>Could not identify</Text>
                   <Text style={s.unknownSub}>{result.message}</Text>
-                  <TouchableOpacity style={s.retryBtn} onPress={reset}>
+                  <TouchableOpacity activeOpacity={0.8} style={s.retryBtn} onPress={reset}>
                     <Text style={s.retryText}>Try Again</Text>
                   </TouchableOpacity>
                 </View>
@@ -483,7 +483,7 @@ function FoodResult({ r, onReset }: { r: Extract<ScanResult, { type: "food" }>; 
         <Ionicons name="bulb-outline" size={16} color={ACCENT} />
         <Text style={rs.tipText}>{r.tip}</Text>
       </View>
-      <TouchableOpacity style={rs.scanAgain} onPress={onReset}>
+      <TouchableOpacity activeOpacity={0.8} style={rs.scanAgain} onPress={onReset}>
         <LinearGradient colors={[PRIMARY, SKY]} style={rs.scanAgainGrad}>
           <Ionicons name="scan-outline" size={16} color="#FFF" />
           <Text style={rs.scanAgainText}>Scan Another</Text>
@@ -543,7 +543,7 @@ function MedicalResult({ r, onReset }: { r: Extract<ScanResult, { type: "medical
         <Ionicons name="warning-outline" size={15} color="#F59E0B" />
         <Text style={[rs.tipText, { color: "#78350F" }]}>{r.disclaimer}</Text>
       </View>
-      <TouchableOpacity style={rs.scanAgain} onPress={onReset}>
+      <TouchableOpacity activeOpacity={0.8} style={rs.scanAgain} onPress={onReset}>
         <LinearGradient colors={[PRIMARY, SKY]} style={rs.scanAgainGrad}>
           <Ionicons name="scan-outline" size={16} color="#FFF" />
           <Text style={rs.scanAgainText}>Scan Another</Text>
@@ -588,7 +588,7 @@ function MedicineResult({ r, onReset }: { r: Extract<ScanResult, { type: "medici
         <Ionicons name="warning-outline" size={15} color="#F59E0B" />
         <Text style={[rs.tipText, { color: "#78350F" }]}>{r.disclaimer}</Text>
       </View>
-      <TouchableOpacity style={rs.scanAgain} onPress={onReset}>
+      <TouchableOpacity activeOpacity={0.8} style={rs.scanAgain} onPress={onReset}>
         <LinearGradient colors={[PRIMARY, SKY]} style={rs.scanAgainGrad}>
           <Ionicons name="scan-outline" size={16} color="#FFF" />
           <Text style={rs.scanAgainText}>Scan Another</Text>

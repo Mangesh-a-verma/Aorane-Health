@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   /* Heading */
   heading: {
     fontSize: 26,
-    fontWeight: '700',
+    fontFamily: "Inter_700Bold",
     color: NAVY,
     textAlign: 'center',
     marginBottom: 8,
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   tick: {
     color: '#FFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: "Inter_700Bold",
     lineHeight: 18,
   },
 
@@ -285,12 +285,12 @@ const styles = StyleSheet.create({
   cardLabel: {
     fontSize: 12,
     color: MUTED,
-    fontWeight: '500',
+    fontFamily: "Inter_500Medium",
     marginBottom: 2,
   },
   cardTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: "Inter_700Bold",
     color: '#1E293B',
     marginBottom: 3,
   },
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
   },
   readText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: "Inter_700Bold",
     color: BLUE_M,
   },
 
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
   },
   noticeTitle: {
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: "Inter_700Bold",
     color: NAVY,
     marginBottom: 6,
   },
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   emergencyNum: {
-    fontWeight: '800',
+    fontFamily: "Inter_700Bold",
     color: '#DC2626',
   },
 
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
   btnText: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: "Inter_700Bold",
     letterSpacing: 0.2,
   },
 });

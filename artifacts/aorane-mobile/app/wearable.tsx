@@ -433,7 +433,7 @@ export default function WearableScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0077B6"]} tintColor="#0077B6" />}
       >
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" accessibilityRole="button">
             <Ionicons name="arrow-back" size={20} color="#0077B6" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -695,7 +695,7 @@ const styles = StyleSheet.create({
   targetRow:       { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 12 },
   providerBtn:     { borderRadius: 14, overflow: "hidden" },
   providerBtnGrad: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 14 },
-  backBtn:         { width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 },
+  backBtn:         { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 },
   addBtn:          { backgroundColor: "#0077B6", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 5 },
   addBtnText:      { color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 12 },
   connectSmallBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(0,119,182,0.08)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },

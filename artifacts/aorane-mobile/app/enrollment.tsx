@@ -66,7 +66,7 @@ export default function EnrollmentScreen() {
 
         {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 32 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,119,182,0.08)", alignItems: "center", justifyContent: "center" }}>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,119,182,0.08)", alignItems: "center", justifyContent: "center" }} accessibilityLabel="Go back" accessibilityRole="button">
             <Ionicons name="arrow-back" size={20} color={textColor} />
           </TouchableOpacity>
           <Text style={{ color: textColor, fontSize: 20, fontFamily: "Inter_700Bold" }}>Join Organization</Text>
@@ -106,7 +106,7 @@ export default function EnrollmentScreen() {
         </View>
 
         {/* Submit Button */}
-        <TouchableOpacity onPress={handleSubmit} disabled={loading || !code.trim()} style={{ borderRadius: 16, overflow: "hidden", opacity: loading || !code.trim() ? 0.6 : 1, marginBottom: 16 }}>
+        <TouchableOpacity activeOpacity={0.8} onPress={handleSubmit} disabled={loading || !code.trim()} style={{ borderRadius: 16, overflow: "hidden", opacity: loading || !code.trim() ? 0.6 : 1, marginBottom: 16 }}>
           <LinearGradient colors={["#0077B6", "#023E8A"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ padding: 18, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10 }}>
             {loading ? <ActivityIndicator color="#FFF" /> : <Ionicons name="enter-outline" size={22} color="#FFF" />}
             <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 }}>

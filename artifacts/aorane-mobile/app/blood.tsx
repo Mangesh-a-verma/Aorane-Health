@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, TextInput,
-  Alert, ActivityIndicator, Platform, Linking,
+  Alert, ActivityIndicator, Platform, Linking, RefreshControl,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -226,6 +226,18 @@ export default function BloodEmergencyScreen() {
     } catch { }
     setMyReqLoading(false);
   }, []);
+
+  // Pull-to-refresh — reloads whichever tab's data is currently visible,
+  // mirroring the same tab/reqView branching the mount/tab-switch effect
+  // above already uses.
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    if (tab === "donate") await loadDonorStatus();
+    else if (tab === "requests" && reqView === "mine") await loadMyRequests();
+    else await loadEmergencies();
+    setRefreshing(false);
+  }, [tab, reqView, loadDonorStatus, loadMyRequests, loadEmergencies]);
 
   const handleMarkFulfilled = useCallback(async (id: string) => {
     setFulfilling(id);
@@ -483,7 +495,7 @@ export default function BloodEmergencyScreen() {
       {/* Header */}
       <LinearGradient colors={["#DC2626", "#B91C1C"]} style={{ paddingTop: (insets.top) + 12, paddingHorizontal: 16, paddingBottom: 0 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 }}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" accessibilityRole="button">
             <Ionicons name="chevron-back" size={22} color="#FFF" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -509,7 +521,13 @@ export default function BloodEmergencyScreen() {
         </View>
       </LinearGradient>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#DC2626" colors={["#DC2626"]} />
+        }
+      >
 
         {/* ─── REQUESTS TAB ─────────────────────────────────────────────────── */}
         {tab === "requests" && (
@@ -1207,5 +1225,5 @@ const styles = StyleSheet.create({
   availDot: { width: 6, height: 6, borderRadius: 3 },
   callBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#DC2626", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   urgBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  backBtn: { backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 20, padding: 8 },
+  backBtn: { backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 22, padding: 11, minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
 });

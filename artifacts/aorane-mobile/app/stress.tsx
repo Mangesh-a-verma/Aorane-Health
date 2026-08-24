@@ -331,6 +331,8 @@ export default function StressScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.primary + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
           >
             <Ionicons name="arrow-back" size={20} color={C.primary} />
           </TouchableOpacity>

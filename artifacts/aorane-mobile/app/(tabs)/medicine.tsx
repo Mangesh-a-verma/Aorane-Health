@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal,
-  TextInput, Alert, ActivityIndicator, Platform, Image,
+  TextInput, Alert, ActivityIndicator, Platform, Image, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -58,6 +58,7 @@ export default function MedicineScreen() {
 
   const [schedules,       setSchedules]       = useState<Schedule[]>([]);
   const [isLoading,       setIsLoading]       = useState(true);
+  const [refreshing,      setRefreshing]      = useState(false);
   const [showModal,       setShowModal]       = useState(false);
   const [medicineName,    setMedicineName]    = useState("");
   const [dosage,          setDosage]          = useState("");
@@ -81,6 +82,7 @@ export default function MedicineScreen() {
   const loadSchedules = useCallback(async () => {
     try { const res = await api.getMedicineSchedules(); setSchedules(res.schedules as Schedule[]); } catch { }
     setIsLoading(false);
+    setRefreshing(false);
   }, []);
 
   const handleAdd = async () => {
@@ -360,7 +362,14 @@ export default function MedicineScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView ref={scrollRef} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 90 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 90 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadSchedules(); }} tintColor={P} colors={[P]} />
+          }
+        >
           {schedules.map((med) => {
             const timing = MEAL_TIMING[med.mealTiming] || MEAL_TIMING.anytime;
             return (
@@ -386,6 +395,8 @@ export default function MedicineScreen() {
                   onPress={() => handleDelete(med)}
                   activeOpacity={0.7}
                   style={s.deleteBtn}
+                  accessibilityLabel={`Delete ${med.medicineName}`}
+                  accessibilityRole="button"
                 >
                   <Trash2 size={15} color={DS.color.red} strokeWidth={2} />
                 </TouchableOpacity>

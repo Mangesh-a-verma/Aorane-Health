@@ -79,7 +79,7 @@ export default function PeriodScreen() {
       <ScrollView contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: 100, paddingHorizontal: 16 }}>
 
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(236,72,153,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(236,72,153,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 }} accessibilityLabel="Go back" accessibilityRole="button">
             <Ionicons name="arrow-back" size={20} color="#EC4899" />
           </TouchableOpacity>
           <View>
@@ -112,7 +112,7 @@ export default function PeriodScreen() {
 
         <View style={{ flexDirection: "row", backgroundColor: "rgba(236,72,153,0.08)", borderRadius: 14, padding: 4, marginBottom: 18, gap: 4 }}>
           {(["tracker","log","history"] as const).map(t => (
-            <TouchableOpacity key={t} onPress={() => setTab(t)} style={{ flex: 1, paddingVertical: 9, borderRadius: 11, backgroundColor: tab === t ? "#EC4899" : "transparent", alignItems: "center" }}>
+            <TouchableOpacity activeOpacity={0.8} key={t} onPress={() => setTab(t)} style={{ flex: 1, paddingVertical: 9, borderRadius: 11, backgroundColor: tab === t ? "#EC4899" : "transparent", alignItems: "center" }}>
               <Text style={{ color: tab === t ? "#FFF" : ("rgba(10,22,40,0.5)"), fontFamily: "Inter_600SemiBold", fontSize: 12 }}>
                 {t === "tracker" ? "Tracker" : t === "log" ? "+ Log" : "History"}
               </Text>
@@ -126,7 +126,7 @@ export default function PeriodScreen() {
               <Text style={{ fontSize: 56 }}>🌸</Text>
               <Text style={{ color: "#1a1a2e", fontFamily: "Inter_700Bold", fontSize: 17, marginTop: 14, textAlign: "center" }}>Start Period Tracker</Text>
               <Text style={{ color: "rgba(10,22,40,0.5)", fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 8, lineHeight: 20 }}>Log your first period and AI will predict your cycle</Text>
-              <TouchableOpacity onPress={() => setTab("log")} style={{ marginTop: 20, backgroundColor: "#EC4899", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14 }}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => setTab("log")} style={{ marginTop: 20, backgroundColor: "#EC4899", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14 }}>
                 <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>+ Log Period</Text>
               </TouchableOpacity>
             </View>
@@ -147,7 +147,7 @@ export default function PeriodScreen() {
               <Text style={{ color: "rgba(10,22,40,0.6)", fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 8 }}>Flow</Text>
               <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
                 {FLOWS.map(f => (
-                  <TouchableOpacity key={f.key} onPress={() => setSelectedFlow(f.key)} style={{ flex: 1, padding: 12, borderRadius: 12, alignItems: "center", backgroundColor: selectedFlow === f.key ? f.color + "22" : "transparent", borderWidth: 2, borderColor: selectedFlow === f.key ? f.color : ("rgba(236,72,153,0.15)") }}>
+                  <TouchableOpacity activeOpacity={0.8} key={f.key} onPress={() => setSelectedFlow(f.key)} style={{ flex: 1, padding: 12, borderRadius: 12, alignItems: "center", backgroundColor: selectedFlow === f.key ? f.color + "22" : "transparent", borderWidth: 2, borderColor: selectedFlow === f.key ? f.color : ("rgba(236,72,153,0.15)") }}>
                     <Text style={{ color: selectedFlow === f.key ? f.color : ("rgba(10,22,40,0.5)"), fontFamily: "Inter_600SemiBold", fontSize: 13 }}>{f.label}</Text>
                   </TouchableOpacity>
                 ))}
@@ -156,13 +156,13 @@ export default function PeriodScreen() {
               <Text style={{ color: "rgba(10,22,40,0.6)", fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 8 }}>Symptoms</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
                 {SYMPTOMS.map(s => (
-                  <TouchableOpacity key={s} onPress={() => toggleSymptom(s)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: selectedSymptoms.includes(s) ? "#EC489922" : ("rgba(236,72,153,0.06)"), borderWidth: 1, borderColor: selectedSymptoms.includes(s) ? "#EC4899" : ("rgba(236,72,153,0.2)") }}>
+                  <TouchableOpacity activeOpacity={0.8} key={s} onPress={() => toggleSymptom(s)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: selectedSymptoms.includes(s) ? "#EC489922" : ("rgba(236,72,153,0.06)"), borderWidth: 1, borderColor: selectedSymptoms.includes(s) ? "#EC4899" : ("rgba(236,72,153,0.2)") }}>
                     <Text style={{ color: selectedSymptoms.includes(s) ? "#EC4899" : ("rgba(10,22,40,0.55)"), fontFamily: "Inter_500Medium", fontSize: 12 }}>{s}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <TouchableOpacity onPress={saveLog} disabled={saving} style={{ backgroundColor: "#EC4899", borderRadius: 14, padding: 15, alignItems: "center" }}>
+              <TouchableOpacity activeOpacity={0.8} onPress={saveLog} disabled={saving} style={{ backgroundColor: "#EC4899", borderRadius: 14, padding: 15, alignItems: "center" }}>
                 <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 15 }}>{saving ? "Saving..." : "Save Period Log"}</Text>
               </TouchableOpacity>
             </View>
@@ -176,7 +176,7 @@ export default function PeriodScreen() {
             ) : logs.map((log, i) => (
               <GlassCard key={i}>
                 <View style={{ padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "#EC489922", alignItems: "center", justifyContent: "center" }}>
+                  <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "#EC489922", alignItems: "center", justifyContent: "center" }}>
                     <Text style={{ fontSize: 22 }}>🌸</Text>
                   </View>
                   <View style={{ flex: 1 }}>

@@ -192,7 +192,7 @@ export default function PrivacySecurityScreen() {
     <View style={[s.root, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn} hitSlop={12}>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn} hitSlop={12} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={22} color={DS.color.text} strokeWidth={2} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Privacy & Security</Text>

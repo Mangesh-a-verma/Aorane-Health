@@ -143,7 +143,7 @@ export default function ScorecardScreen() {
         </View>
 
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => router.back()} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(0,119,182,0.1)", alignItems: "center", justifyContent: "center", marginRight: 12 }} accessibilityLabel="Go back" accessibilityRole="button">
             <Ionicons name="arrow-back" size={20} color="#0077B6" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -231,12 +231,12 @@ export default function ScorecardScreen() {
 
             <View style={{ gap: 12, marginTop: 20 }}>
               <View style={{ flexDirection: "row", gap: 12 }}>
-                <TouchableOpacity onPress={handleDownload} disabled={processing} style={[styles.actionBtn, { flex: 1, backgroundColor: "#0077B6" }]}>
+                <TouchableOpacity activeOpacity={0.8} onPress={handleDownload} disabled={processing} style={[styles.actionBtn, { flex: 1, backgroundColor: "#0077B6" }]}>
                   {processing ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="image-outline" size={20} color="#FFF" />}
                   <Text style={styles.actionBtnText}>{processing ? "Saving..." : "Save Image"}</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={handleShare} disabled={processing} style={[styles.actionBtn, { flex: 1, backgroundColor: "#00B896" }]}>
+                <TouchableOpacity activeOpacity={0.8} onPress={handleShare} disabled={processing} style={[styles.actionBtn, { flex: 1, backgroundColor: "#00B896" }]}>
                   {processing ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="share-social-outline" size={20} color="#FFF" />}
                   <Text style={styles.actionBtnText}>{processing ? "Sharing..." : "Share Card"}</Text>
                 </TouchableOpacity>

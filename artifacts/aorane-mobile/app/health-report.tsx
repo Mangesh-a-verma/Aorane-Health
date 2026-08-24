@@ -711,6 +711,8 @@ export default function HealthReportScreen() {
         <TouchableOpacity
           onPress={() => (viewMode === "detailed" ? setViewMode("summary") : router.back())}
           style={s.iconBtn}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
         >
           <Ionicons name="arrow-back" size={18} color={P} />
         </TouchableOpacity>
@@ -724,7 +726,7 @@ export default function HealthReportScreen() {
               : "Loading…"}
           </Text>
         </View>
-        <TouchableOpacity onPress={handleRefresh} style={s.iconBtn} disabled={loading}>
+        <TouchableOpacity onPress={handleRefresh} style={s.iconBtn} disabled={loading} accessibilityLabel="Refresh report" accessibilityRole="button">
           {loading
             ? <ActivityIndicator size="small" color={P} />
             : <Ionicons name="refresh" size={16} color={P} />}
@@ -852,11 +854,11 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingBottom: 10, backgroundColor: "#EEF4FB",
   },
   iconBtn: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5EFF7",
     alignItems: "center", justifyContent: "center",
   },
-  title:    { fontSize: 20, fontWeight: "800", color: "#0D1F33" },
+  title:    { fontSize: 20, fontFamily: "Inter_700Bold", color: "#0D1F33" },
   subtitle: { fontSize: 11, color: "#9CA3AF", marginTop: 1 },
   toggleWrap: {
     flexDirection: "row", backgroundColor: "#fff", borderRadius: 14,
@@ -867,7 +869,7 @@ const s = StyleSheet.create({
     flex: 1, paddingVertical: 10, borderRadius: 11,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
   },
-  toggleTxt: { fontSize: 13, fontWeight: "700", color: "#9CA3AF" },
+  toggleTxt: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#9CA3AF" },
 
   cachedBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
@@ -875,10 +877,10 @@ const s = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 8,
     borderRadius: 10, borderWidth: 1,
   },
-  cachedTxt: { flex: 1, fontSize: 11, fontWeight: "600" },
+  cachedTxt: { flex: 1, fontSize: 11, fontFamily: "Inter_600SemiBold" },
 
   centerWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 24 },
-  loadingTxt:    { fontSize: 14, fontWeight: "700", marginTop: 8 },
+  loadingTxt:    { fontSize: 14, fontFamily: "Inter_700Bold", marginTop: 8 },
   loadingSubTxt: { fontSize: 12, color: "#9CA3AF", textAlign: "center" },
   errorBox: {
     backgroundColor: "#fff", borderRadius: 16, padding: 24,
@@ -886,13 +888,13 @@ const s = StyleSheet.create({
     shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08, shadowRadius: 16, elevation: 4,
   },
-  errorTitle: { fontSize: 16, fontWeight: "800", color: "#0D1F33" },
+  errorTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#0D1F33" },
   errorMsg:   { fontSize: 13, color: "#6B7280", textAlign: "center", lineHeight: 18 },
   retryBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
     paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12, marginTop: 4,
   },
-  retryTxt: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  retryTxt: { color: "#fff", fontSize: 14, fontFamily: "Inter_700Bold" },
   webview: { flex: 1, backgroundColor: "#EEF4FB" },
   actionBar: {
     flexDirection: "row", gap: 10, paddingHorizontal: 14, paddingTop: 10,
@@ -904,5 +906,5 @@ const s = StyleSheet.create({
     flex: 1, flexDirection: "row", alignItems: "center",
     justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 14,
   },
-  btnTxt: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  btnTxt: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 14 },
 });
