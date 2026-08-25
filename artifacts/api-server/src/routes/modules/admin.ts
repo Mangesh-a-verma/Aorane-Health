@@ -2,7 +2,7 @@ import { Router } from "express";
 import pg from "pg";
 import { db, pool, adminUsersTable, usersTable, userProfilesTable, organizationsTable, featureFlagsTable, adCampaignsTable, foodItemsTable, foodScanCacheTable, promoCodesTable, announcementsTable, adminAuditLogsTable, bloodEmergencyRequestsTable, languagesTable, subscriptionsTable, paymentsTable, companySettingsTable, aiConfigTable, planPricingTable, orgPaymentsTable } from "@workspace/db";
 import { eq, desc, ilike, count, or, sql, and, inArray, isNotNull } from "drizzle-orm";
-import { requireAdmin } from "../../middlewares/admin-auth";
+import { requireAdmin, requireSuperAdmin } from "../../middlewares/admin-auth";
 import { logger } from "../../lib/logger";
 import { signAdminToken } from "../../lib/jwt";
 import { invalidatePlanCache } from "../../middlewares/plan-check";
@@ -15,22 +15,41 @@ import bcrypt from "bcryptjs";
 
 const router = Router();
 
+// Precomputed bcrypt hash of a random, unknown value — used to burn the same
+// amount of CPU time on a "no such admin" login as a real password check, so
+// response timing can't be used to enumerate which admin emails exist.
+const DUMMY_PASSWORD_HASH = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO1ka.rZ3B0y9mNbLc5KfL2gGxvz.6a3.";
+
 router.post("/admin/login", async (req, res) => {
   try {
     const { email, password } = req.body as { email: string; password: string };
     if (!email || !password) { res.status(400).json({ error: "Email and password required" }); return; }
 
-    // Brute-force protection: max 10 attempts per email per 15 minutes
     const { cache } = await import("../../lib/redis");
+
+    // Brute-force protection: per-email (max 10 / 15 min) AND per-IP (max 30 / 15 min
+    // across all emails, so a distributed guess against many accounts from one
+    // source is still throttled even if no single email trips its own limit).
     const rlKey = `admin_login:${email.toLowerCase()}`;
-    const attempts = await cache.incrementRateLimitFixed(rlKey, 15 * 60);
-    if (attempts > 10) {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const ipRlKey = `admin_login_ip:${ip}`;
+    const [attempts, ipAttempts] = await Promise.all([
+      cache.incrementRateLimitFixed(rlKey, 15 * 60),
+      cache.incrementRateLimitFixed(ipRlKey, 15 * 60),
+    ]);
+    if (attempts > 10 || ipAttempts > 30) {
       res.status(429).json({ error: "Too many login attempts. Try after 15 minutes." });
       return;
     }
 
     const [admin] = await db.select().from(adminUsersTable).where(eq(adminUsersTable.email, email));
-    if (!admin || !admin.isActive) { res.status(401).json({ error: "Invalid credentials" }); return; }
+    if (!admin || !admin.isActive) {
+      // Burn the same bcrypt-compare time as a real check so a nonexistent/inactive
+      // email can't be distinguished from a valid one by response timing.
+      await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
+    }
 
     const valid = await verifyAndMigratePassword(password, admin.passwordHash, async (h: any) => {
       await db.update(adminUsersTable).set({ passwordHash: h }).where(eq(adminUsersTable.id, admin.id));
@@ -241,15 +260,22 @@ router.get("/admin/users/search", requireAdmin, async (req: AdminRequest, res) =
   }
 });
 
+const VALID_PLANS = ["free", "pro", "max", "family"] as const;
+
 router.patch("/admin/users/:id", requireAdmin, async (req: AdminRequest, res) => {
   try {
     const { plan, isActive, isBanned } = req.body as { plan?: string; isActive?: boolean; isBanned?: boolean };
+    if (plan !== undefined && !VALID_PLANS.includes(plan as typeof VALID_PLANS[number])) {
+      res.status(400).json({ error: `Invalid plan. Must be one of: ${VALID_PLANS.join(", ")}` });
+      return;
+    }
     const updates: Record<string, unknown> = {};
     if (plan !== undefined) updates.plan = plan;
     if (isActive !== undefined) updates.isActive = isActive;
     if (isBanned !== undefined) updates.isBanned = isBanned;
     const userId = String(req.params.id);
     const [updated] = await db.update(usersTable).set(updates as Partial<typeof usersTable.$inferInsert>).where(eq(usersTable.id, userId)).returning();
+    if (!updated) { res.status(404).json({ error: "User not found" }); return; }
 
     // When plan changes: cancel active subs + grant new sub
     // When plan changes: cancel active subs + grant new sub
@@ -341,6 +367,7 @@ router.patch("/admin/organizations/:id/toggle-active", requireAdmin, async (req:
       .set({ isActive: !org.isActive })
       .where(eq(organizationsTable.id, id))
       .returning();
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "toggle_organization_active", targetType: "organization", targetId: id, details: { name: org.name, isActive: updated.isActive } });
     res.json({ organization: updated, success: true });
   } catch {
     res.status(500).json({ error: "Failed to toggle organization status" });
@@ -389,11 +416,12 @@ router.put("/admin/organizations/:id", requireAdmin, async (req: AdminRequest, r
   }
 });
 
-router.delete("/admin/organizations/:id", requireAdmin, async (req: AdminRequest, res) => {
+router.delete("/admin/organizations/:id", requireAdmin, requireSuperAdmin, async (req: AdminRequest, res) => {
   try {
     const { id } = req.params as { id: string };
     const [deleted] = await db.delete(organizationsTable).where(eq(organizationsTable.id, id)).returning();
     if (!deleted) { res.status(404).json({ error: "Organization not found" }); return; }
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "delete_organization", targetType: "organization", targetId: id, details: { name: deleted.name, orgCode: deleted.orgCode } });
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Failed to delete organization" });
@@ -402,7 +430,7 @@ router.delete("/admin/organizations/:id", requireAdmin, async (req: AdminRequest
 
 // ─── Custom Deals ─────────────────────────────────────────────────────────────
 
-router.patch("/admin/organizations/:id/custom-pricing", requireAdmin, async (req: AdminRequest, res) => {
+router.patch("/admin/organizations/:id/custom-pricing", requireAdmin, requireSuperAdmin, async (req: AdminRequest, res) => {
   try {
     const { id } = req.params as { id: string };
     const { customPricePerSeat, customPriceNote, customPriceValidUntil, remove } = req.body as Record<string, unknown>;
@@ -419,6 +447,7 @@ router.patch("/admin/organizations/:id/custom-pricing", requireAdmin, async (req
       .set(updates as Partial<typeof organizationsTable.$inferInsert>)
       .where(eq(organizationsTable.id, id)).returning();
     if (!updated) { res.status(404).json({ error: "Organization not found" }); return; }
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: remove ? "remove_custom_pricing" : "set_custom_pricing", targetType: "organization", targetId: id, details: { customPricePerSeat, customPriceNote, remove: Boolean(remove) } });
     res.json({ organization: updated, success: true });
   } catch (e) {
     req.log?.error(e);
@@ -426,7 +455,7 @@ router.patch("/admin/organizations/:id/custom-pricing", requireAdmin, async (req
   }
 });
 
-router.patch("/admin/users/:id/custom-discount", requireAdmin, async (req: AdminRequest, res) => {
+router.patch("/admin/users/:id/custom-discount", requireAdmin, requireSuperAdmin, async (req: AdminRequest, res) => {
   try {
     const { id } = req.params as { id: string };
     const { customDiscountPct, customDiscountNote, customDiscountValidUntil, remove } = req.body as Record<string, unknown>;
@@ -442,6 +471,7 @@ router.patch("/admin/users/:id/custom-discount", requireAdmin, async (req: Admin
       .set(updates as Partial<typeof usersTable.$inferInsert>)
       .where(eq(usersTable.id, id)).returning();
     if (!updated) { res.status(404).json({ error: "User not found" }); return; }
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: remove ? "remove_custom_discount" : "set_custom_discount", targetType: "user", targetId: id, details: { customDiscountPct, customDiscountNote, remove: Boolean(remove) } });
     res.json({ user: updated, success: true });
   } catch (e) {
     req.log?.error(e);
@@ -491,6 +521,7 @@ router.post("/admin/feature-flags", requireAdmin, async (req: AdminRequest, res)
   try {
     const { key, label, description, isEnabled, enabledForPlans, config } = req.body as Record<string, unknown>;
     const [flag] = await db.insert(featureFlagsTable).values({ key: key as string, label: label as string, description: description as string, isEnabled: Boolean(isEnabled), enabledForPlans: enabledForPlans as string[], config }).returning();
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "create_feature_flag", targetType: "feature_flag", targetId: flag.key, details: { label, isEnabled: Boolean(isEnabled) } });
     res.status(201).json({ flag });
   } catch {
     res.status(500).json({ error: "Failed to create feature flag" });
@@ -552,6 +583,7 @@ router.post("/admin/promo-codes", requireAdmin, async (req: AdminRequest, res) =
   try {
     const { code, discountPct, applicablePlans, usageLimit, expiresAt } = req.body as Record<string, unknown>;
     const [created] = await db.insert(promoCodesTable).values({ code: code as string, discountPct: Number(discountPct), applicablePlans: applicablePlans as string[], usageLimit: usageLimit ? Number(usageLimit) : undefined, expiresAt: expiresAt ? new Date(expiresAt as string) : undefined }).returning();
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "create_promo_code", targetType: "promo_code", targetId: created.id, details: { code: created.code, discountPct } });
     res.status(201).json({ code: created });
   } catch {
     res.status(500).json({ error: "Failed to create promo code" });
@@ -570,6 +602,7 @@ router.patch("/admin/promo-codes/:id", requireAdmin, async (req: AdminRequest, r
     if (isActive !== undefined) updates.isActive = Boolean(isActive);
     const [updated] = await db.update(promoCodesTable).set(updates as Partial<typeof promoCodesTable.$inferInsert>).where(eq(promoCodesTable.id, id)).returning();
     if (!updated) { res.status(404).json({ error: "Promo code not found" }); return; }
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "update_promo_code", targetType: "promo_code", targetId: id, details: { code: updated.code, ...updates } });
     res.json({ code: updated });
   } catch {
     res.status(500).json({ error: "Failed to update promo code" });
@@ -601,6 +634,7 @@ router.post("/admin/announcements", requireAdmin, async (req: AdminRequest, res)
   try {
     const { title, body, imageUrl, linkUrl, targetPlans, startsAt, endsAt } = req.body as Record<string, unknown>;
     const [announcement] = await db.insert(announcementsTable).values({ title: title as string, body: body as string, imageUrl: imageUrl as string, linkUrl: linkUrl as string, targetPlans: targetPlans as string[], startsAt: startsAt ? new Date(startsAt as string) : undefined, endsAt: endsAt ? new Date(endsAt as string) : undefined }).returning();
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "create_announcement", targetType: "announcement", targetId: announcement.id, details: { title } });
     res.status(201).json({ announcement });
   } catch {
     res.status(500).json({ error: "Failed to create announcement" });
@@ -622,7 +656,10 @@ router.patch("/admin/blood-requests/:id", requireAdmin, async (req: AdminRequest
     const updates: Record<string, unknown> = {};
     if (status !== undefined) updates.status = status;
     if (isFlagged !== undefined) updates.isFlagged = isFlagged;
-    const [updated] = await db.update(bloodEmergencyRequestsTable).set(updates as Partial<typeof bloodEmergencyRequestsTable.$inferInsert>).where(eq(bloodEmergencyRequestsTable.id, String(req.params.id))).returning();
+    const requestId = String(req.params.id);
+    const [updated] = await db.update(bloodEmergencyRequestsTable).set(updates as Partial<typeof bloodEmergencyRequestsTable.$inferInsert>).where(eq(bloodEmergencyRequestsTable.id, requestId)).returning();
+    if (!updated) { res.status(404).json({ error: "Blood request not found" }); return; }
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "update_blood_request", targetType: "blood_request", targetId: requestId, details: updates });
     res.json({ request: updated });
   } catch {
     res.status(500).json({ error: "Failed to update blood request" });
@@ -673,10 +710,14 @@ router.get("/admin/subscriptions", requireAdmin, async (req: AdminRequest, res) 
   }
 });
 
-router.post("/admin/subscriptions/grant", requireAdmin, async (req: AdminRequest, res) => {
+router.post("/admin/subscriptions/grant", requireAdmin, requireSuperAdmin, async (req: AdminRequest, res) => {
   try {
     const { userId, plan, durationDays = 30 } = req.body as { userId: string; plan: string; durationDays?: number };
     if (!userId || !plan) { res.status(400).json({ error: "userId and plan required" }); return; }
+    if (!VALID_PLANS.includes(plan as typeof VALID_PLANS[number])) {
+      res.status(400).json({ error: `Invalid plan. Must be one of: ${VALID_PLANS.join(", ")}` });
+      return;
+    }
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + durationDays);
     const [sub] = await db.insert(subscriptionsTable).values({ userId, plan, status: "active", source: "admin_grant", expiresAt }).returning();
@@ -787,7 +828,7 @@ router.get("/admin/settings/company", requireAdmin, async (req: AdminRequest, re
   }
 });
 
-router.put("/admin/settings/company", requireAdmin, async (req: AdminRequest, res) => {
+router.put("/admin/settings/company", requireAdmin, requireSuperAdmin, async (req: AdminRequest, res) => {
   try {
     const body = req.body as Record<string, unknown>;
     const rows = await db.select().from(companySettingsTable).limit(1);
@@ -797,6 +838,7 @@ router.put("/admin/settings/company", requireAdmin, async (req: AdminRequest, re
     } else {
       [result] = await db.update(companySettingsTable).set({ ...body, updatedAt: new Date() }).where(eq(companySettingsTable.id, 1)).returning();
     }
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "update_company_settings", targetType: "company_settings", targetId: "1", details: { changedFields: Object.keys(body) } });
     res.json({ settings: result, success: true });
   } catch (e) {
     req.log.error({ err: e }, "Failed to update company settings");
@@ -936,7 +978,7 @@ router.get("/admin/ai-config", requireAdmin, async (_req: AdminRequest, res) => 
   } catch { res.status(500).json({ error: "Failed to fetch AI config" }); }
 });
 
-router.put("/admin/ai-config/:feature", requireAdmin, async (req: AdminRequest, res) => {
+router.put("/admin/ai-config/:feature", requireAdmin, requireSuperAdmin, async (req: AdminRequest, res) => {
   try {
     const feature = String(req.params.feature);
     const { provider, model, apiKey, systemPrompt, isEnabled, fallbackProvider, fallbackModel, fallbackApiKey } = req.body as Record<string, unknown>;
@@ -971,6 +1013,11 @@ router.put("/admin/ai-config/:feature", requireAdmin, async (req: AdminRequest, 
       [result] = await db.update(aiConfigTable).set({ provider: providerStr, model: modelStr, apiKey: apiKeyToStore ?? null, systemPrompt: systemPromptStr, isEnabled: Boolean(isEnabled), fallbackProvider: fallbackProviderStr, fallbackModel: fallbackModelStr, fallbackApiKey: fallbackApiKeyToStore ?? null, updatedAt: new Date() }).where(eq(aiConfigTable.feature, feature)).returning();
     }
     invalidateAICache(feature);
+    await db.insert(adminAuditLogsTable).values({
+      adminId: req.adminId!, action: "update_ai_config", targetType: "ai_config", targetId: feature,
+      // Never log key material — only whether it changed and the other, non-secret settings.
+      details: { provider: providerStr, model: modelStr, isEnabled, apiKeyChanged: apiKey !== undefined, fallbackApiKeyChanged: fallbackApiKey !== undefined },
+    });
     res.json({ config: sanitizeConfigForResponse(result), success: true });
   } catch { res.status(500).json({ error: "Failed to update AI config" }); }
 });
@@ -1224,7 +1271,7 @@ router.get("/admin/plan-features", requireAdmin, async (_req: AdminRequest, res)
   }
 });
 
-router.put("/admin/plan-features/:feature_name", requireAdmin, async (req: AdminRequest, res) => {
+router.put("/admin/plan-features/:feature_name", requireAdmin, requireSuperAdmin, async (req: AdminRequest, res) => {
   try {
     const featureName = String(req.params.feature_name);
     const { freeValue, maxValue, proValue, familyValue, description } = req.body as Record<string, string>;
@@ -1326,6 +1373,43 @@ router.post("/admin/notifications/read-all", requireAdmin, async (_req: AdminReq
     );
     res.json({ success: true });
   } catch { res.status(500).json({ error: "Failed to mark notifications as read" }); }
+});
+
+// ─── Admin user / role management (super admin only) ─────────────────────────
+const VALID_ADMIN_ROLES = ["admin", "super_admin"] as const;
+
+router.get("/admin/admin-users", requireAdmin, requireSuperAdmin, async (_req: AdminRequest, res) => {
+  try {
+    const rows = await db.select({
+      id: adminUsersTable.id,
+      email: adminUsersTable.email,
+      fullName: adminUsersTable.fullName,
+      role: adminUsersTable.role,
+      isActive: adminUsersTable.isActive,
+      lastLoginAt: adminUsersTable.lastLoginAt,
+      createdAt: adminUsersTable.createdAt,
+    }).from(adminUsersTable).orderBy(desc(adminUsersTable.createdAt));
+    res.json({ admins: rows });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch admin users" });
+  }
+});
+
+router.patch("/admin/admin-users/:id/role", requireAdmin, requireSuperAdmin, async (req: AdminRequest, res) => {
+  try {
+    const { id } = req.params as { id: string };
+    const { role } = req.body as { role?: string };
+    if (!role || !VALID_ADMIN_ROLES.includes(role as typeof VALID_ADMIN_ROLES[number])) {
+      res.status(400).json({ error: `Invalid role. Must be one of: ${VALID_ADMIN_ROLES.join(", ")}` });
+      return;
+    }
+    const [updated] = await db.update(adminUsersTable).set({ role, updatedAt: new Date() }).where(eq(adminUsersTable.id, id)).returning();
+    if (!updated) { res.status(404).json({ error: "Admin user not found" }); return; }
+    await db.insert(adminAuditLogsTable).values({ adminId: req.adminId!, action: "update_admin_role", targetType: "admin_user", targetId: id, details: { role } });
+    res.json({ admin: { id: updated.id, email: updated.email, fullName: updated.fullName, role: updated.role }, success: true });
+  } catch {
+    res.status(500).json({ error: "Failed to update admin role" });
+  }
 });
 
 router.post("/admin/change-password", requireAdmin, async (req: AdminRequest, res) => {
