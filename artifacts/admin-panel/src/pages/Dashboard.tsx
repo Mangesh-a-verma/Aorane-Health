@@ -4,74 +4,47 @@ import Layout from "@/components/Layout";
 import { api } from "@/lib/api";
 import {
   Users, Building2, CreditCard, IndianRupee,
-  TrendingUp, TrendingDown, Activity, Database,
-  ShieldCheck, Zap, Brain, Droplet, ArrowRight,
+  Activity, Database, ShieldCheck, Zap, Brain, ArrowRight,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from "recharts";
 
-type Analytics = {
+type Overview = {
   totalUsers: number;
   totalOrganizations: number;
   activeSubscriptions: number;
+  totalBloodRequests: number;
   totalRevenue: number;
+  monthRevenue: number;
+  newUsersToday: number;
+  newUsersThisMonth: number;
   planBreakdown: Array<{ plan: string; count: number }>;
+  dailyGrowth: Array<{ date: string; newUsers: number; revenue: number }>;
 };
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-function genSparkData(base: number) {
-  return Array.from({ length: 8 }, (_, i) => ({
-    v: Math.round(base * (0.7 + Math.random() * 0.6) * ((i + 4) / 8)),
-  }));
-}
-
-function genAreaData(totalUsers: number, totalRevenue: number) {
-  const now = new Date();
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() - (6 - i));
-    return {
-      date: `${d.getDate()} ${MONTHS[d.getMonth()]}`,
-      users: Math.round((totalUsers / 7) * (0.6 + i * 0.07)),
-      revenue: Math.round((totalRevenue / 7) * (0.5 + i * 0.08)),
-    };
-  });
-}
-
-function genBarData(planBreakdown: Array<{ plan: string; count: number }>) {
-  return planBreakdown.map(p => ({
-    plan: p.plan.charAt(0).toUpperCase() + p.plan.slice(1),
-    users: p.count,
-    color:
-      p.plan === "pro"    ? "#0077B6" :
-      p.plan === "max"    ? "#F59E0B" :
-      p.plan === "family" ? "#8B5CF6" : "#4B5563",
-  }));
-}
-
 const PLAN_COLORS: Record<string, string> = {
-  free: "#4B5563", pro: "#0077B6", max: "#F59E0B", family: "#8B5CF6",
+  free: "#4B5563", pro: "#FF914D", max: "#F59E0B", family: "#8B5CF6",
 };
+
+function fmtDay(iso: string) {
+  const d = new Date(iso);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl px-3 py-2.5 text-xs space-y-1 shadow-2xl"
-         style={{
-           background: "rgba(9,14,28,0.92)",
-           backdropFilter: "blur(16px)",
-           border: "1px solid rgba(255,255,255,0.09)",
-           color: "#dee1f7",
-         }}>
-      <div className="font-mono mb-1" style={{ color: "rgba(255,255,255,0.38)", fontSize: "10px" }}>{label}</div>
+    <div className="rounded-xl px-3 py-2.5 text-xs space-y-1 shadow-2xl neu-flat">
+      <div className="font-mono mb-1 text-muted-foreground" style={{ fontSize: "10px" }}>{label}</div>
       {payload.map((p: any) => (
         <div key={p.dataKey} className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ background: p.color || p.fill || "#0077B6" }} />
-          <span style={{ color: "#dee1f7" }}>{p.name || p.dataKey}:</span>
-          <span className="font-semibold" style={{ color: p.color || "#94ccff" }}>
+          <div className="w-2 h-2 rounded-full" style={{ background: p.color || p.fill }} />
+          <span className="text-foreground">{p.name || p.dataKey}:</span>
+          <span className="font-semibold" style={{ color: p.color || p.fill }}>
             {p.dataKey === "revenue" ? `₹${Number(p.value).toLocaleString("en-IN")}` : Number(p.value).toLocaleString("en-IN")}
           </span>
         </div>
@@ -80,69 +53,18 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-function MetricCard({
-  label, value, sub, color, icon: Icon, trend, trendUp,
-}: {
-  label: string; value: string; sub?: string; color: string;
-  icon: React.ElementType; trend?: string; trendUp?: boolean;
-}) {
-  return (
-    <div className="metric-card relative overflow-hidden rounded-2xl p-5"
-         style={{
-           background: "rgba(255,255,255,0.03)",
-           border: "1px solid rgba(255,255,255,0.07)",
-           backdropFilter: "blur(12px)",
-         }}>
-      {/* Glow orb */}
-      <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full pointer-events-none"
-           style={{ background: `radial-gradient(circle, ${color}22 0%, transparent 70%)` }} />
-      <div className="relative">
-        <div className="flex items-start justify-between mb-3">
-          <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.18em]"
-                style={{ color: "rgba(255,255,255,0.35)" }}>
-            {label}
-          </span>
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-               style={{ background: `${color}18` }}>
-            <Icon size={15} style={{ color }} />
-          </div>
-        </div>
-        <div className="text-3xl font-bold tracking-tight" style={{ color: "#dee1f7" }}>
-          {value}
-        </div>
-        {(trend || sub) && (
-          <div className="flex items-center gap-1 mt-1.5 text-[11px] font-medium">
-            {trend && (
-              <>
-                {trendUp
-                  ? <TrendingUp size={11} style={{ color: "#34d399" }} />
-                  : <TrendingDown size={11} style={{ color: "#f87171" }} />}
-                <span style={{ color: trendUp ? "#34d399" : "#f87171" }}>{trend}</span>
-                <span style={{ color: "rgba(255,255,255,0.28)" }}>vs last month</span>
-              </>
-            )}
-            {!trend && sub && (
-              <span style={{ color: "rgba(255,255,255,0.38)" }}>{sub}</span>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 const SYSTEM_INFO = [
   { label: "API Version",  value: "v2.0.0",       icon: Zap,         color: "#8B5CF6" },
-  { label: "API Status",   value: "Healthy",       icon: Activity,    color: "#10B981" },
-  { label: "Database",     value: "PostgreSQL",    icon: Database,    color: "#0077B6" },
-  { label: "Auth System",  value: "JWT + OTP",     icon: ShieldCheck, color: "#F59E0B" },
+  { label: "API Status",   value: "Healthy",       icon: Activity,    color: "#00BF63" },
+  { label: "Database",     value: "PostgreSQL",    icon: Database,    color: "#FF914D" },
+  { label: "Auth System",  value: "JWT",           icon: ShieldCheck, color: "#F59E0B" },
 ];
 
 const QUICK_LINKS = [
-  { href: "/users",         label: "Manage Users",   color: "#0077B6" },
+  { href: "/users",         label: "Manage Users",   color: "#FF914D" },
   { href: "/analytics",     label: "Analytics",      color: "#8B5CF6" },
   { href: "/ads",           label: "Ads Manager",    color: "#F59E0B" },
-  { href: "/feature-flags", label: "Feature Flags",  color: "#10B981" },
+  { href: "/feature-flags", label: "Feature Flags",  color: "#00BF63" },
   { href: "/food-items",    label: "Food Database",  color: "#EF4444" },
   { href: "/subscriptions", label: "Subscriptions",  color: "#6B7280" },
   { href: "/promo-codes",   label: "Promo Codes",    color: "#EC4899" },
@@ -150,21 +72,27 @@ const QUICK_LINKS = [
 ];
 
 export default function Dashboard() {
-  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.analytics().then(setAnalytics).catch(console.error).finally(() => setLoading(false));
+    api.overview().then(r => setData(r.stats)).catch(console.error).finally(() => setLoading(false));
   }, []);
 
   const L = (n?: number) => loading ? "..." : (n ?? 0).toLocaleString("en-IN");
-  const areaData  = analytics ? genAreaData(analytics.totalUsers, analytics.totalRevenue) : [];
-  const barData   = analytics?.planBreakdown ? genBarData(analytics.planBreakdown) : [];
-  const sparkU    = analytics ? genSparkData(analytics.totalUsers)    : [];
+  const areaData = (data?.dailyGrowth ?? []).map(d => ({ date: fmtDay(d.date), users: d.newUsers, revenue: d.revenue }));
+  const barData  = (data?.planBreakdown ?? []).map(p => ({
+    plan: p.plan.charAt(0).toUpperCase() + p.plan.slice(1),
+    users: p.count,
+    color: PLAN_COLORS[p.plan] || "#4B5563",
+  }));
 
-  const convRate = analytics && analytics.totalUsers > 0
-    ? ((analytics.activeSubscriptions / analytics.totalUsers) * 100).toFixed(1) + "%"
+  const convRate = data && data.totalUsers > 0
+    ? ((data.activeSubscriptions / data.totalUsers) * 100).toFixed(1) + "%"
     : "0.0%";
+  const arpu = data && data.activeSubscriptions > 0
+    ? `₹${Math.round(data.totalRevenue / data.activeSubscriptions).toLocaleString("en-IN")}`
+    : "₹0";
 
   return (
     <Layout>
@@ -173,55 +101,36 @@ export default function Dashboard() {
         {/* ── Page header ──────────────────────────────────────── */}
         <div className="flex items-end justify-between">
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-1.5"
-                 style={{ color: "#0077B6" }}>
+            <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-1.5 text-primary">
               Platform Overview
             </div>
-            <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#dee1f7" }}>
-              Dashboard
-            </h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
           </div>
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs"
-               style={{
-                 background: "rgba(0,119,182,0.1)",
-                 border: "1px solid rgba(0,119,182,0.18)",
-                 color: "#94ccff",
-               }}>
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs tone-brand">
             <Brain size={12} />
             Aorane AI · Active
           </div>
         </div>
 
         {/* ── System health banner ─────────────────────────────── */}
-        <div className="relative overflow-hidden rounded-2xl px-6 py-4"
-             style={{
-               background: "linear-gradient(135deg, rgba(0,119,182,0.12) 0%, rgba(27,153,139,0.08) 100%)",
-               border: "1px solid rgba(0,119,182,0.18)",
-             }}>
+        <div className="relative overflow-hidden rounded-2xl px-6 py-4 neu-flat">
           <div className="absolute -top-8 right-0 w-48 h-48 rounded-full pointer-events-none"
-               style={{ background: "radial-gradient(circle, rgba(0,119,182,0.12) 0%, transparent 70%)" }} />
-          <div className="absolute bottom-0 left-1/3 w-32 h-32 rounded-full pointer-events-none"
-               style={{ background: "radial-gradient(circle, rgba(27,153,139,0.1) 0%, transparent 70%)" }} />
+               style={{ background: "radial-gradient(circle, color-mix(in oklab, var(--brand-orange) 8%, transparent) 0%, transparent 70%)" }} />
           <div className="relative flex items-center justify-between">
             <div>
-              <div className="text-[10px] font-mono tracking-widest uppercase mb-1"
-                   style={{ color: "rgba(255,255,255,0.35)" }}>
-                Platform Health
-              </div>
+              <div className="text-[10px] font-mono tracking-widest uppercase mb-1 text-muted-foreground">Platform Health</div>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="font-semibold text-sm" style={{ color: "#dee1f7" }}>
-                  All Systems Operational
-                </span>
+                <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "var(--brand-green)" }} />
+                <span className="font-semibold text-sm text-foreground">All Systems Operational</span>
               </div>
-              <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>
-                API Server · Supabase DB · Mobile App · Business Portal
+              <div className="text-xs mt-1 text-muted-foreground">
+                API Server · PostgreSQL DB · Mobile App · Business Portal
               </div>
             </div>
             <div className="hidden md:flex items-center gap-4 text-xs">
               {["API", "DB", "Mobile", "Portal"].map(s => (
-                <div key={s} className="flex items-center gap-1.5" style={{ color: "#34d399" }}>
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <div key={s} className="flex items-center gap-1.5" style={{ color: "var(--brand-green)" }}>
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--brand-green)" }} />
                   {s}
                 </div>
               ))}
@@ -229,113 +138,132 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── KPI Strip ────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard label="Total Users"    value={L(analytics?.totalUsers)}
-            icon={Users}       color="#0077B6" trend="+12.4%" trendUp />
-          <MetricCard label="Organizations"  value={L(analytics?.totalOrganizations)}
-            icon={Building2}   color="#8B5CF6" trend="+8.1%"  trendUp />
-          <MetricCard label="Subscriptions"  value={L(analytics?.activeSubscriptions)}
-            icon={CreditCard}  color="#10B981" trend="+5.3%"  trendUp />
-          <MetricCard label="Total Revenue"
-            value={loading ? "..." : `₹${(analytics?.totalRevenue ?? 0).toLocaleString("en-IN")}`}
-            icon={IndianRupee} color="#F59E0B" trend="+18.2%" trendUp />
-        </div>
+        {/* ── Progressive disclosure: one hero metric + compact secondary strip ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-4">
 
-        {/* ── Bento Grid Row: Charts ────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-
-          {/* Area Chart — 60% */}
-          <div className="lg:col-span-3 rounded-2xl p-5"
-               style={{
-                 background: "rgba(255,255,255,0.03)",
-                 border: "1px solid rgba(255,255,255,0.07)",
-               }}>
-            <div className="flex items-center justify-between mb-4">
+          {/* Hero: Total Revenue — the number that matters most, with a real spark of the last 7 days */}
+          <div className="relative overflow-hidden rounded-[22px] p-6 neu">
+            <div className="absolute -top-5 -right-5 w-40 h-40 rounded-full pointer-events-none"
+                 style={{ background: "radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%)" }} />
+            <div className="relative flex items-start justify-between gap-5">
               <div>
-                <div className="font-semibold text-sm" style={{ color: "#dee1f7" }}>
-                  User Growth
+                <div className="flex items-center gap-2 mb-2.5">
+                  <div className="w-[26px] h-[26px] rounded-lg flex items-center justify-center" style={{ background: "rgba(245,158,11,0.15)" }}>
+                    <IndianRupee size={13} style={{ color: "#F59E0B" }} />
+                  </div>
+                  <span className="font-mono text-[10px] font-bold tracking-[0.14em] uppercase text-muted-foreground">Total Revenue</span>
                 </div>
-                <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
-                  New registrations · Last 7 days
+                <div className="text-[2.6rem] leading-none font-bold tracking-tight text-foreground">
+                  {loading ? "…" : `₹${(data?.totalRevenue ?? 0).toLocaleString("en-IN")}`}
+                </div>
+                <div className="text-xs mt-2.5 text-muted-foreground">
+                  ₹{L(data?.monthRevenue)} in the last 30 days · {arpu} avg. per subscriber
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full" style={{ background: "#0077B6" }} />
-                  Users
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full" style={{ background: "#1B998B" }} />
-                  Revenue
-                </div>
+              {!loading && areaData.length > 1 && (
+                <ResponsiveContainer width={140} height={56} className="shrink-0 mt-1.5 hidden sm:block">
+                  <AreaChart data={areaData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="gHero" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#F59E0B" stopOpacity={0.28} />
+                        <stop offset="100%" stopColor="#F59E0B" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <Area type="monotone" dataKey="revenue" stroke="#F59E0B" strokeWidth={2} fill="url(#gHero)" dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          {/* Secondary strip: compact, lower visual weight */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3 px-3.5 py-3 rounded-2xl neu-inset-sm">
+              <div className="w-[26px] h-[26px] rounded-lg flex items-center justify-center shrink-0 tone-brand">
+                <Users size={13} />
+              </div>
+              <span className="flex-1 text-[11.5px] text-muted-foreground">Total Users</span>
+              <span className="text-sm font-bold text-foreground">{L(data?.totalUsers)}</span>
+              <span className="text-[10px] font-medium text-muted-foreground">+{L(data?.newUsersToday)} today</span>
+            </div>
+            <div className="flex items-center gap-3 px-3.5 py-3 rounded-2xl neu-inset-sm">
+              <div className="w-[26px] h-[26px] rounded-lg flex items-center justify-center shrink-0 tone-purple">
+                <Building2 size={13} />
+              </div>
+              <span className="flex-1 text-[11.5px] text-muted-foreground">Organizations</span>
+              <span className="text-sm font-bold text-foreground">{L(data?.totalOrganizations)}</span>
+            </div>
+            <div className="flex items-center gap-3 px-3.5 py-3 rounded-2xl neu-inset-sm">
+              <div className="w-[26px] h-[26px] rounded-lg flex items-center justify-center shrink-0 tone-success">
+                <CreditCard size={13} />
+              </div>
+              <span className="flex-1 text-[11.5px] text-muted-foreground">Subscriptions</span>
+              <span className="text-sm font-bold text-foreground">{L(data?.activeSubscriptions)}</span>
+              <span className="text-[10px] font-medium text-muted-foreground">{convRate} of users</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="font-mono text-[9.5px] font-bold tracking-[0.18em] uppercase text-muted-foreground pt-1">Details</div>
+
+        {/* ── Charts row ─────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+
+          <div className="lg:col-span-3 rounded-2xl p-5 neu-flat">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="font-semibold text-sm text-foreground">User Growth</div>
+                <div className="text-xs mt-0.5 text-muted-foreground">New registrations · last 7 days</div>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: "var(--brand-orange)" }} />Users</div>
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: "var(--brand-green)" }} />Revenue</div>
               </div>
             </div>
             {loading ? (
-              <div className="h-44 flex items-center justify-center text-xs"
-                   style={{ color: "rgba(255,255,255,0.25)" }}>
-                Loading chart...
-              </div>
+              <div className="h-44 flex items-center justify-center text-xs text-muted-foreground">Loading chart…</div>
             ) : (
               <ResponsiveContainer width="100%" height={180}>
                 <AreaChart data={areaData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gUsers" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#0077B6" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#0077B6" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#FF914D" stopOpacity={0.32} />
+                      <stop offset="95%" stopColor="#FF914D" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="gRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#1B998B" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#1B998B" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#00BF63" stopOpacity={0.26} />
+                      <stop offset="95%" stopColor="#00BF63" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
-                         axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
-                         axisLine={false} tickLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} className="fill-muted-foreground" axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10 }} className="fill-muted-foreground" axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="users"   name="Users"
-                        stroke="#0077B6" strokeWidth={2} fill="url(#gUsers)" dot={false} />
-                  <Area type="monotone" dataKey="revenue" name="Revenue"
-                        stroke="#1B998B" strokeWidth={2} fill="url(#gRevenue)" dot={false} />
+                  <Area type="monotone" dataKey="users"   name="Users"   stroke="#FF914D" strokeWidth={2} fill="url(#gUsers)" dot={false} />
+                  <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#00BF63" strokeWidth={2} fill="url(#gRevenue)" dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </div>
 
-          {/* Bar Chart — 40% */}
-          <div className="lg:col-span-2 rounded-2xl p-5"
-               style={{
-                 background: "rgba(255,255,255,0.03)",
-                 border: "1px solid rgba(255,255,255,0.07)",
-               }}>
+          <div className="lg:col-span-2 rounded-2xl p-5 neu-flat">
             <div className="mb-4">
-              <div className="font-semibold text-sm" style={{ color: "#dee1f7" }}>
-                Plan Distribution
-              </div>
-              <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
-                Users by subscription tier
-              </div>
+              <div className="font-semibold text-sm text-foreground">Plan Distribution</div>
+              <div className="text-xs mt-0.5 text-muted-foreground">Users by subscription tier</div>
             </div>
             {loading || barData.length === 0 ? (
-              <div className="h-44 flex items-center justify-center text-xs"
-                   style={{ color: "rgba(255,255,255,0.25)" }}>
-                {loading ? "Loading..." : "No plan data"}
+              <div className="h-44 flex items-center justify-center text-xs text-muted-foreground">
+                {loading ? "Loading…" : "No plan data"}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={barData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="plan" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
-                         axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
-                         axisLine={false} tickLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="plan" tick={{ fontSize: 10 }} className="fill-muted-foreground" axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10 }} className="fill-muted-foreground" axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="users" radius={[6, 6, 0, 0]}>
-                    {barData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
+                    {barData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -343,61 +271,36 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── Bento Row: Conversion + System + Quick Links ──────── */}
+        {/* ── Bento row: Conversion + System + Quick Links ──────── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-          {/* Conversion metrics */}
-          <div className="rounded-2xl p-5"
-               style={{
-                 background: "rgba(255,255,255,0.03)",
-                 border: "1px solid rgba(255,255,255,0.07)",
-               }}>
-            <div className="text-[10px] font-mono uppercase tracking-widest mb-3"
-                 style={{ color: "rgba(255,255,255,0.28)" }}>
-              Conversion Metrics
-            </div>
+          <div className="rounded-2xl p-5 neu-flat">
+            <div className="text-[10px] font-mono uppercase tracking-widest mb-3 text-muted-foreground">Conversion Metrics</div>
             <div className="space-y-4">
               {[
-                { label: "Free → Paid", value: convRate, color: "#0077B6" },
-                {
-                  label: "Avg. Revenue / User",
-                  value: analytics && analytics.activeSubscriptions > 0
-                    ? `₹${Math.round(analytics.totalRevenue / analytics.activeSubscriptions).toLocaleString("en-IN")}`
-                    : "₹0",
-                  color: "#10B981",
-                },
-                { label: "B2B Orgs",  value: L(analytics?.totalOrganizations), color: "#8B5CF6" },
+                { label: "Free → Paid",         value: convRate, color: "var(--brand-orange)" },
+                { label: "Avg. Revenue / User", value: arpu,      color: "var(--brand-green)" },
+                { label: "B2B Organizations",   value: L(data?.totalOrganizations), color: "#8B5CF6" },
               ].map(m => (
                 <div key={m.label} className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>{m.label}</span>
+                  <span className="text-xs text-muted-foreground">{m.label}</span>
                   <span className="text-sm font-bold" style={{ color: m.color }}>{m.value}</span>
                 </div>
               ))}
 
-              {/* Plan bar breakdown */}
-              {analytics?.planBreakdown && analytics.planBreakdown.length > 0 && (
+              {data?.planBreakdown && data.planBreakdown.length > 0 && (
                 <div>
-                  <div className="text-[10px] font-mono mb-2" style={{ color: "rgba(255,255,255,0.25)" }}>
-                    Plan split
-                  </div>
+                  <div className="text-[10px] font-mono mb-2 text-muted-foreground">Plan split</div>
                   <div className="flex h-2 rounded-full overflow-hidden gap-px">
-                    {analytics.planBreakdown.map(p => {
-                      const pct = analytics.totalUsers > 0
-                        ? (p.count / analytics.totalUsers) * 100 : 0;
-                      return (
-                        <div key={p.plan} style={{
-                          width: `${pct}%`,
-                          background: PLAN_COLORS[p.plan] || "#4B5563",
-                        }} />
-                      );
+                    {data.planBreakdown.map(p => {
+                      const pct = data.totalUsers > 0 ? (p.count / data.totalUsers) * 100 : 0;
+                      return <div key={p.plan} style={{ width: `${pct}%`, background: PLAN_COLORS[p.plan] || "#4B5563" }} />;
                     })}
                   </div>
                   <div className="flex gap-3 mt-2 flex-wrap">
-                    {analytics.planBreakdown.map(p => (
-                      <div key={p.plan} className="flex items-center gap-1 text-[10px]"
-                           style={{ color: "rgba(255,255,255,0.38)" }}>
-                        <div className="w-2 h-2 rounded-sm"
-                             style={{ background: PLAN_COLORS[p.plan] || "#4B5563" }} />
+                    {data.planBreakdown.map(p => (
+                      <div key={p.plan} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <div className="w-2 h-2 rounded-sm" style={{ background: PLAN_COLORS[p.plan] || "#4B5563" }} />
                         <span className="capitalize">{p.plan}</span>
                         <span className="font-mono">{p.count}</span>
                       </div>
@@ -408,53 +311,30 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* System info */}
-          <div className="rounded-2xl p-5"
-               style={{
-                 background: "rgba(255,255,255,0.03)",
-                 border: "1px solid rgba(255,255,255,0.07)",
-               }}>
-            <div className="text-[10px] font-mono uppercase tracking-widest mb-3"
-                 style={{ color: "rgba(255,255,255,0.28)" }}>
-              System Info
-            </div>
+          <div className="rounded-2xl p-5 neu-flat">
+            <div className="text-[10px] font-mono uppercase tracking-widest mb-3 text-muted-foreground">System Info</div>
             <div className="space-y-3">
               {SYSTEM_INFO.map(s => (
-                <div key={s.label} className="flex items-center gap-3 p-2.5 rounded-xl transition-all"
-                     style={{ background: "rgba(255,255,255,0.03)" }}>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                       style={{ background: `${s.color}18` }}>
+                <div key={s.label} className="flex items-center gap-3 p-2.5 rounded-xl neu-inset-sm">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${s.color}18` }}>
                     <s.icon size={13} style={{ color: s.color }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>{s.label}</div>
-                    <div className="text-xs font-semibold truncate" style={{ color: "#dee1f7" }}>{s.value}</div>
+                    <div className="text-xs text-muted-foreground">{s.label}</div>
+                    <div className="text-xs font-semibold truncate text-foreground">{s.value}</div>
                   </div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--brand-green)" }} />
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Quick links */}
-          <div className="rounded-2xl p-5"
-               style={{
-                 background: "rgba(255,255,255,0.03)",
-                 border: "1px solid rgba(255,255,255,0.07)",
-               }}>
-            <div className="text-[10px] font-mono uppercase tracking-widest mb-3"
-                 style={{ color: "rgba(255,255,255,0.28)" }}>
-              Quick Actions
-            </div>
+          <div className="rounded-2xl p-5 neu-flat">
+            <div className="text-[10px] font-mono uppercase tracking-widest mb-3 text-muted-foreground">Quick Actions</div>
             <div className="grid grid-cols-2 gap-1.5">
               {QUICK_LINKS.map(a => (
                 <Link key={a.href} href={a.href}
-                   className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all hover:scale-[1.02] group cursor-pointer"
-                   style={{
-                     background: "rgba(255,255,255,0.04)",
-                     color: "rgba(255,255,255,0.55)",
-                     border: "1px solid rgba(255,255,255,0.06)",
-                   }}>
+                   className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all hover:scale-[1.02] group cursor-pointer neu-sm text-muted-foreground">
                   <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: a.color }} />
                   <span className="truncate">{a.label}</span>
                   <ArrowRight size={10} className="ml-auto opacity-0 group-hover:opacity-60 transition-opacity" />

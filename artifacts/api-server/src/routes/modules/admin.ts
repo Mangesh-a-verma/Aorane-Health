@@ -113,6 +113,31 @@ router.get("/admin/overview", requireAdmin, async (_req: AdminRequest, res) => {
       .where(and(eq(paymentsTable.status, "success"), sql`created_at >= ${last30.toISOString()}`));
     const monthRevenue = Math.round(parseFloat(monthRevRow?.total || "0"));
 
+    // Real last-7-days signup + revenue trend for the dashboard chart (zero-filled
+    // via generate_series, since a day with no signups/payments should show as 0,
+    // not be silently missing from the series).
+    const { rows: dailyRows } = await pool.query(`
+      SELECT
+        gs::date AS day,
+        COALESCE(u.cnt, 0)::int AS new_users,
+        COALESCE(p.rev, 0)::numeric AS revenue
+      FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, INTERVAL '1 day') AS gs
+      LEFT JOIN (
+        SELECT DATE(created_at) AS day, COUNT(*) AS cnt FROM users
+        WHERE created_at >= CURRENT_DATE - INTERVAL '6 days' GROUP BY DATE(created_at)
+      ) u ON u.day = gs::date
+      LEFT JOIN (
+        SELECT DATE(created_at) AS day, COALESCE(SUM(CAST(amount AS NUMERIC)), 0) AS rev FROM payments
+        WHERE status = 'success' AND created_at >= CURRENT_DATE - INTERVAL '6 days' GROUP BY DATE(created_at)
+      ) p ON p.day = gs::date
+      ORDER BY gs
+    `);
+    const dailyGrowth = (dailyRows as Array<{ day: string; new_users: number; revenue: string }>).map(r => ({
+      date: r.day,
+      newUsers: Number(r.new_users),
+      revenue: Math.round(Number(r.revenue)),
+    }));
+
     res.json({
       stats: {
         totalUsers: Number(userCount.count),
@@ -124,6 +149,7 @@ router.get("/admin/overview", requireAdmin, async (_req: AdminRequest, res) => {
         newUsersToday: Number(newToday.count),
         newUsersThisMonth: Number(newMonth.count),
         planBreakdown,
+        dailyGrowth,
       },
     });
   } catch (e) {

@@ -44,7 +44,12 @@
   --foreground: 218 40% 9%;
   --border: 214 25% 88%;
   --input: 214 25% 88%;
-  --ring: 202 100% 36%;
+  /* AORANE brand — orange #FF914D / green #00BF63, sampled from the real
+     logo (logo-full.png). --primary/--secondary are deepened from the raw
+     brand swatches so white button/link text on them clears WCAG AA
+     (~4.5:1+); the vivid brand hues live in --brand-orange/--brand-green
+     below for icons, dots, glows and other non-text-bearing accents. */
+  --ring: 23 100% 65%;
   --card: 0 0% 100%;
   --card-foreground: 218 40% 9%;
   --popover: 0 0% 100%;
@@ -52,23 +57,33 @@
   --sidebar: 218 50% 8%;
   --sidebar-foreground: 210 30% 88%;
   --sidebar-border: 218 35% 14%;
-  --sidebar-primary: 202 100% 50%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 174 70% 45%;
+  --sidebar-primary: 23 100% 65%;
+  --sidebar-primary-foreground: 233 81% 10%;
+  --sidebar-accent: 151 100% 37%;
   --sidebar-accent-foreground: 0 0% 100%;
-  --primary: 202 100% 36%;
+  --primary: 23 90% 40%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 174 70% 35%;
+  --secondary: 151 95% 25%;
   --secondary-foreground: 0 0% 100%;
   --muted: 210 20% 93%;
   --muted-foreground: 215 20% 48%;
-  --accent: 174 70% 35%;
+  --accent: 151 95% 25%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
+  --brand-orange: #FF914D;
+  --brand-green: #00BF63;
+  --brand-navy: #050A30;
   --app-font-sans: 'Inter', 'Segoe UI', sans-serif;
   --app-font-mono: 'JetBrains Mono', Menlo, monospace;
   --radius: 0.5rem;
+
+  /* ── Neumorphic (soft-UI) shadow tokens — light theme ──────────────────── */
+  --np-shadow-light: rgba(255, 255, 255, 0.9);
+  --np-shadow-dark: rgba(148, 152, 163, 0.2);
+  --np-surf-a: #ffffff;
+  --np-surf-b: #f8f9fa;
+  --np-inset-bg: #eef0f2;
 }
 
 .dark {
@@ -76,7 +91,7 @@
   --foreground: 210 30% 95%;
   --border: 218 25% 16%;
   --input: 218 25% 18%;
-  --ring: 202 100% 55%;
+  --ring: 23 100% 65%;
   --card: 218 45% 7%;
   --card-foreground: 210 30% 95%;
   --popover: 218 45% 7%;
@@ -84,20 +99,27 @@
   --sidebar: 218 55% 3%;
   --sidebar-foreground: 210 30% 85%;
   --sidebar-border: 218 30% 12%;
-  --sidebar-primary: 202 100% 55%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 174 70% 50%;
+  --sidebar-primary: 23 100% 65%;
+  --sidebar-primary-foreground: 233 81% 10%;
+  --sidebar-accent: 151 100% 37%;
   --sidebar-accent-foreground: 0 0% 100%;
-  --primary: 202 100% 55%;
+  --primary: 23 90% 42%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 174 70% 48%;
+  --secondary: 151 90% 28%;
   --secondary-foreground: 0 0% 100%;
   --muted: 218 35% 11%;
   --muted-foreground: 215 20% 55%;
-  --accent: 174 70% 48%;
+  --accent: 151 90% 28%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 70% 55%;
   --destructive-foreground: 0 0% 100%;
+
+  /* ── Neumorphic (soft-UI) shadow tokens — dark theme ───────────────────── */
+  --np-shadow-light: rgba(255, 255, 255, 0.055);
+  --np-shadow-dark: rgba(0, 0, 0, 0.6);
+  --np-surf-a: #121a26;
+  --np-surf-b: #0b1119;
+  --np-inset-bg: #0a0f17;
 }
 
 @layer base {
@@ -197,3 +219,65 @@ button:active { transform: scale(0.97); }
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   NEUMORPHIC DESIGN SYSTEM — approved redesign (real Aorane brand colors).
+   Additive only: nothing above this block is touched, so the existing
+   Clinical Sanctuary classes (.glass-card, .glow-*, .badge-*, .surface-*)
+   keep working unchanged for pages not yet migrated to this system.
+   Raised surfaces use --np-surf-a/b + the light/dark shadow pair defined
+   in :root/.dark above; inset fields use --np-inset-bg.
+   ════════════════════════════════════════════════════════════════════ */
+
+@utility neu {
+  background: linear-gradient(145deg, var(--np-surf-a), var(--np-surf-b));
+  box-shadow: 5px 5px 13px var(--np-shadow-dark), -5px -5px 12px var(--np-shadow-light);
+}
+@utility neu-sm {
+  background: linear-gradient(145deg, var(--np-surf-a), var(--np-surf-b));
+  box-shadow: 3px 3px 8px var(--np-shadow-dark), -2px -2px 7px var(--np-shadow-light);
+}
+@utility neu-lg {
+  background: linear-gradient(145deg, var(--np-surf-a), var(--np-surf-b));
+  box-shadow: 8px 8px 20px var(--np-shadow-dark), -7px -7px 18px var(--np-shadow-light);
+}
+@utility neu-flat {
+  background: hsl(var(--card));
+  box-shadow: 3px 3px 8px var(--np-shadow-dark), -2px -2px 7px var(--np-shadow-light);
+}
+@utility neu-inset {
+  background: var(--np-inset-bg);
+  box-shadow: inset 2px 2px 6px var(--np-shadow-dark), inset -2px -2px 6px var(--np-shadow-light);
+}
+@utility neu-inset-sm {
+  background: var(--np-inset-bg);
+  box-shadow: inset 2px 2px 4px var(--np-shadow-dark), inset -2px -2px 4px var(--np-shadow-light);
+}
+@utility neu-interactive {
+  background: linear-gradient(145deg, var(--np-surf-a), var(--np-surf-b));
+  box-shadow: 3px 3px 8px var(--np-shadow-dark), -2px -2px 7px var(--np-shadow-light);
+  transition: box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1), transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    box-shadow: 5px 5px 13px var(--np-shadow-dark), -5px -5px 12px var(--np-shadow-light);
+    transform: translateY(-1px);
+  }
+  &:active {
+    box-shadow: inset 2px 2px 4px var(--np-shadow-dark), inset -2px -2px 4px var(--np-shadow-light);
+    transform: translateY(0);
+  }
+}
+
+/* Brand gradient — used for the logo mark, primary CTA buttons and avatar
+   chips; a monochrome depth gradient (not a two-hue blend) reads as more
+   premium/enterprise than a loud orange→green blend on small chrome. */
+@utility bg-brand-gradient {
+  background: linear-gradient(135deg, var(--brand-orange), color-mix(in oklab, var(--brand-orange) 74%, black));
+}
+
+/* Reusable tone chips for stat cards / badges / icon swatches. */
+@utility tone-brand   { background: color-mix(in oklab, var(--brand-orange) 15%, transparent); color: color-mix(in oklab, var(--brand-orange) 80%, black); }
+@utility tone-success { background: color-mix(in oklab, var(--brand-green) 15%, transparent); color: color-mix(in oklab, var(--brand-green) 75%, black); }
+@utility tone-purple  { background: rgba(139,92,246,0.15); color: #8B5CF6; }
+@utility tone-amber   { background: rgba(245,158,11,0.15); color: #b45309; }
+@utility tone-danger  { background: color-mix(in oklab, hsl(var(--destructive)) 15%, transparent); color: hsl(var(--destructive)); }
