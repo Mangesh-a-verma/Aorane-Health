@@ -33,7 +33,7 @@ function formFromPlan(plan: PlanPricingItem): Form {
     yearlyPrice: plan.yearlyPrice ?? "",
     maxSeats: plan.maxSeats?.toString() ?? "",
     badgeText: plan.badgeText ?? "",
-    badgeColor: plan.badgeColor ?? "#0077B6",
+    badgeColor: plan.badgeColor ?? "#FF914D",
     features: [...(Array.isArray(plan.features) ? plan.features : [])],
     isActive: plan.isActive,
     discountPercent: plan.discountPercent?.toString() ?? "",
@@ -54,7 +54,7 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
   const saved = formFromPlan(plan);
   const isDirty = JSON.stringify(form) !== JSON.stringify(saved);
 
-  const color = form.badgeColor || "#0077B6";
+  const color = form.badgeColor || "#FF914D";
   const TypeIcon = TYPE_ICONS[plan.type] ?? Smartphone;
   const monthly = parseFloat(form.monthlyPrice) || 0;
   const yearly = parseFloat(form.yearlyPrice) || 0;
@@ -96,8 +96,8 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
   return (
     <div className="rounded-2xl overflow-hidden flex flex-col"
          style={{
-           background: "rgba(255,255,255,0.03)",
-           border: isDirty ? `1px solid ${color}60` : "1px solid rgba(255,255,255,0.07)",
+           background: "hsl(var(--muted))",
+           border: isDirty ? `1px solid ${color}60` : "1px solid hsl(var(--border))",
            transition: "border-color 0.2s",
          }}>
       {/* Color top bar */}
@@ -111,9 +111,9 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
               <TypeIcon size={16} style={{ color }} />
             </div>
             <div>
-              <div className="font-bold text-sm" style={{ color: "#dee1f7" }}>{plan.displayName}</div>
+              <div className="font-bold text-sm" style={{ color: "hsl(var(--foreground))" }}>{plan.displayName}</div>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>
+                <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>
                   {plan.planKey} · {plan.type}
                 </span>
                 {form.badgeText && <Badge text={form.badgeText} color={color} />}
@@ -142,8 +142,8 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
 
         {/* ── Price fields — ALWAYS editable ── */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <div className="rounded-xl p-3" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
+            <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "hsl(var(--muted-foreground))" }}>
               Monthly ₹
             </div>
             <input
@@ -154,11 +154,11 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
               style={{ color }}
               placeholder="0"
             />
-            <div className="text-[10px] mt-1" style={{ color: "rgba(255,255,255,0.25)" }}>per month</div>
+            <div className="text-[10px] mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>per month</div>
           </div>
 
-          <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <div className="rounded-xl p-3" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
+            <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "hsl(var(--muted-foreground))" }}>
               Yearly ₹
             </div>
             <input
@@ -172,7 +172,7 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
             {discount > 0 ? (
               <div className="text-[10px] mt-1 font-semibold" style={{ color: "#34d399" }}>{discount}% off</div>
             ) : (
-              <div className="text-[10px] mt-1" style={{ color: "rgba(255,255,255,0.25)" }}>per year</div>
+              <div className="text-[10px] mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>per year</div>
             )}
           </div>
         </div>
@@ -194,7 +194,7 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
 
         {/* Saved indicator */}
         {!isDirty && (
-          <div className="flex items-center gap-2 text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+          <div className="flex items-center gap-2 text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
             <CheckCircle2 size={12} style={{ color: "#34d399" }} />
             Saved
           </div>
@@ -204,7 +204,7 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
         <div>
           <button onClick={() => setAdvanced(v => !v)}
             className="flex items-center gap-1.5 text-[11px] font-medium w-full"
-            style={{ color: "rgba(255,255,255,0.35)" }}>
+            style={{ color: "hsl(var(--muted-foreground))" }}>
             <Settings2 size={11} />
             Advanced (features, badge, color)
             {advanced ? <ChevronUp size={11} className="ml-auto" /> : <ChevronDown size={11} className="ml-auto" />}
@@ -215,30 +215,30 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
               {/* Badge + seats */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>Badge</div>
+                  <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>Badge</div>
                   <input value={form.badgeText}
                     onChange={e => setForm(p => ({ ...p, badgeText: e.target.value }))}
                     placeholder="e.g. Popular"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs outline-none"
-                    style={{ color: "#dee1f7" }} />
+                    className="w-full bg-muted border border-border rounded-lg px-2 py-1.5 text-xs outline-none"
+                    style={{ color: "hsl(var(--foreground))" }} />
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>Max Seats</div>
+                  <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>Max Seats</div>
                   <input type="number" min="1" value={form.maxSeats}
                     onChange={e => setForm(p => ({ ...p, maxSeats: e.target.value }))}
                     placeholder="Unlimited"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs outline-none"
-                    style={{ color: "#dee1f7" }} />
+                    className="w-full bg-muted border border-border rounded-lg px-2 py-1.5 text-xs outline-none"
+                    style={{ color: "hsl(var(--foreground))" }} />
                 </div>
               </div>
 
               {/* Color */}
               <div className="flex items-center gap-2">
-                <div className="text-[10px] uppercase tracking-widest shrink-0" style={{ color: "rgba(255,255,255,0.3)" }}>Color</div>
+                <div className="text-[10px] uppercase tracking-widest shrink-0" style={{ color: "hsl(var(--muted-foreground))" }}>Color</div>
                 <input type="color" value={form.badgeColor}
                   onChange={e => setForm(p => ({ ...p, badgeColor: e.target.value }))}
                   className="w-7 h-7 rounded cursor-pointer border-0 bg-transparent" />
-                {["#0077B6","#10B981","#8B5CF6","#F59E0B","#EF4444","#0747A6"].map(c => (
+                {["#FF914D","#10B981","#8B5CF6","#F59E0B","#EF4444","#0747A6"].map(c => (
                   <button key={c} onClick={() => setForm(p => ({ ...p, badgeColor: c }))}
                     className="w-5 h-5 rounded-full border-2 transition-transform hover:scale-110"
                     style={{ background: c, borderColor: form.badgeColor === c ? "#fff" : "transparent" }} />
@@ -247,12 +247,12 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
 
               {/* Features */}
               <div>
-                <div className="text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>Features</div>
+                <div className="text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "hsl(var(--muted-foreground))" }}>Features</div>
                 <div className="space-y-1.5 mb-2">
                   {form.features.map((f, i) => (
                     <div key={i} className="flex items-center gap-2 group">
                       <CheckCircle2 size={11} style={{ color, flexShrink: 0 }} />
-                      <span className="text-xs flex-1" style={{ color: "rgba(255,255,255,0.6)" }}>{f}</span>
+                      <span className="text-xs flex-1" style={{ color: "hsl(var(--muted-foreground))" }}>{f}</span>
                       <button onClick={() => setForm(p => ({ ...p, features: p.features.filter((_, j) => j !== i) }))}
                         className="w-5 h-5 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity"
                         style={{ color: "#f87171" }}>
@@ -267,8 +267,8 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
                     onChange={e => setNewFeature(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && addFeature()}
                     placeholder="Add feature (Enter)"
-                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs outline-none"
-                    style={{ color: "#dee1f7" }} />
+                    className="flex-1 bg-muted border border-border rounded-lg px-2 py-1.5 text-xs outline-none"
+                    style={{ color: "hsl(var(--foreground))" }} />
                   <button onClick={addFeature}
                     className="w-7 h-7 flex items-center justify-center rounded-lg"
                     style={{ background: `${color}25`, color }}>
@@ -279,11 +279,11 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
 
               {/* Display name */}
               <div>
-                <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>Display Name</div>
+                <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>Display Name</div>
                 <input value={form.displayName}
                   onChange={e => setForm(p => ({ ...p, displayName: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs font-bold outline-none"
-                  style={{ color: "#dee1f7" }} />
+                  className="w-full bg-muted border border-border rounded-lg px-2 py-1.5 text-xs font-bold outline-none"
+                  style={{ color: "hsl(var(--foreground))" }} />
               </div>
 
               {/* Offer / Discount */}
@@ -291,36 +291,36 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
                 <div className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#34d399" }}>Offer &amp; Discount</div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>Discount %</div>
+                    <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>Discount %</div>
                     <input type="number" min="0" max="100" value={form.discountPercent}
                       onChange={e => setForm(p => ({ ...p, discountPercent: e.target.value }))}
                       placeholder="0"
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs outline-none"
+                      className="w-full bg-muted border border-border rounded-lg px-2 py-1.5 text-xs outline-none"
                       style={{ color: "#34d399" }} />
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>Offer Label</div>
+                    <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>Offer Label</div>
                     <input value={form.offerLabel}
                       onChange={e => setForm(p => ({ ...p, offerLabel: e.target.value }))}
                       placeholder="e.g. Diwali Offer"
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs outline-none"
-                      style={{ color: "#dee1f7" }} />
+                      className="w-full bg-muted border border-border rounded-lg px-2 py-1.5 text-xs outline-none"
+                      style={{ color: "hsl(var(--foreground))" }} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>Valid From</div>
+                    <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>Valid From</div>
                     <input type="date" value={form.offerValidFrom}
                       onChange={e => setForm(p => ({ ...p, offerValidFrom: e.target.value }))}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs outline-none"
-                      style={{ color: "#dee1f7", colorScheme: "dark" }} />
+                      className="w-full bg-muted border border-border rounded-lg px-2 py-1.5 text-xs outline-none"
+                      style={{ color: "hsl(var(--foreground))", colorScheme: "dark" }} />
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>Valid To</div>
+                    <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>Valid To</div>
                     <input type="date" value={form.offerValidTo}
                       onChange={e => setForm(p => ({ ...p, offerValidTo: e.target.value }))}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs outline-none"
-                      style={{ color: "#dee1f7", colorScheme: "dark" }} />
+                      className="w-full bg-muted border border-border rounded-lg px-2 py-1.5 text-xs outline-none"
+                      style={{ color: "hsl(var(--foreground))", colorScheme: "dark" }} />
                   </div>
                 </div>
                 {form.discountPercent && Number(form.discountPercent) > 0 && form.monthlyPrice && (
@@ -388,18 +388,18 @@ export default function PlanPricing() {
         {/* Header */}
         <div className="flex items-end justify-between flex-wrap gap-3">
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-1.5" style={{ color: "#0077B6" }}>
+            <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-1.5" style={{ color: "#FF914D" }}>
               Dynamic Pricing Engine
             </div>
-            <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#dee1f7" }}>Plan Pricing</h1>
-            <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.38)" }}>
+            <h1 className="text-3xl font-bold tracking-tight" style={{ color: "hsl(var(--foreground))" }}>Plan Pricing</h1>
+            <p className="text-sm mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>
               Type the price directly in the input → click Save — updates everywhere automatically
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={load}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}>
+              style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))", color: "hsl(var(--muted-foreground))" }}>
               <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
               Refresh
             </button>
@@ -445,11 +445,11 @@ export default function PlanPricing() {
 
         {/* Info banner */}
         <div className="rounded-2xl p-4 flex items-start gap-3"
-             style={{ background: "rgba(0,119,182,0.07)", border: "1px solid rgba(0,119,182,0.15)" }}>
-          <Sparkles size={16} style={{ color: "#0077B6", flexShrink: 0, marginTop: 2 }} />
-          <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-            <span className="text-white/70 font-semibold">How it works:</span>{" "}
-            Type the new amount directly in the price field on each card below — a <span className="text-white/60">Save Changes</span> button will appear. Click it — Mobile App, Landing Page, and Business Portal all update instantly.
+             style={{ background: "rgba(255,145,77,0.07)", border: "1px solid rgba(255,145,77,0.15)" }}>
+          <Sparkles size={16} style={{ color: "#FF914D", flexShrink: 0, marginTop: 2 }} />
+          <div className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+            <span className="text-muted-foreground font-semibold">How it works:</span>{" "}
+            Type the new amount directly in the price field on each card below — a <span className="text-muted-foreground">Save Changes</span> button will appear. Click it — Mobile App, Landing Page, and Business Portal all update instantly.
           </div>
         </div>
 
@@ -459,13 +459,13 @@ export default function PlanPricing() {
             <button key={key} onClick={() => setActiveType(key)}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
               style={{
-                background: activeType === key ? "#0077B6" : "rgba(255,255,255,0.05)",
-                color: activeType === key ? "white" : "rgba(255,255,255,0.45)",
-                border: activeType === key ? "none" : "1px solid rgba(255,255,255,0.08)",
+                background: activeType === key ? "#FF914D" : "hsl(var(--border))",
+                color: activeType === key ? "white" : "hsl(var(--muted-foreground))",
+                border: activeType === key ? "none" : "1px solid hsl(var(--border))",
               }}>
               {key === "individual" ? <Smartphone size={11} /> : key === "organization" ? <Building2 size={11} /> : <IndianRupee size={11} />}
               {label}
-              <span className="text-[10px] rounded-full px-1.5 py-0.5" style={{ background: "rgba(255,255,255,0.1)" }}>
+              <span className="text-[10px] rounded-full px-1.5 py-0.5" style={{ background: "hsl(var(--muted))" }}>
                 {key === "all" ? plans.length : plans.filter(p => p.type === key).length}
               </span>
             </button>
@@ -475,7 +475,7 @@ export default function PlanPricing() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-56 rounded-2xl animate-pulse" style={{ background: "rgba(255,255,255,0.04)" }} />
+              <div key={i} className="h-56 rounded-2xl animate-pulse" style={{ background: "hsl(var(--muted))" }} />
             ))}
           </div>
         ) : (
@@ -483,9 +483,9 @@ export default function PlanPricing() {
             {individualPlans.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <Smartphone size={14} style={{ color: "#0077B6" }} />
-                  <span className="text-sm font-semibold" style={{ color: "#dee1f7" }}>Individual / Mobile App Plans</span>
-                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>— Mobile app upgrade screen pe dikhega</span>
+                  <Smartphone size={14} style={{ color: "#FF914D" }} />
+                  <span className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>Individual / Mobile App Plans</span>
+                  <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>— Mobile app upgrade screen pe dikhega</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                   {individualPlans.map(p => <PlanCard key={p.planKey} plan={p} onSave={handleSave} />)}
@@ -496,8 +496,8 @@ export default function PlanPricing() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Building2 size={14} style={{ color: "#8B5CF6" }} />
-                  <span className="text-sm font-semibold" style={{ color: "#dee1f7" }}>Organization Plans</span>
-                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>— Landing page pe dikhega</span>
+                  <span className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>Organization Plans</span>
+                  <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>— Landing page pe dikhega</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {orgPlans.map(p => <PlanCard key={p.planKey} plan={p} onSave={handleSave} />)}
@@ -508,8 +508,8 @@ export default function PlanPricing() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Users size={14} style={{ color: "#10B981" }} />
-                  <span className="text-sm font-semibold" style={{ color: "#dee1f7" }}>Seat-Based Plans</span>
-                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>— Business portal billing page pe dikhega · discount yahan set karo</span>
+                  <span className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>Seat-Based Plans</span>
+                  <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>— Business portal billing page pe dikhega · discount yahan set karo</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {orgSeatPlans.map(p => <PlanCard key={p.planKey} plan={p} onSave={handleSave} />)}

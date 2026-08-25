@@ -39,7 +39,7 @@ function buildRadarData() {
 }
 
 const PLAN_COLORS: Record<string, string> = {
-  free: "#4B5563", pro: "#0077B6", max: "#F59E0B", family: "#8B5CF6",
+  free: "#4B5563", pro: "#FF914D", max: "#F59E0B", family: "#8B5CF6",
 };
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -49,14 +49,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
          style={{
            background: "rgba(9,14,28,0.94)",
            backdropFilter: "blur(16px)",
-           border: "1px solid rgba(255,255,255,0.09)",
+           border: "1px solid hsl(var(--border))",
          }}>
-      <div className="font-mono mb-1" style={{ color: "rgba(255,255,255,0.35)", fontSize: "10px" }}>{label}</div>
+      <div className="font-mono mb-1" style={{ color: "hsl(var(--muted-foreground))", fontSize: "10px" }}>{label}</div>
       {payload.map((p: any) => (
         <div key={p.dataKey || p.name} className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ background: p.color || p.fill || "#0077B6" }} />
-          <span style={{ color: "#bfc7d1" }}>{p.name || p.dataKey}:</span>
-          <span className="font-semibold" style={{ color: p.color || "#94ccff" }}>
+          <div className="w-2 h-2 rounded-full" style={{ background: p.color || p.fill || "#FF914D" }} />
+          <span style={{ color: "hsl(var(--muted-foreground))" }}>{p.name || p.dataKey}:</span>
+          <span className="font-semibold" style={{ color: p.color || "#FF914D" }}>
             {typeof p.value === "number"
               ? (p.dataKey?.includes("revenue") || p.dataKey?.includes("costs"))
                 ? `₹${p.value.toLocaleString("en-IN")}`
@@ -75,13 +75,13 @@ function ChartCard({ title, subtitle, children }: {
   return (
     <div className="rounded-2xl p-5"
          style={{
-           background: "rgba(255,255,255,0.03)",
-           border: "1px solid rgba(255,255,255,0.07)",
+           background: "hsl(var(--muted))",
+           border: "1px solid hsl(var(--border))",
          }}>
       <div className="mb-4">
-        <div className="font-semibold text-sm" style={{ color: "#dee1f7" }}>{title}</div>
+        <div className="font-semibold text-sm" style={{ color: "hsl(var(--foreground))" }}>{title}</div>
         {subtitle && (
-          <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>{subtitle}</div>
+          <div className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>{subtitle}</div>
         )}
       </div>
       {children}
@@ -134,19 +134,19 @@ export default function Analytics() {
         <div className="flex items-end justify-between">
           <div>
             <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-1.5"
-                 style={{ color: "#0077B6" }}>
+                 style={{ color: "#FF914D" }}>
               System Intelligence
             </div>
-            <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#dee1f7" }}>
+            <h1 className="text-3xl font-bold tracking-tight" style={{ color: "hsl(var(--foreground))" }}>
               Platform Analytics
             </h1>
           </div>
           <div className="flex items-center gap-2">
             <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
                     style={{
-                      background: "rgba(255,255,255,0.06)",
-                      color: "rgba(255,255,255,0.6)",
-                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "hsl(var(--muted))",
+                      color: "hsl(var(--muted-foreground))",
+                      border: "1px solid hsl(var(--border))",
                     }}>
               <Calendar size={12} />
               Last 30 Days
@@ -189,7 +189,7 @@ export default function Analytics() {
                 a.click();
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95"
-              style={{ background: "linear-gradient(135deg,#0077B6,#1B998B)", color: "white" }}
+              style={{ background: "linear-gradient(135deg,#FF914D,#00BF63)", color: "white" }}
             >
               <Download size={12} />
               Export Report
@@ -207,21 +207,21 @@ export default function Analytics() {
         {/* ── KPI Strip ────────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: "Active Users",    value: data ? data.totalUsers.toLocaleString("en-IN") : "...",             icon: Users,       color: "#94ccff",  trend: "+14.2% vs last month" },
+            { label: "Active Users",    value: data ? data.totalUsers.toLocaleString("en-IN") : "...",             icon: Users,       color: "#FF914D",  trend: "+14.2% vs last month" },
             { label: "MRR Growth",      value: data ? `₹${data.totalRevenue.toLocaleString("en-IN")}` : "...",     icon: TrendingUp,  color: "#fbbf24",  trend: "+8.1% organic" },
             { label: "Subscriptions",   value: data ? data.activeSubscriptions.toLocaleString("en-IN") : "...",    icon: CreditCard,  color: "#6bd8c9",  trend: "+5.3% vs last month" },
             { label: "Conversion Rate", value: loading ? "..." : `${convRate}%`,                                   icon: BarChart3,   color: "#a78bfa",  trend: "Free → Paid" },
           ].map(m => (
             <div key={m.label} className="metric-card relative overflow-hidden rounded-2xl p-5"
                  style={{
-                   background: "rgba(255,255,255,0.03)",
-                   border: "1px solid rgba(255,255,255,0.07)",
+                   background: "hsl(var(--muted))",
+                   border: "1px solid hsl(var(--border))",
                  }}>
               <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full pointer-events-none"
                    style={{ background: `radial-gradient(circle, ${m.color}25 0%, transparent 70%)` }} />
               <div className="flex items-start justify-between mb-3">
                 <span className="text-[10px] font-mono uppercase tracking-widest"
-                      style={{ color: "rgba(255,255,255,0.32)" }}>
+                      style={{ color: "hsl(var(--muted-foreground))" }}>
                   {m.label}
                 </span>
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center"
@@ -232,7 +232,7 @@ export default function Analytics() {
               <div className="text-2xl font-bold tracking-tight" style={{ color: m.color }}>
                 {m.value}
               </div>
-              <div className="text-[10px] mt-1.5 font-medium" style={{ color: "rgba(255,255,255,0.3)" }}>
+              <div className="text-[10px] mt-1.5 font-medium" style={{ color: "hsl(var(--muted-foreground))" }}>
                 {m.trend}
               </div>
             </div>
@@ -246,28 +246,28 @@ export default function Analytics() {
           <ChartCard title="Revenue Trend" subtitle="Gross revenue vs operational costs">
             {loading ? (
               <div className="h-52 flex items-center justify-center text-xs"
-                   style={{ color: "rgba(255,255,255,0.25)" }}>Loading...</div>
+                   style={{ color: "hsl(var(--muted-foreground))" }}>Loading...</div>
             ) : (
               <ResponsiveContainer width="100%" height={210}>
                 <AreaChart data={revenueTrend} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#0077B6" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#0077B6" stopOpacity={0} />
+                      <stop offset="5%"  stopColor="#FF914D" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#FF914D" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="gCost" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%"  stopColor="#F59E0B" stopOpacity={0.3} />
                       <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="month" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="month" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
                          axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
                          axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
                   <Area type="monotone" dataKey="revenue" name="Revenue"
-                        stroke="#0077B6" strokeWidth={2} fill="url(#gRev)"  dot={false} />
+                        stroke="#FF914D" strokeWidth={2} fill="url(#gRev)"  dot={false} />
                   <Area type="monotone" dataKey="costs"   name="Costs"
                         stroke="#F59E0B" strokeWidth={2} fill="url(#gCost)" dot={false} />
                 </AreaChart>
@@ -279,16 +279,16 @@ export default function Analytics() {
           <ChartCard title="User Acquisition" subtitle="Growth by subscription tier">
             {loading || acqData.length === 0 ? (
               <div className="h-52 flex items-center justify-center text-xs"
-                   style={{ color: "rgba(255,255,255,0.25)" }}>
+                   style={{ color: "hsl(var(--muted-foreground))" }}>
                 {loading ? "Loading..." : "No data"}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={210}>
                 <BarChart data={acqData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="plan" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="plan" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
                          axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
                          axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="users" name="Users" radius={[6, 6, 0, 0]}>
@@ -305,12 +305,12 @@ export default function Analytics() {
           <ChartCard title="Feature Affinity" subtitle="Engagement distribution across modules">
             <ResponsiveContainer width="100%" height={210}>
               <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
-                <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                <PolarGrid stroke="hsl(var(--border))" />
                 <PolarAngleAxis dataKey="feature"
-                  tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 10 }} />
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
                 <Radar name="Usage %" dataKey="usage"
-                  stroke="#1B998B" strokeWidth={2}
-                  fill="#1B998B" fillOpacity={0.18} />
+                  stroke="#00BF63" strokeWidth={2}
+                  fill="#00BF63" fillOpacity={0.18} />
                 <Tooltip content={<CustomTooltip />} />
               </RadarChart>
             </ResponsiveContainer>
@@ -320,7 +320,7 @@ export default function Analytics() {
           <ChartCard title="Plan Distribution" subtitle="Market share per license type">
             {loading || pieData.length === 0 ? (
               <div className="h-52 flex items-center justify-center text-xs"
-                   style={{ color: "rgba(255,255,255,0.25)" }}>
+                   style={{ color: "hsl(var(--muted-foreground))" }}>
                 {loading ? "Loading..." : "No plan data"}
               </div>
             ) : (
@@ -347,7 +347,7 @@ export default function Analytics() {
                         <div className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-center mb-0.5">
-                            <span className="text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>
+                            <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
                               {p.name}
                             </span>
                             <span className="text-xs font-mono font-semibold" style={{ color: p.color }}>
@@ -355,7 +355,7 @@ export default function Analytics() {
                             </span>
                           </div>
                           <div className="h-1 rounded-full overflow-hidden"
-                               style={{ background: "rgba(255,255,255,0.06)" }}>
+                               style={{ background: "hsl(var(--muted))" }}>
                             <div className="h-full rounded-full transition-all duration-700"
                                  style={{ width: `${pct}%`, background: p.color }} />
                           </div>
@@ -373,18 +373,18 @@ export default function Analytics() {
         <ChartCard title="AI Usage Today" subtitle="Calls per AI feature, today — all features currently share one Gemini API key/quota">
           {!aiUsage || aiUsage.today.length === 0 ? (
             <div className="h-32 flex items-center justify-center text-xs"
-                 style={{ color: "rgba(255,255,255,0.25)" }}>
+                 style={{ color: "hsl(var(--muted-foreground))" }}>
               {aiUsage ? "No AI calls yet today" : "Loading..."}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(160, aiUsage.today.length * 34)}>
               <BarChart data={aiUsage.today} layout="vertical" margin={{ left: 8, right: 16 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
-                <XAxis type="number" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} allowDecimals={false} />
                 <YAxis type="category" dataKey="feature" width={140}
-                       tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 10 }} />
+                       tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="calls" name="Calls today" fill="#0077B6" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="calls" name="Calls today" fill="#FF914D" radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -394,7 +394,7 @@ export default function Analytics() {
         {/* ── AI Insight banner ─────────────────────────────────── */}
         <div className="rounded-2xl p-6 relative overflow-hidden"
              style={{
-               background: "linear-gradient(135deg, rgba(27,153,139,0.08) 0%, rgba(0,119,182,0.06) 100%)",
+               background: "linear-gradient(135deg, rgba(27,153,139,0.08) 0%, rgba(255,145,77,0.06) 100%)",
                border: "1px solid rgba(27,153,139,0.15)",
              }}>
           <div className="absolute top-0 right-0 w-48 h-48 pointer-events-none"
@@ -406,10 +406,10 @@ export default function Analytics() {
             </div>
           </div>
           <div className="mt-3">
-            <h3 className="text-lg font-semibold tracking-tight" style={{ color: "#dee1f7" }}>
+            <h3 className="text-lg font-semibold tracking-tight" style={{ color: "hsl(var(--foreground))" }}>
               Platform growth is trending above seasonal benchmarks.
             </h3>
-            <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.45)" }}>
+            <p className="text-sm mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>
               AI-based retention analysis indicates that users who engage with 3+ features have 78% higher
               30-day retention. Recommend promoting the Wearable + Food Scan combo to Free tier users for
               optimal conversion velocity.
