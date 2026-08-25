@@ -121,8 +121,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { admin, logout, inactiveWarning, resetInactivityTimer } = useAuth();
   const [open, setOpen] = useState(false);
   const [dark, setDark] = useState<boolean>(() => {
-    try { return localStorage.getItem("aorane_theme") !== "light"; }
-    catch { return true; }
+    try { return localStorage.getItem("aorane_theme") === "dark"; }
+    catch { return false; }
   });
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
