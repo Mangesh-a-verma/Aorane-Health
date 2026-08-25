@@ -197,7 +197,7 @@ export const api = {
   login: (email: string, password: string) =>
     req<{ token: string; admin: { id: string; fullName: string; role: string } }>("/admin/login", { method: "POST", body: JSON.stringify({ email, password }) }, true),
 
-  overview: () => req<{ stats: { totalUsers: number; totalOrganizations: number; activeSubscriptions: number; totalBloodRequests: number; totalRevenue: number; monthRevenue: number; newUsersToday: number; newUsersThisMonth: number; planBreakdown: Array<{ plan: string; count: number }> } }>("/admin/overview"),
+  overview: () => req<{ stats: { totalUsers: number; totalOrganizations: number; activeSubscriptions: number; totalBloodRequests: number; totalRevenue: number; monthRevenue: number; newUsersToday: number; newUsersThisMonth: number; planBreakdown: Array<{ plan: string; count: number }>; dailyGrowth: Array<{ date: string; newUsers: number; revenue: number }> } }>("/admin/overview"),
   users: (params?: { limit?: number; offset?: number; search?: string }) => {
     const qs = new URLSearchParams({
       limit: String(params?.limit || 100),

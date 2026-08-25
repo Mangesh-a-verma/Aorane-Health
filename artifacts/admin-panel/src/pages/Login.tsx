@@ -4,14 +4,14 @@ import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import {
   ShieldAlert, Eye, EyeOff, AlertCircle,
-  Brain, Droplet, Users, BarChart3, Lock,
+  Brain, Droplet, Users, BarChart3, Mail, Lock, Loader2,
 } from "lucide-react";
 
 const FEATURES = [
-  { icon: Users,    color: "#0077B6", label: "12K+ Active Users",    sub: "Across India" },
-  { icon: Brain,    color: "#6366F1", label: "AI-powered",           sub: "Health Intelligence" },
-  { icon: Droplet,  color: "#DC2626", label: "Blood Emergency",      sub: "Real-time alerts" },
-  { icon: BarChart3,color: "#1B998B", label: "Revenue Analytics",    sub: "Live dashboard" },
+  { icon: Users,     color: "#FF914D", label: "12K+ Active Users", sub: "Across India" },
+  { icon: Brain,     color: "#6366F1", label: "AI-powered",        sub: "Health Intelligence" },
+  { icon: Droplet,   color: "#DC2626", label: "Blood Emergency",   sub: "Real-time alerts" },
+  { icon: BarChart3, color: "#00BF63", label: "Revenue Analytics", sub: "Live dashboard" },
 ];
 
 export default function Login() {
@@ -22,6 +22,7 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
+  const [showForgotNote, setShowForgotNote] = useState(false);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -45,49 +46,39 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#090e1c" }}>
+    <div className="min-h-screen flex bg-background text-foreground">
 
-      {/* ── Left Panel ── */}
-      <div className="hidden lg:flex flex-col justify-between w-[52%] p-14 relative overflow-hidden"
+      {/* ── Left brand panel (fixed dark navy — on-brand regardless of theme) ── */}
+      <div className="hidden lg:flex flex-col justify-between w-[54%] p-14 relative overflow-hidden"
            style={{
-             background: "linear-gradient(145deg, #0a1428 0%, #0d1f3a 50%, #071525 100%)",
+             background: "linear-gradient(150deg, #050A30 0%, #0a1442 48%, #040817 100%)",
              borderRight: "1px solid rgba(255,255,255,0.05)",
            }}>
 
-        {/* Background orbs */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/4 left-1/3 w-72 h-72 rounded-full"
-               style={{ background: "radial-gradient(circle, rgba(0,119,182,0.12) 0%, transparent 70%)" }} />
+               style={{ background: "radial-gradient(circle, rgba(255,145,77,0.09) 0%, transparent 70%)" }} />
           <div className="absolute bottom-1/3 right-1/4 w-56 h-56 rounded-full"
-               style={{ background: "radial-gradient(circle, rgba(27,153,139,0.1) 0%, transparent 70%)" }} />
-          <div className="absolute top-0 right-0 w-80 h-80 rounded-full"
-               style={{ background: "radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)" }} />
+               style={{ background: "radial-gradient(circle, rgba(0,191,99,0.07) 0%, transparent 70%)" }} />
         </div>
 
         {/* Logo */}
-        <div className="relative">
-          <div className="flex items-center gap-3">
-            <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" style={{ height: 56, width: "auto", objectFit: "contain" }} />
-            <div>
-              <div className="text-[9px] font-mono tracking-[0.3em]"
-                   style={{ color: "rgba(255,255,255,0.25)" }}>
-                ADMIN CONSOLE
-              </div>
-            </div>
+        <div className="relative flex items-center gap-3">
+          <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" style={{ height: 48, width: "auto", objectFit: "contain" }} />
+          <div className="text-[9px] font-mono tracking-[0.3em]" style={{ color: "rgba(255,255,255,0.25)" }}>
+            ADMIN CONSOLE
           </div>
         </div>
 
         {/* Hero text */}
         <div className="relative">
-          <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-4"
-               style={{ color: "#1B998B" }}>
+          <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-4" style={{ color: "var(--brand-green)" }}>
             Platform Intelligence
           </div>
-          <h2 className="text-4xl font-bold leading-tight mb-3"
-              style={{ color: "#dee1f7", letterSpacing: "-0.02em" }}>
+          <h2 className="text-4xl font-bold leading-tight mb-3" style={{ color: "#eef2f8", letterSpacing: "-0.02em" }}>
             India's Premium<br />
             <span style={{
-              background: "linear-gradient(135deg, #0077B6, #1B998B)",
+              background: "linear-gradient(135deg, var(--brand-orange), var(--brand-green))",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
@@ -95,26 +86,21 @@ export default function Login() {
               Health-Tech Platform
             </span>
           </h2>
-          <p className="text-sm leading-relaxed mb-8"
-             style={{ color: "rgba(255,255,255,0.38)", maxWidth: "380px" }}>
+          <p className="text-sm leading-relaxed mb-8" style={{ color: "rgba(255,255,255,0.42)", maxWidth: "380px" }}>
             Real-time control over users, revenue, AI models, and emergency health operations — all in one command center.
           </p>
 
-          {/* Feature cards */}
           <div className="grid grid-cols-2 gap-3">
             {FEATURES.map(f => (
               <div key={f.label}
-                   className="flex items-center gap-3 p-3.5 rounded-2xl transition-all"
-                   style={{
-                     background: "rgba(255,255,255,0.04)",
-                     border: "1px solid rgba(255,255,255,0.06)",
-                   }}>
+                   className="flex items-center gap-3 p-3.5 rounded-2xl"
+                   style={{ background: "linear-gradient(145deg,#0e1a2e,#0a1524)", boxShadow: "5px 5px 12px rgba(0,0,0,0.4), -4px -4px 10px rgba(255,255,255,0.035)" }}>
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                     style={{ background: `${f.color}18` }}>
+                     style={{ background: `${f.color}22` }}>
                   <f.icon size={15} style={{ color: f.color }} />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold" style={{ color: "#dee1f7" }}>{f.label}</div>
+                  <div className="text-xs font-semibold" style={{ color: "#dbe3f0" }}>{f.label}</div>
                   <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.32)" }}>{f.sub}</div>
                 </div>
               </div>
@@ -123,10 +109,9 @@ export default function Login() {
         </div>
 
         {/* Footer */}
-        <div className="relative flex items-center gap-4 text-[10px] font-mono"
-             style={{ color: "rgba(255,255,255,0.22)" }}>
+        <div className="relative flex items-center gap-4 text-[10px] font-mono" style={{ color: "rgba(255,255,255,0.24)" }}>
           <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--brand-green)" }} />
             All Systems Operational
           </div>
           <span>·</span>
@@ -136,142 +121,107 @@ export default function Login() {
         </div>
       </div>
 
-      {/* ── Right Panel (Login Form) ── */}
+      {/* ── Right sign-in panel (theme-aware neumorphic surface) ── */}
       <div className="flex-1 flex items-center justify-center p-6 relative">
 
-        {/* Mobile background orbs */}
-        <div className="absolute inset-0 pointer-events-none lg:hidden">
-          <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full"
-               style={{ background: "radial-gradient(circle, rgba(0,119,182,0.1) 0%, transparent 70%)" }} />
-          <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full"
-               style={{ background: "radial-gradient(circle, rgba(27,153,139,0.08) 0%, transparent 70%)" }} />
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-[18%] right-[14%] w-56 h-56 rounded-full"
+               style={{ background: "radial-gradient(circle, color-mix(in oklab, var(--brand-orange) 8%, transparent) 0%, transparent 72%)" }} />
         </div>
 
-        <div className="relative w-full max-w-sm">
+        {/* Mobile logo */}
+        <div className="lg:hidden absolute top-8 left-1/2 -translate-x-1/2 text-center">
+          <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" style={{ height: 44, width: "auto", objectFit: "contain", margin: "0 auto 6px" }} />
+          <div className="text-xs text-muted-foreground">Admin Console</div>
+        </div>
 
-          {/* Mobile logo */}
-          <div className="lg:hidden text-center mb-8">
-            <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" style={{ height: 56, width: "auto", objectFit: "contain", margin: "0 auto 8px" }} />
-            <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>Admin Console</div>
+        <div className="relative w-full max-w-sm neu-lg page-enter rounded-[28px] p-8 sm:p-10">
+
+          <div className="mb-7">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Sign In</h1>
+            <p className="text-xs mt-1.5 text-muted-foreground">Restricted access — authorized personnel only</p>
           </div>
 
-          {/* Form card */}
-          <div className="rounded-2xl p-8"
-               style={{
-                 background: "rgba(255,255,255,0.04)",
-                 backdropFilter: "blur(24px)",
-                 WebkitBackdropFilter: "blur(24px)",
-                 border: "1px solid rgba(255,255,255,0.08)",
-                 boxShadow: "0 24px 64px rgba(0,0,0,0.4)",
-               }}>
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl mb-6 tone-danger">
+            <ShieldAlert size={13} className="shrink-0" />
+            <span className="text-[11px] font-medium">Restricted access. Authorized personnel only.</span>
+          </div>
 
-            <div className="mb-7">
-              <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#dee1f7" }}>
-                Sign In
-              </h1>
-              <p className="text-xs mt-1.5" style={{ color: "rgba(255,255,255,0.38)" }}>
-                Restricted access — authorized personnel only
-              </p>
+          {error && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl mb-5 tone-danger">
+              <AlertCircle size={13} className="shrink-0 mt-0.5" />
+              <span className="text-xs">{error}</span>
             </div>
+          )}
 
-            {/* Security notice */}
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl mb-6"
-                 style={{
-                   background: "rgba(239,68,68,0.08)",
-                   border: "1px solid rgba(239,68,68,0.15)",
-                 }}>
-              <Lock size={11} style={{ color: "#f87171" }} className="shrink-0" />
-              <span className="text-[11px]" style={{ color: "#f87171" }}>
-                Restricted access. Authorized personnel only.
-              </span>
-            </div>
-
-            {error && (
-              <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl mb-5"
-                   style={{
-                     background: "rgba(239,68,68,0.08)",
-                     border: "1px solid rgba(239,68,68,0.15)",
-                   }}>
-                <AlertCircle size={13} className="shrink-0 mt-0.5" style={{ color: "#f87171" }} />
-                <span className="text-xs" style={{ color: "#f87171" }}>{error}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium mb-1.5"
-                       style={{ color: "rgba(255,255,255,0.5)" }}>
-                  Admin Email
-                </label>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium mb-1.5 text-muted-foreground">Admin Email</label>
+              <div className="relative flex items-center rounded-xl neu-inset focus-within:ring-2 focus-within:ring-primary/40 transition-shadow">
+                <Mail size={14} className="absolute left-4 text-muted-foreground shrink-0" />
                 <input
                   ref={emailRef}
                   type="email"
                   name="email"
                   autoComplete="username email"
                   placeholder="admin@aorane.com"
-                  className="w-full rounded-xl px-4 py-2.5 text-sm outline-none transition-all"
-                  style={{
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    color: "#dee1f7",
-                  }}
-                  onFocus={e => (e.currentTarget.style.borderColor = "#0077B6")}
-                  onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+                  className="w-full rounded-xl pl-11 pr-4 py-2.5 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground/60"
                 />
               </div>
-
-              <div>
-                <label className="block text-xs font-medium mb-1.5"
-                       style={{ color: "rgba(255,255,255,0.5)" }}>
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    ref={passwordRef}
-                    type={showPass ? "text" : "password"}
-                    name="password"
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    className="w-full rounded-xl px-4 py-2.5 pr-10 text-sm outline-none transition-all"
-                    style={{
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      color: "#dee1f7",
-                    }}
-                    onFocus={e => (e.currentTarget.style.borderColor = "#0077B6")}
-                    onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
-                  />
-                  <button type="button" onClick={() => setShowPass(!showPass)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
-                          style={{ color: "rgba(255,255,255,0.25)" }}>
-                    {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white mt-2 transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2"
-                style={{ background: "linear-gradient(135deg, #0077B6, #1B998B)" }}
-              >
-                {loading
-                  ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  : <>
-                      <ShieldAlert size={14} />
-                      Access Admin Panel
-                    </>}
-              </button>
-            </form>
-
-            <div className="flex items-center justify-center gap-3 mt-6 text-[10px] font-mono"
-                 style={{ color: "rgba(255,255,255,0.2)" }}>
-              <span>256-bit TLS</span>
-              <span>·</span>
-              <span>DPDP Compliant</span>
-              <span>·</span>
-              <span>Made in India 🇮🇳</span>
             </div>
+
+            <div>
+              <label className="block text-xs font-medium mb-1.5 text-muted-foreground">Password</label>
+              <div className="relative flex items-center rounded-xl neu-inset focus-within:ring-2 focus-within:ring-primary/40 transition-shadow">
+                <Lock size={14} className="absolute left-4 text-muted-foreground shrink-0" />
+                <input
+                  ref={passwordRef}
+                  type={showPass ? "text" : "password"}
+                  name="password"
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  className="w-full rounded-xl pl-11 pr-10 py-2.5 text-sm bg-transparent outline-none text-foreground tracking-wide placeholder:text-muted-foreground/60"
+                />
+                <button type="button" onClick={() => setShowPass(!showPass)}
+                        className="absolute right-3.5 text-muted-foreground hover:text-foreground transition-colors">
+                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end -mt-1">
+              <button type="button" onClick={() => setShowForgotNote(v => !v)}
+                      className="text-[11.5px] font-medium text-primary hover:text-primary/80 transition-colors">
+                Forgot password?
+              </button>
+            </div>
+            {showForgotNote && (
+              <p className="text-[11px] text-muted-foreground -mt-2">
+                Password resets aren't self-service yet — contact your Aorane super admin to reset it for you.
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-2xl text-sm font-semibold text-white mt-2 transition-all active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2 bg-brand-gradient"
+              style={{ boxShadow: "5px 5px 13px var(--np-shadow-dark), -3px -3px 10px var(--np-shadow-light)" }}
+            >
+              {loading
+                ? <Loader2 size={16} className="animate-spin" />
+                : <>
+                    <ShieldAlert size={14} />
+                    Access Admin Panel
+                  </>}
+            </button>
+          </form>
+
+          <div className="flex items-center justify-center gap-3 mt-6 text-[10px] font-mono text-muted-foreground/70">
+            <span>256-bit TLS</span>
+            <span>·</span>
+            <span>DPDP Compliant</span>
+            <span>·</span>
+            <span>Made in India 🇮🇳</span>
           </div>
         </div>
       </div>
