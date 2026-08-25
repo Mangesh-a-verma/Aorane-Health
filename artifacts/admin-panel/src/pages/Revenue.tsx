@@ -22,7 +22,7 @@ type RevData = {
 };
 
 const PLAN_COLORS: Record<string, string> = {
-  free: "#4B5563", pro: "#0077B6", max: "#F59E0B", family: "#8B5CF6",
+  free: "#4B5563", pro: "#FF914D", max: "#F59E0B", family: "#8B5CF6",
 };
 const STATUS_COLOR: Record<string, string> = {
   success: "#10B981", failed: "#EF4444", pending: "#F59E0B", refunded: "#6B7280",
@@ -37,13 +37,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl px-3 py-2.5 text-xs space-y-1 shadow-2xl"
-         style={{ background: "rgba(9,14,28,0.94)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.09)" }}>
-      <div className="font-mono mb-1" style={{ color: "rgba(255,255,255,0.38)", fontSize: "10px" }}>{label}</div>
+         style={{ background: "rgba(9,14,28,0.94)", backdropFilter: "blur(16px)", border: "1px solid hsl(var(--border))" }}>
+      <div className="font-mono mb-1" style={{ color: "hsl(var(--muted-foreground))", fontSize: "10px" }}>{label}</div>
       {payload.map((p: any) => (
         <div key={p.name} className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ background: p.color || p.fill || "#0077B6" }} />
-          <span style={{ color: "#bfc7d1" }}>{p.name}:</span>
-          <span className="font-semibold" style={{ color: p.color || "#94ccff" }}>
+          <div className="w-2 h-2 rounded-full" style={{ background: p.color || p.fill || "#FF914D" }} />
+          <span style={{ color: "hsl(var(--muted-foreground))" }}>{p.name}:</span>
+          <span className="font-semibold" style={{ color: p.color || "#FF914D" }}>
             {p.name?.toLowerCase().includes("user") ? p.value : `₹${Number(p.value).toLocaleString("en-IN")}`}
           </span>
         </div>
@@ -57,21 +57,21 @@ function SummaryCard({
 }: { label: string; value: string; sub?: string; color: string; icon: React.ElementType; up?: boolean }) {
   return (
     <div className="relative overflow-hidden rounded-2xl p-5"
-         style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+         style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
       <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full pointer-events-none"
            style={{ background: `radial-gradient(circle, ${color}22 0%, transparent 70%)` }} />
       <div className="relative">
         <div className="flex items-start justify-between mb-3">
           <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.18em]"
-                style={{ color: "rgba(255,255,255,0.35)" }}>{label}</span>
+                style={{ color: "hsl(var(--muted-foreground))" }}>{label}</span>
           <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                style={{ background: `${color}18` }}>
             <Icon size={15} style={{ color }} />
           </div>
         </div>
-        <div className="text-2xl font-bold tracking-tight" style={{ color: "#dee1f7" }}>{value}</div>
+        <div className="text-2xl font-bold tracking-tight" style={{ color: "hsl(var(--foreground))" }}>{value}</div>
         {sub && (
-          <div className="flex items-center gap-1 mt-1.5 text-[11px]" style={{ color: "rgba(255,255,255,0.38)" }}>
+          <div className="flex items-center gap-1 mt-1.5 text-[11px]" style={{ color: "hsl(var(--muted-foreground))" }}>
             {up !== undefined && (up
               ? <ArrowUpRight size={11} style={{ color: "#34d399" }} />
               : <ArrowDownRight size={11} style={{ color: "#f87171" }} />)}
@@ -131,13 +131,13 @@ export default function Revenue() {
         {/* Header */}
         <div className="flex items-end justify-between">
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-1.5" style={{ color: "#0077B6" }}>
+            <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-1.5" style={{ color: "#FF914D" }}>
               Financial Intelligence
             </div>
-            <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#dee1f7" }}>Revenue & Business</h1>
+            <h1 className="text-3xl font-bold tracking-tight" style={{ color: "hsl(var(--foreground))" }}>Revenue & Business</h1>
           </div>
           <button onClick={load} className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}>
+                  style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))", color: "hsl(var(--muted-foreground))" }}>
             <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Refresh
           </button>
         </div>
@@ -160,7 +160,7 @@ export default function Revenue() {
               Razorpay Gateway: {rzp.ok ? "✅ LIVE — Auth Successful" : "❌ Error"}
             </span>
             {rzp.maskedKey && (
-              <span className="font-mono text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>({rzp.maskedKey})</span>
+              <span className="font-mono text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>({rzp.maskedKey})</span>
             )}
             {rzp.mode && (
               <span className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold"
@@ -181,7 +181,7 @@ export default function Revenue() {
           <SummaryCard label="Total Revenue" icon={IndianRupee} color="#10B981"
             value={loading ? "..." : INR(s?.totalRevenue ?? 0)}
             sub="All-time collected" up />
-          <SummaryCard label="Expected MRR" icon={TrendingUp} color="#0077B6"
+          <SummaryCard label="Expected MRR" icon={TrendingUp} color="#FF914D"
             value={loading ? "..." : INR(s?.expectedMRR ?? 0)}
             sub="If all users pay" up />
           <SummaryCard label="Paid Users" icon={CreditCard} color="#F59E0B"
@@ -197,31 +197,31 @@ export default function Revenue() {
           <div className="rounded-2xl p-5 relative overflow-hidden"
                style={{
                  background: s.netProfit >= 0
-                   ? "linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(0,119,182,0.05) 100%)"
+                   ? "linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(255,145,77,0.05) 100%)"
                    : "linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(245,158,11,0.05) 100%)",
                  border: `1px solid ${s.netProfit >= 0 ? "rgba(16,185,129,0.18)" : "rgba(239,68,68,0.18)"}`,
                }}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.35)" }}>Total Revenue</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>Total Revenue</div>
                 <div className="text-xl font-bold" style={{ color: "#34d399" }}>{INR(s.totalRevenue)}</div>
               </div>
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.35)" }}>Monthly Cost</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>Monthly Cost</div>
                 <div className="text-xl font-bold" style={{ color: "#f87171" }}>–{INR(s.monthlyCostINR)}</div>
-                <div className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>$87/mo @ ₹84</div>
+                <div className="text-[10px] mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>$87/mo @ ₹84</div>
               </div>
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.35)" }}>Gateway Fees</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>Gateway Fees</div>
                 <div className="text-xl font-bold" style={{ color: "#fbbf24" }}>–{INR(s.gatewayFees)}</div>
-                <div className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>Razorpay 2%</div>
+                <div className="text-[10px] mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>Razorpay 2%</div>
               </div>
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.35)" }}>Net P&L</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: "hsl(var(--muted-foreground))" }}>Net P&L</div>
                 <div className="text-xl font-bold" style={{ color: s.netProfit >= 0 ? "#34d399" : "#f87171" }}>
                   {s.netProfit >= 0 ? "+" : "–"}{INR(s.netProfit)}
                 </div>
-                <div className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>
+                <div className="text-[10px] mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>
                   {s.netProfit >= 0 ? "Profitable" : "Need more paid users"}
                 </div>
               </div>
@@ -233,23 +233,23 @@ export default function Revenue() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
           {/* Plan Revenue Bar Chart */}
-          <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div className="rounded-2xl p-5" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
             <div className="mb-4">
-              <div className="font-semibold text-sm" style={{ color: "#dee1f7" }}>Expected vs Actual Revenue</div>
-              <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>By paid plan (INR)</div>
+              <div className="font-semibold text-sm" style={{ color: "hsl(var(--foreground))" }}>Expected vs Actual Revenue</div>
+              <div className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>By paid plan (INR)</div>
             </div>
             {loading || barData.length === 0 ? (
-              <div className="h-52 flex items-center justify-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+              <div className="h-52 flex items-center justify-center text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
                 {loading ? "Loading..." : "No paid subscriptions yet"}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={barData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="plan" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="plan" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="Expected MRR" fill="#0077B620" stroke="#0077B6" strokeWidth={1} radius={[4,4,0,0]} />
+                  <Bar dataKey="Expected MRR" fill="#FF914D20" stroke="#FF914D" strokeWidth={1} radius={[4,4,0,0]} />
                   <Bar dataKey="Actual Revenue" radius={[4,4,0,0]}>
                     {barData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Bar>
@@ -259,13 +259,13 @@ export default function Revenue() {
           </div>
 
           {/* User Distribution Pie */}
-          <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div className="rounded-2xl p-5" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
             <div className="mb-4">
-              <div className="font-semibold text-sm" style={{ color: "#dee1f7" }}>User Distribution</div>
-              <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>Paid vs Free breakdown</div>
+              <div className="font-semibold text-sm" style={{ color: "hsl(var(--foreground))" }}>User Distribution</div>
+              <div className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>Paid vs Free breakdown</div>
             </div>
             {loading || pieData.length === 0 ? (
-              <div className="h-52 flex items-center justify-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+              <div className="h-52 flex items-center justify-center text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
                 {loading ? "Loading..." : "No data"}
               </div>
             ) : (
@@ -286,14 +286,14 @@ export default function Revenue() {
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full" style={{ background: p.color }} />
-                            <span className="text-xs capitalize" style={{ color: "rgba(255,255,255,0.55)" }}>{p.name}</span>
+                            <span className="text-xs capitalize" style={{ color: "hsl(var(--muted-foreground))" }}>{p.name}</span>
                           </div>
                           <span className="text-xs font-mono font-bold" style={{ color: p.color }}>{pct}%</span>
                         </div>
-                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(var(--muted))" }}>
                           <div className="h-full rounded-full" style={{ width: `${pct}%`, background: p.color }} />
                         </div>
-                        <div className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>{p.value} users</div>
+                        <div className="text-[10px] mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>{p.value} users</div>
                       </div>
                     );
                   })}
@@ -304,33 +304,33 @@ export default function Revenue() {
         </div>
 
         {/* ── Plan Breakdown Table ──────────────────────────────── */}
-        <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-            <div className="font-semibold text-sm" style={{ color: "#dee1f7" }}>Plan Breakdown</div>
-            <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>Users per plan — expected & actual revenue</div>
+        <div className="rounded-2xl overflow-hidden" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
+          <div className="px-5 py-4" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+            <div className="font-semibold text-sm" style={{ color: "hsl(var(--foreground))" }}>Plan Breakdown</div>
+            <div className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>Users per plan — expected & actual revenue</div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                <tr style={{ borderBottom: "1px solid hsl(var(--border))" }}>
                   {["Plan", "Users", "Price/mo", "Expected MRR", "Actual Collected", "Transactions"].map(h => (
                     <th key={h} className="text-left px-5 py-3 text-[11px] font-mono uppercase tracking-widest"
-                        style={{ color: "rgba(255,255,255,0.28)" }}>{h}</th>
+                        style={{ color: "hsl(var(--muted-foreground))" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   Array.from({ length: 4 }).map((_, i) => (
-                    <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                    <tr key={i} style={{ borderBottom: "1px solid hsl(var(--border))" }}>
                       {Array.from({ length: 6 }).map((_, j) => (
-                        <td key={j} className="px-5 py-3"><div className="h-4 rounded animate-pulse" style={{ background: "rgba(255,255,255,0.06)" }} /></td>
+                        <td key={j} className="px-5 py-3"><div className="h-4 rounded animate-pulse" style={{ background: "hsl(var(--muted))" }} /></td>
                       ))}
                     </tr>
                   ))
                 ) : (data?.planBreakdown.sort((a, b) => b.monthlyRate - a.monthlyRate) ?? []).map(p => (
-                  <tr key={p.plan} className="transition-colors hover:bg-white/[0.02]"
-                      style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <tr key={p.plan} className="transition-colors hover:bg-muted/50"
+                      style={{ borderBottom: "1px solid hsl(var(--border))" }}>
                     <td className="px-5 py-3">
                       <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold capitalize"
                             style={{ background: `${PLAN_COLORS[p.plan] || "#4B5563"}18`, color: PLAN_COLORS[p.plan] || "#4B5563" }}>
@@ -338,28 +338,28 @@ export default function Revenue() {
                         {p.plan}
                       </span>
                     </td>
-                    <td className="px-5 py-3 font-bold" style={{ color: "#dee1f7" }}>{p.users.toLocaleString("en-IN")}</td>
-                    <td className="px-5 py-3" style={{ color: "rgba(255,255,255,0.5)" }}>
+                    <td className="px-5 py-3 font-bold" style={{ color: "hsl(var(--foreground))" }}>{p.users.toLocaleString("en-IN")}</td>
+                    <td className="px-5 py-3" style={{ color: "hsl(var(--muted-foreground))" }}>
                       {p.monthlyRate > 0 ? INR(p.monthlyRate) + "/mo" : "Free"}
                     </td>
-                    <td className="px-5 py-3 font-semibold" style={{ color: p.monthlyRate > 0 ? "#0077B6" : "rgba(255,255,255,0.3)" }}>
+                    <td className="px-5 py-3 font-semibold" style={{ color: p.monthlyRate > 0 ? "#FF914D" : "hsl(var(--muted-foreground))" }}>
                       {p.expectedMRR > 0 ? INR(p.expectedMRR) : "—"}
                     </td>
-                    <td className="px-5 py-3 font-semibold" style={{ color: p.actualRevenue > 0 ? "#10B981" : "rgba(255,255,255,0.3)" }}>
+                    <td className="px-5 py-3 font-semibold" style={{ color: p.actualRevenue > 0 ? "#10B981" : "hsl(var(--muted-foreground))" }}>
                       {p.actualRevenue > 0 ? INR(p.actualRevenue) : "—"}
                     </td>
-                    <td className="px-5 py-3" style={{ color: "rgba(255,255,255,0.5)" }}>{p.transactions}</td>
+                    <td className="px-5 py-3" style={{ color: "hsl(var(--muted-foreground))" }}>{p.transactions}</td>
                   </tr>
                 ))}
                 {/* Total row */}
                 {!loading && s && (
-                  <tr style={{ background: "rgba(0,119,182,0.05)", borderTop: "1px solid rgba(0,119,182,0.15)" }}>
-                    <td className="px-5 py-3 font-bold text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.5)" }}>TOTAL</td>
-                    <td className="px-5 py-3 font-bold" style={{ color: "#dee1f7" }}>{s.totalUsers.toLocaleString("en-IN")}</td>
+                  <tr style={{ background: "rgba(255,145,77,0.05)", borderTop: "1px solid rgba(255,145,77,0.15)" }}>
+                    <td className="px-5 py-3 font-bold text-xs font-mono uppercase tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>TOTAL</td>
+                    <td className="px-5 py-3 font-bold" style={{ color: "hsl(var(--foreground))" }}>{s.totalUsers.toLocaleString("en-IN")}</td>
                     <td className="px-5 py-3" />
-                    <td className="px-5 py-3 font-bold" style={{ color: "#0077B6" }}>{INR(s.expectedMRR)}</td>
+                    <td className="px-5 py-3 font-bold" style={{ color: "#FF914D" }}>{INR(s.expectedMRR)}</td>
                     <td className="px-5 py-3 font-bold" style={{ color: "#10B981" }}>{INR(s.totalRevenue)}</td>
-                    <td className="px-5 py-3 font-bold" style={{ color: "#dee1f7" }}>
+                    <td className="px-5 py-3 font-bold" style={{ color: "hsl(var(--foreground))" }}>
                       {data?.recentPayments?.length ?? 0}
                     </td>
                   </tr>
@@ -370,40 +370,40 @@ export default function Revenue() {
         </div>
 
         {/* ── Recent Transactions ───────────────────────────────── */}
-        <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="rounded-2xl overflow-hidden" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
+          <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
             <div>
               <div className="flex items-center gap-2">
-                <Receipt size={15} style={{ color: "#0077B6" }} />
-                <span className="font-semibold text-sm" style={{ color: "#dee1f7" }}>Payment Transactions</span>
+                <Receipt size={15} style={{ color: "#FF914D" }} />
+                <span className="font-semibold text-sm" style={{ color: "hsl(var(--foreground))" }}>Payment Transactions</span>
               </div>
-              <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+              <div className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>
                 {data?.recentPayments?.length ?? 0} recent transactions via Razorpay
               </div>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs"
-                 style={{ background: "rgba(0,119,182,0.1)", border: "1px solid rgba(0,119,182,0.18)", color: "#94ccff" }}>
+                 style={{ background: "rgba(255,145,77,0.1)", border: "1px solid rgba(255,145,77,0.18)", color: "#FF914D" }}>
               <Wallet size={11} />
               Razorpay
             </div>
           </div>
 
           {loading ? (
-            <div className="p-8 text-center text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>Loading transactions...</div>
+            <div className="p-8 text-center text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>Loading transactions...</div>
           ) : !data?.recentPayments?.length ? (
             <div className="p-12 text-center">
-              <Receipt size={36} className="mx-auto mb-3" style={{ color: "rgba(255,255,255,0.1)" }} />
-              <div className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>No transactions yet</div>
-              <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.25)" }}>Transactions will appear here when users make payments</div>
+              <Receipt size={36} className="mx-auto mb-3" style={{ color: "hsl(var(--muted-foreground))" }} />
+              <div className="text-sm font-semibold" style={{ color: "hsl(var(--muted-foreground))" }}>No transactions yet</div>
+              <div className="text-xs mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>Transactions will appear here when users make payments</div>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <tr style={{ borderBottom: "1px solid hsl(var(--border))" }}>
                     {["Date", "User ID", "Plan", "Amount", "Gateway Fee", "Status", "Razorpay ID"].map(h => (
                       <th key={h} className="text-left px-5 py-3 text-[11px] font-mono uppercase tracking-widest"
-                          style={{ color: "rgba(255,255,255,0.28)" }}>{h}</th>
+                          style={{ color: "hsl(var(--muted-foreground))" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -412,13 +412,13 @@ export default function Revenue() {
                     const StatusIcon = STATUS_ICON[p.status] || Clock;
                     const statusColor = STATUS_COLOR[p.status] || "#6B7280";
                     return (
-                      <tr key={p.id} className="transition-colors hover:bg-white/[0.02]"
-                          style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                        <td className="px-5 py-3 text-xs font-mono" style={{ color: "rgba(255,255,255,0.4)" }}>
+                      <tr key={p.id} className="transition-colors hover:bg-muted/50"
+                          style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+                        <td className="px-5 py-3 text-xs font-mono" style={{ color: "hsl(var(--muted-foreground))" }}>
                           {new Date(p.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" })}
                         </td>
                         <td className="px-5 py-3">
-                          <span className="font-mono text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+                          <span className="font-mono text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
                             {p.userId ? p.userId.slice(0, 8) + "..." : "—"}
                           </span>
                         </td>
@@ -429,7 +429,7 @@ export default function Revenue() {
                           </span>
                         </td>
                         <td className="px-5 py-3 font-bold" style={{ color: "#34d399" }}>{INR(p.amount)}</td>
-                        <td className="px-5 py-3 text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+                        <td className="px-5 py-3 text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
                           {p.gatewayFee != null ? INR(p.gatewayFee) : "—"}
                         </td>
                         <td className="px-5 py-3">
@@ -439,7 +439,7 @@ export default function Revenue() {
                           </span>
                         </td>
                         <td className="px-5 py-3">
-                          <span className="font-mono text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                          <span className="font-mono text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
                             {p.razorpayPaymentId || "—"}
                           </span>
                         </td>
@@ -455,33 +455,33 @@ export default function Revenue() {
         {/* ── Breakeven Notice ─────────────────────────────────── */}
         {!loading && s && (
           <div className="rounded-2xl p-5 grid grid-cols-1 md:grid-cols-3 gap-4"
-               style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+               style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
             <div>
-              <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.28)" }}>
+              <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "hsl(var(--muted-foreground))" }}>
                 Breakeven @ Pro ₹199
               </div>
-              <div className="text-2xl font-bold" style={{ color: "#0077B6" }}>
+              <div className="text-2xl font-bold" style={{ color: "#FF914D" }}>
                 {Math.ceil(s.monthlyCostINR / 199)} paid users
               </div>
-              <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>needed every month</div>
+              <div className="text-xs mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>needed every month</div>
             </div>
             <div>
-              <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.28)" }}>
+              <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "hsl(var(--muted-foreground))" }}>
                 Current Paid Users
               </div>
               <div className="text-2xl font-bold" style={{ color: s.paidUsers >= Math.ceil(s.monthlyCostINR / 199) ? "#34d399" : "#f87171" }}>
                 {s.paidUsers}
               </div>
-              <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>
+              <div className="text-xs mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>
                 {s.paidUsers >= Math.ceil(s.monthlyCostINR / 199) ? "✅ Above breakeven!" : `Need ${Math.ceil(s.monthlyCostINR / 199) - s.paidUsers} more`}
               </div>
             </div>
             <div>
-              <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.28)" }}>
+              <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "hsl(var(--muted-foreground))" }}>
                 Conversion Rate
               </div>
               <div className="text-2xl font-bold" style={{ color: "#F59E0B" }}>{s.conversionRate}%</div>
-              <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>Free → Paid conversion</div>
+              <div className="text-xs mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>Free → Paid conversion</div>
             </div>
           </div>
         )}

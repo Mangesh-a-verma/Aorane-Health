@@ -136,14 +136,14 @@ export default function UpcomingFeatures() {
         className="flex items-start justify-between"
       >
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center"
               style={{ background: "linear-gradient(135deg, #7C3AED, #EC4899)" }}>
               <Rocket size={16} className="text-white" />
             </div>
             Upcoming Features
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <p className="text-sm mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>
             Product roadmap — features in pipeline for Aorane platform
           </p>
         </div>
@@ -168,14 +168,14 @@ export default function UpcomingFeatures() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.07 }}
             className="rounded-2xl p-4"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+            style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}
           >
             <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3"
               style={{ background: s.color + "18" }}>
               <s.icon size={15} style={{ color: s.color }} />
             </div>
-            <div className="text-2xl font-bold text-white">{s.value}</div>
-            <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>{s.label}</div>
+            <div className="text-2xl font-bold text-foreground">{s.value}</div>
+            <div className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>{s.label}</div>
           </motion.div>
         ))}
       </div>
@@ -188,7 +188,7 @@ export default function UpcomingFeatures() {
       ].map((group) => (
         <div key={group.label} className="space-y-4">
           <h2 className="text-sm font-semibold tracking-widest uppercase"
-            style={{ color: "rgba(255,255,255,0.3)" }}>
+            style={{ color: "hsl(var(--muted-foreground))" }}>
             {group.label}
           </h2>
           <div className="grid md:grid-cols-2 gap-4">
@@ -201,7 +201,7 @@ export default function UpcomingFeatures() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.08 }}
                   className="rounded-2xl p-5 space-y-4"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                  style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -210,7 +210,7 @@ export default function UpcomingFeatures() {
                         <f.icon size={18} style={{ color: f.color }} />
                       </div>
                       <div>
-                        <h3 className="text-sm font-bold text-white">{f.title}</h3>
+                        <h3 className="text-sm font-bold text-foreground">{f.title}</h3>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <div className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
                           <span className="text-[10px] font-semibold" style={{ color: sc.color }}>
@@ -225,7 +225,7 @@ export default function UpcomingFeatures() {
                     </div>
                   </div>
 
-                  <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
+                  <p className="text-xs leading-relaxed" style={{ color: "hsl(var(--muted-foreground))" }}>
                     {f.description}
                   </p>
 
@@ -233,14 +233,14 @@ export default function UpcomingFeatures() {
                     {f.highlights.map((h) => (
                       <div key={h} className="flex items-start gap-2">
                         <CheckCircle2 size={11} className="shrink-0 mt-0.5" style={{ color: f.color }} />
-                        <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.5)" }}>{h}</span>
+                        <span className="text-[11px]" style={{ color: "hsl(var(--muted-foreground))" }}>{h}</span>
                       </div>
                     ))}
                   </div>
 
                   <div className="flex items-center justify-between pt-2"
-                    style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                    <div className="flex items-center gap-1.5 text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+                    style={{ borderTop: "1px solid hsl(var(--border))" }}>
+                    <div className="flex items-center gap-1.5 text-[11px]" style={{ color: "hsl(var(--muted-foreground))" }}>
                       <Calendar size={11} />
                       ETA: {f.eta}
                     </div>
@@ -279,9 +279,9 @@ export default function UpcomingFeatures() {
                 <m.icon size={14} style={{ color: "#25D366" }} />
               </div>
               <div>
-                <div className="text-sm font-bold text-white">{m.value}</div>
-                <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>{m.label}</div>
-                <div className="text-[9px]" style={{ color: "rgba(255,255,255,0.25)" }}>{m.sub}</div>
+                <div className="text-sm font-bold text-foreground">{m.value}</div>
+                <div className="text-[10px]" style={{ color: "hsl(var(--muted-foreground))" }}>{m.label}</div>
+                <div className="text-[9px]" style={{ color: "hsl(var(--muted-foreground))" }}>{m.sub}</div>
               </div>
             </div>
           ))}
