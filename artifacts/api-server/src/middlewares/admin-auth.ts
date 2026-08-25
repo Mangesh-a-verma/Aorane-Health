@@ -7,6 +7,20 @@ export interface AdminRequest extends Request {
   adminRole?: string;
 }
 
+// Two-tier role model: "admin" (default for every existing row) can manage
+// day-to-day content/support data; "super_admin" is required for actions
+// that affect money, platform-wide config, or another org's/user's data
+// irreversibly. There is no self-service way to become super_admin — an
+// existing super_admin must promote via PATCH /admin/admin-users/:id/role,
+// or the first one is set directly in the database.
+export function requireSuperAdmin(req: AdminRequest, res: Response, next: NextFunction): void {
+  if (req.adminRole !== "super_admin") {
+    res.status(403).json({ error: "This action requires super admin access" });
+    return;
+  }
+  next();
+}
+
 export async function requireAdmin(req: AdminRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
