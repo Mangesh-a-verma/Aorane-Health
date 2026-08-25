@@ -8,10 +8,10 @@ import {
 } from "lucide-react";
 
 const FEATURES = [
-  { icon: Users,     color: "#FF914D", label: "12K+ Active Users", sub: "Across India" },
-  { icon: Brain,     color: "#6366F1", label: "AI-powered",        sub: "Health Intelligence" },
-  { icon: Droplet,   color: "#DC2626", label: "Blood Emergency",   sub: "Real-time alerts" },
-  { icon: BarChart3, color: "#00BF63", label: "Revenue Analytics", sub: "Live dashboard" },
+  { icon: Users,     color: "var(--chart-1)",           label: "12K+ Active Users", sub: "Across India" },
+  { icon: Brain,     color: "var(--chart-4)",           label: "AI-powered",        sub: "Health Intelligence" },
+  { icon: Droplet,   color: "hsl(var(--destructive))",  label: "Blood Emergency",   sub: "Real-time alerts" },
+  { icon: BarChart3, color: "var(--chart-3)",           label: "Revenue Analytics", sub: "Live dashboard" },
 ];
 
 export default function Login() {
@@ -48,37 +48,40 @@ export default function Login() {
   return (
     <div className="min-h-screen flex bg-background text-foreground">
 
-      {/* ── Left brand panel (fixed dark navy — on-brand regardless of theme) ── */}
-      <div className="hidden lg:flex flex-col justify-between w-[54%] p-14 relative overflow-hidden"
-           style={{
-             background: "linear-gradient(150deg, #050A30 0%, #0a1442 48%, #040817 100%)",
-             borderRight: "1px solid rgba(255,255,255,0.05)",
-           }}>
+      {/* ── Left brand panel ──────────────────────────────────────────────
+          Sits on the SAME neumorphic surface as the sign-in side. The old
+          build split the screen into a dark navy half and a light half,
+          which read as two different products bolted together; the brand is
+          now carried by the logo and warm orange/green washes instead of by
+          a slab of contrasting colour. */}
+      <div className="hidden lg:flex flex-col justify-between w-[54%] p-14 relative overflow-hidden border-r border-border">
 
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/4 left-1/3 w-72 h-72 rounded-full"
-               style={{ background: "radial-gradient(circle, rgba(255,145,77,0.09) 0%, transparent 70%)" }} />
-          <div className="absolute bottom-1/3 right-1/4 w-56 h-56 rounded-full"
-               style={{ background: "radial-gradient(circle, rgba(0,191,99,0.07) 0%, transparent 70%)" }} />
+          <div className="absolute top-[18%] left-[24%] w-[26rem] h-[26rem] rounded-full"
+               style={{ background: "radial-gradient(circle, color-mix(in oklab, var(--brand-orange) 20%, transparent) 0%, transparent 68%)" }} />
+          <div className="absolute bottom-[16%] right-[16%] w-80 h-80 rounded-full"
+               style={{ background: "radial-gradient(circle, color-mix(in oklab, var(--brand-green) 16%, transparent) 0%, transparent 70%)" }} />
         </div>
 
-        {/* Logo */}
+        {/* Logo — brand mark + live text wordmark, so it stays legible in both
+            themes (the full-lockup PNG's navy wordmark disappears on dark). */}
         <div className="relative flex items-center gap-3">
-          <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" style={{ height: 48, width: "auto", objectFit: "contain" }} />
-          <div className="text-[9px] font-mono tracking-[0.3em]" style={{ color: "rgba(255,255,255,0.25)" }}>
-            ADMIN CONSOLE
+          <img src={import.meta.env.BASE_URL + 'icon.png'} alt="Aorane" style={{ height: 40, width: "auto", objectFit: "contain" }} />
+          <div className="flex flex-col leading-none">
+            <span className="text-lg font-extrabold tracking-tight text-foreground">AORANE</span>
+            <span className="text-[9px] font-mono tracking-[0.28em] text-muted-foreground mt-1.5">ADMIN CONSOLE</span>
           </div>
         </div>
 
         {/* Hero text */}
         <div className="relative">
-          <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-4" style={{ color: "var(--brand-green)" }}>
+          <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-4" style={{ color: "var(--chart-3)" }}>
             Platform Intelligence
           </div>
-          <h2 className="text-4xl font-bold leading-tight mb-3" style={{ color: "#eef2f8", letterSpacing: "-0.02em" }}>
+          <h2 className="text-[2.6rem] font-bold leading-[1.12] mb-4 tracking-tight text-foreground">
             India's Premium<br />
             <span style={{
-              background: "linear-gradient(135deg, var(--brand-orange), var(--brand-green))",
+              background: "linear-gradient(120deg, var(--chart-1), var(--chart-3))",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
@@ -86,22 +89,20 @@ export default function Login() {
               Health-Tech Platform
             </span>
           </h2>
-          <p className="text-sm leading-relaxed mb-8" style={{ color: "rgba(255,255,255,0.42)", maxWidth: "380px" }}>
+          <p className="text-sm leading-relaxed mb-9 text-muted-foreground max-w-[380px]">
             Real-time control over users, revenue, AI models, and emergency health operations — all in one command center.
           </p>
 
           <div className="grid grid-cols-2 gap-3">
             {FEATURES.map(f => (
-              <div key={f.label}
-                   className="flex items-center gap-3 p-3.5 rounded-2xl"
-                   style={{ background: "linear-gradient(145deg,#0e1a2e,#0a1524)", boxShadow: "5px 5px 12px rgba(0,0,0,0.4), -4px -4px 10px rgba(255,255,255,0.035)" }}>
+              <div key={f.label} className="flex items-center gap-3 p-3.5 rounded-2xl neu-sm">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                     style={{ background: `${f.color}22` }}>
+                     style={{ background: `color-mix(in oklab, ${f.color} 16%, transparent)` }}>
                   <f.icon size={15} style={{ color: f.color }} />
                 </div>
-                <div>
-                  <div className="text-xs font-semibold" style={{ color: "#dbe3f0" }}>{f.label}</div>
-                  <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.32)" }}>{f.sub}</div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-foreground truncate">{f.label}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">{f.sub}</div>
                 </div>
               </div>
             ))}
@@ -109,9 +110,9 @@ export default function Login() {
         </div>
 
         {/* Footer */}
-        <div className="relative flex items-center gap-4 text-[10px] font-mono" style={{ color: "rgba(255,255,255,0.24)" }}>
+        <div className="relative flex items-center gap-4 text-[10px] font-mono text-muted-foreground">
           <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--brand-green)" }} />
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--chart-3)" }} />
             All Systems Operational
           </div>
           <span>·</span>
@@ -131,8 +132,9 @@ export default function Login() {
 
         {/* Mobile logo */}
         <div className="lg:hidden absolute top-8 left-1/2 -translate-x-1/2 text-center">
-          <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" style={{ height: 44, width: "auto", objectFit: "contain", margin: "0 auto 6px" }} />
-          <div className="text-xs text-muted-foreground">Admin Console</div>
+          <img src={import.meta.env.BASE_URL + 'icon.png'} alt="Aorane" style={{ height: 40, width: "auto", objectFit: "contain", margin: "0 auto 8px" }} />
+          <div className="text-base font-extrabold tracking-tight text-foreground leading-none">AORANE</div>
+          <div className="text-[10px] font-mono tracking-[0.24em] text-muted-foreground mt-1.5">ADMIN CONSOLE</div>
         </div>
 
         <div className="relative w-full max-w-sm neu-lg page-enter rounded-[28px] p-8 sm:p-10">
@@ -216,7 +218,7 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="flex items-center justify-center gap-3 mt-6 text-[10px] font-mono text-muted-foreground/70">
+          <div className="flex items-center justify-center gap-2.5 mt-6 text-[10px] font-mono text-muted-foreground/70 whitespace-nowrap">
             <span>256-bit TLS</span>
             <span>·</span>
             <span>DPDP Compliant</span>

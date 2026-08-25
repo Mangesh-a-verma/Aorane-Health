@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
+import { useChartColors } from "@/lib/chart-colors";
 import { api, apiBase } from "@/lib/api";
 import {
   IndianRupee, Users, TrendingUp, TrendingDown, CreditCard,
@@ -21,11 +22,9 @@ type RevData = {
   recentPayments: Array<{ id: string; userId: string | null; plan: string; amount: number; currency: string; status: string; razorpayPaymentId: string | null; gatewayFee: number | null; createdAt: string }>;
 };
 
-const PLAN_COLORS: Record<string, string> = {
-  free: "#4B5563", pro: "#FF914D", max: "#F59E0B", family: "#8B5CF6",
-};
 const STATUS_COLOR: Record<string, string> = {
-  success: "#10B981", failed: "#EF4444", pending: "#F59E0B", refunded: "#6B7280",
+  success: "var(--chart-3)", failed: "hsl(var(--destructive))",
+  pending: "var(--chart-5)", refunded: "hsl(var(--muted-foreground))",
 };
 const STATUS_ICON: Record<string, React.ElementType> = {
   success: CheckCircle2, failed: XCircle, pending: Clock, refunded: AlertCircle,
@@ -41,9 +40,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       <div className="font-mono mb-1" style={{ color: "hsl(var(--muted-foreground))", fontSize: "10px" }}>{label}</div>
       {payload.map((p: any) => (
         <div key={p.name} className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ background: p.color || p.fill || "#FF914D" }} />
+          <div className="w-2 h-2 rounded-full" style={{ background: p.color || p.fill || "hsl(var(--muted-foreground))" }} />
           <span style={{ color: "hsl(var(--muted-foreground))" }}>{p.name}:</span>
-          <span className="font-semibold" style={{ color: p.color || "#FF914D" }}>
+          <span className="font-semibold" style={{ color: p.color || "hsl(var(--foreground))" }}>
             {p.name?.toLowerCase().includes("user") ? p.value : `₹${Number(p.value).toLocaleString("en-IN")}`}
           </span>
         </div>
@@ -86,6 +85,7 @@ function SummaryCard({
 type RzpStatus = { ok: boolean; mode?: string; maskedKey?: string; message?: string; razorpayError?: string; networkError?: string; status?: number };
 
 export default function Revenue() {
+  const C = useChartColors();
   const [data, setData] = useState<RevData | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -114,14 +114,14 @@ export default function Revenue() {
   const pieData = data?.planBreakdown.filter(p => p.users > 0).map(p => ({
     name: p.plan.charAt(0).toUpperCase() + p.plan.slice(1),
     value: p.users,
-    color: PLAN_COLORS[p.plan] || "#4B5563",
+    color: C.plan[p.plan] || C.neutral,
   })) ?? [];
 
   const barData = data?.planBreakdown.filter(p => p.plan !== "free").map(p => ({
     plan: p.plan.charAt(0).toUpperCase() + p.plan.slice(1),
     "Expected MRR": p.expectedMRR,
     "Actual Revenue": p.actualRevenue,
-    color: PLAN_COLORS[p.plan],
+    color: C.plan[p.plan],
   })) ?? [];
 
   return (
@@ -131,7 +131,7 @@ export default function Revenue() {
         {/* Header */}
         <div className="flex items-end justify-between">
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-1.5" style={{ color: "#FF914D" }}>
+            <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-1.5" style={{ color: C.series[0] }}>
               Financial Intelligence
             </div>
             <h1 className="text-3xl font-bold tracking-tight" style={{ color: "hsl(var(--foreground))" }}>Revenue & Business</h1>
@@ -178,16 +178,16 @@ export default function Revenue() {
 
         {/* ── Summary Cards ──────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <SummaryCard label="Total Revenue" icon={IndianRupee} color="#10B981"
+          <SummaryCard label="Total Revenue" icon={IndianRupee} color={C.series[2]}
             value={loading ? "..." : INR(s?.totalRevenue ?? 0)}
             sub="All-time collected" up />
-          <SummaryCard label="Expected MRR" icon={TrendingUp} color="#FF914D"
+          <SummaryCard label="Expected MRR" icon={TrendingUp} color={C.series[0]}
             value={loading ? "..." : INR(s?.expectedMRR ?? 0)}
             sub="If all users pay" up />
-          <SummaryCard label="Paid Users" icon={CreditCard} color="#F59E0B"
+          <SummaryCard label="Paid Users" icon={CreditCard} color={C.series[4]}
             value={loading ? "..." : (s?.paidUsers ?? 0).toLocaleString("en-IN")}
             sub={`${s?.conversionRate ?? "0"}% conversion`} up />
-          <SummaryCard label="Free Users" icon={Users} color="#8B5CF6"
+          <SummaryCard label="Free Users" icon={Users} color={C.series[3]}
             value={loading ? "..." : (s?.freeUsers ?? 0).toLocaleString("en-IN")}
             sub="Not yet paid" />
         </div>
@@ -249,7 +249,7 @@ export default function Revenue() {
                   <XAxis dataKey="plan" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="Expected MRR" fill="#FF914D20" stroke="#FF914D" strokeWidth={1} radius={[4,4,0,0]} />
+                  <Bar dataKey="Expected MRR" fill="var(--chart-1)20" stroke={C.series[0]} strokeWidth={1} radius={[4,4,0,0]} />
                   <Bar dataKey="Actual Revenue" radius={[4,4,0,0]}>
                     {barData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Bar>
@@ -333,8 +333,8 @@ export default function Revenue() {
                       style={{ borderBottom: "1px solid hsl(var(--border))" }}>
                     <td className="px-5 py-3">
                       <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold capitalize"
-                            style={{ background: `${PLAN_COLORS[p.plan] || "#4B5563"}18`, color: PLAN_COLORS[p.plan] || "#4B5563" }}>
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: PLAN_COLORS[p.plan] }} />
+                            style={{ background: `${C.plan[p.plan] || C.neutral}18`, color: C.plan[p.plan] || C.neutral }}>
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: C.plan[p.plan] }} />
                         {p.plan}
                       </span>
                     </td>
@@ -342,10 +342,10 @@ export default function Revenue() {
                     <td className="px-5 py-3" style={{ color: "hsl(var(--muted-foreground))" }}>
                       {p.monthlyRate > 0 ? INR(p.monthlyRate) + "/mo" : "Free"}
                     </td>
-                    <td className="px-5 py-3 font-semibold" style={{ color: p.monthlyRate > 0 ? "#FF914D" : "hsl(var(--muted-foreground))" }}>
+                    <td className="px-5 py-3 font-semibold" style={{ color: p.monthlyRate > 0 ? C.series[0] : "hsl(var(--muted-foreground))" }}>
                       {p.expectedMRR > 0 ? INR(p.expectedMRR) : "—"}
                     </td>
-                    <td className="px-5 py-3 font-semibold" style={{ color: p.actualRevenue > 0 ? "#10B981" : "hsl(var(--muted-foreground))" }}>
+                    <td className="px-5 py-3 font-semibold" style={{ color: p.actualRevenue > 0 ? C.series[2] : "hsl(var(--muted-foreground))" }}>
                       {p.actualRevenue > 0 ? INR(p.actualRevenue) : "—"}
                     </td>
                     <td className="px-5 py-3" style={{ color: "hsl(var(--muted-foreground))" }}>{p.transactions}</td>
@@ -357,8 +357,8 @@ export default function Revenue() {
                     <td className="px-5 py-3 font-bold text-xs font-mono uppercase tracking-widest" style={{ color: "hsl(var(--muted-foreground))" }}>TOTAL</td>
                     <td className="px-5 py-3 font-bold" style={{ color: "hsl(var(--foreground))" }}>{s.totalUsers.toLocaleString("en-IN")}</td>
                     <td className="px-5 py-3" />
-                    <td className="px-5 py-3 font-bold" style={{ color: "#FF914D" }}>{INR(s.expectedMRR)}</td>
-                    <td className="px-5 py-3 font-bold" style={{ color: "#10B981" }}>{INR(s.totalRevenue)}</td>
+                    <td className="px-5 py-3 font-bold" style={{ color: C.series[0] }}>{INR(s.expectedMRR)}</td>
+                    <td className="px-5 py-3 font-bold" style={{ color: C.series[2] }}>{INR(s.totalRevenue)}</td>
                     <td className="px-5 py-3 font-bold" style={{ color: "hsl(var(--foreground))" }}>
                       {data?.recentPayments?.length ?? 0}
                     </td>
@@ -374,7 +374,7 @@ export default function Revenue() {
           <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
             <div>
               <div className="flex items-center gap-2">
-                <Receipt size={15} style={{ color: "#FF914D" }} />
+                <Receipt size={15} style={{ color: C.series[0] }} />
                 <span className="font-semibold text-sm" style={{ color: "hsl(var(--foreground))" }}>Payment Transactions</span>
               </div>
               <div className="text-xs mt-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>
@@ -382,7 +382,7 @@ export default function Revenue() {
               </div>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs"
-                 style={{ background: "rgba(255,145,77,0.1)", border: "1px solid rgba(255,145,77,0.18)", color: "#FF914D" }}>
+                 style={{ background: "rgba(255,145,77,0.1)", border: "1px solid rgba(255,145,77,0.18)", color: C.series[0] }}>
               <Wallet size={11} />
               Razorpay
             </div>
@@ -424,7 +424,7 @@ export default function Revenue() {
                         </td>
                         <td className="px-5 py-3">
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold capitalize"
-                                style={{ background: `${PLAN_COLORS[p.plan] || "#4B5563"}18`, color: PLAN_COLORS[p.plan] || "#4B5563" }}>
+                                style={{ background: `${C.plan[p.plan] || C.neutral}18`, color: C.plan[p.plan] || C.neutral }}>
                             {p.plan}
                           </span>
                         </td>
@@ -460,7 +460,7 @@ export default function Revenue() {
               <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "hsl(var(--muted-foreground))" }}>
                 Breakeven @ Pro ₹199
               </div>
-              <div className="text-2xl font-bold" style={{ color: "#FF914D" }}>
+              <div className="text-2xl font-bold" style={{ color: C.series[0] }}>
                 {Math.ceil(s.monthlyCostINR / 199)} paid users
               </div>
               <div className="text-xs mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>needed every month</div>
@@ -480,7 +480,7 @@ export default function Revenue() {
               <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "hsl(var(--muted-foreground))" }}>
                 Conversion Rate
               </div>
-              <div className="text-2xl font-bold" style={{ color: "#F59E0B" }}>{s.conversionRate}%</div>
+              <div className="text-2xl font-bold" style={{ color: C.series[4] }}>{s.conversionRate}%</div>
               <div className="text-xs mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>Free → Paid conversion</div>
             </div>
           </div>

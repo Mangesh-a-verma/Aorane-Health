@@ -33,7 +33,7 @@ function formFromPlan(plan: PlanPricingItem): Form {
     yearlyPrice: plan.yearlyPrice ?? "",
     maxSeats: plan.maxSeats?.toString() ?? "",
     badgeText: plan.badgeText ?? "",
-    badgeColor: plan.badgeColor ?? "#FF914D",
+    badgeColor: plan.badgeColor ?? "var(--chart-1)",
     features: [...(Array.isArray(plan.features) ? plan.features : [])],
     isActive: plan.isActive,
     discountPercent: plan.discountPercent?.toString() ?? "",
@@ -54,7 +54,7 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
   const saved = formFromPlan(plan);
   const isDirty = JSON.stringify(form) !== JSON.stringify(saved);
 
-  const color = form.badgeColor || "#FF914D";
+  const color = form.badgeColor || "var(--chart-1)";
   const TypeIcon = TYPE_ICONS[plan.type] ?? Smartphone;
   const monthly = parseFloat(form.monthlyPrice) || 0;
   const yearly = parseFloat(form.yearlyPrice) || 0;
@@ -166,7 +166,7 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
               value={form.yearlyPrice}
               onChange={e => setForm(p => ({ ...p, yearlyPrice: e.target.value }))}
               className="text-2xl font-bold bg-transparent outline-none w-full"
-              style={{ color: "#F59E0B" }}
+              style={{ color: "var(--chart-5)" }}
               placeholder="—"
             />
             {discount > 0 ? (
@@ -238,7 +238,7 @@ function PlanCard({ plan, onSave }: { plan: PlanPricingItem; onSave: (p: PlanPri
                 <input type="color" value={form.badgeColor}
                   onChange={e => setForm(p => ({ ...p, badgeColor: e.target.value }))}
                   className="w-7 h-7 rounded cursor-pointer border-0 bg-transparent" />
-                {["#FF914D","#10B981","#8B5CF6","#F59E0B","#EF4444","#0747A6"].map(c => (
+                {["var(--chart-1)","var(--chart-3)","var(--chart-4)","var(--chart-5)","hsl(var(--destructive))","var(--chart-2)"].map(c => (
                   <button key={c} onClick={() => setForm(p => ({ ...p, badgeColor: c }))}
                     className="w-5 h-5 rounded-full border-2 transition-transform hover:scale-110"
                     style={{ background: c, borderColor: form.badgeColor === c ? "#fff" : "transparent" }} />
@@ -388,7 +388,7 @@ export default function PlanPricing() {
         {/* Header */}
         <div className="flex items-end justify-between flex-wrap gap-3">
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-1.5" style={{ color: "#FF914D" }}>
+            <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-1.5" style={{ color: "var(--chart-1)" }}>
               Dynamic Pricing Engine
             </div>
             <h1 className="text-3xl font-bold tracking-tight" style={{ color: "hsl(var(--foreground))" }}>Plan Pricing</h1>
@@ -446,7 +446,7 @@ export default function PlanPricing() {
         {/* Info banner */}
         <div className="rounded-2xl p-4 flex items-start gap-3"
              style={{ background: "rgba(255,145,77,0.07)", border: "1px solid rgba(255,145,77,0.15)" }}>
-          <Sparkles size={16} style={{ color: "#FF914D", flexShrink: 0, marginTop: 2 }} />
+          <Sparkles size={16} style={{ color: "var(--chart-1)", flexShrink: 0, marginTop: 2 }} />
           <div className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
             <span className="text-muted-foreground font-semibold">How it works:</span>{" "}
             Type the new amount directly in the price field on each card below — a <span className="text-muted-foreground">Save Changes</span> button will appear. Click it — Mobile App, Landing Page, and Business Portal all update instantly.
@@ -459,7 +459,7 @@ export default function PlanPricing() {
             <button key={key} onClick={() => setActiveType(key)}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
               style={{
-                background: activeType === key ? "#FF914D" : "hsl(var(--border))",
+                background: activeType === key ? "var(--chart-1)" : "hsl(var(--border))",
                 color: activeType === key ? "white" : "hsl(var(--muted-foreground))",
                 border: activeType === key ? "none" : "1px solid hsl(var(--border))",
               }}>
@@ -483,7 +483,7 @@ export default function PlanPricing() {
             {individualPlans.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <Smartphone size={14} style={{ color: "#FF914D" }} />
+                  <Smartphone size={14} style={{ color: "var(--chart-1)" }} />
                   <span className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>Individual / Mobile App Plans</span>
                   <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>— Mobile app upgrade screen pe dikhega</span>
                 </div>
@@ -495,7 +495,7 @@ export default function PlanPricing() {
             {orgPlans.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <Building2 size={14} style={{ color: "#8B5CF6" }} />
+                  <Building2 size={14} style={{ color: "var(--chart-4)" }} />
                   <span className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>Organization Plans</span>
                   <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>— Landing page pe dikhega</span>
                 </div>
@@ -507,7 +507,7 @@ export default function PlanPricing() {
             {orgSeatPlans.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <Users size={14} style={{ color: "#10B981" }} />
+                  <Users size={14} style={{ color: "var(--chart-3)" }} />
                   <span className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>Seat-Based Plans</span>
                   <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>— Business portal billing page pe dikhega · discount yahan set karo</span>
                 </div>
