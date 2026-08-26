@@ -25,7 +25,7 @@ const upcomingFeatures: FeatureCard[] = [
     status: "coming_soon",
     eta: "Q2 2026 (Next Month)",
     plan: "Pro / Max",
-    planColor: "#7C3AED",
+    planColor: "var(--chart-4)",
     highlights: [
       "Food logging via natural language (Hindi/English)",
       "Medicine & meal reminders — just like having a personal health companion",
@@ -42,14 +42,14 @@ const upcomingFeatures: FeatureCard[] = [
     status: "in_development",
     eta: "Q2 2026",
     plan: "Max",
-    planColor: "#F59E0B",
+    planColor: "var(--chart-5)",
     highlights: [
       "Pattern anomaly detection across all vitals",
       "Early warning system for BP/sugar irregularity",
       "Sleep quality correlation with health score",
       "Proactive push notifications with AI explanations",
     ],
-    color: "#EF4444",
+    color: "hsl(var(--destructive))",
   },
   {
     icon: Camera,
@@ -58,14 +58,14 @@ const upcomingFeatures: FeatureCard[] = [
     status: "in_development",
     eta: "Q2 2026",
     plan: "All Plans",
-    planColor: "#10B981",
+    planColor: "var(--chart-3)",
     highlights: [
       "Barcode scan via mobile camera",
       "Auto-fill calories, protein, carbs, fat",
       "FSSAI India database integration",
       "Allergen detection and warnings",
     ],
-    color: "#F59E0B",
+    color: "var(--chart-5)",
   },
   {
     icon: Building2,
@@ -74,14 +74,14 @@ const upcomingFeatures: FeatureCard[] = [
     status: "planned",
     eta: "Q3 2026",
     plan: "Business / Enterprise",
-    planColor: "#0747A6",
+    planColor: "var(--chart-2)",
     highlights: [
       "Health score → insurance premium discount",
       "Real-time data sharing with insurer API",
       "Corporate group health plans",
       "Wellness challenge rewards",
     ],
-    color: "#0747A6",
+    color: "var(--chart-2)",
   },
   {
     icon: Brain,
@@ -90,7 +90,7 @@ const upcomingFeatures: FeatureCard[] = [
     status: "planned",
     eta: "Q3 2026",
     plan: "Pro / Max",
-    planColor: "#7C3AED",
+    planColor: "var(--chart-4)",
     highlights: [
       "Cycle phase-based diet recommendations",
       "PCOS / endometriosis risk flag",
@@ -106,7 +106,7 @@ const upcomingFeatures: FeatureCard[] = [
     status: "planned",
     eta: "Q4 2026",
     plan: "Max",
-    planColor: "#F59E0B",
+    planColor: "var(--chart-5)",
     highlights: [
       "Prakriti assessment questionnaire",
       "Dosha-specific food recommendations",
@@ -119,7 +119,7 @@ const upcomingFeatures: FeatureCard[] = [
 
 const statusConfig = {
   coming_soon: { label: "Coming Soon", color: "#25D366", bg: "rgba(37,211,102,0.1)", dot: "bg-green-400 animate-pulse" },
-  in_development: { label: "In Development", color: "#F59E0B", bg: "rgba(245,158,11,0.1)", dot: "bg-yellow-400 animate-pulse" },
+  in_development: { label: "In Development", color: "var(--chart-5)", bg: "rgba(245,158,11,0.1)", dot: "bg-yellow-400 animate-pulse" },
   planned: { label: "Planned", color: "#6B7280", bg: "rgba(107,114,128,0.1)", dot: "bg-gray-400" },
 };
 
@@ -158,9 +158,9 @@ export default function UpcomingFeatures() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { icon: Zap, label: "Coming Soon", value: comingSoon.length.toString(), color: "#25D366" },
-          { icon: Clock, label: "In Development", value: inDev.length.toString(), color: "#F59E0B" },
+          { icon: Clock, label: "In Development", value: inDev.length.toString(), color: "var(--chart-5)" },
           { icon: Calendar, label: "Planned", value: planned.length.toString(), color: "#6B7280" },
-          { icon: Star, label: "Total Pipeline", value: upcomingFeatures.length.toString(), color: "#7C3AED" },
+          { icon: Star, label: "Total Pipeline", value: upcomingFeatures.length.toString(), color: "var(--chart-4)" },
         ].map((s, i) => (
           <motion.div
             key={s.label}

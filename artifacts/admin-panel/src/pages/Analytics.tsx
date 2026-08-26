@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
+import { useChartColors } from "@/lib/chart-colors";
 import { api } from "@/lib/api";
 import { Users, CreditCard, TrendingUp, BarChart3, Download, Calendar } from "lucide-react";
 import {
@@ -38,9 +39,6 @@ function buildRadarData() {
   ];
 }
 
-const PLAN_COLORS: Record<string, string> = {
-  free: "#4B5563", pro: "#FF914D", max: "#F59E0B", family: "#8B5CF6",
-};
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -54,9 +52,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       <div className="font-mono mb-1" style={{ color: "hsl(var(--muted-foreground))", fontSize: "10px" }}>{label}</div>
       {payload.map((p: any) => (
         <div key={p.dataKey || p.name} className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ background: p.color || p.fill || "#FF914D" }} />
+          <div className="w-2 h-2 rounded-full" style={{ background: p.color || p.fill || "hsl(var(--muted-foreground))" }} />
           <span style={{ color: "hsl(var(--muted-foreground))" }}>{p.name || p.dataKey}:</span>
-          <span className="font-semibold" style={{ color: p.color || "#FF914D" }}>
+          <span className="font-semibold" style={{ color: p.color || "hsl(var(--foreground))" }}>
             {typeof p.value === "number"
               ? (p.dataKey?.includes("revenue") || p.dataKey?.includes("costs"))
                 ? `₹${p.value.toLocaleString("en-IN")}`
@@ -90,6 +88,7 @@ function ChartCard({ title, subtitle, children }: {
 }
 
 export default function Analytics() {
+  const C = useChartColors();
   const [data, setData]     = useState<Analytics | null>(null);
   const [aiUsage, setAiUsage] = useState<{ today: Array<{ feature: string; calls: number; uniqueUsers: number }>; last7Days: Array<{ feature: string; calls: number }> } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,7 +109,7 @@ export default function Analytics() {
     ? data.planBreakdown.map(p => ({
         name:  p.plan.charAt(0).toUpperCase() + p.plan.slice(1),
         value: p.count,
-        color: PLAN_COLORS[p.plan] || "#4B5563",
+        color: C.plan[p.plan] || C.neutral,
       }))
     : [];
 
@@ -118,7 +117,7 @@ export default function Analytics() {
     ? data.planBreakdown.map(p => ({
         plan:  p.plan.charAt(0).toUpperCase() + p.plan.slice(1),
         users: p.count,
-        color: PLAN_COLORS[p.plan] || "#4B5563",
+        color: C.plan[p.plan] || C.neutral,
       }))
     : [];
 
@@ -134,7 +133,7 @@ export default function Analytics() {
         <div className="flex items-end justify-between">
           <div>
             <div className="text-[10px] font-mono uppercase tracking-[0.22em] mb-1.5"
-                 style={{ color: "#FF914D" }}>
+                 style={{ color: C.series[0] }}>
               System Intelligence
             </div>
             <h1 className="text-3xl font-bold tracking-tight" style={{ color: "hsl(var(--foreground))" }}>
@@ -189,7 +188,7 @@ export default function Analytics() {
                 a.click();
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95"
-              style={{ background: "linear-gradient(135deg,#FF914D,#00BF63)", color: "white" }}
+              style={{ background: "linear-gradient(135deg,var(--chart-1),var(--chart-3))", color: "white" }}
             >
               <Download size={12} />
               Export Report
@@ -207,7 +206,7 @@ export default function Analytics() {
         {/* ── KPI Strip ────────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: "Active Users",    value: data ? data.totalUsers.toLocaleString("en-IN") : "...",             icon: Users,       color: "#FF914D",  trend: "+14.2% vs last month" },
+            { label: "Active Users",    value: data ? data.totalUsers.toLocaleString("en-IN") : "...",             icon: Users,       color: C.series[0],  trend: "+14.2% vs last month" },
             { label: "MRR Growth",      value: data ? `₹${data.totalRevenue.toLocaleString("en-IN")}` : "...",     icon: TrendingUp,  color: "#fbbf24",  trend: "+8.1% organic" },
             { label: "Subscriptions",   value: data ? data.activeSubscriptions.toLocaleString("en-IN") : "...",    icon: CreditCard,  color: "#6bd8c9",  trend: "+5.3% vs last month" },
             { label: "Conversion Rate", value: loading ? "..." : `${convRate}%`,                                   icon: BarChart3,   color: "#a78bfa",  trend: "Free → Paid" },
@@ -252,12 +251,12 @@ export default function Analytics() {
                 <AreaChart data={revenueTrend} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#FF914D" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#FF914D" stopOpacity={0} />
+                      <stop offset="5%"  stopColor={C.series[0]} stopOpacity={0.4} />
+                      <stop offset="95%" stopColor={C.series[0]} stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="gCost" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#F59E0B" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
+                      <stop offset="5%"  stopColor={C.series[4]} stopOpacity={0.3} />
+                      <stop offset="95%" stopColor={C.series[4]} stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -267,9 +266,9 @@ export default function Analytics() {
                          axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
                   <Area type="monotone" dataKey="revenue" name="Revenue"
-                        stroke="#FF914D" strokeWidth={2} fill="url(#gRev)"  dot={false} />
+                        stroke={C.series[0]} strokeWidth={2} fill="url(#gRev)"  dot={false} />
                   <Area type="monotone" dataKey="costs"   name="Costs"
-                        stroke="#F59E0B" strokeWidth={2} fill="url(#gCost)" dot={false} />
+                        stroke={C.series[4]} strokeWidth={2} fill="url(#gCost)" dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -309,8 +308,8 @@ export default function Analytics() {
                 <PolarAngleAxis dataKey="feature"
                   tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
                 <Radar name="Usage %" dataKey="usage"
-                  stroke="#00BF63" strokeWidth={2}
-                  fill="#00BF63" fillOpacity={0.18} />
+                  stroke={C.series[2]} strokeWidth={2}
+                  fill={C.series[2]} fillOpacity={0.18} />
                 <Tooltip content={<CustomTooltip />} />
               </RadarChart>
             </ResponsiveContainer>
@@ -384,7 +383,7 @@ export default function Analytics() {
                 <YAxis type="category" dataKey="feature" width={140}
                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="calls" name="Calls today" fill="#FF914D" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="calls" name="Calls today" fill={C.series[0]} radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

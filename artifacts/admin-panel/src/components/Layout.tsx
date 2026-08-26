@@ -13,54 +13,73 @@ import {
 
 type NavItem = { path: string; icon: React.ElementType; label: string; color: string };
 
-const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+/* Regrouped by what an admin is actually trying to DO, not by which table the
+   data lives in — the old "Revenue" group held Analytics and Subscriptions
+   while "Content" held Feature Flags and Promo Codes, so related work was
+   split across sections. Every path is unchanged; only the grouping, order
+   and labels move, so no route or API call is affected.
+   Colour is assigned per GROUP from the validated chart tokens rather than
+   per item: 24 unrelated hues in one rail was the main source of the
+   "colours mismatch" read. */
+const NAV_GROUPS: { label: string; color: string; items: NavItem[] }[] = [
   {
-    label: "Core",
+    label: "Overview",
+    color: "var(--chart-1)",
     items: [
-      { path: "/dashboard",     icon: LayoutDashboard, label: "Dashboard",     color: "#FF914D" },
-      { path: "/users",         icon: Users,           label: "Users",         color: "#00BF63" },
-      { path: "/organizations", icon: Building2,       label: "Organizations", color: "#8B5CF6" },
+      { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "var(--chart-1)" },
+      { path: "/analytics", icon: BarChart3,       label: "Analytics", color: "var(--chart-1)" },
+    ],
+  },
+  {
+    label: "People",
+    color: "var(--chart-2)",
+    items: [
+      { path: "/users",         icon: Users,      label: "Users",         color: "var(--chart-2)" },
+      { path: "/organizations", icon: Building2,  label: "Organizations", color: "var(--chart-2)" },
+      { path: "/subscriptions", icon: CreditCard, label: "Subscriptions", color: "var(--chart-2)" },
     ],
   },
   {
     label: "Revenue",
+    color: "var(--chart-3)",
     items: [
-      { path: "/revenue",        icon: IndianRupee, label: "Revenue & Business", color: "#10B981" },
-      { path: "/plan-pricing",   icon: Sliders,     label: "Plan Pricing",       color: "#FF914D" },
-      { path: "/subscriptions",  icon: CreditCard,  label: "Subscriptions",      color: "#8B5CF6" },
-      { path: "/invoices",       icon: FileText,    label: "Business Invoices",  color: "#10B981" },
-      { path: "/custom-deals",   icon: Tag,         label: "Custom Deals",        color: "#F59E0B" },
-      { path: "/analytics",      icon: BarChart3,   label: "Analytics",          color: "#F59E0B" },
-      { path: "/platform-costs", icon: DollarSign,  label: "Platform Costs",     color: "#6B7280" },
+      { path: "/revenue",        icon: IndianRupee, label: "Revenue & Business", color: "var(--chart-3)" },
+      { path: "/plan-pricing",   icon: Sliders,     label: "Plan Pricing",       color: "var(--chart-3)" },
+      { path: "/invoices",       icon: FileText,    label: "Business Invoices",  color: "var(--chart-3)" },
+      { path: "/custom-deals",   icon: Tag,         label: "Custom Deals",       color: "var(--chart-3)" },
+      { path: "/promo-codes",    icon: Tag,         label: "Promo Codes",        color: "var(--chart-3)" },
+      { path: "/platform-costs", icon: DollarSign,  label: "Platform Costs",     color: "var(--chart-3)" },
     ],
   },
   {
-    label: "Content",
+    label: "Content & AI",
+    color: "var(--chart-4)",
     items: [
-      { path: "/ads",           icon: MonitorPlay,   label: "Ads Manager",   color: "#EC4899" },
-      { path: "/ai-config",     icon: Brain,         label: "AI Config",     color: "#6366F1" },
-      { path: "/branding",      icon: Paintbrush2,   label: "Branding",      color: "#8B5CF6" },
-      { path: "/feature-flags", icon: Flag,          label: "Feature Flags", color: "#F59E0B" },
-      { path: "/food-items",         icon: UtensilsCrossed, label: "Food Database",      color: "#10B981" },
-      { path: "/ai-food-discovery",  icon: Sparkles,        label: "AI Food Discovery", color: "#8B5CF6" },
-      { path: "/promo-codes",   icon: Tag,           label: "Promo Codes",   color: "#EF4444" },
-      { path: "/announcements", icon: Megaphone,     label: "Announcements", color: "#3B82F6" },
+      { path: "/food-items",        icon: UtensilsCrossed, label: "Food Database",     color: "var(--chart-4)" },
+      { path: "/ai-food-discovery", icon: Sparkles,        label: "AI Food Discovery", color: "var(--chart-4)" },
+      { path: "/ai-config",         icon: Brain,           label: "AI Config",         color: "var(--chart-4)" },
+      { path: "/ads",               icon: MonitorPlay,     label: "Ads Manager",       color: "var(--chart-4)" },
+      { path: "/announcements",     icon: Megaphone,       label: "Announcements",     color: "var(--chart-4)" },
+      { path: "/branding",          icon: Paintbrush2,     label: "Branding",          color: "var(--chart-4)" },
     ],
   },
   {
-    label: "Emergency",
+    label: "Operations",
+    color: "hsl(var(--destructive))",
     items: [
-      { path: "/blood-requests",   icon: Droplet,        label: "Blood Emergency",  color: "#DC2626" },
-      { path: "/support-tickets",  icon: MessageSquare,  label: "Support Tickets",  color: "#F59E0B" },
-      { path: "/enquiries",        icon: Inbox,          label: "Enquiries & Leads", color: "#8B5CF6" },
+      { path: "/blood-requests",  icon: Droplet,       label: "Blood Emergency",   color: "hsl(var(--destructive))" },
+      { path: "/support-tickets", icon: MessageSquare, label: "Support Tickets",   color: "hsl(var(--destructive))" },
+      { path: "/enquiries",       icon: Inbox,         label: "Enquiries & Leads", color: "hsl(var(--destructive))" },
     ],
   },
   {
     label: "System",
+    color: "var(--chart-6)",
     items: [
-      { path: "/languages",          icon: Languages,     label: "Languages",         color: "#7C3AED" },
-      { path: "/audit-logs",         icon: ClipboardList, label: "Audit Logs",        color: "#6B7280" },
-      { path: "/upcoming-features",  icon: Rocket,        label: "Upcoming Features", color: "#25D366" },
+      { path: "/feature-flags",     icon: Flag,          label: "Feature Flags",     color: "var(--chart-6)" },
+      { path: "/languages",         icon: Languages,     label: "Languages",         color: "var(--chart-6)" },
+      { path: "/audit-logs",        icon: ClipboardList, label: "Audit Logs",        color: "var(--chart-6)" },
+      { path: "/upcoming-features", icon: Rocket,        label: "Upcoming Features", color: "var(--chart-6)" },
     ],
   },
 ];
@@ -69,20 +88,19 @@ function NavLink({ path, icon: Icon, label, color }: NavItem) {
   const [isActive] = useRoute(path);
   return (
     <Link href={path}>
-      <div className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-200 group relative
-        ${isActive ? "text-white" : "text-white/40 hover:text-white/75"}`}
-        style={isActive ? { background: "rgba(255,255,255,0.07)", boxShadow: "inset 2px 2px 4px rgba(0,0,0,0.35), inset -1px -1px 3px rgba(255,255,255,0.04)" } : undefined}
+      <div
+        className={`flex items-center gap-3 pl-3 pr-2.5 py-2 rounded-xl cursor-pointer transition-all duration-200 relative
+          ${isActive
+            ? "neu-inset-sm text-foreground font-medium"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
       >
         {isActive && (
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full"
-               style={{ backgroundColor: color }} />
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
+                style={{ backgroundColor: color }} />
         )}
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200"
-             style={{ background: isActive ? "rgba(255,255,255,0.09)" : "transparent" }}>
-          <Icon size={14} style={{ color: isActive ? color : undefined }} />
-        </div>
-        <span className={`text-[13px] flex-1 ${isActive ? "font-medium" : "font-normal"}`}>{label}</span>
-        {isActive && <ChevronRight size={12} style={{ color }} className="opacity-50" />}
+        <Icon size={15} className="shrink-0" style={isActive ? { color } : undefined} />
+        <span className="text-[13px] flex-1 truncate">{label}</span>
+        {isActive && <ChevronRight size={12} style={{ color }} className="shrink-0 opacity-60" />}
       </div>
     </Link>
   );
@@ -207,23 +225,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-[224px] flex flex-col transition-transform duration-300
           ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:flex`}
-        style={{ background: "#050A30", borderRight: "1px solid rgba(255,255,255,0.05)" }}
+        style={{ background: "hsl(var(--sidebar))", borderRight: "1px solid hsl(var(--sidebar-border))" }}
       >
         {/* Logo */}
-        <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-          <div className="flex items-center gap-3">
+        <div className="px-5 py-4 border-b border-sidebar-border">
+          <div className="flex items-center gap-2.5">
+            {/* The full-lockup PNG bakes its wordmark in navy, which vanishes on
+                the dark surface. Pairing the brand MARK (orange/green, legible
+                on both) with a live text wordmark keeps it readable in either
+                theme without needing a second image asset. */}
             <Link href="/">
-              <a className="flex items-center cursor-pointer" aria-label="Admin home">
-                <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" style={{ height: 44, width: "auto", objectFit: "contain", background: "white", borderRadius: 8, padding: 4 }} />
+              <a className="flex items-center gap-2.5 cursor-pointer" aria-label="Admin home">
+                <img src={import.meta.env.BASE_URL + 'icon.png'} alt="Aorane"
+                     style={{ height: 30, width: "auto", objectFit: "contain" }} />
+                <span className="flex flex-col leading-none">
+                  <span className="text-[13.5px] font-extrabold tracking-tight text-foreground">AORANE</span>
+                  <span className="text-[8px] font-mono tracking-[0.2em] text-muted-foreground mt-1">SUPER ADMIN</span>
+                </span>
               </a>
             </Link>
-            <div>
-              <div className="text-[9px] font-mono tracking-[0.25em] mt-0.5"
-                   style={{ color: "rgba(255,255,255,0.45)" }}>
-                SUPER ADMIN
-              </div>
-            </div>
-            <button className="lg:hidden ml-auto" style={{ color: "rgba(255,255,255,0.4)" }}
+            <button className="lg:hidden ml-auto text-muted-foreground hover:text-foreground"
                     onClick={() => setOpen(false)}>
               <X size={16} />
             </button>
@@ -231,12 +252,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
-              <div className="px-3 mb-1.5">
-                <span className="text-[9px] font-mono font-semibold tracking-[0.22em] uppercase"
-                      style={{ color: "rgba(255,255,255,0.2)" }}>
+              <div className="flex items-center gap-2 px-3 mb-1.5">
+                <span className="w-1 h-1 rounded-full shrink-0" style={{ background: group.color }} />
+                <span className="text-[9px] font-mono font-semibold tracking-[0.2em] uppercase text-muted-foreground">
                   {group.label}
                 </span>
               </div>
@@ -248,15 +269,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Admin footer */}
-        <div className="px-3 pb-4 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-          <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl mb-2.5"
-               style={{ background: "rgba(255,255,255,0.04)" }}>
+        <div className="px-3 pb-4 pt-3 border-t border-sidebar-border">
+          <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl mb-2.5 neu-inset-sm">
             <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold bg-brand-gradient">
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-white text-xs font-semibold truncate">{admin?.fullName ?? "Admin"}</div>
-              <div className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.32)" }}>
+              <div className="text-xs font-semibold truncate text-foreground">{admin?.fullName ?? "Admin"}</div>
+              <div className="text-[10px] truncate text-muted-foreground">
                 {admin?.role ?? "Super Admin"}
               </div>
             </div>
@@ -278,7 +298,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <header
           className="flex items-center justify-between px-5 h-[60px] shrink-0 z-30 border-b border-border"
           style={{
-            background: dark ? "rgba(9,14,28,0.92)" : "rgba(255,255,255,0.95)",
+            background: "color-mix(in oklab, hsl(var(--background)) 88%, transparent)",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
           }}

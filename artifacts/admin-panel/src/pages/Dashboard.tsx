@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "wouter";
 import Layout from "@/components/Layout";
 import { api } from "@/lib/api";
+import { useChartColors } from "@/lib/chart-colors";
 import {
   Users, Building2, CreditCard, IndianRupee,
   Activity, Database, ShieldCheck, Zap, Brain, ArrowRight,
@@ -26,9 +27,6 @@ type Overview = {
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-const PLAN_COLORS: Record<string, string> = {
-  free: "#4B5563", pro: "#FF914D", max: "#F59E0B", family: "#8B5CF6",
-};
 
 function fmtDay(iso: string) {
   const d = new Date(iso);
@@ -54,24 +52,25 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 const SYSTEM_INFO = [
-  { label: "API Version",  value: "v2.0.0",       icon: Zap,         color: "#8B5CF6" },
-  { label: "API Status",   value: "Healthy",       icon: Activity,    color: "#00BF63" },
-  { label: "Database",     value: "PostgreSQL",    icon: Database,    color: "#FF914D" },
-  { label: "Auth System",  value: "JWT",           icon: ShieldCheck, color: "#F59E0B" },
+  { label: "API Version",  value: "v2.0.0",       icon: Zap,         color: "var(--chart-4)" },
+  { label: "API Status",   value: "Healthy",       icon: Activity,    color: "var(--chart-3)" },
+  { label: "Database",     value: "PostgreSQL",    icon: Database,    color: "var(--chart-1)" },
+  { label: "Auth System",  value: "JWT",           icon: ShieldCheck, color: "var(--chart-5)" },
 ];
 
 const QUICK_LINKS = [
-  { href: "/users",         label: "Manage Users",   color: "#FF914D" },
-  { href: "/analytics",     label: "Analytics",      color: "#8B5CF6" },
-  { href: "/ads",           label: "Ads Manager",    color: "#F59E0B" },
-  { href: "/feature-flags", label: "Feature Flags",  color: "#00BF63" },
-  { href: "/food-items",    label: "Food Database",  color: "#EF4444" },
-  { href: "/subscriptions", label: "Subscriptions",  color: "#6B7280" },
-  { href: "/promo-codes",   label: "Promo Codes",    color: "#EC4899" },
-  { href: "/audit-logs",    label: "Audit Logs",     color: "#0EA5E9" },
+  { href: "/users",         label: "Manage Users",   color: "var(--chart-1)" },
+  { href: "/analytics",     label: "Analytics",      color: "var(--chart-4)" },
+  { href: "/ads",           label: "Ads Manager",    color: "var(--chart-5)" },
+  { href: "/feature-flags", label: "Feature Flags",  color: "var(--chart-3)" },
+  { href: "/food-items",    label: "Food Database",  color: "hsl(var(--destructive))" },
+  { href: "/subscriptions", label: "Subscriptions",  color: "var(--chart-2)" },
+  { href: "/promo-codes",   label: "Promo Codes",    color: "var(--chart-6)" },
+  { href: "/audit-logs",    label: "Audit Logs",     color: "var(--chart-2)" },
 ];
 
 export default function Dashboard() {
+  const C = useChartColors();
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -84,7 +83,7 @@ export default function Dashboard() {
   const barData  = (data?.planBreakdown ?? []).map(p => ({
     plan: p.plan.charAt(0).toUpperCase() + p.plan.slice(1),
     users: p.count,
-    color: PLAN_COLORS[p.plan] || "#4B5563",
+    color: C.plan[p.plan] || C.neutral,
   }));
 
   const convRate = data && data.totalUsers > 0
@@ -120,7 +119,7 @@ export default function Dashboard() {
             <div>
               <div className="text-[10px] font-mono tracking-widest uppercase mb-1 text-muted-foreground">Platform Health</div>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "var(--brand-green)" }} />
+                <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: C.series[2] }} />
                 <span className="font-semibold text-sm text-foreground">All Systems Operational</span>
               </div>
               <div className="text-xs mt-1 text-muted-foreground">
@@ -129,8 +128,8 @@ export default function Dashboard() {
             </div>
             <div className="hidden md:flex items-center gap-4 text-xs">
               {["API", "DB", "Mobile", "Portal"].map(s => (
-                <div key={s} className="flex items-center gap-1.5" style={{ color: "var(--brand-green)" }}>
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--brand-green)" }} />
+                <div key={s} className="flex items-center gap-1.5" style={{ color: C.series[2] }}>
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: C.series[2] }} />
                   {s}
                 </div>
               ))}
@@ -149,7 +148,7 @@ export default function Dashboard() {
               <div>
                 <div className="flex items-center gap-2 mb-2.5">
                   <div className="w-[26px] h-[26px] rounded-lg flex items-center justify-center" style={{ background: "rgba(245,158,11,0.15)" }}>
-                    <IndianRupee size={13} style={{ color: "#F59E0B" }} />
+                    <IndianRupee size={13} style={{ color: C.series[4] }} />
                   </div>
                   <span className="font-mono text-[10px] font-bold tracking-[0.14em] uppercase text-muted-foreground">Total Revenue</span>
                 </div>
@@ -165,11 +164,11 @@ export default function Dashboard() {
                   <AreaChart data={areaData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="gHero" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#F59E0B" stopOpacity={0.28} />
-                        <stop offset="100%" stopColor="#F59E0B" stopOpacity={0} />
+                        <stop offset="0%" stopColor={C.series[4]} stopOpacity={0.28} />
+                        <stop offset="100%" stopColor={C.series[4]} stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <Area type="monotone" dataKey="revenue" stroke="#F59E0B" strokeWidth={2} fill="url(#gHero)" dot={false} />
+                    <Area type="monotone" dataKey="revenue" stroke={C.series[4]} strokeWidth={2} fill="url(#gHero)" dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               )}
@@ -216,8 +215,8 @@ export default function Dashboard() {
                 <div className="text-xs mt-0.5 text-muted-foreground">New registrations · last 7 days</div>
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: "var(--brand-orange)" }} />Users</div>
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: "var(--brand-green)" }} />Revenue</div>
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: C.series[0] }} />Users</div>
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: C.series[2] }} />Revenue</div>
               </div>
             </div>
             {loading ? (
@@ -227,20 +226,20 @@ export default function Dashboard() {
                 <AreaChart data={areaData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gUsers" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#FF914D" stopOpacity={0.32} />
-                      <stop offset="95%" stopColor="#FF914D" stopOpacity={0} />
+                      <stop offset="5%" stopColor={C.series[0]} stopOpacity={0.32} />
+                      <stop offset="95%" stopColor={C.series[0]} stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="gRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#00BF63" stopOpacity={0.26} />
-                      <stop offset="95%" stopColor="#00BF63" stopOpacity={0} />
+                      <stop offset="5%" stopColor={C.series[2]} stopOpacity={0.26} />
+                      <stop offset="95%" stopColor={C.series[2]} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10 }} className="fill-muted-foreground" axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10 }} className="fill-muted-foreground" axisLine={false} tickLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={C.grid} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.axis }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: C.axis }} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="users"   name="Users"   stroke="#FF914D" strokeWidth={2} fill="url(#gUsers)" dot={false} />
-                  <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#00BF63" strokeWidth={2} fill="url(#gRevenue)" dot={false} />
+                  <Area type="monotone" dataKey="users"   name="Users"   stroke={C.series[0]} strokeWidth={2} fill="url(#gUsers)" dot={false} />
+                  <Area type="monotone" dataKey="revenue" name="Revenue" stroke={C.series[2]} strokeWidth={2} fill="url(#gRevenue)" dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -258,9 +257,9 @@ export default function Dashboard() {
             ) : (
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={barData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="plan" tick={{ fontSize: 10 }} className="fill-muted-foreground" axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10 }} className="fill-muted-foreground" axisLine={false} tickLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={C.grid} />
+                  <XAxis dataKey="plan" tick={{ fontSize: 10, fill: C.axis }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: C.axis }} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="users" radius={[6, 6, 0, 0]}>
                     {barData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
@@ -278,9 +277,9 @@ export default function Dashboard() {
             <div className="text-[10px] font-mono uppercase tracking-widest mb-3 text-muted-foreground">Conversion Metrics</div>
             <div className="space-y-4">
               {[
-                { label: "Free → Paid",         value: convRate, color: "var(--brand-orange)" },
-                { label: "Avg. Revenue / User", value: arpu,      color: "var(--brand-green)" },
-                { label: "B2B Organizations",   value: L(data?.totalOrganizations), color: "#8B5CF6" },
+                { label: "Free → Paid",         value: convRate, color: C.series[0] },
+                { label: "Avg. Revenue / User", value: arpu,      color: C.series[2] },
+                { label: "B2B Organizations",   value: L(data?.totalOrganizations), color: "var(--chart-4)" },
               ].map(m => (
                 <div key={m.label} className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{m.label}</span>
@@ -294,13 +293,13 @@ export default function Dashboard() {
                   <div className="flex h-2 rounded-full overflow-hidden gap-px">
                     {data.planBreakdown.map(p => {
                       const pct = data.totalUsers > 0 ? (p.count / data.totalUsers) * 100 : 0;
-                      return <div key={p.plan} style={{ width: `${pct}%`, background: PLAN_COLORS[p.plan] || "#4B5563" }} />;
+                      return <div key={p.plan} style={{ width: `${pct}%`, background: C.plan[p.plan] || C.neutral }} />;
                     })}
                   </div>
                   <div className="flex gap-3 mt-2 flex-wrap">
                     {data.planBreakdown.map(p => (
                       <div key={p.plan} className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <div className="w-2 h-2 rounded-sm" style={{ background: PLAN_COLORS[p.plan] || "#4B5563" }} />
+                        <div className="w-2 h-2 rounded-sm" style={{ background: C.plan[p.plan] || C.neutral }} />
                         <span className="capitalize">{p.plan}</span>
                         <span className="font-mono">{p.count}</span>
                       </div>
@@ -323,7 +322,7 @@ export default function Dashboard() {
                     <div className="text-xs text-muted-foreground">{s.label}</div>
                     <div className="text-xs font-semibold truncate text-foreground">{s.value}</div>
                   </div>
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--brand-green)" }} />
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: C.series[2] }} />
                 </div>
               ))}
             </div>

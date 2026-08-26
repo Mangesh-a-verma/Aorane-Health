@@ -39,37 +39,49 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Neumorphism only reads as neumorphism when the surface is the SAME tone as
+   the page behind it — the depth comes entirely from the light/dark shadow
+   pair, not from a fill contrast. The previous values (white cards on a 97%
+   near-white page, shadow at 0.2 alpha) had almost no edge to see, which is
+   why every panel looked flat and washed out. The base is now a real mid-tone
+   light grey and the shadow pair is strong enough to actually carve an edge. */
 :root {
-  --background: 220 30% 97%;
-  --foreground: 218 40% 9%;
-  --border: 214 25% 88%;
-  --input: 214 25% 88%;
+  --background: 216 28% 93%;
+  --foreground: 218 40% 12%;
+  --border: 216 20% 84%;
+  --input: 216 20% 84%;
   /* AORANE brand — orange #FF914D / green #00BF63, sampled from the real
      logo (logo-full.png). --primary/--secondary are deepened from the raw
      brand swatches so white button/link text on them clears WCAG AA
      (~4.5:1+); the vivid brand hues live in --brand-orange/--brand-green
      below for icons, dots, glows and other non-text-bearing accents. */
-  --ring: 23 100% 65%;
-  --card: 0 0% 100%;
-  --card-foreground: 218 40% 9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 218 40% 9%;
-  --sidebar: 218 50% 8%;
-  --sidebar-foreground: 210 30% 88%;
-  --sidebar-border: 218 35% 14%;
-  --sidebar-primary: 23 100% 65%;
-  --sidebar-primary-foreground: 233 81% 10%;
-  --sidebar-accent: 151 100% 37%;
+  --ring: 23 90% 45%;
+  --card: 216 28% 93%;
+  --card-foreground: 218 40% 12%;
+  /* Popovers/dialogs float ABOVE the neumorphic plane, so they keep a real
+     fill contrast — that separation is what makes an overlay read as an
+     overlay rather than as another inset panel. */
+  --popover: 216 30% 97%;
+  --popover-foreground: 218 40% 12%;
+  /* Sidebar sits on the same plane as the page (it is a raised panel, not a
+     separate dark chrome) — a dark rail beside a light workspace was the
+     single biggest mismatch in the old build. */
+  --sidebar: 216 28% 93%;
+  --sidebar-foreground: 218 25% 28%;
+  --sidebar-border: 216 20% 84%;
+  --sidebar-primary: 23 90% 42%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 151 95% 25%;
   --sidebar-accent-foreground: 0 0% 100%;
-  --primary: 23 90% 40%;
+  --primary: 23 90% 42%;
   --primary-foreground: 0 0% 100%;
   --secondary: 151 95% 25%;
   --secondary-foreground: 0 0% 100%;
-  --muted: 210 20% 93%;
-  --muted-foreground: 215 20% 48%;
+  --muted: 216 22% 88%;
+  --muted-foreground: 216 16% 42%;
   --accent: 151 95% 25%;
   --accent-foreground: 0 0% 100%;
-  --destructive: 0 84% 60%;
+  --destructive: 0 72% 45%;
   --destructive-foreground: 0 0% 100%;
   --brand-orange: #FF914D;
   --brand-green: #00BF63;
@@ -79,47 +91,76 @@
   --radius: 0.5rem;
 
   /* ── Neumorphic (soft-UI) shadow tokens — light theme ──────────────────── */
-  --np-shadow-light: rgba(255, 255, 255, 0.9);
-  --np-shadow-dark: rgba(148, 152, 163, 0.2);
-  --np-surf-a: #ffffff;
-  --np-surf-b: #f8f9fa;
-  --np-inset-bg: #eef0f2;
+  --np-shadow-light: rgba(255, 255, 255, 0.95);
+  --np-shadow-dark: rgba(158, 172, 194, 0.55);
+  --np-surf-a: #EEF1F6;
+  --np-surf-b: #DCE2EA;
+  --np-inset-bg: #E2E7EE;
+
+  /* ── Chart categorical palette (fixed order, never cycled) ──────────────
+     Validated for this surface with the dataviz validator: lightness band,
+     chroma floor, adjacent-pair CVD separation, normal-vision floor and
+     contrast vs surface all pass in BOTH themes. Do not re-order or hand-
+     tweak a single step without re-running that validation — the ordering
+     is what keeps adjacent series distinguishable for colour-blind readers. */
+  --chart-1: #C2410C;
+  --chart-2: #1D4ED8;
+  --chart-3: #047857;
+  --chart-4: #6D28D9;
+  --chart-5: #B45309;
+  --chart-6: #A21CAF;
+  --chart-grid: rgba(120, 138, 165, 0.22);
+  --chart-axis: #5A6478;
 }
 
+/* Dark mode is SELECTED, not an automatic inversion: the base sits at a real
+   mid-dark (not near-black), because neumorphic depth needs room for a
+   lighter edge above the surface as well as a shadow below it. */
 .dark {
-  --background: 218 50% 4%;
-  --foreground: 210 30% 95%;
-  --border: 218 25% 16%;
-  --input: 218 25% 18%;
-  --ring: 23 100% 65%;
-  --card: 218 45% 7%;
-  --card-foreground: 210 30% 95%;
-  --popover: 218 45% 7%;
-  --popover-foreground: 210 30% 95%;
-  --sidebar: 218 55% 3%;
-  --sidebar-foreground: 210 30% 85%;
-  --sidebar-border: 218 30% 12%;
-  --sidebar-primary: 23 100% 65%;
-  --sidebar-primary-foreground: 233 81% 10%;
-  --sidebar-accent: 151 100% 37%;
+  --background: 218 22% 13%;
+  --foreground: 210 25% 93%;
+  --border: 218 16% 24%;
+  --input: 218 16% 24%;
+  --ring: 23 90% 58%;
+  --card: 218 22% 13%;
+  --card-foreground: 210 25% 93%;
+  --popover: 218 20% 17%;
+  --popover-foreground: 210 25% 93%;
+  --sidebar: 218 22% 13%;
+  --sidebar-foreground: 210 20% 82%;
+  --sidebar-border: 218 16% 24%;
+  --sidebar-primary: 23 90% 58%;
+  --sidebar-primary-foreground: 218 40% 10%;
+  --sidebar-accent: 151 60% 42%;
   --sidebar-accent-foreground: 0 0% 100%;
-  --primary: 23 90% 42%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 151 90% 28%;
+  --primary: 23 90% 58%;
+  --primary-foreground: 218 40% 10%;
+  --secondary: 151 60% 42%;
   --secondary-foreground: 0 0% 100%;
-  --muted: 218 35% 11%;
-  --muted-foreground: 215 20% 55%;
-  --accent: 151 90% 28%;
+  --muted: 218 18% 20%;
+  --muted-foreground: 216 14% 65%;
+  --accent: 151 60% 42%;
   --accent-foreground: 0 0% 100%;
-  --destructive: 0 70% 55%;
+  --destructive: 0 70% 58%;
   --destructive-foreground: 0 0% 100%;
 
+  /* Dark-mode chart steps — separately validated against the dark surface,
+     same fixed hue order as light. */
+  --chart-1: #DD6B20;
+  --chart-2: #3B82F6;
+  --chart-3: #059669;
+  --chart-4: #8B5CF6;
+  --chart-5: #D97706;
+  --chart-6: #C026D3;
+  --chart-grid: rgba(190, 205, 230, 0.14);
+  --chart-axis: #8A96AC;
+
   /* ── Neumorphic (soft-UI) shadow tokens — dark theme ───────────────────── */
-  --np-shadow-light: rgba(255, 255, 255, 0.055);
-  --np-shadow-dark: rgba(0, 0, 0, 0.6);
-  --np-surf-a: #121a26;
-  --np-surf-b: #0b1119;
-  --np-inset-bg: #0a0f17;
+  --np-shadow-light: rgba(255, 255, 255, 0.06);
+  --np-shadow-dark: rgba(0, 0, 0, 0.55);
+  --np-surf-a: #232A36;
+  --np-surf-b: #161B23;
+  --np-inset-bg: #171D26;
 }
 
 @layer base {
@@ -276,8 +317,13 @@ button:active { transform: scale(0.97); }
 }
 
 /* Reusable tone chips for stat cards / badges / icon swatches. */
-@utility tone-brand   { background: color-mix(in oklab, var(--brand-orange) 15%, transparent); color: color-mix(in oklab, var(--brand-orange) 80%, black); }
-@utility tone-success { background: color-mix(in oklab, var(--brand-green) 15%, transparent); color: color-mix(in oklab, var(--brand-green) 75%, black); }
-@utility tone-purple  { background: rgba(139,92,246,0.15); color: #8B5CF6; }
-@utility tone-amber   { background: rgba(245,158,11,0.15); color: #b45309; }
-@utility tone-danger  { background: color-mix(in oklab, hsl(var(--destructive)) 15%, transparent); color: hsl(var(--destructive)); }
+/* Tone chips draw from the SAME validated, theme-aware chart tokens as the
+   charts do, so an "orange" chip and an "orange" series are literally the
+   same colour in both themes — the old chips hardcoded their own hues and
+   drifted away from the charts they sat next to. */
+@utility tone-brand   { background: color-mix(in oklab, var(--chart-1) 14%, transparent); color: var(--chart-1); }
+@utility tone-success { background: color-mix(in oklab, var(--chart-3) 14%, transparent); color: var(--chart-3); }
+@utility tone-info    { background: color-mix(in oklab, var(--chart-2) 14%, transparent); color: var(--chart-2); }
+@utility tone-purple  { background: color-mix(in oklab, var(--chart-4) 14%, transparent); color: var(--chart-4); }
+@utility tone-amber   { background: color-mix(in oklab, var(--chart-5) 14%, transparent); color: var(--chart-5); }
+@utility tone-danger  { background: color-mix(in oklab, hsl(var(--destructive)) 14%, transparent); color: hsl(var(--destructive)); }
