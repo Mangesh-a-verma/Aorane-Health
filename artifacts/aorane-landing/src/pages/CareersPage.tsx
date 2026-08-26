@@ -356,6 +356,10 @@ export default function CareersPage() {
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     {submitting ? "Submitting..." : "Submit Application"}
                   </button>
+                  <p className="text-[11px] text-gray-400 text-center">
+                    By applying, you agree to our{" "}
+                    <a href="/careers-privacy" className="underline hover:text-gray-600">Careers Privacy Notice</a>.
+                  </p>
                 </form>
               )}
             </div>

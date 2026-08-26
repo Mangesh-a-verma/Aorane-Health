@@ -19,6 +19,10 @@ import DpaTemplatePage from "@/pages/DpaTemplatePage";
 import BaaTemplatePage from "@/pages/BaaTemplatePage";
 import SlaTemplatePage from "@/pages/SlaTemplatePage";
 import MsaTemplatePage from "@/pages/MsaTemplatePage";
+import AiDisclosurePage from "@/pages/AiDisclosurePage";
+import AccessibilityPage from "@/pages/AccessibilityPage";
+import CareersPrivacyPage from "@/pages/CareersPrivacyPage";
+import VulnerabilityDisclosurePage from "@/pages/VulnerabilityDisclosurePage";
 import AboutPage from "@/pages/AboutPage";
 import ContactPage from "@/pages/ContactPage";
 import ComingSoonPage from "@/pages/ComingSoonPage";
@@ -70,6 +74,10 @@ function Router() {
         <Route path="/business-associate-agreement" component={BaaTemplatePage} />
         <Route path="/sla" component={SlaTemplatePage} />
         <Route path="/master-service-agreement" component={MsaTemplatePage} />
+        <Route path="/ai-disclosure" component={AiDisclosurePage} />
+        <Route path="/accessibility" component={AccessibilityPage} />
+        <Route path="/careers-privacy" component={CareersPrivacyPage} />
+        <Route path="/vulnerability-disclosure" component={VulnerabilityDisclosurePage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/contact" component={ContactPage} />
         <Route path="/blog">{() => <ComingSoonPage title="Blog" desc="Health tips, research, and product updates — coming soon!" />}</Route>

@@ -20,6 +20,10 @@
     { "source": "/business-associate-agreement", "destination": "/business-associate-agreement/index.html" },
     { "source": "/sla", "destination": "/sla/index.html" },
     { "source": "/master-service-agreement", "destination": "/master-service-agreement/index.html" },
+    { "source": "/ai-disclosure", "destination": "/ai-disclosure/index.html" },
+    { "source": "/accessibility", "destination": "/accessibility/index.html" },
+    { "source": "/careers-privacy", "destination": "/careers-privacy/index.html" },
+    { "source": "/vulnerability-disclosure", "destination": "/vulnerability-disclosure/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
