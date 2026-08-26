@@ -5,6 +5,7 @@ import { storage } from "@/lib/storage";
 import { api, setUnauthorizedCallback } from "@/lib/api";
 import { logSilentError } from "@/lib/silentCatch";
 import { cancelAllNotifications } from "@/lib/notifications";
+import { getPendingConsent, clearPendingConsent } from "@/lib/consent";
 
 // Keep in sync with app/_layout.tsx (push token cache) and
 // app/notification-settings.tsx (notification settings cache) — logout needs
@@ -31,6 +32,24 @@ type AuthState = {
 };
 
 const ONBOARDING_FINAL_STEP = 5; // goals.tsx is step 5 of 5
+
+/**
+ * Syncs the onboarding legal-acceptance captured pre-login (see
+ * lib/consent.ts) to the server now that a user_id exists. Best-effort and
+ * non-blocking — a network failure here must never block login — and only
+ * clears the pending record on confirmed success so a failed attempt is
+ * retried on the next call (login, or the app-foreground check below).
+ */
+async function flushPendingConsent(): Promise<void> {
+  try {
+    const pending = await getPendingConsent();
+    if (!pending) return;
+    await api.recordConsent(pending);
+    await clearPendingConsent();
+  } catch (e) {
+    logSilentError("consent-sync", e as Error);
+  }
+}
 
 type AuthContextType = AuthState & {
   loginWithToken: (token: string, refreshToken: string, user: User, isNewUser: boolean, onboardingStep?: number) => Promise<void>;
@@ -75,6 +94,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setState((s) => s.isAuthenticated ? { ...s, user: res.user as unknown as typeof s.user } : s);
           }
         }).catch((e) => logSilentError('background-task', e));
+        // Retry safety net: if the loginWithToken-time flush failed (e.g. no
+        // network right after signup), pick it up next time the app is
+        // foregrounded rather than leaving it stuck locally forever.
+        flushPendingConsent();
       }
     };
     const sub = AppState.addEventListener("change", handleAppStateChange);
@@ -147,6 +170,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       token,
     });
+
+    flushPendingConsent();
   }, []);
 
   const logout = useCallback(async () => {

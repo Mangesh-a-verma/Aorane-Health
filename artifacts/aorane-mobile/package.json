@@ -60,6 +60,7 @@
   },
   "dependencies": {
     "@react-native-google-signin/google-signin": "16.1.4",
+    "@sentry/react-native": "^8.23.0",
     "expo": "~54.0.36",
     "expo-build-properties": "^1.0.10",
     "expo-crypto": "^15.0.9",

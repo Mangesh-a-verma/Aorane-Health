@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { savePendingConsent, CONSENT_BUNDLE_VERSION, CONSENT_DOCS } from '@/lib/consent';
 
 type DocKey = 'terms' | 'privacy' | 'medical'; // New add
 const LINKS: Record<DocKey, string> = {
@@ -58,6 +59,15 @@ export default function IntroScreen() {
     if (!allAccepted) return;
     try {
       await AsyncStorage.setItem('hasSeenIntro', 'true');
+      // No user_id exists yet at this point (login/signup hasn't happened) —
+      // stash the acceptance locally with a version + timestamp so it can be
+      // synced to the server as a real record the moment one does. See
+      // AuthContext's flushPendingConsent.
+      await savePendingConsent({
+        docsAccepted: [...CONSENT_DOCS],
+        version: CONSENT_BUNDLE_VERSION,
+        acceptedAt: new Date().toISOString(),
+      });
       router.replace('/(auth)/login');
     } catch (e) {
       console.error('Failed to save intro state', e);

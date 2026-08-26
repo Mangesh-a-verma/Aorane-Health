@@ -157,6 +157,25 @@ export const userPrivacySettingsTable = pgTable("user_privacy_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
+// Server-side record of legal-document acceptance. Previously the mobile
+// app's onboarding "accept Terms/Privacy/Medical Disclaimer" checkboxes only
+// set a local AsyncStorage boolean — no version, no timestamp, no way to
+// prove to a regulator (or to ourselves, if the docs later change) who
+// accepted what and when. One row per acceptance event (not one row per
+// user) deliberately, so re-consenting to a later policy version adds a new
+// row instead of overwriting the history of the original acceptance.
+export const userConsentsTable = pgTable("user_consents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  consentType: text("consent_type").notNull().default("onboarding_bundle"),
+  docsAccepted: text("docs_accepted").array().notNull(),
+  version: text("version").notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("user_consents_user_id_idx").on(table.userId),
+}));
+
 export const otpStoreTable = pgTable("otp_store", {
   id: uuid("id").primaryKey().defaultRandom(),
   phone: text("phone").notNull().unique(),
@@ -173,4 +192,5 @@ export type User = typeof usersTable.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UserProfile = typeof userProfilesTable.$inferSelect;
 export type UserPreferences = typeof userPreferencesTable.$inferSelect;
+export type UserConsent = typeof userConsentsTable.$inferSelect;
 export type UserPrivacySettings = typeof userPrivacySettingsTable.$inferSelect;

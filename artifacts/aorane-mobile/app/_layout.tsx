@@ -39,6 +39,12 @@ import {
 
 import { useHealthSync } from "@/hooks/useHealthSync";
 import { logSilentError } from "@/lib/silentCatch";
+import { initSentry } from "@/lib/sentry";
+
+// Runs once at module load, before any component mounts — same timing as
+// SplashScreen.preventAutoHideAsync() below. No-ops safely if
+// EXPO_PUBLIC_SENTRY_DSN isn't set (see lib/sentry.ts).
+initSentry();
 
 // NOTE: setNotificationHandler() is registered exactly once, inside
 // lib/notifications.ts (which is imported above). Do NOT add a second
@@ -525,7 +531,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ErrorBoundary>
+      <ErrorBoundary onError={(error) => logSilentError("react-error-boundary", error)}>
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
