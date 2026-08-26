@@ -1,4 +1,4 @@
-import { Network, Server, Database, CreditCard, MessageSquare, Brain, BarChart3, RefreshCw, Mail } from "lucide-react";
+import { Network, Server, Database, CreditCard, MessageSquare, Brain, BarChart3, RefreshCw, Mail, Bug } from "lucide-react";
 import {
   LegalLayout, SectionBlock, SubSection, Tag, InfoBox, ContactBlock,
   type LegalSectionMeta,
@@ -11,9 +11,10 @@ const sections: LegalSectionMeta[] = [
   { id: "comms",     num: "04", title: "Communications",         icon: MessageSquare, accent: "#0747A6" },
   { id: "ai",        num: "05", title: "AI Providers",           icon: Brain,        accent: "#059669" },
   { id: "identity",  num: "06", title: "Identity & Device Data", icon: Database,     accent: "#0747A6" },
-  { id: "analytics", num: "07", title: "Analytics & Marketing",  icon: BarChart3,    accent: "#0747A6" },
-  { id: "changes",   num: "08", title: "Notice of New Sub-processors", icon: RefreshCw, accent: "#0747A6" },
-  { id: "contact",   num: "09", title: "Contact Information",   icon: Mail,         accent: "#00B388" },
+  { id: "errors",    num: "07", title: "Error & Crash Reporting", icon: Bug,         accent: "#0747A6" },
+  { id: "analytics", num: "08", title: "Analytics & Marketing",  icon: BarChart3,    accent: "#0747A6" },
+  { id: "changes",   num: "09", title: "Notice of New Sub-processors", icon: RefreshCw, accent: "#0747A6" },
+  { id: "contact",   num: "10", title: "Contact Information",   icon: Mail,         accent: "#00B388" },
 ];
 
 type Row = { name: string; purpose: string; location: string };
@@ -120,6 +121,15 @@ export default function SubprocessorsPage() {
       </SectionBlock>
 
       <SectionBlock {...sections[6]}>
+        <p>Used only for crash and error diagnostics on the Aorane mobile app — not loaded on the website. Error reports are scrubbed of email- and phone/OTP-shaped values before leaving the device, and no account identifier (name, phone, email, user ID) is attached to a report.</p>
+        <div className="mt-3">
+          <Table rows={[
+            { name: "Sentry", purpose: "Mobile app crash and error reporting", location: "Sentry (Global)" },
+          ]} />
+        </div>
+      </SectionBlock>
+
+      <SectionBlock {...sections[7]}>
         <p>Loaded only when you grant the relevant cookie consent category — see our <a href="/cookie-policy" className="font-semibold text-blue-700 hover:underline">Cookie Policy</a> for details.</p>
         <div className="mt-3">
           <Table rows={[
@@ -131,7 +141,7 @@ export default function SubprocessorsPage() {
         </div>
       </SectionBlock>
 
-      <SectionBlock {...sections[7]}>
+      <SectionBlock {...sections[8]}>
         <SubSection title="For Enterprise / B2B Customers">
           <p>
             If you are a party to a Data Processing Agreement with Aorane, we will provide advance notice of any new
@@ -144,7 +154,7 @@ export default function SubprocessorsPage() {
         </SubSection>
       </SectionBlock>
 
-      <SectionBlock {...sections[8]}>
+      <SectionBlock {...sections[9]}>
         <p>Questions about a specific sub-processor or want a signed Data Processing Agreement? Contact us at:</p>
         <ContactBlock email="legal@aorane.com" />
       </SectionBlock>
