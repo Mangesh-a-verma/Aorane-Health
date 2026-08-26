@@ -322,6 +322,12 @@ export const api = {
   updatePrivacy: (settings: Record<string, boolean>) =>
     request<{ privacy: Record<string, boolean> }>("PATCH", "/users/privacy", settings),
 
+  // Records the onboarding Terms/Privacy/Medical-Disclaimer acceptance
+  // captured pre-login (see lib/consent.ts) against the now-known user —
+  // see AuthContext's flushPendingConsent for the caller.
+  recordConsent: (consent: { docsAccepted: string[]; version: string; acceptedAt: string }) =>
+    request<{ success: boolean }>("POST", "/users/consent", consent),
+
   // ── Food ───────────────────────────────────────────────
   getFoodLogs: (date: string) =>
     request<{ logs: Array<Record<string, unknown>> }>("GET", `/food/logs?date=${date}`),

@@ -28,6 +28,26 @@ const C = {
 let LocalAuthentication: typeof import("expo-local-authentication") | null = null;
 try { LocalAuthentication = require("expo-local-authentication"); } catch { }
 
+// Escalating lockout after repeated wrong PIN guesses — a 4-digit PIN only
+// has 10,000 combinations, so without this an attacker with a few unattended
+// minutes with the unlocked device could brute-force it. Index 0 applies at
+// the 5th wrong attempt; each further wrong attempt advances one step,
+// capped at the last entry.
+const LOCKOUT_SCHEDULE_SECONDS = [30, 60, 120, 300, 900] as const; // 30s..15min
+const ATTEMPTS_BEFORE_LOCKOUT = 5;
+
+function lockoutSecondsFor(attempts: number): number {
+  if (attempts < ATTEMPTS_BEFORE_LOCKOUT) return 0;
+  const idx = Math.min(attempts - ATTEMPTS_BEFORE_LOCKOUT, LOCKOUT_SCHEDULE_SECONDS.length - 1);
+  return LOCKOUT_SCHEDULE_SECONDS[idx];
+}
+
+function formatCountdown(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export default function VerifyPinScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout, clearPinVerification } = useAuth();
@@ -35,15 +55,37 @@ export default function VerifyPinScreen() {
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [lockoutRemaining, setLockoutRemaining] = useState(0); // seconds; 0 = not locked
 
   const pinRef = useRef("");
   const biometricAvailableRef = useRef(false);
+  const lockoutIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  const startLockoutCountdown = (until: number) => {
+    if (lockoutIntervalRef.current) clearInterval(lockoutIntervalRef.current);
+    const tick = () => {
+      const remaining = Math.ceil((until - Date.now()) / 1000);
+      if (remaining <= 0) {
+        setLockoutRemaining(0);
+        if (lockoutIntervalRef.current) clearInterval(lockoutIntervalRef.current);
+        return;
+      }
+      setLockoutRemaining(remaining);
+    };
+    tick();
+    lockoutIntervalRef.current = setInterval(tick, 1000);
+  };
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: Platform.OS !== "web" }).start();
     checkBiometric();
+    (async () => {
+      const until = await storage.getPinLockoutUntil();
+      if (until && until > Date.now()) startLockoutCountdown(until);
+    })();
+    return () => { if (lockoutIntervalRef.current) clearInterval(lockoutIntervalRef.current); };
   }, []);
 
   const checkBiometric = async () => {
@@ -70,6 +112,11 @@ export default function VerifyPinScreen() {
       });
       if (result.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        // A real biometric success is a stronger factor than the PIN itself
+        // guessing wrong a few times — forgive prior attempts rather than
+        // leaving the user locked out of PIN entry after they've already
+        // proven who they are.
+        await storage.resetPinLockout();
         clearPinVerification();
         router.replace("/(tabs)/dashboard");
       }
@@ -100,13 +147,28 @@ export default function VerifyPinScreen() {
       }
       if (storedPin !== enteredPin) throw new Error("wrong_pin");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await storage.resetPinLockout();
       clearPinVerification();
       router.replace("/(tabs)/dashboard");
     } catch {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       triggerShake();
+
+      const attempts = (await storage.getPinAttempts()) + 1;
+      await storage.setPinAttempts(attempts);
+      const lockSeconds = lockoutSecondsFor(attempts);
+      if (lockSeconds > 0) {
+        const until = Date.now() + lockSeconds * 1000;
+        await storage.setPinLockoutUntil(until);
+        startLockoutCountdown(until);
+      }
+
       setTimeout(() => {
-        Alert.alert("Incorrect PIN", "Please try again.");
+        if (lockSeconds > 0) {
+          Alert.alert("Too Many Attempts", `For your security, PIN entry is locked for ${formatCountdown(lockSeconds)}. You can still use biometric unlock if enabled.`);
+        } else {
+          Alert.alert("Incorrect PIN", "Please try again.");
+        }
         pinRef.current = "";
         setPin("");
         setLoading(false);
@@ -115,7 +177,7 @@ export default function VerifyPinScreen() {
   };
 
   const handleKey = (key: string) => {
-    if (key === "" || loading) return;
+    if (key === "" || loading || lockoutRemaining > 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (key === "⌫") {
       pinRef.current = pinRef.current.slice(0, -1);
@@ -168,14 +230,21 @@ export default function VerifyPinScreen() {
           </TouchableOpacity>
         )}
 
-        <View style={s.keypad}>
+        {lockoutRemaining > 0 && (
+          <View style={s.lockoutBox}>
+            <Ionicons name="lock-closed" size={18} color="#DC2626" />
+            <Text style={s.lockoutTxt}>Too many attempts. Try again in {formatCountdown(lockoutRemaining)}</Text>
+          </View>
+        )}
+
+        <View style={[s.keypad, lockoutRemaining > 0 && s.keypadLocked]} pointerEvents={lockoutRemaining > 0 ? "none" : "auto"}>
           {KEYS.map((key, i) => (
             <TouchableOpacity
               key={i}
               style={[s.key, key === "" && s.keyHidden]}
               activeOpacity={key === "" ? 1 : 0.7}
               onPress={() => key !== "" && handleKey(key)}
-              disabled={loading}
+              disabled={loading || lockoutRemaining > 0}
             >
               {key === "⌫" ? (
                 <Ionicons name="backspace-outline" size={22} color={C.text} />
@@ -209,7 +278,10 @@ const s = StyleSheet.create({
   dotFilled:   { backgroundColor: "#0077B6" },
   biometricBtn:{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 24, backgroundColor: "rgba(0,119,182,0.08)", marginBottom: 20 },
   biometricTxt:{ color: "#0077B6", fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  lockoutBox:  { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 14, backgroundColor: "rgba(220,38,38,0.08)", marginBottom: 20, maxWidth: W - 64 },
+  lockoutTxt:  { color: "#DC2626", fontFamily: "Inter_600SemiBold", fontSize: 13, flexShrink: 1 },
   keypad:      { flexDirection: "row", flexWrap: "wrap", width: W - 64, justifyContent: "center", gap: 14 },
+  keypadLocked:{ opacity: 0.35 },
   key:         { width: (W - 64 - 28) / 3, height: 64, borderRadius: 18, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", shadowColor: "#0077B6", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 3 },
   keyHidden:   { backgroundColor: "transparent", shadowOpacity: 0, elevation: 0 },
   keyTxt:      { fontSize: 22, fontFamily: "Inter_600SemiBold", color: "#0D1F33" },

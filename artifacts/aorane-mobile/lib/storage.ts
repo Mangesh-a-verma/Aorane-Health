@@ -93,7 +93,10 @@ export const storage = {
       secureRemove("auth_token"),
       secureRemove("refresh_token"),
       secureRemove("app_pin"),
-      AsyncStorage.multiRemove(["user_data", "onboarding_done", "pin_set", "biometric_enabled"]),
+      AsyncStorage.multiRemove([
+        "user_data", "onboarding_done", "pin_set", "biometric_enabled",
+        "pin_attempts", "pin_lockout_until",
+      ]),
     ]);
   },
   async setUser(user: Record<string, unknown>): Promise<void> {
@@ -122,6 +125,36 @@ export const storage = {
   },
   async getPin(): Promise<string | null> {
     return secureGet("app_pin");
+  },
+  // ── PIN attempt lockout ──────────────────────────────────────────────────
+  // Persisted in plain AsyncStorage (not a secret, just a counter/timestamp),
+  // deliberately NOT in SecureStore's app_pin key — this must survive being
+  // read/written independently of the PIN itself and must persist across an
+  // app kill, otherwise a brute-forcer can reset their attempt count for
+  // free just by force-closing and reopening the app.
+  async getPinAttempts(): Promise<number> {
+    const val = await AsyncStorage.getItem("pin_attempts");
+    return val ? parseInt(val, 10) || 0 : 0;
+  },
+  async setPinAttempts(count: number): Promise<void> {
+    await AsyncStorage.setItem("pin_attempts", String(count));
+  },
+  async getPinLockoutUntil(): Promise<number | null> {
+    const val = await AsyncStorage.getItem("pin_lockout_until");
+    const n = val ? parseInt(val, 10) : NaN;
+    return Number.isFinite(n) ? n : null;
+  },
+  async setPinLockoutUntil(timestampMs: number | null): Promise<void> {
+    if (timestampMs === null) {
+      await AsyncStorage.removeItem("pin_lockout_until");
+    } else {
+      await AsyncStorage.setItem("pin_lockout_until", String(timestampMs));
+    }
+  },
+  /** Called after any successful unlock (PIN or biometric) — a real auth
+   *  success is reason enough to forgive prior wrong PIN guesses. */
+  async resetPinLockout(): Promise<void> {
+    await AsyncStorage.multiRemove(["pin_attempts", "pin_lockout_until"]);
   },
   async setBiometricEnabled(enabled: boolean): Promise<void> {
     await AsyncStorage.setItem("biometric_enabled", enabled ? "1" : "0");

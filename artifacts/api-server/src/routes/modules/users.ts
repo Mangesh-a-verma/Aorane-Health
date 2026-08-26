@@ -266,6 +266,46 @@ router.patch("/users/privacy", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+// ─── Legal-document consent record ───────────────────────────────────────────
+// The mobile app's onboarding screen gates entry behind accepting Terms,
+// Privacy Policy, and Medical Disclaimer, but that acceptance previously
+// only set a local AsyncStorage flag with no version or timestamp — nothing
+// server-side could prove who accepted what, when. This endpoint is called
+// once, right after login/signup succeeds (see mobile lib/api.ts), to
+// persist that acceptance against the now-known user_id. One row per
+// acceptance event, not an update-in-place, so a later re-consent (e.g.
+// after a material policy change bumps CONSENT_BUNDLE_VERSION on the client)
+// adds a new row rather than erasing the original acceptance's history.
+router.post("/users/consent", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { docsAccepted, version, acceptedAt } = req.body as {
+      docsAccepted?: unknown;
+      version?: unknown;
+      acceptedAt?: unknown;
+    };
+    if (!Array.isArray(docsAccepted) || docsAccepted.length === 0 || docsAccepted.some((d) => typeof d !== "string")) {
+      res.status(400).json({ error: "docsAccepted must be a non-empty array of strings" });
+      return;
+    }
+    if (typeof version !== "string" || !version.trim()) {
+      res.status(400).json({ error: "version is required" });
+      return;
+    }
+    const acceptedAtDate = typeof acceptedAt === "string" ? new Date(acceptedAt) : new Date();
+    if (isNaN(acceptedAtDate.getTime())) {
+      res.status(400).json({ error: "acceptedAt is not a valid date" });
+      return;
+    }
+    await pool.query(
+      `INSERT INTO user_consents (user_id, consent_type, docs_accepted, version, accepted_at) VALUES ($1, $2, $3, $4, $5)`,
+      [req.userId!, "onboarding_bundle", docsAccepted, version.trim(), acceptedAtDate],
+    );
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to record consent" });
+  }
+});
+
 // ─── Health Scorecard — stores AORANE ID on first generation (immutable) ─────
 router.get("/users/scorecard", requireAuth, async (req: AuthRequest, res) => {
   try {

@@ -1,3 +1,5 @@
+import { captureSilentError } from "./sentry";
+
 /**
  * Central place for logging errors that we deliberately choose not to
  * surface to the user (fire-and-forget background operations: haptics,
@@ -8,8 +10,8 @@
  * errors completely — including real bugs. Routing them through one
  * function means:
  *   1. We get dev-time visibility via console.warn.
- *   2. When Sentry is added (Phase 2), we only need to wire it up HERE
- *      once, instead of touching 40+ call sites again.
+ *   2. Phase 2 (done) — every one of these now also reaches Sentry (see
+ *      lib/sentry.ts), without having touched the 40+ call sites again.
  *
  * Usage:
  *   somePromise().catch((e) => logSilentError('token-refresh', e));
@@ -19,5 +21,5 @@ export function logSilentError(context: string, error: unknown): void {
     // eslint-disable-next-line no-console
     console.warn(`[silent:${context}]`, error);
   }
-  // Phase 2 TODO: Sentry.captureException(error, { tags: { context } });
+  captureSilentError(context, error);
 }
