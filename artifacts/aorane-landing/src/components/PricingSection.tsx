@@ -169,7 +169,7 @@ const businessPlans: BusinessPlan[] = [
       "Everything in Pro",
       "Dedicated Account Manager",
       "Custom HRMS / ERP Integration",
-      "SLA Guarantee (99.9% Uptime)",
+      "SLA Guarantee (Custom Uptime Terms)",
       "DPDPA Compliance Reports",
       "White-label Option",
       "On-premise Deployment",

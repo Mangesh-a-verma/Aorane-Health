@@ -46,12 +46,23 @@ export default function Footer() {
         { label: "Contact Legal", href: "mailto:legal@aorane.com" },
       ],
     },
+    {
+      title: "Trust & Enterprise",
+      links: [
+        { label: "Security Practices", href: "/security" },
+        { label: "Sub-processor List", href: "/sub-processors" },
+        { label: "Master Service Agreement", href: "/master-service-agreement" },
+        { label: "Data Processing Agreement", href: "/data-processing-agreement" },
+        { label: "Business Associate Agreement", href: "/business-associate-agreement" },
+        { label: "Service Level Agreement", href: "/sla" },
+      ],
+    },
   ];
 
   return (
     <footer style={{ background: "#F5F6F8", borderTop: "1px solid #E5E7EB" }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-8">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-8">
           <div className="lg:col-span-2">
             <div className="flex items-center gap-2.5 mb-4">
               <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" style={{ height: 56, width: "auto", objectFit: "contain" }} />
@@ -130,9 +141,9 @@ export default function Footer() {
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#10B981" }} />
               All systems operational
             </span>
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ color: "#05473C", background: "#00C79A1A" }}>
-              ISO 27001 ALIGNED
-            </span>
+            <Link href="/security" className="text-xs font-bold px-2 py-0.5 rounded-full hover:opacity-80 transition-opacity" style={{ color: "#05473C", background: "#00C79A1A" }}>
+              SECURITY PRACTICES
+            </Link>
             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ color: "#6B7280", background: "#E5E7EB" }}>
               DPDPA 2023 ALIGNED
             </span>

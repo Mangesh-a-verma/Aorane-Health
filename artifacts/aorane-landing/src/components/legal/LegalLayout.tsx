@@ -127,6 +127,29 @@ export function ContactBlock({ email = "support@aorane.com" }: { email?: string 
   );
 }
 
+/**
+ * Banner for B2B contract templates (DPA, BAA, SLA, MSA) — these are sample
+ * documents, not something a page view alone can bind either party to.
+ * Keeps that distinction visible above the fold rather than buried in a
+ * closing clause.
+ */
+export function TemplateNotice({ docName, email = "legal@aorane.com" }: { docName: string; email?: string }) {
+  return (
+    <div className="mb-8 rounded-xl border p-4 flex gap-3" style={{ background: "#EFF4FF", borderColor: "#BFDBFE" }}>
+      <FileText size={18} className="flex-shrink-0 mt-0.5" style={{ color: "#0747A6" }} />
+      <div className="text-sm" style={{ color: "#0747A6" }}>
+        <p className="font-bold mb-1">Sample template — not yet a signed agreement</p>
+        <p style={{ color: "#0747Acc" }}>
+          This is Aorane's standard {docName} template, published for review during procurement/due-diligence. It
+          does not itself bind either party. To execute a copy naming your organization, contact{" "}
+          <a href={`mailto:${email}`} className="font-semibold hover:underline">{email}</a> — terms may be adjusted
+          by mutual written agreement before signing.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function LegalLayout({
   path, title, metaDescription, badge, badgeIcon: BadgeIcon = FileText, heroTags, lastUpdated, sections, children,
 }: {

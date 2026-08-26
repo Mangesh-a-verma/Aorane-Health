@@ -104,6 +104,42 @@ const routes = {
     ogTitle: "Refund & Cancellation Policy | AORANE",
     ogDescription: "How to cancel your Aorane subscription, when refunds apply, and how our digital service is delivered.",
   },
+  "sub-processors": {
+    title: "Sub-processor List | AORANE",
+    description: "AORANE Sub-processor List — the third-party service providers we use to deliver the platform, per GDPR Article 28 and DPDP Act requirements.",
+    ogTitle: "Sub-processor List | AORANE",
+    ogDescription: "The third-party service providers Aorane uses to deliver the platform.",
+  },
+  "security": {
+    title: "Security Practices | AORANE",
+    description: "AORANE Security Practices — encryption, access control, audit logging, and how we protect your health data.",
+    ogTitle: "Security Practices | AORANE",
+    ogDescription: "How Aorane protects your data — encryption, access control, and audit logging.",
+  },
+  "data-processing-agreement": {
+    title: "Data Processing Agreement | AORANE",
+    description: "AORANE Data Processing Agreement template — GDPR Article 28 / DPDP Act aligned terms for enterprise customers.",
+    ogTitle: "Data Processing Agreement | AORANE",
+    ogDescription: "AORANE's standard DPA template for enterprise customers.",
+  },
+  "business-associate-agreement": {
+    title: "Business Associate Agreement | AORANE",
+    description: "AORANE Business Associate Agreement (BAA) template — HIPAA-aligned terms for U.S. Covered Entities.",
+    ogTitle: "Business Associate Agreement | AORANE",
+    ogDescription: "AORANE's HIPAA-aligned BAA template for U.S. healthcare customers.",
+  },
+  "sla": {
+    title: "Service Level Agreement | AORANE",
+    description: "AORANE Service Level Agreement template — uptime target, support response times, and service credit framework.",
+    ogTitle: "Service Level Agreement | AORANE",
+    ogDescription: "AORANE's enterprise uptime and support commitment framework.",
+  },
+  "master-service-agreement": {
+    title: "Master Service Agreement | AORANE",
+    description: "AORANE Master Service Agreement template — the base B2B contract governing enterprise Order Forms.",
+    ogTitle: "Master Service Agreement | AORANE",
+    ogDescription: "AORANE's base B2B contract template for enterprise Order Forms.",
+  },
 };
 
 function injectMeta(html, route, meta) {
