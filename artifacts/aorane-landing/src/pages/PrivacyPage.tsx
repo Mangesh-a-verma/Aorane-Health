@@ -383,7 +383,15 @@ export default function PrivacyPage() {
                 <p>In the event of a security incident affecting personal information, Aorane may provide notice to affected users where required by applicable law and after appropriate investigation.</p>
               </SubSection>
               <SubSection title="Data Retention">
-                <p>We retain your account and health data only for as long as your account is active or as reasonably necessary to fulfill the purposes outlined in this policy, comply with legal obligations, or resolve disputes.</p>
+                <p>We retain your account and health data only for as long as your account is active or as reasonably necessary to fulfill the purposes outlined in this policy, comply with legal obligations, or resolve disputes. Specific timelines by data category:</p>
+                <BulletList items={[
+                  "Account & health data (profile, logs, medical reports, AI-generated insights) — deleted upon a verified account-deletion request (via in-app OTP confirmation), typically within minutes of confirmation, not after a delay",
+                  "Food photographs — automatically deleted within approximately 24 hours after processing, regardless of whether the account remains active",
+                  "Medical report originals — not permanently stored; only the extracted structured data (e.g. lab values) is retained as part of your health data",
+                  "Payment and subscription records — retained after account deletion for as long as required by Indian accounting and tax law (currently up to 8 years), since deleting them would violate that legal obligation; these records are anonymized/disassociated from your other personal data at the point of deletion, not linked back to your profile",
+                  "Support/grievance correspondence — retained for a reasonable period after resolution for quality and compliance record-keeping",
+                ]} />
+                <p className="mt-2 text-xs text-gray-500 italic">This section describes current engineering practice, not just policy intent — see our account-deletion flow, which explicitly deletes each category of health data rather than only deactivating the account.</p>
               </SubSection>
             </SectionBlock>
 

@@ -140,6 +140,30 @@ const routes = {
     ogTitle: "Master Service Agreement | AORANE",
     ogDescription: "AORANE's base B2B contract template for enterprise Order Forms.",
   },
+  "ai-disclosure": {
+    title: "AI & Automated Processing Disclosure | AORANE",
+    description: "AORANE AI Disclosure — where and how we use AI to process your health data, what it does and doesn't decide, and your right to human review.",
+    ogTitle: "AI Disclosure | AORANE",
+    ogDescription: "Where and how AORANE uses AI, and your right to human review.",
+  },
+  "accessibility": {
+    title: "Accessibility Statement | AORANE",
+    description: "AORANE Accessibility Statement — our WCAG 2.1 AA conformance target, what's implemented today, and known limitations.",
+    ogTitle: "Accessibility Statement | AORANE",
+    ogDescription: "AORANE's accessibility conformance target and known limitations.",
+  },
+  "careers-privacy": {
+    title: "Careers Privacy Notice | AORANE",
+    description: "AORANE Careers Privacy Notice — what information we collect from job applicants, how we use it, and how long we keep it.",
+    ogTitle: "Careers Privacy Notice | AORANE",
+    ogDescription: "How AORANE handles job applicant data.",
+  },
+  "vulnerability-disclosure": {
+    title: "Vulnerability Disclosure Policy | AORANE",
+    description: "AORANE Vulnerability Disclosure Policy — how to report a security issue in good faith, our safe-harbor commitment, and what to expect from us.",
+    ogTitle: "Vulnerability Disclosure Policy | AORANE",
+    ogDescription: "How to report a security issue to AORANE in good faith.",
+  },
 };
 
 function injectMeta(html, route, meta) {

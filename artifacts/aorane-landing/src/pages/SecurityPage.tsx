@@ -107,7 +107,7 @@ export default function SecurityPage() {
           disclosure, and avoid accessing, modifying, or deleting data that isn't yours while testing.
         </InfoBox>
         <SubSection title="How to Report">
-          <p>Email <a href="mailto:security@aorane.com" className="font-semibold text-blue-700 hover:underline">security@aorane.com</a> with a description and, if possible, steps to reproduce. We aim to acknowledge reports within 3 business days.</p>
+          <p>Email <a href="mailto:security@aorane.com" className="font-semibold text-blue-700 hover:underline">security@aorane.com</a> with a description and, if possible, steps to reproduce. We aim to acknowledge reports within 3 business days. See our full <a href="/vulnerability-disclosure" className="font-semibold text-blue-700 hover:underline">Vulnerability Disclosure Policy</a> for our safe-harbor commitment and testing ground rules.</p>
         </SubSection>
       </SectionBlock>
 
