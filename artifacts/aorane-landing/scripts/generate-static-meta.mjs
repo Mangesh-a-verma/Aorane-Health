@@ -92,6 +92,18 @@ const routes = {
     ogTitle: "Medical Disclaimer | AORANE",
     ogDescription: "AORANE is not a medical device. Read important limitations about AI health insights and wellness tracking.",
   },
+  "cookie-policy": {
+    title: "Cookie Policy | AORANE",
+    description: "AORANE Cookie Policy — what cookies and similar technologies we use, the categories we offer, and how to manage your preferences.",
+    ogTitle: "Cookie Policy | AORANE",
+    ogDescription: "What cookies AORANE uses, the categories we offer, and how to manage your preferences.",
+  },
+  "refund-policy": {
+    title: "Refund & Cancellation Policy | AORANE",
+    description: "AORANE Refund, Cancellation & Delivery Policy — how to cancel your subscription, when refunds apply, and how our digital service is delivered.",
+    ogTitle: "Refund & Cancellation Policy | AORANE",
+    ogDescription: "How to cancel your Aorane subscription, when refunds apply, and how our digital service is delivered.",
+  },
 };
 
 function injectMeta(html, route, meta) {

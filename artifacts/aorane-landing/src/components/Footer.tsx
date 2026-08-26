@@ -38,8 +38,10 @@ export default function Footer() {
       links: [
         { label: "Privacy Policy", href: "/privacy" },
         { label: "Terms of Service", href: "/terms" },
-        { label: "DPDPA Compliance", href: "/privacy#dpdpa" },
+        { label: "Cookie Policy", href: "/cookie-policy" },
+        { label: "Refund & Cancellation", href: "/refund-policy" },
         { label: "Medical Disclaimer", href: "/medical-disclaimer" },
+        { label: "Grievance Redressal", href: "/privacy#contact" },
         { label: "Data Deletion", href: "mailto:privacy@aorane.com?subject=Data Deletion Request" },
         { label: "Contact Legal", href: "mailto:legal@aorane.com" },
       ],

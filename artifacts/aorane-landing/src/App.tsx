@@ -11,6 +11,8 @@ import PricingPage from "@/pages/PricingPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import TermsPage from "@/pages/TermsPage";
 import MedicalDisclaimerPage from "@/pages/MedicalDisclaimerPage";
+import CookiePolicyPage from "@/pages/CookiePolicyPage";
+import RefundPolicyPage from "@/pages/RefundPolicyPage";
 import AboutPage from "@/pages/AboutPage";
 import ContactPage from "@/pages/ContactPage";
 import ComingSoonPage from "@/pages/ComingSoonPage";
@@ -54,6 +56,8 @@ function Router() {
         <Route path="/privacy" component={PrivacyPage} />
         <Route path="/terms" component={TermsPage} />
         <Route path="/medical-disclaimer" component={MedicalDisclaimerPage} />
+        <Route path="/cookie-policy" component={CookiePolicyPage} />
+        <Route path="/refund-policy" component={RefundPolicyPage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/contact" component={ContactPage} />
         <Route path="/blog">{() => <ComingSoonPage title="Blog" desc="Health tips, research, and product updates — coming soon!" />}</Route>

@@ -437,7 +437,27 @@ export default function PrivacyPage() {
             </SectionBlock>
 
             <SectionBlock {...sections[10]}>
-              <p>If you have any questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us at:</p>
+              <InfoBox color="#0747A6" bg="#EFF4FF" border="#BFDBFE" badge="Grievance Officer — Digital Personal Data Protection Act, 2023 (Section 13)">
+                <p>
+                  In accordance with the DPDP Act, 2023, Aorane has designated the following Grievance Officer to
+                  address complaints regarding the processing of your personal data:
+                </p>
+                <div className="mt-3 text-sm not-italic" style={{ color: "#0747A6" }}>
+                  <p className="font-bold">Mangesh Verma</p>
+                  <p>Founder, Aorane</p>
+                  <p className="mt-1">
+                    Email:{" "}
+                    <a href="mailto:grievance@aorane.com" className="font-semibold hover:underline">grievance@aorane.com</a>
+                  </p>
+                </div>
+                <p className="mt-3 text-xs" style={{ color: "#0747A6cc" }}>
+                  Grievances are acknowledged and resolved as required under the DPDP Act and Rules. If you are not
+                  satisfied with our response, you may escalate to the Data Protection Board of India once it becomes
+                  operational.
+                </p>
+              </InfoBox>
+
+              <p className="mt-6">For all other questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us at:</p>
               <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 divide-y divide-gray-100 overflow-hidden">
                 <a
                   href="mailto:support@aorane.com"
