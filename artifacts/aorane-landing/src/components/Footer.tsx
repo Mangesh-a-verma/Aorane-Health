@@ -50,7 +50,6 @@ export default function Footer() {
       title: "Trust & Enterprise",
       links: [
         { label: "Security Practices", href: "/security" },
-        { label: "Sub-processor List", href: "/sub-processors" },
         { label: "Master Service Agreement", href: "/master-service-agreement" },
         { label: "Data Processing Agreement", href: "/data-processing-agreement" },
         { label: "Business Associate Agreement", href: "/business-associate-agreement" },

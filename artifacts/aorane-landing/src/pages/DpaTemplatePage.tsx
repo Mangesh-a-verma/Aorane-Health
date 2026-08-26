@@ -72,8 +72,10 @@ export default function DpaTemplatePage() {
       <SectionBlock {...sections[3]}>
         <p>
           The Controller authorizes Aorane to engage the sub-processors listed on our{" "}
-          <a href="/sub-processors" className="font-semibold text-blue-700 hover:underline">Sub-processor List</a>,
-          which is incorporated into this DPA by reference. Aorane will:
+          <a href="/sub-processors" className="font-semibold text-blue-700 hover:underline">Sub-processor List</a>.
+          That public page lists infrastructure, payment, and communications sub-processors by name; AI/ML inference
+          sub-processors are described there by category, and the current named list for that category is provided
+          directly to the Controller on execution of this DPA and updated with notice. Aorane will:
         </p>
         <BulletList items={[
           "Impose data-protection obligations on each sub-processor no less protective than those in this DPA",
