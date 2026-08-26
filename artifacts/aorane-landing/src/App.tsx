@@ -23,6 +23,9 @@ import AiDisclosurePage from "@/pages/AiDisclosurePage";
 import AccessibilityPage from "@/pages/AccessibilityPage";
 import CareersPrivacyPage from "@/pages/CareersPrivacyPage";
 import VulnerabilityDisclosurePage from "@/pages/VulnerabilityDisclosurePage";
+import ChildrensPrivacyPage from "@/pages/ChildrensPrivacyPage";
+import TransferAddendumPage from "@/pages/TransferAddendumPage";
+import AbdmCompliancePage from "@/pages/AbdmCompliancePage";
 import AboutPage from "@/pages/AboutPage";
 import ContactPage from "@/pages/ContactPage";
 import ComingSoonPage from "@/pages/ComingSoonPage";
@@ -78,6 +81,9 @@ function Router() {
         <Route path="/accessibility" component={AccessibilityPage} />
         <Route path="/careers-privacy" component={CareersPrivacyPage} />
         <Route path="/vulnerability-disclosure" component={VulnerabilityDisclosurePage} />
+        <Route path="/childrens-privacy" component={ChildrensPrivacyPage} />
+        <Route path="/international-transfer-addendum" component={TransferAddendumPage} />
+        <Route path="/abdm-compliance" component={AbdmCompliancePage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/contact" component={ContactPage} />
         <Route path="/blog">{() => <ComingSoonPage title="Blog" desc="Health tips, research, and product updates — coming soon!" />}</Route>
