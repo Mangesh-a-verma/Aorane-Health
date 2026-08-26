@@ -942,7 +942,7 @@ export default function Landing() {
       {/* FOOTER */}
       <footer className="bg-white border-t border-gray-200 pt-20 pb-8 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-12 lg:gap-8 mb-16">
             <div className="lg:col-span-2">
               <a href={import.meta.env.BASE_URL} className="inline-block mb-6 transition-transform hover:scale-105">
                 <img src={import.meta.env.BASE_URL + 'logo-full.png?v=3'} alt="Aorane" className="h-12 w-auto object-contain" />
@@ -974,7 +974,8 @@ export default function Landing() {
                 links: [
                   { label: "About Aorane", href: "https://aorane.com/about" },
                   { label: "Careers", href: "https://aorane.com/careers" },
-                  { label: "Security & Privacy", href: "https://aorane.com/privacy" },
+                  { label: "Security Practices", href: "https://aorane.com/security" },
+                  { label: "Sub-processor List", href: "https://aorane.com/sub-processors" },
                   { label: "Medical Disclaimer", href: "https://aorane.com/medical-disclaimer" },
                   { label: "Contact Us", href: "https://aorane.com/contact" },
                 ],
@@ -985,10 +986,20 @@ export default function Landing() {
                   { label: "Help Center", href: "mailto:support@aorane.com?subject=Help Center" },
                   { label: "Contact Sales", href: "mailto:business@aorane.in?subject=Sales Enquiry" },
                   { label: "Terms of Service", href: "https://aorane.com/terms" },
+                  { label: "Privacy Policy", href: "https://aorane.com/privacy" },
                   { label: "Cookie Policy", href: "https://aorane.com/cookie-policy" },
                   { label: "Refund & Cancellation", href: "https://aorane.com/refund-policy" },
                   { label: "Grievance Redressal", href: "https://aorane.com/privacy#contact" },
                   { label: "Feedback", href: "mailto:feedback@aorane.com?subject=Feedback" },
+                ],
+              },
+              {
+                title: "Enterprise Agreements",
+                links: [
+                  { label: "Master Service Agreement", href: "https://aorane.com/master-service-agreement" },
+                  { label: "Data Processing Agreement", href: "https://aorane.com/data-processing-agreement" },
+                  { label: "Business Associate Agreement", href: "https://aorane.com/business-associate-agreement" },
+                  { label: "Service Level Agreement", href: "https://aorane.com/sla" },
                 ],
               },
             ].map((col, i) => (

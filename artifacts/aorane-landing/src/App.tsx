@@ -13,6 +13,12 @@ import TermsPage from "@/pages/TermsPage";
 import MedicalDisclaimerPage from "@/pages/MedicalDisclaimerPage";
 import CookiePolicyPage from "@/pages/CookiePolicyPage";
 import RefundPolicyPage from "@/pages/RefundPolicyPage";
+import SubprocessorsPage from "@/pages/SubprocessorsPage";
+import SecurityPage from "@/pages/SecurityPage";
+import DpaTemplatePage from "@/pages/DpaTemplatePage";
+import BaaTemplatePage from "@/pages/BaaTemplatePage";
+import SlaTemplatePage from "@/pages/SlaTemplatePage";
+import MsaTemplatePage from "@/pages/MsaTemplatePage";
 import AboutPage from "@/pages/AboutPage";
 import ContactPage from "@/pages/ContactPage";
 import ComingSoonPage from "@/pages/ComingSoonPage";
@@ -58,6 +64,12 @@ function Router() {
         <Route path="/medical-disclaimer" component={MedicalDisclaimerPage} />
         <Route path="/cookie-policy" component={CookiePolicyPage} />
         <Route path="/refund-policy" component={RefundPolicyPage} />
+        <Route path="/sub-processors" component={SubprocessorsPage} />
+        <Route path="/security" component={SecurityPage} />
+        <Route path="/data-processing-agreement" component={DpaTemplatePage} />
+        <Route path="/business-associate-agreement" component={BaaTemplatePage} />
+        <Route path="/sla" component={SlaTemplatePage} />
+        <Route path="/master-service-agreement" component={MsaTemplatePage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/contact" component={ContactPage} />
         <Route path="/blog">{() => <ComingSoonPage title="Blog" desc="Health tips, research, and product updates — coming soon!" />}</Route>

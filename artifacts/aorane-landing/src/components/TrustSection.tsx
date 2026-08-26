@@ -1,6 +1,11 @@
 import { motion } from "framer-motion";
 import { Shield, Lock, FileCheck, Globe, Server, Eye } from "lucide-react";
 
+// Every claim here must match what's actually implemented — see
+// src/pages/SecurityPage.tsx, which is written directly from the codebase.
+// Do not add a framework/certification claim (ISO 27001, SOC 2, a specific
+// uptime %) unless it's genuinely true and verifiable; overclaiming here is
+// a consumer-protection and enterprise-procurement risk, not just copy.
 const compliance = [
   {
     icon: Shield,
@@ -11,29 +16,29 @@ const compliance = [
   },
   {
     icon: Lock,
-    title: "AES-256 Encryption",
-    desc: "Military-grade encryption at rest and in transit (TLS 1.3). Zero plaintext storage for sensitive health records.",
+    title: "Encrypted in Transit",
+    desc: "All traffic runs over HTTPS/TLS. Sensitive configuration secrets are additionally encrypted at rest with AES-256-GCM. Full detail on our Security Practices page.",
     color: "#7C3AED",
     bg: "#F5F3FF",
   },
   {
     icon: FileCheck,
-    title: "ISO 27001 Framework",
-    desc: "We follow ISO 27001 information security management practices — access controls, incident response, and regular security reviews.",
+    title: "Role-Based Access Control",
+    desc: "Admin access is tiered and enforced server-side, with an audit-log record of who performed sensitive or destructive actions.",
     color: "#10B981",
     bg: "#F0FDF9",
   },
   {
     icon: Globe,
-    title: "HIPAA-Grade Practices",
-    desc: "We implement HIPAA-grade data handling practices — minimum necessary access, audit logs, and strict access controls for health data.",
+    title: "HIPAA-Aligned Template Available",
+    desc: "For U.S. enterprise/hospital engagements, we offer a HIPAA-aligned Business Associate Agreement — see our Security Practices and BAA template pages.",
     color: "#F59E0B",
     bg: "#FFFBEB",
   },
   {
     icon: Server,
-    title: "India Data Residency",
-    desc: "Your health data stays in India. Hosted exclusively on secure servers located within the country, with enterprise-grade backups and 99.9% uptime.",
+    title: "Transparent Infrastructure",
+    desc: "Every hosting, database, payment, and AI sub-processor we use is named and published — no hidden vendors. See the full Sub-processor List.",
     color: "#EF4444",
     bg: "#FFF1F2",
   },

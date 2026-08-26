@@ -14,6 +14,12 @@
     { "source": "/medical-disclaimer", "destination": "/medical-disclaimer/index.html" },
     { "source": "/cookie-policy", "destination": "/cookie-policy/index.html" },
     { "source": "/refund-policy", "destination": "/refund-policy/index.html" },
+    { "source": "/sub-processors", "destination": "/sub-processors/index.html" },
+    { "source": "/security", "destination": "/security/index.html" },
+    { "source": "/data-processing-agreement", "destination": "/data-processing-agreement/index.html" },
+    { "source": "/business-associate-agreement", "destination": "/business-associate-agreement/index.html" },
+    { "source": "/sla", "destination": "/sla/index.html" },
+    { "source": "/master-service-agreement", "destination": "/master-service-agreement/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
