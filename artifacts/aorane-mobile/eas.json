@@ -8,7 +8,8 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://aorane.onrender.com/api"
+        "EXPO_PUBLIC_API_URL": "https://aorane.onrender.com/api",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://bf9e67e08fe38fe889e9ae195fac7c11@o4511700679524352.ingest.us.sentry.io/4511700685553664"
       },
       "android": {
         "buildType": "apk"
@@ -17,7 +18,8 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://aorane.onrender.com/api"
+        "EXPO_PUBLIC_API_URL": "https://aorane.onrender.com/api",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://bf9e67e08fe38fe889e9ae195fac7c11@o4511700679524352.ingest.us.sentry.io/4511700685553664"
       },
       "android": {
         "buildType": "apk"
@@ -28,7 +30,8 @@
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://aorane.onrender.com/api"
+        "EXPO_PUBLIC_API_URL": "https://aorane.onrender.com/api",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://bf9e67e08fe38fe889e9ae195fac7c11@o4511700679524352.ingest.us.sentry.io/4511700685553664"
       },
       "android": {
         "buildType": "app-bundle",
