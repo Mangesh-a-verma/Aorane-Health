@@ -1,4 +1,4 @@
-import { Network, Server, Database, CreditCard, MessageSquare, Brain, BarChart3, Cloud, RefreshCw, Mail } from "lucide-react";
+import { Network, Server, Database, CreditCard, MessageSquare, Brain, BarChart3, RefreshCw, Mail } from "lucide-react";
 import {
   LegalLayout, SectionBlock, SubSection, Tag, InfoBox, ContactBlock,
   type LegalSectionMeta,
@@ -97,16 +97,16 @@ export default function SubprocessorsPage() {
 
       <SectionBlock {...sections[4]}>
         <InfoBox badge="Health Data & AI Processing">
-          Food photographs, medical report text, and wellness inputs may be sent to one of the AI providers below to
-          generate insights. We do not use your data to train these providers' foundation models — see Section 4 of
-          our Privacy Policy.
+          Food photographs, medical report text, and wellness inputs may be sent to one or more third-party AI/ML
+          inference providers to generate insights. We do not use your data to train any provider's foundation
+          models — see Section 4 of our Privacy Policy. We use more than one provider (selected for accuracy,
+          redundancy, and cost) and do not publish the specific names on this page; the current named list is
+          provided directly to enterprise customers upon execution of a Data Processing Agreement, and to regulators
+          or auditors on lawful request.
         </InfoBox>
         <div className="mt-3">
           <Table rows={[
-            { name: "Google Gemini", purpose: "Food-photo analysis, medical report extraction, wellness insights", location: "Google (Global)" },
-            { name: "OpenAI", purpose: "AI-generated wellness insights (selected features)", location: "Global" },
-            { name: "Anthropic", purpose: "AI-generated wellness insights (selected features)", location: "Global" },
-            { name: "NVIDIA", purpose: "AI model inference (selected features)", location: "Global" },
+            { name: "AI/ML Inference Providers", purpose: "Food-photo analysis, medical report extraction, wellness insights", location: "Multiple — named list on request under DPA" },
           ]} />
         </div>
       </SectionBlock>

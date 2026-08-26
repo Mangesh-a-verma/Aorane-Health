@@ -67,7 +67,7 @@ export default function BaaTemplatePage() {
       </SectionBlock>
 
       <SectionBlock {...sections[4]}>
-        <p>Where Aorane engages a subcontractor that will have access to PHI, Aorane will enter into a written agreement with that subcontractor imposing restrictions and conditions on the PHI at least as stringent as those in this Agreement. Current sub-processors are listed on our <a href="/sub-processors" className="font-semibold text-blue-700 hover:underline">Sub-processor List</a>.</p>
+        <p>Where Aorane engages a subcontractor that will have access to PHI, Aorane will enter into a written agreement with that subcontractor imposing restrictions and conditions on the PHI at least as stringent as those in this Agreement. Current sub-processors are listed on our <a href="/sub-processors" className="font-semibold text-blue-700 hover:underline">Sub-processor List</a>; the named AI/ML inference sub-processor(s) with PHI access under this Agreement will be identified directly to the Covered Entity on execution.</p>
       </SectionBlock>
 
       <SectionBlock {...sections[5]}>
