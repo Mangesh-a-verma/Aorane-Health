@@ -1000,6 +1000,9 @@ export default function Landing() {
                   { label: "Data Processing Agreement", href: "https://aorane.com/data-processing-agreement" },
                   { label: "Business Associate Agreement", href: "https://aorane.com/business-associate-agreement" },
                   { label: "Service Level Agreement", href: "https://aorane.com/sla" },
+                  { label: "Children's Privacy Addendum", href: "https://aorane.com/childrens-privacy" },
+                  { label: "International Transfer Addendum", href: "https://aorane.com/international-transfer-addendum" },
+                  { label: "ABDM / NDHM Compliance Note", href: "https://aorane.com/abdm-compliance" },
                 ],
               },
             ].map((col, i) => (

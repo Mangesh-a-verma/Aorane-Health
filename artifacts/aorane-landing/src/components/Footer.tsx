@@ -44,6 +44,7 @@ export default function Footer() {
         { label: "Medical Disclaimer", href: "/medical-disclaimer" },
         { label: "AI Disclosure", href: "/ai-disclosure" },
         { label: "Accessibility Statement", href: "/accessibility" },
+        { label: "Children's Privacy Addendum", href: "/childrens-privacy" },
         { label: "Grievance Redressal", href: "/privacy#contact" },
         { label: "Data Deletion", href: "mailto:privacy@aorane.com?subject=Data Deletion Request" },
         { label: "Contact Legal", href: "mailto:legal@aorane.com" },
@@ -58,6 +59,8 @@ export default function Footer() {
         { label: "Data Processing Agreement", href: "/data-processing-agreement" },
         { label: "Business Associate Agreement", href: "/business-associate-agreement" },
         { label: "Service Level Agreement", href: "/sla" },
+        { label: "International Transfer Addendum", href: "/international-transfer-addendum" },
+        { label: "ABDM / NDHM Compliance Note", href: "/abdm-compliance" },
       ],
     },
   ];

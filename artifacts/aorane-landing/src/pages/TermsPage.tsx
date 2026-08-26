@@ -317,7 +317,7 @@ export default function TermsPage() {
                 <p>You are responsible for maintaining the confidentiality of your login credentials and for all activities that occur under your account. You must notify Aorane immediately of any unauthorized access.</p>
               </SubSection>
               <SubSection title="5.3 — Family Accounts">
-                <p>If you utilize family account features to manage data for dependents or family members, you represent that you have the lawful authority and necessary consent to input, manage, and share their personal and health data.</p>
+                <p>If you utilize family account features to manage data for dependents or family members, you represent that you have the lawful authority and necessary consent to input, manage, and share their personal and health data. Where a dependent is under 18, see our <a href="/childrens-privacy" className="font-semibold text-blue-700 hover:underline">Children's Privacy Addendum</a>.</p>
               </SubSection>
             </SectionBlock>
 

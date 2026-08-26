@@ -164,6 +164,24 @@ const routes = {
     ogTitle: "Vulnerability Disclosure Policy | AORANE",
     ogDescription: "How to report a security issue to AORANE in good faith.",
   },
+  "childrens-privacy": {
+    title: "Children's Privacy Addendum | AORANE",
+    description: "AORANE Children's Privacy Addendum — how minors' data is handled under the Family plan and institutional (school/college) enrollment.",
+    ogTitle: "Children's Privacy Addendum | AORANE",
+    ogDescription: "How AORANE handles minors' data — Family plan and institutional enrollment.",
+  },
+  "international-transfer-addendum": {
+    title: "International Data Transfer Addendum | AORANE",
+    description: "AORANE International Data Transfer Addendum — the Standard Contractual Clauses / UK IDTA mechanism we use for EU/UK-originating personal data.",
+    ogTitle: "International Data Transfer Addendum | AORANE",
+    ogDescription: "AORANE's SCC/UK IDTA mechanism for EU/UK personal data transfers.",
+  },
+  "abdm-compliance": {
+    title: "ABDM / NDHM Compliance Note | AORANE",
+    description: "AORANE and India's Ayushman Bharat Digital Mission (ABDM) — our current integration status and roadmap.",
+    ogTitle: "ABDM / NDHM Compliance Note | AORANE",
+    ogDescription: "AORANE's current ABDM/NDHM integration status and roadmap.",
+  },
 };
 
 function injectMeta(html, route, meta) {

@@ -24,6 +24,9 @@
     { "source": "/accessibility", "destination": "/accessibility/index.html" },
     { "source": "/careers-privacy", "destination": "/careers-privacy/index.html" },
     { "source": "/vulnerability-disclosure", "destination": "/vulnerability-disclosure/index.html" },
+    { "source": "/childrens-privacy", "destination": "/childrens-privacy/index.html" },
+    { "source": "/international-transfer-addendum", "destination": "/international-transfer-addendum/index.html" },
+    { "source": "/abdm-compliance", "destination": "/abdm-compliance/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
