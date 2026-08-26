@@ -12,6 +12,8 @@
     { "source": "/privacy", "destination": "/privacy/index.html" },
     { "source": "/terms", "destination": "/terms/index.html" },
     { "source": "/medical-disclaimer", "destination": "/medical-disclaimer/index.html" },
+    { "source": "/cookie-policy", "destination": "/cookie-policy/index.html" },
+    { "source": "/refund-policy", "destination": "/refund-policy/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
