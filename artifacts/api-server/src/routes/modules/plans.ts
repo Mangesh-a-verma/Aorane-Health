@@ -17,7 +17,7 @@ const DEFAULT_PLANS = [
   {
     planKey: "free", displayName: "Free", type: "individual",
     monthlyPrice: "0", yearlyPrice: null, maxSeats: 1,
-    features: ["AI Meal Logging (Text) — 10/day", "Exercise Logging", "Water Tracker & Reminders", "Basic Daily Health Score", "Blood Emergency SOS", "Period Cycle Tracker (Female)", "Manual Logging (Sleep, Stress, Heart Rate, BP, Steps)"],
+    features: ["AI Meal Logging (Text) — 5/day", "Exercise Logging", "Water Tracker & Reminders", "Basic Daily Health Score", "Blood Emergency SOS", "Period Cycle Tracker (Female)", "Manual Logging (Sleep, Stress, Heart Rate, BP, Steps)"],
     badgeText: null, badgeColor: "#4B5563",
     gradientColors: ["#374151", "#1F2937"] as [string, string],
     isActive: true, sortOrder: 0,
@@ -25,7 +25,7 @@ const DEFAULT_PLANS = [
   {
     planKey: "pro", displayName: "Pro", type: "individual",
     monthlyPrice: "199", yearlyPrice: "1990", maxSeats: 1,
-    features: ["Meal Logging (Text) — Unlimited", "AI Food Scan — 5/day", "AI Medical Report Analysis — 1/month", "AI Health Coach", "Health Prediction", "AI Diet Planner", "Health Reports (Weekly & Monthly)", "Smart Watch Integration (Auto Sync)", "Stress & Burnout AI Monitoring", "All Basic Plan Features"],
+    features: ["Meal Logging (Text) — 10/day", "AI Food Scan — 5/day", "AI Medical Report Analysis — 1/month", "AI Health Coach", "Health Prediction", "AI Diet Planner", "Health Reports (Weekly & Monthly)", "Smart Watch Integration (Auto Sync)", "Stress & Burnout AI Monitoring", "All Basic Plan Features"],
     badgeText: "Popular", badgeColor: "#0077B6",
     gradientColors: ["#0077B6", "#023E8A"] as [string, string],
     isActive: true, sortOrder: 1,
@@ -33,7 +33,7 @@ const DEFAULT_PLANS = [
   {
     planKey: "max", displayName: "Max", type: "individual",
     monthlyPrice: "249", yearlyPrice: "2490", maxSeats: 1,
-    features: ["Everything in Pro", "AI Food Scan — 10/day", "AI Medical Report Analysis — Up to 4/month", "Advanced Health Prediction", "Advanced Health Reports"],
+    features: ["Everything in Pro", "AI Food Scan — 10/day", "Meal Logging (Text) — 15/day", "AI Medical Report Analysis — Up to 4/month", "Advanced Health Prediction", "Advanced Health Reports"],
     badgeText: "Best Value", badgeColor: "#8B5CF6",
     gradientColors: ["#8B5CF6", "#6D28D9"] as [string, string],
     isActive: true, sortOrder: 2,
@@ -71,11 +71,15 @@ const DEFAULT_PLANS = [
     gradientColors: ["#DC2626", "#B91C1C"] as [string, string],
     isActive: true, sortOrder: 12,
   },
-  // Org seat-based plans (Business Portal billing)
+  // Org seat-based plans (Business Portal billing) — same per-employee health
+  // features as the matching individual plan (org enrollment sets the
+  // employee's own `plan` to "pro"/"max", so they get identical aiLimiter/
+  // plan_features limits already); the org itself additionally gets the CRM
+  // dashboard for free, and Max adds weekly report generation for admins.
   {
     planKey: "org_pro", displayName: "Pro", type: "org_seat",
     monthlyPrice: "199", yearlyPrice: "2028", maxSeats: null,
-    features: ["Basic aggregate health dashboard", "Enrollment code management", "Employee search", "GST-ready invoice", "Email support"],
+    features: ["Meal Logging (Text) — 10/day", "AI Food Scan — 5/day", "AI Medical Report Analysis — 1/month", "AI Health Coach", "Health Prediction", "AI Diet Planner", "Health Reports (Weekly & Monthly)", "Smart Watch Integration (Auto Sync)", "Stress & Burnout AI Monitoring", "All Basic Plan Features", "Free CRM Dashboard Access"],
     badgeText: null, badgeColor: "#0077B6",
     gradientColors: ["#0077B6", "#023E8A"] as [string, string],
     isActive: true, sortOrder: 20,
@@ -83,7 +87,7 @@ const DEFAULT_PLANS = [
   {
     planKey: "org_max", displayName: "Max", type: "org_seat",
     monthlyPrice: "249", yearlyPrice: "2532", maxSeats: null,
-    features: ["Everything in Pro", "Advanced health analytics & charts", "Health risk distribution alerts", "Weekly & monthly team reports", "Priority support", "Custom announcements to employees"],
+    features: ["Everything in Pro", "AI Food Scan — 10/day", "Meal Logging (Text) — 15/day", "AI Medical Report Analysis — Up to 4/month", "Advanced Health Prediction", "Advanced Health Reports", "Free CRM Dashboard Access", "Weekly Report Generation"],
     badgeText: "Popular", badgeColor: "#7C3AED",
     gradientColors: ["#7C3AED", "#6D28D9"] as [string, string],
     isActive: true, sortOrder: 21,
