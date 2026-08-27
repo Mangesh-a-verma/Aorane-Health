@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { logger, safeErrorMessage } from "../../lib/logger";
 import { upsertDailyActivityScore, upsertDailyHealthScore } from "../../lib/activityScore";
-import { db, stressLogsTable, userProfilesTable, exerciseLogsTable, waterLogsTable, foodLogsTable, medicineLogsTable, medicineSchedulesTable } from "@workspace/db";
+import { db, stressLogsTable, userProfilesTable, exerciseLogsTable, waterLogsTable, foodLogsTable, medicineLogsTable, medicineSchedulesTable, sleepLogsTable } from "@workspace/db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
@@ -97,17 +97,25 @@ router.post("/stress/log", requireAuth, async (req: AuthRequest, res) => {
       const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, req.userId!));
 
       // Fetch all 5 data sources in parallel
-      const [waterLogs, exerciseLogs, foodLogs, medSchedules, medLogs] = await Promise.all([
+      const [waterLogs, exerciseLogs, foodLogs, medSchedules, medLogs, sleepLog] = await Promise.all([
         db.select().from(waterLogsTable).where(and(eq(waterLogsTable.userId, req.userId!), gte(waterLogsTable.loggedAt, todayStart))),
         db.select().from(exerciseLogsTable).where(and(eq(exerciseLogsTable.userId, req.userId!), gte(exerciseLogsTable.loggedAt, todayStart))),
         db.select().from(foodLogsTable).where(and(eq(foodLogsTable.userId, req.userId!), gte(foodLogsTable.loggedAt, todayStart))),
         db.select().from(medicineSchedulesTable).where(and(eq(medicineSchedulesTable.userId, req.userId!), eq(medicineSchedulesTable.isActive, true))),
         db.select().from(medicineLogsTable).where(and(eq(medicineLogsTable.userId, req.userId!), gte(medicineLogsTable.scheduledAt, todayStart), lte(medicineLogsTable.scheduledAt, todayEnd))),
+        db.select().from(sleepLogsTable).where(and(eq(sleepLogsTable.userId, req.userId!), eq(sleepLogsTable.sleepDate, today))).limit(1),
       ]);
 
       const waterGlasses = waterLogs.reduce((s: any, l: any) => s + (l.glassesCount || 0), 0);
       const exerciseMin  = exerciseLogs.reduce((s: any, l: any) => s + (l.durationMinutes || 0), 0);
-      const sleepHours   = Number(profile?.sleepHoursAvg) || 7;
+      // Real sleep for TODAY first (same table lib/scoring.ts's Health Score
+      // reads) — only falls back to the profile's one-time average, then a
+      // flat 7h, when today genuinely has no sleep_logs entry. Previously
+      // this always used the profile average (or the 7h fallback), even on
+      // days sleep WAS logged, so this pillar never reflected an actual
+      // bad or good night — every other pillar here already reads today's
+      // real logs.
+      const sleepHours   = sleepLog[0]?.sleepHours ? Number(sleepLog[0].sleepHours) : (Number(profile?.sleepHoursAvg) || 7);
       const mealCount    = foodLogs.length;
 
       // ── 5 Wellness scores (0-100, higher = healthier = less stress) ─────────
