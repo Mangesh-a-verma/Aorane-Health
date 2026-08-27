@@ -41,8 +41,8 @@ const whatWeTrack = [
 // slow/cold API start never shows a visitor different features than what
 // they'd see a second later once the real data loads.
 const fallbackPlans: Record<string, { label: string; pricePerSeat: number; yearlyPricePerSeat: number; features: string[] }> = {
-  pro: { label: "Pro", pricePerSeat: 199, yearlyPricePerSeat: 169, features: ["Basic aggregate health dashboard", "Enrollment code management", "Employee search", "GST-ready invoice", "Email support"] },
-  max: { label: "Max", pricePerSeat: 249, yearlyPricePerSeat: 211, features: ["Everything in Pro", "Advanced health analytics & charts", "Health risk distribution alerts", "Weekly & monthly team reports", "Priority support", "Custom announcements to employees"] },
+  pro: { label: "Pro", pricePerSeat: 199, yearlyPricePerSeat: 169, features: ["Meal Logging (Text) — 10/day", "AI Food Scan — 5/day", "AI Medical Report Analysis — 1/month", "AI Health Coach", "Health Prediction", "AI Diet Planner", "Health Reports (Weekly & Monthly)", "Smart Watch Integration (Auto Sync)", "Stress & Burnout AI Monitoring", "All Basic Plan Features", "Free CRM Dashboard Access"] },
+  max: { label: "Max", pricePerSeat: 249, yearlyPricePerSeat: 211, features: ["Everything in Pro", "AI Food Scan — 10/day", "Meal Logging (Text) — 15/day", "AI Medical Report Analysis — Up to 4/month", "Advanced Health Prediction", "Advanced Health Reports", "Free CRM Dashboard Access", "Weekly Report Generation"] },
 };
 
 const faqs = [
