@@ -19,7 +19,7 @@ import { Router } from "express";
 import {
   db, usersTable, userProfilesTable, userPreferencesTable,
   userMedicalConditionsTable, userHealthGoalsTable,
-  foodLogsTable, waterLogsTable, exerciseLogsTable, stressLogsTable,
+  foodLogsTable, waterLogsTable, exerciseLogsTable, stressLogsTable, sleepLogsTable,
   healthPredictionsTable, weeklyDietChartsTable,
 } from "@workspace/db";
 import { eq, and, gte, sql } from "drizzle-orm";
@@ -178,11 +178,12 @@ async function gatherUserContext(userId: string) {
 async function gather30DayData(userId: string) {
   const { from } = getDateRange(30);
 
-  const [foodLogs, waterLogs, exerciseLogs, stressLogs] = await Promise.all([
+  const [foodLogs, waterLogs, exerciseLogs, stressLogs, sleepLogs] = await Promise.all([
     db.select().from(foodLogsTable).where(and(eq(foodLogsTable.userId, userId), gte(sql`DATE(${foodLogsTable.loggedAt})`, from))),
     db.select().from(waterLogsTable).where(and(eq(waterLogsTable.userId, userId), gte(sql`DATE(${waterLogsTable.loggedAt})`, from))),
     db.select().from(exerciseLogsTable).where(and(eq(exerciseLogsTable.userId, userId), gte(sql`DATE(${exerciseLogsTable.loggedAt})`, from))),
     db.select().from(stressLogsTable).where(and(eq(stressLogsTable.userId, userId), gte(sql`DATE(${stressLogsTable.loggedAt})`, from))),
+    db.select().from(sleepLogsTable).where(and(eq(sleepLogsTable.userId, userId), gte(sleepLogsTable.sleepDate, from))),
   ]);
 
   const days = 30;
@@ -196,8 +197,14 @@ async function gather30DayData(userId: string) {
   const totalExerciseSessions = exerciseLogs.length;
   const avgExerciseMinutes = totalExerciseSessions > 0
     ? Math.round(exerciseLogs.reduce((s: any, l: any) => s + (l.durationMinutes ?? 0), 0) / totalExerciseSessions) : 0;
-  const avgSleepHours = stressLogs.length > 0
-    ? Math.round((stressLogs.reduce((s: any, l: any) => s + Number(l.sleepHours ?? 0), 0) / stressLogs.length) * 10) / 10 : null;
+  // Real sleep_logs — the same table the Health Score dashboard reads —
+  // not stress_logs.sleepHours, which is only ever a snapshot of the
+  // profile's one-time sleepHoursAvg taken at stress-checkin time (see
+  // routes/modules/stress.ts), not that day's actual logged sleep. A user
+  // who tracks sleep daily but rarely does a stress check-in got wildly
+  // wrong (or entirely missing) sleep data fed into this prediction.
+  const avgSleepHours = sleepLogs.length > 0
+    ? Math.round((sleepLogs.reduce((s: any, l: any) => s + Number(l.sleepHours ?? 0), 0) / sleepLogs.length) * 10) / 10 : null;
   const avgStressLevel = stressLogs.length > 0
     ? Math.round((stressLogs.reduce((s: any, l: any) => s + (l.stressScore ?? 5), 0) / stressLogs.length) * 10) / 10 : null;
 
