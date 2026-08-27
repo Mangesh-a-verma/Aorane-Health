@@ -181,6 +181,11 @@ export const planPricingTable = pgTable("plan_pricing", {
   planKey: text("plan_key").notNull().unique(),
   displayName: text("display_name").notNull(),
   type: text("type").notNull().default("individual"),
+  // ISO 4217 code the prices below are denominated in. India-only launch
+  // means every row is "INR" today; a future market (e.g. a EUR-priced
+  // plan_key for Europe) just needs its own plan_pricing row with this set
+  // accordingly — no schema change needed when that day comes.
+  currency: text("currency").notNull().default("INR"),
   monthlyPrice: decimal("monthly_price", { precision: 10, scale: 2 }).notNull().default("0"),
   yearlyPrice: decimal("yearly_price", { precision: 10, scale: 2 }),
   maxSeats: integer("max_seats"),
