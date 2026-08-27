@@ -706,6 +706,19 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const bpResult     = scoreBloodPressure(bpSystolic, bpDiastolic);
   const sugarResult  = scoreBloodSugar(glucoseMgDl, sugarContext);
 
+  // BMI reflects the profile, not today's activity — it must never be the
+  // metric that carries a day's score on its own. Only let it into the
+  // composite when at least one real activity metric was also logged today,
+  // otherwise a day with zero logging can score 100 purely off a healthy
+  // BMI on file (BMI becomes the sole active metric, so its weight gets
+  // renormalized to 100% of the composite) — the exact kind of fake score
+  // this module's "no fake defaults" design is meant to prevent.
+  const hasAnyDailyActivity = [
+    foodResult.score, exResult.score, waterResult.score, medResult.score,
+    sleepResult.score, stressResult.score, stepsResult, hrResult, spo2Result,
+    bpResult.score, sugarResult.score,
+  ].some((s) => s !== null);
+
   // ── Composite: only metrics with real data ───────────────────────────────────
   const { overallScore, activeMetrics, excludedMetrics } = buildCompositeScore({
     food:          foodResult.score,
@@ -714,7 +727,7 @@ export async function computeScientificScore(userId: string, date: string): Prom
     medicine:      medResult.score,
     sleep:         sleepResult.score,
     stress:        stressResult.score,
-    bmi:           bmiResult.score,
+    bmi:           hasAnyDailyActivity ? bmiResult.score : null,
     steps:         stepsResult,
     heartRate:     hrResult,
     spo2:          spo2Result,
