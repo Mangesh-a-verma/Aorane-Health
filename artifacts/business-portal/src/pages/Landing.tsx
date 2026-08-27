@@ -36,9 +36,13 @@ const whatWeTrack = [
 // Fallback pricing — used only if the live /business/public/plans call
 // hasn't returned yet (or fails). Kept in sync with the real seat-plan
 // defaults in the API so the page never shows a broken price.
+// Shown only until the live GET /business/public/plans call resolves (or if
+// it fails) — kept matching plan_pricing's org_pro/org_max feature list so a
+// slow/cold API start never shows a visitor different features than what
+// they'd see a second later once the real data loads.
 const fallbackPlans: Record<string, { label: string; pricePerSeat: number; yearlyPricePerSeat: number; features: string[] }> = {
-  max: { label: "Max", pricePerSeat: 249, yearlyPricePerSeat: 211, features: ["Health Update", "Limited AI Analysis", "BMI-India Calibrated (Asia-Pacific)", "Live Team Health Dashboard", "Email Support"] },
-  pro: { label: "Pro", pricePerSeat: 199, yearlyPricePerSeat: 169, features: ["ALL MAX Features & Free CRM", "AI Analysis (No Limit)", "Team Stress Level Monitor", "Monthly Health Report", "24/7 Priority Support"] },
+  pro: { label: "Pro", pricePerSeat: 199, yearlyPricePerSeat: 169, features: ["Basic aggregate health dashboard", "Enrollment code management", "Employee search", "GST-ready invoice", "Email support"] },
+  max: { label: "Max", pricePerSeat: 249, yearlyPricePerSeat: 211, features: ["Everything in Pro", "Advanced health analytics & charts", "Health risk distribution alerts", "Weekly & monthly team reports", "Priority support", "Custom announcements to employees"] },
 };
 
 const faqs = [
