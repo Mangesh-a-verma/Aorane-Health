@@ -20,6 +20,7 @@ import type { AuthRequest } from "../../middlewares/user-auth";
 import { checkAndUseAILimit, refundAIUsage } from "../../lib/aiLimiter";
 import { callAI } from "../../lib/ai";
 import { todayIST, istDayBounds } from "../../lib/dateUtils";
+import { WORK_PROFILE_ACTIVITY, calculateEffectiveTDEE } from "../../lib/workProfile";
 
 const router = Router();
 
@@ -32,59 +33,11 @@ function getIndianSeason(): string {
   return "Autumn (Sharad) — Seasonal foods: Pomegranate, Guava, Apple, Light dal";
 }
 
-// ── Work profile → activity multiplier mapping ───────────────────────────────
-const WORK_PROFILE_MULTIPLIERS: Record<string, number> = {
-  "Office/Desk Job":     1.2,
-  "IT/Software":         1.2,
-  "Call Center/BPO":     1.2,
-  "Freelancer/WFH":      1.2,
-  "Teacher/Professor":   1.375,
-  "Doctor/Healthcare":   1.375,
-  "Business Owner":      1.375,
-  "Housewife":           1.375,
-  "House Husband":       1.375,
-  "Retired":             1.375,
-  "Artist/Creative":     1.375,
-  "Student (School)":    1.375,
-  "Field/Sales":         1.55,
-  "Driver/Delivery":     1.55,
-  "Factory Worker":      1.55,
-  "ASHA/ANM Worker":     1.55,
-  "Student (College)":   1.55,
-  "Police/CRPF":         1.725,
-  "Army/Defence":        1.725,
-  "Farmer/Agriculture":  1.725,
-  "Construction Worker": 1.725,
-  "Athlete/Sports":      1.9,
-};
-
-// Maps work profile → activity level label (for display + prompt)
-const WORK_PROFILE_ACTIVITY: Record<string, string> = {
-  "Office/Desk Job":     "sedentary",
-  "IT/Software":         "sedentary",
-  "Call Center/BPO":     "sedentary",
-  "Freelancer/WFH":      "sedentary",
-  "Teacher/Professor":   "light",
-  "Doctor/Healthcare":   "light",
-  "Business Owner":      "light",
-  "Housewife":           "light",
-  "House Husband":       "light",
-  "Retired":             "light",
-  "Artist/Creative":     "light",
-  "Student (School)":    "light",
-  "Field/Sales":         "moderate",
-  "Driver/Delivery":     "moderate",
-  "Factory Worker":      "moderate",
-  "ASHA/ANM Worker":     "moderate",
-  "Student (College)":   "moderate",
-  "Police/CRPF":         "very",
-  "Army/Defence":        "very",
-  "Farmer/Agriculture":  "very",
-  "Construction Worker": "very",
-  "Athlete/Sports":      "athlete",
-};
-
 // ── BMR / TDEE calculation — uses BOTH workProfile + activityLevel ────────────
+// The multiplier table and effective-TDEE formula themselves live in
+// lib/workProfile.ts, shared with lib/scoring.ts's Health Score engine, so
+// the two never drift apart the way they used to (scoring.ts ignored job
+// role entirely until this same fix wired it in there too).
 function calculateTDEE(
   weightKg: number, heightCm: number, age: number, gender: string,
   activityLevel: string, workProfile?: string
@@ -92,20 +45,7 @@ function calculateTDEE(
   const bmr = gender === "female"
     ? 655 + 9.6 * weightKg + 1.8 * heightCm - 4.7 * age
     : 66 + 13.7 * weightKg + 5 * heightCm - 6.8 * age;
-
-  // Work profile multiplier (based on job physical demand)
-  const workMultiplier = workProfile ? (WORK_PROFILE_MULTIPLIERS[workProfile] || 1.4) : 1.4;
-
-  // Exercise/lifestyle multiplier (additional to work)
-  const exerciseMultipliers: Record<string, number> = {
-    sedentary: 0, light: 0.05, moderate: 0.1, very: 0.175, athlete: 0.25,
-  };
-  const exerciseAdd = exerciseMultipliers[activityLevel] || 0;
-
-  // Effective multiplier: work base + exercise addition, capped at 2.0
-  const effectiveMultiplier = Math.min(2.0, workMultiplier + exerciseAdd);
-
-  return Math.round(bmr * effectiveMultiplier);
+  return calculateEffectiveTDEE(bmr, activityLevel, workProfile);
 }
 
 // ── Build full suggestion prompt ──────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { pool } from "@workspace/db";
 import { istDayBounds } from "./dateUtils";
+import { calculateEffectiveTDEE } from "./workProfile";
 
 /**
  * AORANE Scientific Health Score Engine v3
@@ -123,17 +124,18 @@ function calcAge(dob: string | null): number | null {
 
 function calcBMRandTDEE(
   weightKg: number, heightCm: number, age: number, gender: string, activityLevel: string,
+  workProfile?: string | null,
 ): { bmr: number; tdee: number } | null {
   if (!weightKg || !heightCm || !age) return null;
   const bmr = gender === "female"
     ? 655 + (9.6 * weightKg) + (1.8 * heightCm) - (4.7 * age)
     : 66  + (13.7 * weightKg) + (5 * heightCm) - (6.8 * age);
-  const mult: Record<string, number> = {
-    sedentary: 1.2, light: 1.375, lightly_active: 1.375,
-    moderate: 1.55, moderately_active: 1.55,
-    very: 1.725, very_active: 1.725, athlete: 1.9,
-  };
-  return { bmr: Math.round(bmr), tdee: Math.round(bmr * (mult[activityLevel] ?? 1.55)) };
+  // Same job-role-aware formula routes/modules/suggestions.ts's AI Coach
+  // uses — previously this only looked at activityLevel, so a farmer and
+  // an office worker with the same self-reported activity level got
+  // identical calorie/protein goals here despite very different real
+  // TDEE, while the Coach already told them apart correctly.
+  return { bmr: Math.round(bmr), tdee: calculateEffectiveTDEE(bmr, activityLevel, workProfile) };
 }
 
 function calcPersonalisedCalorieGoal(
@@ -501,7 +503,7 @@ export async function computeScientificScore(userId: string, date: string): Prom
   // ── Optional columns — silently degrade if not yet migrated ─────────────────
   const [profileExtR, exMetR, foodMicroR, wearableR] = await Promise.all([
     pool.query(
-      `SELECT height_cm, date_of_birth, activity_level FROM user_profiles WHERE user_id=$1`,
+      `SELECT height_cm, date_of_birth, activity_level, work_profile FROM user_profiles WHERE user_id=$1`,
       [userId],
     ).catch(() => ({ rows: [{}] })),
 
@@ -582,6 +584,7 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const heightCm     = parseFloat(profile.height_cm    || "0");
   const gender       = profile.gender       || "other";
   const activityLevel = profile.activity_level || "moderate";
+  const workProfile  = profile.work_profile   || null;
   const dateOfBirth  = profile.date_of_birth  || null;
 
   // BMI: always compute fresh from current weight + height
@@ -613,7 +616,7 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const primaryGoal  = goalsR.rows[0]?.primary_goal || "general_wellness";
   const conditions: string[] = (conditionsR.rows || []).map((r: any) => String(r.condition || ""));
   const age          = calcAge(dateOfBirth);
-  const bmrTdee      = calcBMRandTDEE(weightKg, heightCm, age ?? 30, gender, activityLevel);
+  const bmrTdee      = calcBMRandTDEE(weightKg, heightCm, age ?? 30, gender, activityLevel, workProfile);
   const { goal: calGoal, source: goalSource } = calcPersonalisedCalorieGoal(bmrTdee?.tdee ?? null, primaryGoal, prefCalGoal);
   const { goalG: proteinGoal, basis: proteinBasis } = calcProteinGoal(weightKg, age, primaryGoal);
   const fiberGoalG   = calcFiberGoal(conditions);
