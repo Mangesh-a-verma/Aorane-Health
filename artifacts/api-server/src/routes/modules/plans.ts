@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, planPricingTable } from "@workspace/db";
+import { db, planPricingTable, adminAuditLogsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import type { AdminRequest } from "../../middlewares/admin-auth";
@@ -358,6 +358,11 @@ router.put("/admin/plan-features/:featureName", requireAdmin, async (req: AdminR
     // invalidated or one could keep serving the old value.
     invalidatePlanLimitsCache(fname);
     invalidateAILimiterCache(fname as AIFeature);
+    await db.insert(adminAuditLogsTable).values({
+      adminId: req.adminId!, action: "update_plan_feature",
+      targetType: "plan_feature", targetId: fname,
+      details: { freeValue, maxValue, proValue, familyValue, period },
+    });
     res.json({ success: true, feature: rows[0] });
   } catch {
     res.status(500).json({ error: "Failed to update plan feature" });
