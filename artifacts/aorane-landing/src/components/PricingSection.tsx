@@ -5,6 +5,7 @@ import {
   Clock, ArrowRight, MessageCircle, ChevronRight,
 } from "lucide-react";
 import { useSiteSettings } from "@/lib/useSiteSettings";
+import { useIndividualPlans, useBusinessPlans } from "@/lib/usePlans";
 import { ACTIVE_MARKET, formatPrice, taxDisclaimer } from "@/lib/market";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -41,6 +42,11 @@ interface BusinessPlan {
 }
 
 // ── Individual Plans ──────────────────────────────────────────────────────────
+// Prices and features here are the fallback shown before the live fetch to
+// GET /api/plans resolves (or if it fails) — see useIndividualPlans() below,
+// which overlays real numbers from plan_pricing on top of this. Icons,
+// colors and gradients stay defined here since those are presentation-only
+// and aren't stored in the database.
 const individualPlans: IndividualPlan[] = [
   {
     planKey: "free",
@@ -115,6 +121,10 @@ const individualPlans: IndividualPlan[] = [
 ];
 
 // ── Business Plans ────────────────────────────────────────────────────────────
+// Same fallback/design-baseline role as individualPlans above — see
+// useBusinessPlans(), which overlays live pricing from
+// GET /api/business/public/plans (the same endpoint the Business Portal's
+// own landing page already uses, so the two stay in sync).
 const businessPlans: BusinessPlan[] = [
   {
     planKey: "org_pro",
@@ -580,6 +590,34 @@ export default function PricingSection({
   const [installOpen, setInstallOpen] = useState(false);
   useSiteSettings();
 
+  const livePlans = useIndividualPlans();
+  const liveBizPlans = useBusinessPlans();
+
+  const displayedIndividualPlans = individualPlans.map((p) => {
+    const live = livePlans?.find((lp) => lp.planKey === p.planKey);
+    if (!live) return p;
+    return {
+      ...p,
+      monthlyPrice: Number(live.monthlyPrice),
+      yearlyPrice: live.yearlyPrice ? Number(live.yearlyPrice) : p.yearlyPrice,
+      badge: live.badgeText ?? p.badge,
+      badgeColor: live.badgeColor ?? p.badgeColor,
+      features: live.features.length ? live.features.map((text) => ({ text })) : p.features,
+    };
+  });
+
+  const displayedBusinessPlans = businessPlans.map((p) => {
+    if (p.isComingSoon) return p; // "Custom" tier isn't a billed plan_pricing row
+    const live = liveBizPlans?.[p.planKey.replace(/^org_/, "")];
+    if (!live) return p;
+    return {
+      ...p,
+      pricePerSeat: live.pricePerSeat,
+      yearlyPricePerSeat: live.yearlyPricePerSeat,
+      features: live.features.length ? live.features : p.features,
+    };
+  });
+
   return (
     <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-[#F5F8F6]">
       <div className="max-w-7xl mx-auto">
@@ -662,7 +700,7 @@ export default function PricingSection({
               transition={{ duration: 0.25 }}
               className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
             >
-              {individualPlans.map((plan) => (
+              {displayedIndividualPlans.map((plan) => (
                 <IndividualCard
                   key={plan.planKey}
                   plan={plan}
@@ -711,7 +749,7 @@ export default function PricingSection({
 
               {/* 3-column business plans grid */}
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
-                {businessPlans.map((plan) => (
+                {displayedBusinessPlans.map((plan) => (
                   <BusinessCard
                     key={plan.planKey}
                     plan={plan}

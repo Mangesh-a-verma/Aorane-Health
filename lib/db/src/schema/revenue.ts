@@ -147,6 +147,14 @@ export const paymentsTable = pgTable("payments", {
   currency: text("currency").notNull().default("INR"),
   status: paymentStatusEnum("status").notNull().default("pending"),
   plan: text("plan").notNull(),
+  // Set once at order-creation time (the caller already knows this — see
+  // /payment/order) and read back as-is at verify time, instead of
+  // guessing monthly-vs-yearly from the paid amount. That guess
+  // (amount >= monthlyPrice * 10) breaks the moment a yearly price is
+  // configured below 10x the monthly one, e.g. a "10 months for 12"
+  // promo — a real annual subscriber would silently get 30 days instead
+  // of a year.
+  billingCycle: text("billing_cycle").notNull().default("monthly"),
   seats: integer("seats").notNull().default(1),
   gatewayFee: decimal("gateway_fee", { precision: 8, scale: 2 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -173,6 +181,11 @@ export const planPricingTable = pgTable("plan_pricing", {
   planKey: text("plan_key").notNull().unique(),
   displayName: text("display_name").notNull(),
   type: text("type").notNull().default("individual"),
+  // ISO 4217 code the prices below are denominated in. India-only launch
+  // means every row is "INR" today; a future market (e.g. a EUR-priced
+  // plan_key for Europe) just needs its own plan_pricing row with this set
+  // accordingly — no schema change needed when that day comes.
+  currency: text("currency").notNull().default("INR"),
   monthlyPrice: decimal("monthly_price", { precision: 10, scale: 2 }).notNull().default("0"),
   yearlyPrice: decimal("yearly_price", { precision: 10, scale: 2 }),
   maxSeats: integer("max_seats"),

@@ -1,0 +1,1 @@
+ALTER TABLE "plan_pricing" ADD COLUMN "currency" text DEFAULT 'INR' NOT NULL;

@@ -1,0 +1,1 @@
+ALTER TABLE "payments" ADD COLUMN "billing_cycle" text DEFAULT 'monthly' NOT NULL;
