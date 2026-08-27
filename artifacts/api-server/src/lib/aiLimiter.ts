@@ -30,7 +30,6 @@ export type AIFeature =
   | "ai_meal_swap_daily"
   | "ai_meal_planner_daily"
   | "ai_health_prediction_weekly"
-  | "ai_health_suggestions_daily"
   | "ai_stress_insight_daily"
   | "ai_weather_suggestions_daily";
 
