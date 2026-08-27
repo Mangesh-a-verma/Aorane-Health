@@ -1287,50 +1287,12 @@ router.get("/admin/org-invoices", requireAdmin, async (_req: AdminRequest, res) 
   } catch { res.status(500).json({ error: "Failed to fetch org invoices" }); }
 });
 
-// ─── Plan Features (plan_features table — granular per-plan limits) ──────────
-router.get("/admin/plan-features", requireAdmin, async (_req: AdminRequest, res) => {
-  try {
-    const { rows } = await pool.query(`SELECT * FROM plan_features ORDER BY feature_name`);
-    res.json({ features: rows });
-  } catch {
-    res.status(500).json({ error: "Failed to fetch plan features" });
-  }
-});
-
-router.put("/admin/plan-features/:feature_name", requireAdmin, requireSuperAdmin, async (req: AdminRequest, res) => {
-  try {
-    const featureName = String(req.params.feature_name);
-    const { freeValue, maxValue, proValue, familyValue, description } = req.body as Record<string, string>;
-    const setClauses: string[] = ["updated_at = now()"];
-    const values: unknown[] = [];
-    let idx = 1;
-    if (freeValue !== undefined)   { setClauses.push(`free_value = $${idx++}`);   values.push(freeValue); }
-    if (maxValue !== undefined)    { setClauses.push(`max_value = $${idx++}`);    values.push(maxValue); }
-    if (proValue !== undefined)    { setClauses.push(`pro_value = $${idx++}`);    values.push(proValue); }
-    if (familyValue !== undefined) { setClauses.push(`family_value = $${idx++}`); values.push(familyValue); }
-    if (description !== undefined) { setClauses.push(`description = $${idx++}`);  values.push(description); }
-    if (values.length === 0) { res.status(400).json({ error: "No fields to update" }); return; }
-    values.push(featureName);
-    const { rows } = await pool.query(
-      `UPDATE plan_features SET ${setClauses.join(", ")} WHERE feature_name = $${idx} RETURNING *`,
-      values,
-    );
-    if (!rows.length) { res.status(404).json({ error: "Feature not found" }); return; }
-    const { invalidateAILimiterCache } = await import("../../lib/aiLimiter");
-    const { invalidatePlanLimitsCache } = await import("../../middlewares/plan-limits");
-    invalidateAILimiterCache();
-    invalidatePlanLimitsCache();
-    await db.insert(adminAuditLogsTable).values({
-      adminId: req.adminId!, action: "update_plan_feature",
-      targetType: "plan_feature", targetId: featureName,
-      details: { freeValue, maxValue, proValue, familyValue },
-    });
-    res.json({ feature: rows[0], success: true });
-  } catch (e) {
-    req.log?.error(e);
-    res.status(500).json({ error: "Failed to update plan feature" });
-  }
-});
+// Plan Features (plan_features table) GET/PUT live in routes/modules/plans.ts —
+// this used to have its own duplicate copy here too. The duplicate PUT
+// additionally required requireSuperAdmin, and since this router is mounted
+// before plansRouter (see routes/index.ts), it silently won every request,
+// blocking any non-super-admin from ever saving a plan-feature edit even
+// though the admin panel's UI never signaled that restriction.
 
 // ─── User AI Usage (per-user daily usage stats + reset) ──────────────────────
 router.get("/admin/users/:id/ai-usage", requireAdmin, async (req: AdminRequest, res) => {

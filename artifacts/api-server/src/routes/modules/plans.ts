@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, planPricingTable } from "@workspace/db";
+import { db, planPricingTable, adminAuditLogsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/admin-auth";
 import type { AdminRequest } from "../../middlewares/admin-auth";
@@ -17,7 +17,7 @@ const DEFAULT_PLANS = [
   {
     planKey: "free", displayName: "Free", type: "individual",
     monthlyPrice: "0", yearlyPrice: null, maxSeats: 1,
-    features: ["Basic Health Tracking", "Food Diary (20/day)", "Water Tracker", "Step Counter"],
+    features: ["AI Meal Logging (Text) — 10/day", "Exercise Logging", "Water Tracker & Reminders", "Basic Daily Health Score", "Blood Emergency SOS", "Period Cycle Tracker (Female)", "Manual Logging (Sleep, Stress, Heart Rate, BP, Steps)"],
     badgeText: null, badgeColor: "#4B5563",
     gradientColors: ["#374151", "#1F2937"] as [string, string],
     isActive: true, sortOrder: 0,
@@ -25,7 +25,7 @@ const DEFAULT_PLANS = [
   {
     planKey: "pro", displayName: "Pro", type: "individual",
     monthlyPrice: "199", yearlyPrice: "1990", maxSeats: 1,
-    features: ["AI Food Scan", "Personalized Diet Plan", "Health Reports PDF", "Medicine Reminders", "Exercise Tracking", "Water Tracker"],
+    features: ["Meal Logging (Text) — Unlimited", "AI Food Scan — 5/day", "AI Medical Report Analysis — 1/month", "AI Health Coach", "Health Prediction", "AI Diet Planner", "Health Reports (Weekly & Monthly)", "Smart Watch Integration (Auto Sync)", "Stress & Burnout AI Monitoring", "All Basic Plan Features"],
     badgeText: "Popular", badgeColor: "#0077B6",
     gradientColors: ["#0077B6", "#023E8A"] as [string, string],
     isActive: true, sortOrder: 1,
@@ -33,7 +33,7 @@ const DEFAULT_PLANS = [
   {
     planKey: "max", displayName: "Max", type: "individual",
     monthlyPrice: "249", yearlyPrice: "2490", maxSeats: 1,
-    features: ["All Pro Features +", "Medical Report AI Scanner", "Advanced Gemini AI", "Priority Support", "Family Add-on", "Unlimited History"],
+    features: ["Everything in Pro", "AI Food Scan — 10/day", "AI Medical Report Analysis — Up to 4/month", "Advanced Health Prediction", "Advanced Health Reports"],
     badgeText: "Best Value", badgeColor: "#8B5CF6",
     gradientColors: ["#8B5CF6", "#6D28D9"] as [string, string],
     isActive: true, sortOrder: 2,
@@ -41,7 +41,7 @@ const DEFAULT_PLANS = [
   {
     planKey: "family", displayName: "Family", type: "individual",
     monthlyPrice: "499", yearlyPrice: "4990", maxSeats: 4,
-    features: ["Everything in Pro", "Up to 4 Family Members", "Family Health Dashboard", "Shared Health Reports", "Member Health Alerts", "Family Reminders"],
+    features: ["Everything in Max", "Up to 4 Members", "Shared Health Reports", "Member Health Alerts", "Family Reminders"],
     badgeText: "4 Members", badgeColor: "#F59E0B",
     gradientColors: ["#F59E0B", "#D97706"] as [string, string],
     isActive: true, sortOrder: 3,
@@ -358,6 +358,11 @@ router.put("/admin/plan-features/:featureName", requireAdmin, async (req: AdminR
     // invalidated or one could keep serving the old value.
     invalidatePlanLimitsCache(fname);
     invalidateAILimiterCache(fname as AIFeature);
+    await db.insert(adminAuditLogsTable).values({
+      adminId: req.adminId!, action: "update_plan_feature",
+      targetType: "plan_feature", targetId: fname,
+      details: { freeValue, maxValue, proValue, familyValue, period },
+    });
     res.json({ success: true, feature: rows[0] });
   } catch {
     res.status(500).json({ error: "Failed to update plan feature" });
