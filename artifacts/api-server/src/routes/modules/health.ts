@@ -5,8 +5,9 @@ import { pool } from "@workspace/db";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { computeScientificScore } from "../../lib/scoring";
-import { istDayBounds } from "../../lib/dateUtils";
+import { istDayBounds, todayIST } from "../../lib/dateUtils";
 import { safeErrorMessage } from "../../lib/logger";
+import { isBooleanFeatureEnabled } from "../../middlewares/plan-limits";
 
 const router = Router();
 
@@ -442,6 +443,165 @@ router.get("/health/sleep/:date", requireAuth, async (req: AuthRequest, res) => 
   }
 });
 
+// ─── Blood Pressure Logging ─────────────────────────────────────────────────
+// Unlike sleep (one row per night), BP is commonly checked more than once a
+// day (morning/evening) — no upsert-by-date here, every reading is its own row.
+router.post("/health/blood-pressure", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const planType = req.userPlan || "free";
+    const enabled = await isBooleanFeatureEnabled("blood_sugar_bp_tracking", planType);
+    if (!enabled) {
+      res.status(403).json({
+        error: `Blood pressure tracking is not available on the ${planType.toUpperCase()} plan. Please upgrade to log vitals.`,
+        feature: "blood_sugar_bp_tracking",
+        reason: "plan_not_supported",
+        currentPlan: planType,
+        upgradeSuggested: true,
+      });
+      return;
+    }
+    const { systolic, diastolic, pulse, measuredAt, notes, isOfflineEntry } = req.body as Record<string, unknown>;
+    const sys = parseInt(String(systolic));
+    const dia = parseInt(String(diastolic));
+    if (!systolic || !diastolic || isNaN(sys) || isNaN(dia)) {
+      res.status(400).json({ error: "systolic and diastolic are required" });
+      return;
+    }
+    if (sys < 50 || sys > 300 || dia < 30 || dia > 200) {
+      res.status(400).json({ error: "systolic must be 50-300 and diastolic 30-200" });
+      return;
+    }
+    let pulseNum: number | null = null;
+    if (pulse !== undefined && pulse !== null && pulse !== "") {
+      pulseNum = parseInt(String(pulse));
+      if (isNaN(pulseNum) || pulseNum < 20 || pulseNum > 250) {
+        res.status(400).json({ error: "pulse must be between 20 and 250" });
+        return;
+      }
+    }
+    const result = await pool.query(
+      `INSERT INTO blood_pressure_logs (user_id, systolic, diastolic, pulse, measured_at, notes, is_offline_entry)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [
+        req.userId!, sys, dia, pulseNum,
+        measuredAt ? new Date(String(measuredAt)) : new Date(),
+        notes ? String(notes) : null,
+        Boolean(isOfflineEntry ?? false),
+      ]
+    );
+    upsertDailyActivityScore(req.userId!).catch(() => {});
+    upsertDailyHealthScore(req.userId!).catch(() => {});
+    res.status(201).json({ success: true, log: result.rows[0] });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to log blood pressure", detail: safeErrorMessage(e) });
+  }
+});
+
+router.get("/health/blood-pressure/history", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { days = "30" } = req.query as { days?: string };
+    const limit = Math.min(parseInt(days) || 30, 365);
+    const result = await pool.query(
+      `SELECT * FROM blood_pressure_logs WHERE user_id=$1 AND measured_at >= NOW() - ($2 || ' days')::interval ORDER BY measured_at DESC`,
+      [req.userId!, String(limit)]
+    );
+    res.json({ logs: result.rows, count: result.rows.length });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch blood pressure history", detail: safeErrorMessage(e) });
+  }
+});
+
+router.get("/health/blood-pressure/today", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { dayStart, dayEnd } = istDayBounds(todayIST());
+    const result = await pool.query(
+      `SELECT * FROM blood_pressure_logs WHERE user_id=$1 AND measured_at >= $2 AND measured_at <= $3 ORDER BY measured_at DESC`,
+      [req.userId!, dayStart, dayEnd]
+    );
+    res.json({ logs: result.rows, latest: result.rows[0] || null });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch today's blood pressure", detail: safeErrorMessage(e) });
+  }
+});
+
+// ─── Blood Sugar Logging ────────────────────────────────────────────────────
+router.post("/health/blood-sugar", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const planType = req.userPlan || "free";
+    const enabled = await isBooleanFeatureEnabled("blood_sugar_bp_tracking", planType);
+    if (!enabled) {
+      res.status(403).json({
+        error: `Blood sugar tracking is not available on the ${planType.toUpperCase()} plan. Please upgrade to log vitals.`,
+        feature: "blood_sugar_bp_tracking",
+        reason: "plan_not_supported",
+        currentPlan: planType,
+        upgradeSuggested: true,
+      });
+      return;
+    }
+    const { glucoseMgDl, readingContext, measuredAt, notes, isOfflineEntry } = req.body as Record<string, unknown>;
+    const glucose = parseInt(String(glucoseMgDl));
+    if (!glucoseMgDl || isNaN(glucose)) {
+      res.status(400).json({ error: "glucoseMgDl is required" });
+      return;
+    }
+    if (glucose < 20 || glucose > 600) {
+      res.status(400).json({ error: "glucoseMgDl must be between 20 and 600" });
+      return;
+    }
+    const validContexts = ["fasting", "post_meal", "random", "bedtime"];
+    if (readingContext && !validContexts.includes(String(readingContext))) {
+      res.status(400).json({ error: `readingContext must be one of: ${validContexts.join(", ")}` });
+      return;
+    }
+    const result = await pool.query(
+      `INSERT INTO blood_sugar_logs (user_id, glucose_mg_dl, reading_context, measured_at, notes, is_offline_entry)
+       VALUES ($1, $2, $3::sugar_reading_context, $4, $5, $6)
+       RETURNING *`,
+      [
+        req.userId!, glucose,
+        readingContext ? String(readingContext) : null,
+        measuredAt ? new Date(String(measuredAt)) : new Date(),
+        notes ? String(notes) : null,
+        Boolean(isOfflineEntry ?? false),
+      ]
+    );
+    upsertDailyActivityScore(req.userId!).catch(() => {});
+    upsertDailyHealthScore(req.userId!).catch(() => {});
+    res.status(201).json({ success: true, log: result.rows[0] });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to log blood sugar", detail: safeErrorMessage(e) });
+  }
+});
+
+router.get("/health/blood-sugar/history", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { days = "30" } = req.query as { days?: string };
+    const limit = Math.min(parseInt(days) || 30, 365);
+    const result = await pool.query(
+      `SELECT * FROM blood_sugar_logs WHERE user_id=$1 AND measured_at >= NOW() - ($2 || ' days')::interval ORDER BY measured_at DESC`,
+      [req.userId!, String(limit)]
+    );
+    res.json({ logs: result.rows, count: result.rows.length });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch blood sugar history", detail: safeErrorMessage(e) });
+  }
+});
+
+router.get("/health/blood-sugar/today", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { dayStart, dayEnd } = istDayBounds(todayIST());
+    const result = await pool.query(
+      `SELECT * FROM blood_sugar_logs WHERE user_id=$1 AND measured_at >= $2 AND measured_at <= $3 ORDER BY measured_at DESC`,
+      [req.userId!, dayStart, dayEnd]
+    );
+    res.json({ logs: result.rows, latest: result.rows[0] || null });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch today's blood sugar", detail: safeErrorMessage(e) });
+  }
+});
+
 router.get("/health/score-range", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
@@ -503,6 +663,8 @@ async function computeDailyScore(userId: string, date: string): Promise<Record<s
     medicineScore:      s.medicineScore,
     sleepScore:         s.sleepScore,
     bmiScore:           s.bmiScore,
+    bloodPressureScore: s.bloodPressureScore,
+    bloodSugarScore:    s.bloodSugarScore,
     // Detail breakdowns
     food:               s.food,
     exercise:           s.exercise,
@@ -510,6 +672,8 @@ async function computeDailyScore(userId: string, date: string): Promise<Record<s
     medicine:           s.medicine,
     sleep:              s.sleep,
     bmi:                s.bmi,
+    bloodPressure:      s.bloodPressure,
+    bloodSugar:         s.bloodSugar,
     // Backward compat fields for existing mobile screens
     totalCaloriesIn:    String(s.food.calories),
     waterGlasses:       s.water.glasses,

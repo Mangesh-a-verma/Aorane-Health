@@ -239,12 +239,50 @@ export const sleepLogsTable = pgTable("sleep_logs", {
   userSleepDateIdx: uniqueIndex("idx_sleep_logs_user_sleep_date").on(t.userId, t.sleepDate),
 }));
 
+// Readings can happen more than once a day (morning/evening BP, fasting/
+// post-meal sugar) — unlike sleep_logs, there's no natural one-row-per-day
+// key, so this follows exercise_logs' plain multi-row-per-day shape instead.
+export const bloodPressureLogsTable = pgTable("blood_pressure_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  systolic: integer("systolic").notNull(),
+  diastolic: integer("diastolic").notNull(),
+  pulse: integer("pulse"),
+  measuredAt: timestamp("measured_at", { withTimezone: true }).notNull().defaultNow(),
+  notes: text("notes"),
+  isOfflineEntry: boolean("is_offline_entry").notNull().default(false),
+  syncedAt: timestamp("synced_at", { withTimezone: true }),
+  loggedAt: timestamp("logged_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  userMeasuredAtIdx: index("idx_blood_pressure_logs_user_measured_at").on(t.userId, t.measuredAt),
+}));
+
+export const sugarReadingContextEnum = pgEnum("sugar_reading_context", ["fasting", "post_meal", "random", "bedtime"]);
+
+export const bloodSugarLogsTable = pgTable("blood_sugar_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  glucoseMgDl: integer("glucose_mg_dl").notNull(),
+  readingContext: sugarReadingContextEnum("reading_context"),
+  measuredAt: timestamp("measured_at", { withTimezone: true }).notNull().defaultNow(),
+  notes: text("notes"),
+  isOfflineEntry: boolean("is_offline_entry").notNull().default(false),
+  syncedAt: timestamp("synced_at", { withTimezone: true }),
+  loggedAt: timestamp("logged_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  userMeasuredAtIdx: index("idx_blood_sugar_logs_user_measured_at").on(t.userId, t.measuredAt),
+}));
+
 export const insertExerciseLogSchema = createInsertSchema(exerciseLogsTable).omit({ id: true, createdAt: true });
 export const insertWaterLogSchema = createInsertSchema(waterLogsTable).omit({ id: true, createdAt: true });
 export const insertMedicineScheduleSchema = createInsertSchema(medicineSchedulesTable).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertMedicineLogSchema = createInsertSchema(medicineLogsTable).omit({ id: true, createdAt: true });
 export const insertStressLogSchema = createInsertSchema(stressLogsTable).omit({ id: true, createdAt: true });
 export const insertSleepLogSchema = createInsertSchema(sleepLogsTable).omit({ id: true, createdAt: true });
+export const insertBloodPressureLogSchema = createInsertSchema(bloodPressureLogsTable).omit({ id: true, createdAt: true });
+export const insertBloodSugarLogSchema = createInsertSchema(bloodSugarLogsTable).omit({ id: true, createdAt: true });
 
 // ── Daily AI Suggestions Cache (per user per day) ────────────────────────────
 export const dailySuggestionsTable = pgTable("daily_suggestions", {
@@ -302,3 +340,5 @@ export type DailyHealthScore = typeof dailyHealthScoresTable.$inferSelect;
 export type DailySuggestion = typeof dailySuggestionsTable.$inferSelect;
 export type HealthPrediction = typeof healthPredictionsTable.$inferSelect;
 export type WeeklyDietChart = typeof weeklyDietChartsTable.$inferSelect;
+export type BloodPressureLog = typeof bloodPressureLogsTable.$inferSelect;
+export type BloodSugarLog = typeof bloodSugarLogsTable.$inferSelect;
