@@ -66,6 +66,8 @@ export type TranslationMap = {
   dashHealthReport?: string;
   dashPeriod?: string;
   dashCycleTracker?: string;
+  dashVitals?: string;
+  dashBpSugar?: string;
   dashMoodAndBreathe?: string;
   dashStressLow?: string;
   dashStressModerate?: string;
@@ -292,6 +294,8 @@ export const translations: Record<LangCode, TranslationMap> = {
     dashHealthReport: "Health report",
     dashPeriod: "Period",
     dashCycleTracker: "Cycle tracker",
+    dashVitals: "Vitals",
+    dashBpSugar: "BP & Sugar",
     dashMoodAndBreathe: "Mood & breathe",
     dashStressLow: "Low",
     dashStressModerate: "Moderate",
@@ -506,6 +510,8 @@ export const translations: Record<LangCode, TranslationMap> = {
     dashHealthReport: "स्वास्थ्य रिपोर्ट",
     dashPeriod: "पीरियड",
     dashCycleTracker: "चक्र ट्रैकर",
+    dashVitals: "वाइटल्स",
+    dashBpSugar: "बीपी और शुगर",
     dashMoodAndBreathe: "मूड और सांस",
     dashStressLow: "कम",
     dashStressModerate: "मध्यम",

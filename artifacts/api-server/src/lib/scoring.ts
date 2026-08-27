@@ -43,6 +43,8 @@ export interface DailyHealthScore {
   stepsScore:     number | null;
   heartRateScore: number | null;
   spo2Score:      number | null;
+  bloodPressureScore: number | null;
+  bloodSugarScore:    number | null;
 
   // Breakdown detail
   exercise: {
@@ -87,6 +89,14 @@ export interface DailyHealthScore {
     heartRateAvg: number | null; heartRateMin: number | null; heartRateMax: number | null;
     bloodOxygen: number | null;
     hasSteps: boolean; hasHeartRate: boolean; hasSpo2: boolean;
+  };
+  bloodPressure: {
+    systolic: number | null; diastolic: number | null; pulse: number | null;
+    category: string; hasData: boolean;
+  };
+  bloodSugar: {
+    glucoseMgDl: number | null; readingContext: string | null;
+    category: string; hasData: boolean;
   };
 
   // Which metrics actually contributed to today's score
@@ -352,6 +362,38 @@ function scoreSpo2(spo2: number | null): number | null {
   return 10; // <88 = severe hypoxia
 }
 
+// Blood pressure — AHA/ACC 2017 categories. Uses the day's latest reading
+// (a user checking BP morning+evening isn't "worse" for having 2 readings —
+// same "latest snapshot" approach already used for wearable steps/HR/SpO2).
+function scoreBloodPressure(systolic: number | null, diastolic: number | null): { score: number | null; category: string } {
+  if (systolic === null || diastolic === null || systolic <= 0 || diastolic <= 0) {
+    return { score: null, category: "Unknown" };
+  }
+  if (systolic < 90 || diastolic < 60) return { score: 55, category: "Low (Hypotension)" };
+  if (systolic < 120 && diastolic < 80) return { score: 100, category: "Normal" };
+  if (systolic < 130 && diastolic < 80) return { score: 85, category: "Elevated" };
+  if (systolic < 140 || diastolic < 90) return { score: 60, category: "Hypertension Stage 1" };
+  if (systolic < 180 && diastolic < 120) return { score: 35, category: "Hypertension Stage 2" };
+  return { score: 5, category: "Hypertensive Crisis" };
+}
+
+// Blood sugar — ADA guideline ranges, split by whether the reading was
+// fasting/bedtime (stricter normal range) or post-meal/random (higher
+// normal ceiling, since blood sugar naturally rises after eating).
+function scoreBloodSugar(glucoseMgDl: number | null, context: string | null): { score: number | null; category: string } {
+  if (glucoseMgDl === null || glucoseMgDl <= 0) return { score: null, category: "Unknown" };
+  if (glucoseMgDl < 70) return { score: 40, category: "Low (Hypoglycemia)" };
+  const isFasting = context === "fasting" || context === "bedtime";
+  if (isFasting) {
+    if (glucoseMgDl <= 99)  return { score: 100, category: "Normal (fasting)" };
+    if (glucoseMgDl <= 125) return { score: 60,  category: "Prediabetic range (fasting)" };
+    return { score: 25, category: "Diabetic range (fasting)" };
+  }
+  if (glucoseMgDl < 140) return { score: 100, category: "Normal" };
+  if (glucoseMgDl < 200) return { score: 60,  category: "Prediabetic range" };
+  return { score: 25, category: "Diabetic range" };
+}
+
 function calcMicronutrientScore(
   calcium: number, iron: number, vitC: number, b12: number, vitD: number,
   hasData: boolean, targets: ReturnType<typeof calcMicroTargets>,
@@ -378,16 +420,18 @@ function calcMicronutrientScore(
 // Weights are normalized among active metrics so total always = 100%.
 // No hardcoded defaults, no fake scores.
 const METRIC_WEIGHTS: Record<string, number> = {
-  food:      0.22,  // ICMR nutrition — highest weight
-  exercise:  0.18,  // WHO physical activity
-  water:     0.10,  // WHO hydration
-  medicine:  0.12,  // WHO adherence
-  sleep:     0.12,  // CDC/WHO sleep
-  stress:    0.08,  // Mental health
-  bmi:       0.08,  // Body composition
-  steps:     0.04,  // Physical activity proxy
-  heartRate: 0.03,  // Cardiovascular
-  spo2:      0.03,  // Respiratory
+  food:          0.19,  // ICMR nutrition — highest weight
+  exercise:      0.15,  // WHO physical activity
+  water:         0.10,  // WHO hydration
+  medicine:      0.12,  // WHO adherence
+  sleep:         0.12,  // CDC/WHO sleep
+  stress:        0.08,  // Mental health
+  bmi:           0.08,  // Body composition
+  steps:         0.04,  // Physical activity proxy
+  heartRate:     0.03,  // Cardiovascular
+  spo2:          0.03,  // Respiratory
+  bloodPressure: 0.03,  // AHA/ACC — occasional/manual metric like heartRate/spo2
+  bloodSugar:    0.03,  // ADA — occasional/manual metric like heartRate/spo2
 };
 
 function buildCompositeScore(
@@ -501,7 +545,7 @@ export async function computeScientificScore(userId: string, date: string): Prom
   ]);
 
   // ── Optional columns — silently degrade if not yet migrated ─────────────────
-  const [profileExtR, exMetR, foodMicroR, wearableR] = await Promise.all([
+  const [profileExtR, exMetR, foodMicroR, wearableR, bpR, sugarR] = await Promise.all([
     pool.query(
       `SELECT height_cm, date_of_birth, activity_level, work_profile FROM user_profiles WHERE user_id=$1`,
       [userId],
@@ -532,6 +576,22 @@ export async function computeScientificScore(userId: string, date: string): Prom
        FROM wearable_data
        WHERE user_id=$1 AND synced_at>=$2 AND synced_at<=$3
        ORDER BY synced_at DESC LIMIT 1`,
+      [userId, dayStart, dayEnd],
+    ).catch(() => ({ rows: [] })),
+
+    // Blood pressure — latest reading today (manual or synced)
+    pool.query(
+      `SELECT systolic, diastolic, pulse FROM blood_pressure_logs
+       WHERE user_id=$1 AND measured_at>=$2 AND measured_at<=$3
+       ORDER BY measured_at DESC LIMIT 1`,
+      [userId, dayStart, dayEnd],
+    ).catch(() => ({ rows: [] })),
+
+    // Blood sugar — latest reading today
+    pool.query(
+      `SELECT glucose_mg_dl, reading_context FROM blood_sugar_logs
+       WHERE user_id=$1 AND measured_at>=$2 AND measured_at<=$3
+       ORDER BY measured_at DESC LIMIT 1`,
       [userId, dayStart, dayEnd],
     ).catch(() => ({ rows: [] })),
   ]);
@@ -613,6 +673,15 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const wHrMax      = wr?.heart_rate_max ? parseFloat(wr.heart_rate_max) : null;
   const wSpo2       = wr?.blood_oxygen   ? parseFloat(wr.blood_oxygen)   : null;
 
+  // Blood pressure / blood sugar — today's latest manual/synced reading
+  const bpRow       = bpR.rows[0] ?? null;
+  const bpSystolic  = bpRow?.systolic  ? parseInt(bpRow.systolic)  : null;
+  const bpDiastolic = bpRow?.diastolic ? parseInt(bpRow.diastolic) : null;
+  const bpPulse     = bpRow?.pulse     ? parseInt(bpRow.pulse)     : null;
+  const sugarRow    = sugarR.rows[0] ?? null;
+  const glucoseMgDl = sugarRow?.glucose_mg_dl ? parseInt(sugarRow.glucose_mg_dl) : null;
+  const sugarContext = sugarRow?.reading_context || null;
+
   const primaryGoal  = goalsR.rows[0]?.primary_goal || "general_wellness";
   const conditions: string[] = (conditionsR.rows || []).map((r: any) => String(r.condition || ""));
   const age          = calcAge(dateOfBirth);
@@ -634,19 +703,23 @@ export async function computeScientificScore(userId: string, date: string): Prom
   const stepsResult  = scoreSteps(wSteps);
   const hrResult     = scoreHeartRate(wHrAvg);
   const spo2Result   = scoreSpo2(wSpo2);
+  const bpResult     = scoreBloodPressure(bpSystolic, bpDiastolic);
+  const sugarResult  = scoreBloodSugar(glucoseMgDl, sugarContext);
 
   // ── Composite: only metrics with real data ───────────────────────────────────
   const { overallScore, activeMetrics, excludedMetrics } = buildCompositeScore({
-    food:      foodResult.score,
-    exercise:  exResult.score,
-    water:     waterResult.score,
-    medicine:  medResult.score,
-    sleep:     sleepResult.score,
-    stress:    stressResult.score,
-    bmi:       bmiResult.score,
-    steps:     stepsResult,
-    heartRate: hrResult,
-    spo2:      spo2Result,
+    food:          foodResult.score,
+    exercise:      exResult.score,
+    water:         waterResult.score,
+    medicine:      medResult.score,
+    sleep:         sleepResult.score,
+    stress:        stressResult.score,
+    bmi:           bmiResult.score,
+    steps:         stepsResult,
+    heartRate:     hrResult,
+    spo2:          spo2Result,
+    bloodPressure: bpResult.score,
+    bloodSugar:    sugarResult.score,
   });
 
   const dataConfidence = Math.round(
@@ -694,6 +767,8 @@ export async function computeScientificScore(userId: string, date: string): Prom
     stepsScore:     stepsResult,
     heartRateScore: hrResult,
     spo2Score:      spo2Result,
+    bloodPressureScore: bpResult.score,
+    bloodSugarScore:    sugarResult.score,
     exercise: exResult.data,
     food:     foodResult.data,
     water:    waterResult.data,
@@ -717,6 +792,14 @@ export async function computeScientificScore(userId: string, date: string): Prom
       hasSteps:     wSteps !== null,
       hasHeartRate: wHrAvg !== null,
       hasSpo2:      wSpo2  !== null,
+    },
+    bloodPressure: {
+      systolic: bpSystolic, diastolic: bpDiastolic, pulse: bpPulse,
+      category: bpResult.category, hasData: bpResult.score !== null,
+    },
+    bloodSugar: {
+      glucoseMgDl, readingContext: sugarContext,
+      category: sugarResult.category, hasData: sugarResult.score !== null,
     },
     activeMetrics,
     excludedMetrics,

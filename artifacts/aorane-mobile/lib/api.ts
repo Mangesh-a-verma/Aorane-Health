@@ -416,6 +416,26 @@ export const api = {
   getSleepHistory: (days = 7) =>
     request<{ logs: Array<Record<string, unknown>>; count: number; avgHours: number | null }>("GET", `/health/sleep/history?days=${days}`),
 
+  // ── Blood Pressure ─────────────────────────────────────
+  logBloodPressure: (data: { systolic: number; diastolic: number; pulse?: number; measuredAt?: string; notes?: string; isOfflineEntry?: boolean }) =>
+    request<{ success: boolean; log: Record<string, unknown> }>("POST", "/health/blood-pressure", data as Record<string, unknown>),
+
+  getBloodPressureToday: () =>
+    request<{ logs: Array<Record<string, unknown>>; latest: Record<string, unknown> | null }>("GET", "/health/blood-pressure/today"),
+
+  getBloodPressureHistory: (days = 30) =>
+    request<{ logs: Array<Record<string, unknown>>; count: number }>("GET", `/health/blood-pressure/history?days=${days}`),
+
+  // ── Blood Sugar ────────────────────────────────────────
+  logBloodSugar: (data: { glucoseMgDl: number; readingContext?: "fasting" | "post_meal" | "random" | "bedtime"; measuredAt?: string; notes?: string; isOfflineEntry?: boolean }) =>
+    request<{ success: boolean; log: Record<string, unknown> }>("POST", "/health/blood-sugar", data as Record<string, unknown>),
+
+  getBloodSugarToday: () =>
+    request<{ logs: Array<Record<string, unknown>>; latest: Record<string, unknown> | null }>("GET", "/health/blood-sugar/today"),
+
+  getBloodSugarHistory: (days = 30) =>
+    request<{ logs: Array<Record<string, unknown>>; count: number }>("GET", `/health/blood-sugar/history?days=${days}`),
+
   // ── Water ──────────────────────────────────────────────
   getWaterLog: (date: string) =>
     request<{ logs: Array<Record<string, unknown>>; totalGlasses: number; goal: number }>("GET", `/health/water/${date}`),
