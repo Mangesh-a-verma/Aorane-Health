@@ -12,8 +12,9 @@ import {
   db, usersTable, userProfilesTable, userPreferencesTable,
   userMedicalConditionsTable, userHealthGoalsTable,
   dailySuggestionsTable, foodLogsTable, waterLogsTable, exerciseLogsTable,
+  sleepLogsTable, wearableDataTable,
 } from "@workspace/db";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { checkAndUseAILimit, refundAIUsage } from "../../lib/aiLimiter";
@@ -115,10 +116,17 @@ function buildPrompt(data: {
   foodPreference: string; foodAllergies: string[]; medicalConditions: string[];
   caloriesToday: number; waterToday: number; waterGoal: number; exerciseMinToday: number;
   calorieGoal: number; season: string; effectiveTDEE: number;
+  sleepHoursToday: number | null; stepsToday: number | null;
+  heartRateAvg: number | null; bloodOxygen: number | null;
 }): string {
   const { age, gender, weightKg, heightCm, bmi, activityLevel, workProfile, primaryGoal, targetWeightKg,
     foodPreference, foodAllergies, medicalConditions, caloriesToday, waterToday, waterGoal,
-    exerciseMinToday, calorieGoal, season, effectiveTDEE } = data;
+    exerciseMinToday, calorieGoal, season, effectiveTDEE,
+    sleepHoursToday, stepsToday, heartRateAvg, bloodOxygen } = data;
+
+  const lowSleep = sleepHoursToday !== null && sleepHoursToday < 6;
+  const lowOxygen = bloodOxygen !== null && bloodOxygen < 95;
+  const highHeartRate = heartRateAvg !== null && heartRateAvg > 100;
 
   const remainingCalories = Math.max(0, calorieGoal - caloriesToday);
   const hour = new Date().getHours();
@@ -148,6 +156,12 @@ TODAY'S PROGRESS (${timeOfDay}):
 - Water: ${waterToday} / ${waterGoal} glasses
 - Exercise: ${exerciseMinToday} minutes
 
+TODAY'S VITALS (from wearable/manual entry, only where logged):
+- Sleep: ${sleepHoursToday !== null ? sleepHoursToday + " hours" : "not logged"}${lowSleep ? " (LOW — under 6h)" : ""}
+- Steps: ${stepsToday !== null ? stepsToday : "not logged"}
+- Resting heart rate: ${heartRateAvg !== null ? heartRateAvg + " bpm" : "not logged"}${highHeartRate ? " (ELEVATED)" : ""}
+- Blood oxygen (SpO2): ${bloodOxygen !== null ? bloodOxygen + "%" : "not logged"}${lowOxygen ? " (LOW — below 95%)" : ""}
+
 Current Season: ${season}
 
 WORK PROFILE CONTEXT:
@@ -172,6 +186,8 @@ RULES:
 8. If high BP: suggest low-sodium options, avoid pickles/papad
 9. Language: Respond entirely in English
 10. Give work-profile-specific advice (e.g. Army: stamina foods; Office: screen fatigue tips)
+11. If sleep is LOW (under 6h): exercise suggestion should be light/moderate only (never intense), and healthTip should address sleep recovery
+12. If heart rate is ELEVATED or SpO2 is LOW: exerciseSuggestion intensity must be "light" and add a medicalWarnings entry recommending rest and, if it persists, consulting a doctor — do not suggest intense exertion
 
 Return ONLY valid JSON (no markdown):
 {
@@ -265,11 +281,19 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
     }
 
     // ── Admin-controlled AI quota gate (only reached on a real cache miss) ──
-    const limitCheck = await checkAndUseAILimit(userId, "ai_health_suggestions_daily", planType);
+    // Uses "ai_health_coach_daily" — this IS the "AI Health Coach" feature
+    // shown in the admin panel and sold in plan copy. It previously gated
+    // "ai_health_suggestions_daily" instead, a key nothing in the pricing
+    // plan referenced, while the real "Ai Health Coach" row in the admin
+    // panel gated an endpoint (/ai/health-tip) no client ever calls -- so
+    // the limit an admin thought they were controlling did nothing, and
+    // this screen's real limit (Max: 999/day, i.e. unlimited) was invisible
+    // and uncontrolled.
+    const limitCheck = await checkAndUseAILimit(userId, "ai_health_coach_daily", planType);
     if (!limitCheck.allowed) {
       res.status(429).json({
         error: `You've reached today's suggestions limit. Limit: ${limitCheck.limit}/day on ${planType.toUpperCase()} plan.`,
-        feature: "ai_health_suggestions_daily",
+        feature: "ai_health_coach_daily",
         limitPerDay: limitCheck.limit,
         usedToday: limitCheck.usedToday,
         currentPlan: planType,
@@ -312,25 +336,44 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
 
     // 5. Get today's activity (best-effort)
     let caloriesToday = 0, waterToday = 0, exerciseMinToday = 0;
+    // Wearable/manual vitals — same tables lib/scoring.ts's Health Score
+    // reads, so the Coach's picture of "today" matches the dashboard's
+    // instead of being blind to sleep/steps/heart rate/oxygen entirely.
+    let sleepHoursToday: number | null = null;
+    let stepsToday: number | null = null;
+    let heartRateAvg: number | null = null;
+    let bloodOxygen: number | null = null;
     try {
       const istBounds = istDayBounds(today);
       const dayStart = new Date(istBounds.dayStart);
       const dayEnd = new Date(istBounds.dayEnd);
 
-      const [foodLogs, waterLogs, exerciseLogs] = await Promise.allSettled([
+      const [foodLogs, waterLogs, exerciseLogs, sleepLog, wearable] = await Promise.allSettled([
         db.select().from(foodLogsTable).where(and(eq(foodLogsTable.userId, userId), gte(foodLogsTable.loggedAt, dayStart), lte(foodLogsTable.loggedAt, dayEnd))),
         db.select().from(waterLogsTable).where(and(eq(waterLogsTable.userId, userId), gte(waterLogsTable.loggedAt, dayStart), lte(waterLogsTable.loggedAt, dayEnd))),
         db.select().from(exerciseLogsTable).where(and(eq(exerciseLogsTable.userId, userId), gte(exerciseLogsTable.loggedAt, dayStart), lte(exerciseLogsTable.loggedAt, dayEnd))),
+        db.select().from(sleepLogsTable).where(and(eq(sleepLogsTable.userId, userId), eq(sleepLogsTable.sleepDate, today))).limit(1),
+        db.select().from(wearableDataTable).where(and(eq(wearableDataTable.userId, userId), gte(wearableDataTable.syncedAt, dayStart), lte(wearableDataTable.syncedAt, dayEnd))).orderBy(desc(wearableDataTable.syncedAt)).limit(1),
       ]);
 
       if (foodLogs.status === "fulfilled") caloriesToday = Math.round(foodLogs.value.reduce((s: any, l: any) => s + Number(l.calories || 0), 0));
       if (waterLogs.status === "fulfilled") waterToday = waterLogs.value.reduce((s: any, l: any) => s + (l.glassesCount || 0), 0);
       if (exerciseLogs.status === "fulfilled") exerciseMinToday = exerciseLogs.value.reduce((s: any, l: any) => s + (l.durationMinutes || 0), 0);
+      if (sleepLog.status === "fulfilled" && sleepLog.value[0]) sleepHoursToday = Number(sleepLog.value[0].sleepHours) || null;
+      if (wearable.status === "fulfilled" && wearable.value[0]) {
+        const w = wearable.value[0];
+        stepsToday   = w.steps ?? null;
+        heartRateAvg = w.heartRateAvg ?? null;
+        bloodOxygen  = w.bloodOxygen ? Number(w.bloodOxygen) : null;
+        // Wearable sleepHours is a secondary source — only use it if no
+        // manual sleep_logs entry exists for today, never overwrite one.
+        if (sleepHoursToday === null && w.sleepHours) sleepHoursToday = Number(w.sleepHours);
+      }
     } catch (err) {
       // Safe to continue without today's context — suggestions just fall
       // back to defaults — but log it so a persistent failure is visible
       // instead of silently degrading suggestion quality forever.
-      logger.warn({ err, userId }, "[Suggestions] Failed to fetch today's food/water/exercise context — continuing with defaults");
+      logger.warn({ err, userId }, "[Suggestions] Failed to fetch today's food/water/exercise/vitals context — continuing with defaults");
     }
 
     // 6. Generate AI suggestions
@@ -341,7 +384,7 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       foodPreference, foodAllergies, medicalConditions,
       caloriesToday, waterToday, waterGoal: prefs?.waterGoalGlasses || 8,
       exerciseMinToday, calorieGoal, season: getIndianSeason(),
-      effectiveTDEE,
+      effectiveTDEE, sleepHoursToday, stepsToday, heartRateAvg, bloodOxygen,
     });
 
     let suggestions: unknown;
@@ -361,7 +404,7 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       // Fallback if Gemini fails — the user still gets a usable response, but
       // it's generic rather than personalized, so refund the quota unit they
       // paid for a real AI call.
-      await refundAIUsage(userId, "ai_health_suggestions_daily");
+      await refundAIUsage(userId, "ai_health_coach_daily");
       suggestions = {
         greeting: "Hello! Wishing you a wonderful and healthy day ahead! 🙏",
         calorieStatus: { goal: calorieGoal, eaten: caloriesToday, remaining: Math.max(0, calorieGoal - caloriesToday), message: "Keep tracking your calorie goal!" },

@@ -1450,9 +1450,8 @@ export async function runStartupMigrations(): Promise<void> {
       ('ai_food_scan_text_daily',     '3',     '15',    '10',    '15',    'AI text food analysis per day',          'daily'),
       ('ai_medical_scan_daily',       '0',     '1',     '1',     '1',     'Medical report AI scan per month',       'monthly'),
       ('ai_diet_plan_daily',          '0',     '1',     '1',     '1',     'Weekly AI diet chart',                   'weekly'),
-      ('ai_health_coach_daily',       '0',     '1',     '1',     '1',     'AI health coach per week',               'weekly'),
+      ('ai_health_coach_daily',       '3',     '20',    '10',    '20',    'AI daily health coach suggestions',      'daily'),
       ('ai_health_prediction_weekly', '0',     '1',     '1',     '1',     'AI health prediction per week',          'weekly'),
-      ('ai_health_suggestions_daily', '3',     '999',   '10',    '999',   'AI daily health suggestions refresh',    'daily'),
       ('ai_meal_swap_daily',          '0',     '20',    '20',    '20',    'AI meal swap suggestions per day',       'daily'),
       ('ai_meal_planner_daily',       '0',     '5',     '5',     '5',     'AI ad-hoc meal/diet plan generation per day', 'daily'),
       ('ai_weather_suggestions_daily','1',     '8',     '4',     '8',     'AI weather-based food suggestions per day (also 6h cached)', 'daily'),
@@ -1482,6 +1481,13 @@ export async function runStartupMigrations(): Promise<void> {
       description  = EXCLUDED.description,
       period       = EXCLUDED.period,
       updated_at   = now()`,
+
+    // "ai_health_suggestions_daily" is retired — routes/modules/suggestions.ts
+    // (the actual "AI Coach"/"Daily Coach" screen) now consumes
+    // "ai_health_coach_daily" instead, so this row no longer gates anything
+    // and would otherwise sit in the admin panel's AI Limits table as a
+    // dead, confusing entry.
+    `DELETE FROM plan_features WHERE feature_name = 'ai_health_suggestions_daily'`,
 
     // ══════════════════════════════════════════════════════════════════════════
     // SUBSCRIPTION_PLANS — canonical plan catalogue (6 plans)
