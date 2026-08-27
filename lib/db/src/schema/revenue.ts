@@ -147,6 +147,14 @@ export const paymentsTable = pgTable("payments", {
   currency: text("currency").notNull().default("INR"),
   status: paymentStatusEnum("status").notNull().default("pending"),
   plan: text("plan").notNull(),
+  // Set once at order-creation time (the caller already knows this — see
+  // /payment/order) and read back as-is at verify time, instead of
+  // guessing monthly-vs-yearly from the paid amount. That guess
+  // (amount >= monthlyPrice * 10) breaks the moment a yearly price is
+  // configured below 10x the monthly one, e.g. a "10 months for 12"
+  // promo — a real annual subscriber would silently get 30 days instead
+  // of a year.
+  billingCycle: text("billing_cycle").notNull().default("monthly"),
   seats: integer("seats").notNull().default(1),
   gatewayFee: decimal("gateway_fee", { precision: 8, scale: 2 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

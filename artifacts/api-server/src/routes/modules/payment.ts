@@ -212,6 +212,7 @@ router.post("/payment/order", requireAuth, async (req: AuthRequest, res) => {
       seats: 1,
       razorpayOrderId,
       status: "pending",
+      billingCycle: isYearly ? "yearly" : "monthly",
     }).returning();
     res.json({
       success: true,
@@ -258,13 +259,10 @@ router.post("/payment/verify", requireAuth, async (req: AuthRequest, res) => {
     // have that higher plan activated instead.
     const plan = existingPayment.plan;
 
-    // FIX 3: Determine expiry based on billing cycle stored in payment record
-    // We store billingCycle in the payment amount context; if amount >= yearlyPrice threshold => yearly
-    // Safer: read from payment metadata or default to 30 days. For now, check if amount >= monthly*10
-    const paidAmount = Number(existingPayment.amount);
-    const planData2 = await getPlanFromDB(plan as string);
-    const monthlyPrice = Number(planData2?.monthlyPrice ?? 0);
-    const isYearlyPayment = monthlyPrice > 0 && paidAmount >= monthlyPrice * 10;
+    // Billing cycle is whatever /payment/order actually recorded at
+    // order-creation time — not re-derived from the paid amount, which
+    // breaks the moment a yearly price isn't exactly 10x the monthly one.
+    const isYearlyPayment = existingPayment.billingCycle === "yearly";
     const expiresAt = new Date();
     if (isYearlyPayment) {
       expiresAt.setFullYear(expiresAt.getFullYear() + 1); // 1 year
@@ -673,11 +671,9 @@ router.post("/payment/rzp-callback", async (req, res) => {
     try {
       const [existingCbPayment] = await db.select().from(paymentsTable).where(eq(paymentsTable.razorpayOrderId, razorpay_order_id));
       if (existingCbPayment?.userId && existingCbPayment?.plan) {
-        // FIX 3: Detect yearly payment for correct expiry
-        const planData3 = await getPlanFromDB(existingCbPayment.plan);
-        const monthlyPrice3 = Number(planData3?.monthlyPrice ?? 0);
-        const paidAmt = Number(existingCbPayment.amount);
-        const isYearly3 = monthlyPrice3 > 0 && paidAmt >= monthlyPrice3 * 10;
+        // Same as /payment/verify — read the billing cycle /payment/order
+        // actually recorded, don't re-derive it from the amount.
+        const isYearly3 = existingCbPayment.billingCycle === "yearly";
         const expiresAt = new Date();
         if (isYearly3) {
           expiresAt.setFullYear(expiresAt.getFullYear() + 1);
@@ -926,7 +922,7 @@ router.post("/payment/subscription-rzp-callback", async (req, res) => {
        <div style="background:#0D2040;border-radius:24px;padding:40px 32px;text-align:center;max-width:340px;border:1px solid rgba(232,98,42,0.4)">
          <div style="font-size:64px;margin-bottom:16px">🔄</div>
          <h2 style="color:#E8622A;margin:0 0 8px">Autopay Active!</h2>
-         <p style="color:rgba(255,255,255,0.6);margin:0 0 16px;font-size:14px">${(plan || "Premium").charAt(0).toUpperCase() + (plan || "Premium").slice(1)} plan auto-renews every month. Close this window and return to the app.</p>
+         <p style="color:rgba(255,255,255,0.6);margin:0 0 16px;font-size:14px">${safePlanLabel(plan)} plan auto-renews every month. Close this window and return to the app.</p>
          <div style="background:rgba(232,98,42,0.1);border-radius:12px;padding:12px;font-size:12px;color:rgba(255,255,255,0.4)">
            Payment ID: ${razorpay_payment_id || "N/A"}
          </div>
