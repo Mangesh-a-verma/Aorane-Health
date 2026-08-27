@@ -1743,6 +1743,25 @@ export async function runStartupMigrations(): Promise<void> {
       logged_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
+
+    // ── plan_pricing.features one-time content correction ───────────────────
+    // Each UPDATE is guarded by the exact old feature list it's replacing, so
+    // this is a no-op after the first successful run (or if an admin has
+    // since edited the plan's features via the admin panel) — unlike the
+    // plan_features UPSERT above, this must NOT keep re-asserting on every
+    // restart, or it would silently overwrite future admin-panel edits.
+    `UPDATE plan_pricing SET features = $json$["AI Meal Logging (Text) — 5/day","Exercise Logging","Water Tracker & Reminders","Basic Daily Health Score","Blood Emergency SOS","Period Cycle Tracker (Female)","Manual Logging (Sleep, Stress, Heart Rate, BP, Steps)"]$json$::jsonb
+      WHERE plan_key = 'free' AND features = $json$["Food logging (manual) — unlimited","AI Food Scan (text) — 5 scans/day","Water tracker & reminders","Exercise logging (basic)","7-day health history","Basic daily health score","Community forum access"]$json$::jsonb`,
+    `UPDATE plan_pricing SET features = $json$["Meal Logging (Text) — 10/day","AI Food Scan — 5/day","AI Medical Report Analysis — 1/month","AI Health Coach","Health Prediction","AI Diet Planner","Health Reports (Weekly & Monthly)","Smart Watch Integration (Auto Sync)","Stress & Burnout AI Monitoring","All Basic Plan Features"]$json$::jsonb
+      WHERE plan_key = 'pro' AND features = $json$["Everything in Max","Advanced AI health predictions","Period cycle tracker","Stress & burnout AI monitoring","Personalized health goals AI","Export data (PDF & CSV)","24/7 priority support"]$json$::jsonb`,
+    `UPDATE plan_pricing SET features = $json$["Everything in Pro","AI Food Scan — 10/day","Meal Logging (Text) — 15/day","AI Medical Report Analysis — Up to 4/month","Advanced Health Prediction","Advanced Health Reports"]$json$::jsonb
+      WHERE plan_key = 'max' AND features = $json$["Everything in Free","AI Food Scanner (photo) — 10/day","Medical Report Scan — 5/day","AI Diet Plan — 5 plans/day","AI Health Coach & Tips — 10/day","AI Meal Swap — 20/day","Full unlimited history","Blood sugar & BP tracking","Sleep stage analysis","Wearable Sync (Phase 4)","Priority email support"]$json$::jsonb`,
+    `UPDATE plan_pricing SET features = $json$["Everything in Max","Up to 4 Members","Shared Health Reports","Member Health Alerts","Family Reminders"]$json$::jsonb
+      WHERE plan_key = 'family' AND features = $json$["Everything in Pro","Up to 4 Family Members","Family Health Dashboard","Shared Health Reports","Member Health Alerts","Family Reminders"]$json$::jsonb`,
+    `UPDATE plan_pricing SET features = $json$["Meal Logging (Text) — 10/day","AI Food Scan — 5/day","AI Medical Report Analysis — 1/month","AI Health Coach","Health Prediction","AI Diet Planner","Health Reports (Weekly & Monthly)","Smart Watch Integration (Auto Sync)","Stress & Burnout AI Monitoring","All Basic Plan Features","Free CRM Dashboard Access"]$json$::jsonb
+      WHERE plan_key = 'org_pro' AND features = $json$["Basic aggregate health dashboard","Enrollment code management","Employee search","GST-ready invoice","Email support"]$json$::jsonb`,
+    `UPDATE plan_pricing SET features = $json$["Everything in Pro","AI Food Scan — 10/day","Meal Logging (Text) — 15/day","AI Medical Report Analysis — Up to 4/month","Advanced Health Prediction","Advanced Health Reports","Free CRM Dashboard Access","Weekly Report Generation"]$json$::jsonb
+      WHERE plan_key = 'org_max' AND features = $json$["Everything in Pro","Advanced health analytics & charts","Health risk distribution alerts","Weekly & monthly team reports","Priority support","Custom announcements to employees"]$json$::jsonb`,
   ];
 
   let ok = 0; let fail = 0;
