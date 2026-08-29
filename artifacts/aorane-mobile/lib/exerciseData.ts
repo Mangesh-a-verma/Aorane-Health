@@ -62,10 +62,16 @@ export const CATEGORIES: { key: Category; label: string; icon: string }[] = [
   { key: "Sports",   label: "Sports",   icon: "soccer"          },
 ];
 
-export const INTENSITIES: { value: string; label: string; softBg: string; softColor: string; hint: string }[] = [
-  { value: "light",    label: "Light 🚶",    softBg: DS.color.greenSoft,  softColor: DS.color.green,  hint: "You can talk and sing easily" },
-  { value: "moderate", label: "Moderate 🚴", softBg: DS.color.orangeSoft, softColor: DS.color.orange, hint: "You can talk, but not sing" },
-  { value: "intense",  label: "Intense 🔥",  softBg: DS.color.redSoft,    softColor: DS.color.red,    hint: "You can barely talk" },
+// `flex` mirrors the reference design, where the three intensity buttons are
+// NOT equal thirds — Moderate is the widest and Light the narrowest, so each
+// label clears its pill without truncating on a 390pt screen.
+export const INTENSITIES: {
+  value: string; name: string; emoji: string;
+  softBg: string; softColor: string; hint: string; flex: number;
+}[] = [
+  { value: "light",    name: "Light",    emoji: "🚶", softBg: DS.color.greenSoft,  softColor: DS.color.green,  hint: "You can talk and sing easily", flex: 0.93 },
+  { value: "moderate", name: "Moderate", emoji: "🚴", softBg: DS.color.orangeSoft, softColor: DS.color.orange, hint: "You can talk, but not sing",   flex: 1.08 },
+  { value: "intense",  name: "Intense",  emoji: "🔥", softBg: DS.color.redSoft,    softColor: DS.color.red,    hint: "You can barely talk",          flex: 1.00 },
 ];
 
 export const DURATION_PRESETS = [15, 30, 45, 60, 90];

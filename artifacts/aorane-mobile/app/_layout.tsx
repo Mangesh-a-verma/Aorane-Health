@@ -90,6 +90,7 @@ function RootLayoutNav() {
       <Stack.Screen name="suggestions" />
       <Stack.Screen name="notification-settings" />
       <Stack.Screen name="sleep" />
+      <Stack.Screen name="log-exercise" />
     </Stack>
   );
 }
