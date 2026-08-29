@@ -522,15 +522,15 @@ const s = StyleSheet.create({
   cardLabelRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 },
   cardLabel:    { fontSize: 13, fontFamily: "Inter_700Bold", color: DS.color.text },
 
-  stepperRow:  { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 18, marginBottom: 12 },
+  stepperRow:  { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 12 },
   stepperBtn:  { width: 34, height: 34, borderRadius: 17, backgroundColor: DS.color.bgSoft, alignItems: "center", justifyContent: "center" },
   durationNum: { fontSize: 26, fontFamily: "Inter_700Bold", color: DS.color.text },
   durationUnit:{ fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted, marginTop: -2 },
 
-  presetRow:   { flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center" },
-  presetChip:  { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: DS.color.bgSoft, borderWidth: 1, borderColor: DS.color.border },
+  presetRow:   { flexDirection: "row", gap: 3, justifyContent: "space-between" },
+  presetChip:  { flex: 1, alignItems: "center", paddingHorizontal: 4, paddingVertical: 4, borderRadius: 10, backgroundColor: DS.color.bgSoft, borderWidth: 1, borderColor: DS.color.border },
   presetChipActive: { backgroundColor: DS.color.primarySoft, borderColor: P },
-  presetText:  { fontSize: 11.5, fontFamily: "Inter_600SemiBold", color: DS.color.muted },
+  presetText:  { fontSize: 9.5, fontFamily: "Inter_600SemiBold", color: DS.color.muted },
   presetTextActive: { color: P },
 
   intensityBtn: { paddingVertical: 10, alignItems: "center", borderRadius: 12 },
