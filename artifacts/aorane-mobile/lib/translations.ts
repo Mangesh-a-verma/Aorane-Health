@@ -18,6 +18,10 @@ export const SUPPORTED_LANGS: readonly LangCode[] = Object.keys(LANGUAGE_NAMES) 
 export type TranslationMap = {
   dashTodaysMedicines?: string;
   dashCupsGoalMet?: string;
+  dashCups?: string;
+  dashHealthTip?: string;
+  dashAddMedicineShort?: string;
+  dashAddMedicine?: string;
   dashWeatherTapHint?: string;
   dashTapToClose?: string;
   dashLogFood?: string;
@@ -253,12 +257,16 @@ export const translations: Record<LangCode, TranslationMap> = {
   en: {
     dashTodaysMedicines: "Today's Medicines 💊",
     dashCupsGoalMet: "{current} of {goal} cups goal met",
+    dashCups: "cups",
+    dashHealthTip: "Health Tip",
+    dashAddMedicineShort: "No schedule — Add one",
+    dashAddMedicine: "Add Medicine",
     dashWeatherTapHint: "Tap for weather",
     dashTapToClose: "Tap anywhere to close",
     dashLogFood: "Log Food",
     dashWaterIntake: "Water Intake",
     dashStressLogHint: "Tap to log your stress level instantly",
-    dashQuickServices: "Quick Services",
+    dashQuickServices: "Quick Actions",
     dashViewAll: "View All",
     dashHealthTools: "Health Tools",
     dashDailyCoach: "Daily Coach",
@@ -476,12 +484,16 @@ export const translations: Record<LangCode, TranslationMap> = {
   hi: {
     dashTodaysMedicines: "आज की दवाइयाँ 💊",
     dashCupsGoalMet: "{goal} में से {current} कप का लक्ष्य पूरा",
+    dashCups: "कप",
+    dashHealthTip: "हेल्थ टिप",
+    dashAddMedicineShort: "कोई शेड्यूल नहीं — एक जोड़ें",
+    dashAddMedicine: "दवा जोड़ें",
     dashWeatherTapHint: "मौसम देखने के लिए टैप करें",
     dashTapToClose: "बंद करने के लिए कहीं भी टैप करें",
     dashLogFood: "भोजन लॉग करें",
     dashWaterIntake: "पानी का सेवन",
     dashStressLogHint: "अपना तनाव स्तर तुरंत दर्ज करने के लिए टैप करें",
-    dashQuickServices: "त्वरित सेवाएं",
+    dashQuickServices: "त्वरित कार्य",
     dashViewAll: "सभी देखें",
     dashHealthTools: "स्वास्थ्य उपकरण",
     dashDailyCoach: "डेली कोच",

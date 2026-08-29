@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import Svg, { Circle } from "react-native-svg";
 import { PremiumScoreRing } from "../../components/PremiumScoreRing";
 import { PremiumTrendCard } from "../../components/PremiumTrendCard";
 import { AdsSlider } from "@/components/AdsSlider";
@@ -352,10 +353,10 @@ function NutritionCard({ calories, protein, carbs, fat }: {
   const pctF = 100 - pctP - pctC;
 
   const items = [
-    { label: t("dashCalories"), value: `${calories}`, unit: "kcal", color: "#E8478C", icon: <Flame size={16} color="#E8478C" strokeWidth={2} />, width: "100%" as const },
-    { label: t("dashProtein"),  value: `${protein}`,  unit: "g",    color: "#6366F1", icon: <Beef  size={16} color="#6366F1" strokeWidth={2} />, width: `${pctP}%` as `${number}%` },
-    { label: t("dashCarbs"),    value: `${carbs}`,    unit: "g",    color: "#10B981", icon: <Wheat size={16} color="#10B981" strokeWidth={2} />, width: `${pctC}%` as `${number}%` },
-    { label: t("dashFat"),      value: `${fat}`,      unit: "g",    color: "#F59E0B", icon: <Droplets size={16} color="#F59E0B" strokeWidth={2} />, width: `${pctF}%` as `${number}%` },
+    { label: t("dashCalories"), value: `${calories}`, unit: "kcal", color: "#E8478C", bg: "#FDE7EF", icon: <Flame size={14} color="#E8478C" strokeWidth={2} />, pct: 100 },
+    { label: t("dashProtein"),  value: `${protein}`,  unit: "g",    color: "#6366F1", bg: "#EAEAFD", icon: <Beef  size={14} color="#6366F1" strokeWidth={2} />, pct: pctP },
+    { label: t("dashCarbs"),    value: `${carbs}`,    unit: "g",    color: "#10B981", bg: DS.color.greenSoft, icon: <Wheat size={14} color="#10B981" strokeWidth={2} />, pct: pctC },
+    { label: t("dashFat"),      value: `${fat}`,      unit: "g",    color: "#F59E0B", bg: DS.color.orangeSoft, icon: <Droplets size={14} color="#F59E0B" strokeWidth={2} />, pct: pctF },
   ];
 
   return (
@@ -368,17 +369,16 @@ function NutritionCard({ calories, protein, carbs, fat }: {
       </View>
       <View style={nc.grid}>
         {items.map((item, i) => (
-          <View key={i} style={nc.item}>
-            <View style={nc.itemTop}>
-              {item.icon}
-              <View style={nc.itemTextWrap}>
-                <Text style={nc.itemVal}>{item.value}<Text style={nc.itemUnit}> {item.unit}</Text></Text>
-                <Text style={nc.itemLabel}>{item.label}</Text>
-              </View>
+          <View key={i} style={nc.row}>
+            <View style={[nc.iconCircle, { backgroundColor: item.bg }]}>{item.icon}</View>
+            <View style={nc.labelCol}>
+              <Text style={nc.itemVal} numberOfLines={1}>{item.value}<Text style={nc.itemUnit}> {item.unit}</Text></Text>
+              <Text style={nc.itemLabel} numberOfLines={1}>{item.label}</Text>
             </View>
             <View style={nc.barBg}>
-              <View style={[nc.barFill, { backgroundColor: item.color, width: item.width }]} />
+              <View style={[nc.barFill, { backgroundColor: item.color, width: `${item.pct}%` }]} />
             </View>
+            <Text style={nc.pctTxt}>{item.pct}%</Text>
           </View>
         ))}
       </View>
@@ -386,24 +386,25 @@ function NutritionCard({ calories, protein, carbs, fat }: {
   );
 }
 const nc = StyleSheet.create({
-  card:      { backgroundColor: "#FFF", borderRadius: 20, padding: 16 },
+  card:      { backgroundColor: DS.color.bg, borderRadius: 20, padding: 16, ...NEU_SHADOW },
   header:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
   title:     { fontSize: 15, fontFamily: "Inter_700Bold", color: DS.color.text },
   viewAll:   { fontSize: 12, fontFamily: "Inter_600SemiBold", color: DS.color.primary },
-  grid:      { gap: 10 },
-  item:      { gap: 5 },
-  itemTop:   { flexDirection: "row", alignItems: "center", gap: 8 },
-  itemTextWrap: { flex: 1, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
-  itemVal:   { fontSize: 15, fontFamily: "Inter_700Bold", color: DS.color.text },
-  itemUnit:  { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted },
-  itemLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted },
-  barBg:     { height: 5, borderRadius: 3, backgroundColor: "#F1F5F9" },
-  barFill:   { height: 5, borderRadius: 3 },
+  grid:      { gap: 12 },
+  row:       { flexDirection: "row", alignItems: "center", gap: 9 },
+  iconCircle:{ width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  labelCol:  { width: 62 },
+  itemVal:   { fontSize: 13, fontFamily: "Inter_700Bold", color: DS.color.text },
+  itemUnit:  { fontSize: 10, fontFamily: "Inter_400Regular", color: DS.color.muted },
+  itemLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: DS.color.muted },
+  barBg:     { flex: 1, height: 6, borderRadius: 3, backgroundColor: "#F1F5F9" },
+  barFill:   { height: 6, borderRadius: 3 },
+  pctTxt:    { width: 32, fontSize: 10, fontFamily: "Inter_600SemiBold", color: DS.color.muted, textAlign: "right" },
 });
 
 // ── SERVICE TILE ───────────────────────────────────────────────────────────────
-function ServiceTile({ icon, label, color, onPress, badge }: {
-  icon: React.ReactNode; label: string; color: string; onPress?: () => void; badge?: string;
+function ServiceTile({ icon, label, color, softColor, onPress, badge }: {
+  icon: React.ReactNode; label: string; color: string; softColor: string; onPress?: () => void; badge?: string;
 }) {
   const sc = useRef(new Animated.Value(1)).current;
   return (
@@ -414,15 +415,10 @@ function ServiceTile({ icon, label, color, onPress, badge }: {
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress?.(); }}
     >
       <Animated.View style={[st.inner, { transform: [{ scale: sc }] }]}>
-        <View style={[st.shadow3d, { backgroundColor: color + "44" }]} />
-        <LinearGradient
-          colors={[color + "DD", color + "FF"]}
-          start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-          style={st.circle}
-        >
+        <View style={[st.circle, { backgroundColor: softColor }, NEU_SHADOW_SM]}>
           {icon}
-          {badge ? <View style={st.badgeDot}><Text style={st.badgeT}>{badge}</Text></View> : null}
-        </LinearGradient>
+          {badge ? <View style={[st.badgeDot, { backgroundColor: color }]}><Text style={st.badgeT}>{badge}</Text></View> : null}
+        </View>
         <Text style={st.lbl} numberOfLines={2}>{label}</Text>
       </Animated.View>
     </TouchableOpacity>
@@ -431,57 +427,120 @@ function ServiceTile({ icon, label, color, onPress, badge }: {
 const st = StyleSheet.create({
   wrap:     { width: "33.33%", alignItems: "center", paddingVertical: 6 },
   inner:    { alignItems: "center", gap: 7, width: 64 },
-  shadow3d: { position: "absolute", width: 44, height: 13, borderRadius: 10, top: 45, left: 10, opacity: 0.9 },
-  circle:   { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  circle:   { width: 54, height: 54, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   lbl:      { fontSize: 11, fontFamily: "Inter_600SemiBold", color: DS.color.text, textAlign: "center", lineHeight: 14, height: 28 },
   badgeDot: { position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: "#FFF", alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
-  badgeT:   { fontSize: 8, fontFamily: "Inter_700Bold", color: DS.color.primary },
+  badgeT:   { fontSize: 8, fontFamily: "Inter_700Bold", color: "#FFF" },
 });
 
-// ── WATER DOTS ─────────────────────────────────────────────────────────────────
-function WaterDots({ current, goal, onAdd }: { current: number; goal: number; onAdd: () => void }) {
+// ── WATER MINI CARD (compact, for the 3-column row) ─────────────────────────────
+function WaterMiniCard({ current, goal, onAdd }: { current: number; goal: number; onAdd: () => void }) {
   const { t } = useLanguage();
   const total = Math.max(goal, 6);
-  const goalMetText = t("dashCupsGoalMet").replace("{current}", String(current)).replace("{goal}", String(goal));
+  const pct = Math.min(1, goal > 0 ? current / goal : 0);
+  const r = 30, circ = 2 * Math.PI * r;
   return (
     <View style={wd.wrap}>
-      <View style={wd.header}>
-        <Text style={wd.title}>{t("dashWaterIntake")}</Text>
-        <Text style={wd.sub}>{goalMetText}</Text>
+      <Text style={wd.title} numberOfLines={1}>💧 {t("dashWaterIntake")}</Text>
+      <Text style={wd.sub} numberOfLines={2}>{current}/{goal} {t("dashCups")}</Text>
+      <View style={wd.ringWrap}>
+        <Svg width={70} height={70} viewBox="0 0 70 70">
+          <Circle cx={35} cy={35} r={r} stroke={DS.color.skySoft} strokeWidth={7} fill="none" />
+          <Circle
+            cx={35} cy={35} r={r} stroke={DS.color.sky} strokeWidth={7} fill="none"
+            strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)}
+            transform="rotate(-90 35 35)"
+          />
+        </Svg>
+        <View style={wd.ringCenter}>
+          <Droplets size={20} color={DS.color.sky} strokeWidth={2} />
+        </View>
       </View>
-      <View style={wd.row}>
-        {Array.from({ length: total }).map((_, i) => {
-          const filled = i < current;
-          return (
-            <TouchableOpacity
-              key={i}
-              onPress={() => { if (!filled) onAdd(); }}
-              activeOpacity={filled ? 1 : 0.7}
-              style={wd.dotWrap}
-            >
-              <View style={[wd.dot, filled ? wd.filled : wd.empty]}>
-                {filled
-                  ? <Droplets size={16} color="#FFF" strokeWidth={2} />
-                  : <Plus size={14} color={DS.color.sky + "90"} strokeWidth={2.5} />
-                }
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      <TouchableOpacity
+        onPress={onAdd} disabled={current >= goal} activeOpacity={0.8}
+        style={[wd.dotRow]}
+      >
+        {Array.from({ length: Math.min(total, 8) }).map((_, i) => (
+          <View key={i} style={[wd.dot, i < current ? { backgroundColor: DS.color.sky } : { backgroundColor: DS.color.skySoft }]} />
+        ))}
+      </TouchableOpacity>
     </View>
   );
 }
 const wd = StyleSheet.create({
-  wrap:    { backgroundColor: "#FFF", borderRadius: 20, padding: 16 },
-  header:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
-  title:   { fontSize: 14, fontFamily: "Inter_700Bold", color: DS.color.text },
-  sub:     { fontSize: 11, fontFamily: "Inter_400Regular", color: DS.color.muted },
-  row:     { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-start", gap: 8, rowGap: 10 },
-  dotWrap: { alignItems: "center" },
-  dot:     { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  filled:  { backgroundColor: DS.color.sky },
-  empty:   { backgroundColor: "#EBF5FB", borderWidth: 1.5, borderColor: DS.color.sky + "30" },
+  wrap:      { flex: 1, backgroundColor: DS.color.bg, borderRadius: 18, padding: 12, alignItems: "center", ...NEU_SHADOW_SM },
+  title:     { fontSize: 11, fontFamily: "Inter_700Bold", color: DS.color.text, alignSelf: "flex-start" },
+  sub:       { fontSize: 9.5, fontFamily: "Inter_400Regular", color: DS.color.muted, alignSelf: "flex-start", marginTop: 1, marginBottom: 6 },
+  ringWrap:  { width: 70, height: 70, alignItems: "center", justifyContent: "center" },
+  ringCenter:{ position: "absolute" },
+  dotRow:    { flexDirection: "row", gap: 3, marginTop: 8, flexWrap: "wrap", justifyContent: "center" },
+  dot:       { width: 9, height: 9, borderRadius: 2 },
+});
+
+// ── MEDICINE MINI CARD (compact, for the 3-column row) ──────────────────────────
+function MedicineMiniCard({ medicines, onPress }: {
+  medicines: Array<{ id: string; medicineName: string; dosage?: string; reminderTimes: string[] }>;
+  onPress: () => void;
+}) {
+  const { t } = useLanguage();
+  const first = medicines[0];
+  return (
+    <TouchableOpacity style={mm.wrap} onPress={onPress} activeOpacity={0.85}>
+      <Text style={mm.title} numberOfLines={1}>💊 {t("dashTodaysMedicines")}</Text>
+      {medicines.length === 0 ? (
+        <>
+          <View style={mm.illusRow}>
+            <View style={mm.illusBottle}>
+              <Pill size={22} color={DS.color.primary} strokeWidth={2} />
+            </View>
+          </View>
+          <Text style={mm.emptyTxt} numberOfLines={2}>{t("dashAddMedicineShort")}</Text>
+        </>
+      ) : (
+        <View style={{ flex: 1, justifyContent: "center", gap: 4 }}>
+          <Text style={mm.count}>{medicines.length}</Text>
+          <Text style={mm.countLbl} numberOfLines={1}>{first.medicineName}</Text>
+          {first.reminderTimes[0] ? <Text style={mm.time}>{first.reminderTimes[0]}</Text> : null}
+        </View>
+      )}
+      <View style={mm.addBtn}>
+        <Plus size={12} color="#FFF" strokeWidth={2.5} />
+        <Text style={mm.addBtnTxt}>{medicines.length === 0 ? t("dashAddMedicine") : t("dashViewAll")}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+const mm = StyleSheet.create({
+  wrap:      { flex: 1, backgroundColor: DS.color.bg, borderRadius: 18, padding: 12, ...NEU_SHADOW_SM },
+  title:     { fontSize: 11, fontFamily: "Inter_700Bold", color: DS.color.text, marginBottom: 6 },
+  illusRow:  { alignItems: "center", justifyContent: "center", height: 40 },
+  illusBottle:{ width: 44, height: 44, borderRadius: 22, backgroundColor: DS.color.primarySoft, alignItems: "center", justifyContent: "center" },
+  emptyTxt:  { fontSize: 9.5, fontFamily: "Inter_400Regular", color: DS.color.muted, textAlign: "center", marginTop: 4, minHeight: 26 },
+  count:     { fontSize: 22, fontFamily: "Inter_800ExtraBold", color: DS.color.primary, textAlign: "center" },
+  countLbl:  { fontSize: 10, fontFamily: "Inter_600SemiBold", color: DS.color.text, textAlign: "center" },
+  time:      { fontSize: 9, fontFamily: "Inter_400Regular", color: DS.color.muted, textAlign: "center" },
+  addBtn:    { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, backgroundColor: DS.color.primary, borderRadius: 10, paddingVertical: 7, marginTop: 8 },
+  addBtnTxt: { fontSize: 9.5, fontFamily: "Inter_700Bold", color: "#FFF" },
+});
+
+// ── HEALTH TIP CARD (compact, for the 3-column row) — real data from
+// api.getHealthTip(), an existing endpoint no screen was calling before. ────────
+type HealthTip = { tip: string; tipHindi: string; category: string; emoji: string };
+function HealthTipCard({ tip }: { tip: HealthTip | null }) {
+  const { t, lang } = useLanguage();
+  if (!tip) return null;
+  const text = lang === "hi" && tip.tipHindi ? tip.tipHindi : tip.tip;
+  return (
+    <View style={ht.wrap}>
+      <Text style={ht.title} numberOfLines={1}>{tip.emoji || "🌿"} {t("dashHealthTip")}</Text>
+      <Text style={ht.body} numberOfLines={5}>{text}</Text>
+    </View>
+  );
+}
+const ht = StyleSheet.create({
+  wrap:  { flex: 1, backgroundColor: DS.color.bg, borderRadius: 18, padding: 12, ...NEU_SHADOW_SM },
+  title: { fontSize: 11, fontFamily: "Inter_700Bold", color: DS.color.text, marginBottom: 6 },
+  body:  { fontSize: 10.5, fontFamily: "Inter_400Regular", color: DS.color.textSub, lineHeight: 15 },
 });
 
 // ── STRESS CARD ────────────────────────────────────────────────────────────────
@@ -674,6 +733,7 @@ export default function DashboardScreen() {
   const [activityPct, setActivityPct] = useState(0);
   const [stressToday, setStressToday] = useState<StressToday | null>(null);
   const [showStressModal, setShowStressModal] = useState(false);
+  const [healthTip, setHealthTip] = useState<HealthTip | null>(null);
   const [isLoading,   setIsLoading]   = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
   const [isOffline,   setIsOffline]   = useState(false);
@@ -763,6 +823,12 @@ export default function DashboardScreen() {
 
   useEffect(() => { loadData(); }, []);
 
+  // Best-effort, once per screen mount — a stale/missing tip should never
+  // block or affect the rest of the dashboard.
+  useEffect(() => {
+    api.getHealthTip().then(setHealthTip).catch(() => {});
+  }, []);
+
   useFocusEffect(useCallback(() => {
     loadData();
     scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -832,21 +898,21 @@ export default function DashboardScreen() {
           />
 
 
-          {/* 2. QUICK SERVICES */}
+          {/* 2. QUICK ACTIONS */}
           <View style={s.surfaceCard}>
             <Text style={s.secTitle}>{t("dashQuickServices")}</Text>
             <View style={s.grid}>
               {[
-                { icon: <Utensils size={22} color="#FFF" strokeWidth={2.2} />, label: t("dashMealLog"),  color: "#2EAD6E", route: "/(tabs)/food" },
-                { icon: <Dumbbell size={22} color="#FFF" strokeWidth={2.2} />, label: t("dashExercise"),  color: "#00A693",       route: "/(tabs)/exercise" },
-                { icon: <Pill     size={22} color="#FFF" strokeWidth={2.2} />, label: t("dashMedicine"),  color: DS.color.primary, route: "/(tabs)/medicine",
+                { icon: <Utensils size={22} color={DS.color.green} strokeWidth={2.2} />, label: t("dashMealLog"),  color: DS.color.green,     soft: DS.color.greenSoft,     route: "/(tabs)/food" },
+                { icon: <Dumbbell size={22} color={DS.color.secondary} strokeWidth={2.2} />, label: t("dashExercise"),  color: DS.color.secondary, soft: DS.color.secondarySoft, route: "/(tabs)/exercise" },
+                { icon: <Pill     size={22} color={DS.color.primary} strokeWidth={2.2} />, label: t("dashMedicine"),  color: DS.color.primary,  soft: DS.color.primarySoft,   route: "/(tabs)/medicine",
                   badge: medicines.length > 0 ? String(medicines.length) : undefined },
-                { icon: <ScanLine size={22} color="#FFF" strokeWidth={2.2} />, label: t("dashAiScan"),   color: DS.color.primary, route: "/(tabs)/scan" },
-                { icon: <Brain    size={22} color="#FFF" strokeWidth={2.2} />, label: t("dashAiCoach"),  color: "#6B4FA0", route: "/suggestions" },
-                { icon: <FileText size={22} color="#FFF" strokeWidth={2.2} />, label: t("dashReports"),   color: DS.color.sky,     route: "/health-report" },
+                { icon: <ScanLine size={22} color={DS.color.primary} strokeWidth={2.2} />, label: t("dashAiScan"),   color: DS.color.primary,  soft: DS.color.primarySoft,   route: "/(tabs)/scan" },
+                { icon: <Brain    size={22} color={DS.color.purple} strokeWidth={2.2} />, label: t("dashAiCoach"),  color: DS.color.purple,   soft: DS.color.purpleSoft,    route: "/suggestions" },
+                { icon: <FileText size={22} color={DS.color.orange} strokeWidth={2.2} />, label: t("dashReports"),   color: DS.color.orange,   soft: DS.color.orangeSoft,    route: "/health-report" },
               ].map((svc, i) => (
                 <ServiceTile
-                  key={i} icon={svc.icon} label={svc.label} color={svc.color}
+                  key={i} icon={svc.icon} label={svc.label} color={svc.color} softColor={svc.soft}
                   badge={(svc as { badge?: string }).badge}
                   onPress={() => router.push(svc.route as never)}
                 />
@@ -854,31 +920,24 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          {/* 3. WATER INTAKE */}
-          <WaterDots current={water.current} goal={Math.max(water.goal, 6)} onAdd={handleAddWater} />
+          {/* 3. WATER / MEDICINE / HEALTH TIP — 3-column row */}
+          <View style={s.miniRow}>
+            <WaterMiniCard current={water.current} goal={Math.max(water.goal, 6)} onAdd={handleAddWater} />
+            <MedicineMiniCard medicines={medicines} onPress={() => router.push("/(tabs)/medicine" as never)} />
+            <HealthTipCard tip={healthTip} />
+          </View>
 
-          {/* 4. TODAY'S MEDICINES */}
-          <View style={s.surfaceCard}>
-            <View style={s.cardHeader}>
-              <Text style={s.secTitle}>{t("dashTodaysMedicines")}</Text>
-              <TouchableOpacity onPress={() => router.push("/(tabs)/medicine" as never)}>
-                <Text style={s.viewAll}>{t("dashViewAll")}</Text>
-              </TouchableOpacity>
-            </View>
-            {medicines.length === 0 ? (
-              <TouchableOpacity
-                style={s.emptyRow}
-                onPress={() => router.push("/(tabs)/medicine" as never)}
-                activeOpacity={0.8}
-              >
-                <View style={[s.medIcon, { backgroundColor: DS.color.purple + "18" }]}>
-                  <Pill size={15} color={DS.color.purple} strokeWidth={2} />
-                </View>
-                <Text style={s.emptyTxt}>No medicine schedule — Add one</Text>
-                <ChevronRight size={14} color={DS.color.purple} strokeWidth={2} />
-              </TouchableOpacity>
-            ) : (
-              medicines.slice(0, 3).map((med, idx) => (
+          {/* 3b. FULL MEDICINE LIST — shown only when there's more than the
+              mini-card can summarize, same data source as above. */}
+          {medicines.length > 1 && (
+            <View style={s.surfaceCard}>
+              <View style={s.cardHeader}>
+                <Text style={s.secTitle}>{t("dashTodaysMedicines")}</Text>
+                <TouchableOpacity onPress={() => router.push("/(tabs)/medicine" as never)}>
+                  <Text style={s.viewAll}>{t("dashViewAll")}</Text>
+                </TouchableOpacity>
+              </View>
+              {medicines.slice(0, 3).map((med, idx) => (
                 <View
                   key={med.id}
                   style={[s.medRow, idx === Math.min(medicines.length, 3) - 1 && { borderBottomWidth: 0 }]}
@@ -892,9 +951,9 @@ export default function DashboardScreen() {
                   </View>
                   <ChevronRight size={14} color={DS.color.muted} strokeWidth={1.5} />
                 </View>
-              ))
-            )}
-          </View>
+              ))}
+            </View>
+          )}
 
           {/* 5. NUTRITION CARD */}
           <NutritionCard
@@ -1044,15 +1103,14 @@ const s = StyleSheet.create({
 
   body:     { paddingHorizontal: 14, paddingTop: 0, gap: 12 },
 
-  surfaceCard: { backgroundColor: "#FFF", borderRadius: 20, padding: 16 },
+  surfaceCard: { backgroundColor: DS.color.bg, borderRadius: 20, padding: 16, ...NEU_SHADOW },
+  miniRow:     { flexDirection: "row", gap: 8 },
   cardHeader:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
   secTitle:    { fontSize: 15, fontFamily: "Inter_700Bold", color: DS.color.text, marginBottom: 14 },
   viewAll:     { fontSize: 12, fontFamily: "Inter_600SemiBold", color: DS.color.primary },
 
   grid: { flexDirection: "row", flexWrap: "wrap" },
 
-  emptyRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: DS.color.purple + "0D", borderRadius: 12, padding: 12 },
-  emptyTxt: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: DS.color.muted },
   medRow:   { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#E4ECF4" },
   medIcon:  { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   medName:  { fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.text },
