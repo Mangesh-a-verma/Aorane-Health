@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  TextInput, Alert, ActivityIndicator,
+  TextInput, Alert, ActivityIndicator, Dimensions,
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,6 +22,12 @@ import {
 
 const P = DS.color.primary;
 const G = DS.color.green;
+
+const SCREEN_PAD = 16;
+const GRID_GAP = 8;
+const GRID_COLS = 5;
+const { width: SCREEN_W } = Dimensions.get("window");
+const EX_CHIP_W = (SCREEN_W - SCREEN_PAD * 2 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
 
 type ExerciseLog = {
   id: string; exerciseType: string; durationMinutes: number;
@@ -265,36 +271,36 @@ export default function LogExerciseScreen() {
           </View>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+        <View style={s.catRow}>
           {CATEGORIES.map((cat) => (
-            <TouchableOpacity key={cat.key} onPress={() => setActiveCategory(cat.key)} activeOpacity={0.8}>
+            <TouchableOpacity key={cat.key} onPress={() => setActiveCategory(cat.key)} activeOpacity={0.8} style={{ flex: 1 }}>
               {activeCategory === cat.key ? (
                 <View style={s.catChipActive}>
                   <MaterialCommunityIcons name={cat.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={13} color={P} />
-                  <Text style={[s.catLabel, { color: P }]}>{cat.label}</Text>
+                  <Text style={[s.catLabel, { color: P }]} numberOfLines={1}>{cat.label}</Text>
                 </View>
               ) : (
                 <View style={s.catChipOff}>
                   <MaterialCommunityIcons name={cat.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={13} color={DS.color.muted} />
-                  <Text style={[s.catLabel, { color: DS.color.muted }]}>{cat.label}</Text>
+                  <Text style={[s.catLabel, { color: DS.color.muted }]} numberOfLines={1}>{cat.label}</Text>
                 </View>
               )}
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
 
         <View style={s.exGrid}>
           {filteredExercises.map((ex) => (
-            <TouchableOpacity key={ex.name} onPress={() => { setSelectedExercise(ex.name); setSets(""); setReps(""); setSteps(""); }} activeOpacity={0.8}>
+            <TouchableOpacity key={ex.name} onPress={() => { setSelectedExercise(ex.name); setSets(""); setReps(""); setSteps(""); }} activeOpacity={0.8} style={{ width: EX_CHIP_W }}>
               {selectedExercise === ex.name ? (
                 <LinearGradient colors={[ex.color, ex.color + "CC"]} style={s.exChip}>
-                  <MaterialCommunityIcons name={ex.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={14} color="#FFF" />
-                  <Text style={[s.exName, { color: "#FFF" }]}>{ex.name}</Text>
+                  <MaterialCommunityIcons name={ex.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={16} color="#FFF" />
+                  <Text style={[s.exName, { color: "#FFF" }]} numberOfLines={2}>{ex.name}</Text>
                 </LinearGradient>
               ) : (
                 <View style={s.exChipOff}>
-                  <MaterialCommunityIcons name={ex.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={14} color={ex.color} />
-                  <Text style={[s.exName, { color: DS.color.text }]}>{ex.name}</Text>
+                  <MaterialCommunityIcons name={ex.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={16} color={ex.color} />
+                  <Text style={[s.exName, { color: DS.color.text }]} numberOfLines={2}>{ex.name}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -502,14 +508,15 @@ const s = StyleSheet.create({
   searchBox:   { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#FFF", borderRadius: 12, borderWidth: 1, borderColor: DS.color.border, paddingHorizontal: 10, paddingVertical: 7, flexShrink: 1 },
   searchInput: { fontSize: 12, fontFamily: "Inter_400Regular", color: DS.color.text, minWidth: 90, padding: 0 },
 
-  catChipActive: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: DS.color.primarySoft, borderWidth: 1, borderColor: P },
-  catChipOff:    { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: "#FFF", borderWidth: 1, borderColor: DS.color.border },
-  catLabel:      { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  catRow:        { flexDirection: "row", gap: 8 },
+  catChipActive: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 6, paddingVertical: 9, borderRadius: 20, backgroundColor: DS.color.primarySoft, borderWidth: 1, borderColor: P },
+  catChipOff:    { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 6, paddingVertical: 9, borderRadius: 20, backgroundColor: "#FFF", borderWidth: 1, borderColor: DS.color.border },
+  catLabel:      { fontSize: 11.5, fontFamily: "Inter_600SemiBold" },
 
-  exGrid:    { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  exChip:    { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 },
-  exChipOff: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: "#FFF", borderWidth: 1, borderColor: DS.color.border },
-  exName:    { fontSize: 12, fontFamily: "Inter_500Medium" },
+  exGrid:    { flexDirection: "row", flexWrap: "wrap", gap: GRID_GAP },
+  exChip:    { flexDirection: "row", alignItems: "flex-start", gap: 4, paddingHorizontal: 8, paddingVertical: 9, borderRadius: 16, minHeight: 58 },
+  exChipOff: { flexDirection: "row", alignItems: "flex-start", gap: 4, paddingHorizontal: 8, paddingVertical: 9, borderRadius: 16, minHeight: 58, backgroundColor: "#FFF", borderWidth: 1, borderColor: DS.color.border },
+  exName:    { fontSize: 11, fontFamily: "Inter_500Medium", flex: 1, lineHeight: 14 },
 
   twoColRow: { flexDirection: "row", gap: 10, alignItems: "stretch" },
   cardLabelRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 },
