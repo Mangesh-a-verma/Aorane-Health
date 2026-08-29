@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, Image,
   RefreshControl, Platform, ActivityIndicator, Animated, Modal, StatusBar, Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,8 +18,22 @@ import { DS } from "@/lib/theme";
 import {
   Flame, Droplets, Dumbbell,
   Utensils, Pill, ScanLine, Brain, FileText,
-  ChevronRight, Sparkles, Plus, Beef, Wheat,
+  ChevronRight, Sparkles, Plus, Beef, Wheat, Bell, Info,
 } from "lucide-react-native";
+
+// Neumorphic soft-raised shadow — RN has no true dual-tone (light+dark)
+// CSS box-shadow, so this is a single soft shadow approximation of the
+// "raised card" look, matching the direction other screens are moving to.
+const NEU_SHADOW = Platform.select({
+  ios:     { shadowColor: "#8FA6C2", shadowOffset: { width: 5, height: 5 }, shadowOpacity: 0.28, shadowRadius: 10 },
+  android: { elevation: 5 },
+  default: { shadowColor: "#8FA6C2", shadowOffset: { width: 5, height: 5 }, shadowOpacity: 0.28, shadowRadius: 10 },
+}) as object;
+const NEU_SHADOW_SM = Platform.select({
+  ios:     { shadowColor: "#8FA6C2", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.22, shadowRadius: 6 },
+  android: { elevation: 3 },
+  default: { shadowColor: "#8FA6C2", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.22, shadowRadius: 6 },
+}) as object;
 
 // ── WEATHER ─────────────────────────────────────────────────────────────────
 type WeatherInfo = {
@@ -219,68 +233,101 @@ function getGreeting(t: (key: any) => string) {
   return t("dashGreetingEvening");
 }
 
+// ── HEADER ─────────────────────────────────────────────────────────────────────
+const DashboardHeader = React.memo(function DashboardHeader({
+  greeting, userName, onBellPress,
+}: { greeting: string; userName: string; onBellPress: () => void }) {
+  const { t } = useLanguage();
+  return (
+    <View style={hd.row}>
+      <View style={hd.left}>
+        <View style={hd.logoBadge}>
+          <Image source={require("../../assets/images/icon.png")} style={hd.logoImg} resizeMode="contain" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={hd.title} numberOfLines={1}>{greeting}{userName ? `, ${userName}` : ""}</Text>
+          <Text style={hd.sub}>{t("dashOverviewSub")}</Text>
+        </View>
+      </View>
+      <TouchableOpacity style={hd.bellBtn} onPress={onBellPress} activeOpacity={0.8} accessibilityLabel="Notification settings">
+        <Bell size={19} color={DS.color.textSub} strokeWidth={2} />
+      </TouchableOpacity>
+    </View>
+  );
+});
+const hd = StyleSheet.create({
+  row:      { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 4, marginBottom: 4 },
+  left:     { flexDirection: "row", alignItems: "center", gap: 12, flex: 1, paddingRight: 12 },
+  logoBadge:{ width: 50, height: 50, borderRadius: 18, backgroundColor: DS.color.bg, alignItems: "center", justifyContent: "center", ...NEU_SHADOW_SM },
+  logoImg:  { width: 26, height: 26 },
+  title:    { fontSize: 17, fontFamily: "Inter_700Bold", color: DS.color.text },
+  sub:      { fontSize: 12, fontFamily: "Inter_400Regular", color: DS.color.textSub, marginTop: 2 },
+  bellBtn:  { width: 42, height: 42, borderRadius: 15, backgroundColor: DS.color.bg, alignItems: "center", justifyContent: "center", ...NEU_SHADOW_SM },
+});
 
-// ── SUMMARY BANNER ─────────────────────────────────────────────────────────────
-const SummaryBanner = React.memo(function SummaryBanner({ greeting, healthScore, calories, water, exerciseMin, activityPct, trends }: {
-  trends?: { currentStreak: number; longestStreak: number; rolling7Day: number | null; rolling30Day: number | null };
-  greeting: string; healthScore: number;
+// ── HEALTH SCORE CARD ────────────────────────────────────────────────────────
+const HealthScoreCard = React.memo(function HealthScoreCard({
+  healthScore, calories, water, exerciseMin,
+}: {
+  healthScore: number;
   calories: { eaten: number; burned: number };
   water: { current: number; goal: number };
   exerciseMin: number;
-  activityPct: number;
 }) {
+  const { t } = useLanguage();
+  const status = healthScore >= 76 ? t("dashScoreGreat") : healthScore >= 50 ? t("dashScoreOk") : t("dashScoreLow");
+  const metrics = [
+    { Icon: Flame,     val: String(calories.eaten),  unit: "kcal", lbl: t("dashCalories"), bg: DS.color.redSoft,    color: DS.color.red },
+    { Icon: Flame,     val: String(calories.burned), unit: "kcal", lbl: t("dashBurned"),   bg: DS.color.orangeSoft, color: DS.color.orange },
+    { Icon: Droplets,  val: `${water.current}/${water.goal}`, unit: "cups", lbl: t("dashWater"), bg: DS.color.skySoft, color: DS.color.sky },
+    { Icon: Dumbbell,  val: `${exerciseMin}m`, unit: "min", lbl: t("dashActiveTime"), bg: DS.color.greenSoft, color: DS.color.green },
+  ];
   return (
-    <LinearGradient
-      colors={["#0668AD", "#0B84D6", "#38B6FF"]}
-      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-      style={bn.card}
-    >
-      <View style={bn.shine1} />
-      <View style={bn.topRow}>
+    <View style={hc.card}>
+      <View style={hc.top}>
         <View style={{ flex: 1 }}>
-          <Text style={bn.greet}>{greeting}</Text>
-          <Text style={bn.sub}>Today's health overview</Text>
+          <View style={hc.titleRow}>
+            <Text style={hc.title}>{t("dashHealthScore")}</Text>
+            <Info size={13} color={DS.color.muted} strokeWidth={2} />
+          </View>
+          <View style={hc.bigRow}>
+            <Text style={hc.bigNum}>{healthScore}</Text>
+            <Text style={hc.bigMax}>/100</Text>
+          </View>
+          <Text style={hc.status}>{status}</Text>
         </View>
-        <View style={bn.scoreBlock}>
-          <PremiumScoreRing score={healthScore} size={80} strokeWidth={8} label="HEALTH" textColor="white" />
-        </View>
+        <PremiumScoreRing score={healthScore} size={90} strokeWidth={9} />
       </View>
-      <View style={bn.divider} />
-      <View style={bn.statsRow}>
-        {[
-          { icon: <Utensils  size={13} color="rgba(255,255,255,0.9)" strokeWidth={2} />, val: String(calories.eaten),            lbl: "Kcal" },
-          { icon: <Flame     size={13} color="rgba(255,255,255,0.9)" strokeWidth={2} />, val: String(calories.burned),           lbl: "Burned" },
-          { icon: <Droplets  size={13} color="rgba(255,255,255,0.9)" strokeWidth={2} />, val: `${water.current}/${water.goal}`,  lbl: "Glass" },
-          { icon: <Dumbbell  size={13} color="rgba(255,255,255,0.9)" strokeWidth={2} />, val: `${exerciseMin}m`,                 lbl: "Active" },
-        ].map((s, i) => (
-          <View key={i} style={bn.stat}>
-            {s.icon}
-            <Text style={bn.statVal}>{s.val}</Text>
-            <Text style={bn.statLbl}>{s.lbl}</Text>
+      <View style={hc.metricRow}>
+        {metrics.map((m, i) => (
+          <View key={i} style={hc.metric}>
+            <View style={[hc.metricIcon, { backgroundColor: m.bg }]}>
+              <m.Icon size={14} color={m.color} strokeWidth={2} />
+            </View>
+            <Text style={hc.metricVal}>{m.val}</Text>
+            <Text style={hc.metricUnit}>{m.unit}</Text>
+            <Text style={hc.metricLbl}>{m.lbl}</Text>
           </View>
         ))}
       </View>
-    </LinearGradient>
+    </View>
   );
 });
-const bn = StyleSheet.create({
-  card:     { borderRadius: 20, padding: 16, overflow: "hidden" },
-  shine1:   { position: "absolute", width: 160, height: 160, borderRadius: 80, backgroundColor: "rgba(255,255,255,0.07)", top: -50, right: -30 },
-  topRow:   { flexDirection: "row", alignItems: "flex-start", marginBottom: 12 },
-  greet:    { color: "#FFF", fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 2 },
-  sub:      { color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_400Regular" },
-  scoreBlock: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
-  badge:    { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", minWidth: 56 },
-  badgeNum: { color: "#FFF", fontSize: 16, fontFamily: "Inter_700Bold", lineHeight: 20 },
-  badgeLbl: { color: "rgba(255,255,255,0.85)", fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
-  actBadge: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", minWidth: 56 },
-  actNum:   { color: "#FFF", fontSize: 16, fontFamily: "Inter_700Bold", lineHeight: 20 },
-  actLbl:   { color: "rgba(255,255,255,0.85)", fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
-  divider:  { height: 0.8, backgroundColor: "rgba(255,255,255,0.18)", marginBottom: 12 },
-  statsRow: { flexDirection: "row" },
-  stat:     { flex: 1, alignItems: "center", gap: 4 },
-  statVal:  { color: "#FFF", fontSize: 14, fontFamily: "Inter_700Bold" },
-  statLbl:  { color: "rgba(255,255,255,0.72)", fontSize: 9.5, fontFamily: "Inter_400Regular" },
+const hc = StyleSheet.create({
+  card:      { backgroundColor: DS.color.bg, borderRadius: 24, padding: 18, ...NEU_SHADOW },
+  top:       { flexDirection: "row", alignItems: "center", gap: 12 },
+  titleRow:  { flexDirection: "row", alignItems: "center", gap: 5 },
+  title:     { fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.textSub },
+  bigRow:    { flexDirection: "row", alignItems: "baseline", gap: 4, marginTop: 6 },
+  bigNum:    { fontSize: 38, fontFamily: "Inter_800ExtraBold", color: DS.color.primary, lineHeight: 42 },
+  bigMax:    { fontSize: 14, fontFamily: "Inter_600SemiBold", color: DS.color.muted },
+  status:    { fontSize: 12, fontFamily: "Inter_600SemiBold", color: DS.color.green, marginTop: 6 },
+  metricRow: { flexDirection: "row", marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: DS.color.divider },
+  metric:    { flex: 1, alignItems: "center", gap: 3 },
+  metricIcon:{ width: 28, height: 28, borderRadius: 10, alignItems: "center", justifyContent: "center", marginBottom: 3 },
+  metricVal: { fontSize: 15, fontFamily: "Inter_700Bold", color: DS.color.text },
+  metricUnit:{ fontSize: 9, fontFamily: "Inter_500Medium", color: DS.color.muted },
+  metricLbl: { fontSize: 10, fontFamily: "Inter_500Medium", color: DS.color.textSub, marginTop: 1 },
 });
 
 // ── NUTRITION CARD ─────────────────────────────────────────────────────────────
@@ -759,16 +806,18 @@ export default function DashboardScreen() {
         {/* ── BODY ── */}
         <Animated.View style={[s.body, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
 
-          {/* 1. SUMMARY BANNER */}
-          {trends && <PremiumTrendCard currentStreak={trends.currentStreak} rolling7Day={trends.rolling7Day} rolling30Day={trends.rolling30Day} />}
-          <SummaryBanner
+          {/* 1. HEADER + HEALTH SCORE */}
+          <DashboardHeader
             greeting={greeting}
+            userName={userName}
+            onBellPress={() => router.push("/notification-settings" as never)}
+          />
+          {trends && <PremiumTrendCard currentStreak={trends.currentStreak} rolling7Day={trends.rolling7Day} rolling30Day={trends.rolling30Day} />}
+          <HealthScoreCard
             healthScore={healthScore}
-            trends={trends}
             calories={calories}
             water={water}
             exerciseMin={exerciseMin}
-            activityPct={activityPct}
           />
 
 

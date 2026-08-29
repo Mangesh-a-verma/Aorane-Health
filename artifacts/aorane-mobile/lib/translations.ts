@@ -38,6 +38,13 @@ export type TranslationMap = {
   dashGreetingEvening?: string;
   dashGreetingNight?: string;
   dashCalories?: string;
+  dashBurned?: string;
+  dashActiveTime?: string;
+  dashHealthScore?: string;
+  dashOverviewSub?: string;
+  dashScoreGreat?: string;
+  dashScoreOk?: string;
+  dashScoreLow?: string;
   dashProtein?: string;
   dashCarbs?: string;
   dashFat?: string;
@@ -266,6 +273,13 @@ export const translations: Record<LangCode, TranslationMap> = {
     dashGreetingEvening: "Good Evening 🌆",
     dashGreetingNight: "Good Night 🌙",
     dashCalories: "Calories",
+    dashBurned: "Burned",
+    dashActiveTime: "Active Time",
+    dashHealthScore: "Health Score",
+    dashOverviewSub: "Here's your health overview",
+    dashScoreGreat: "You're doing great 🌿",
+    dashScoreOk: "Keep going, you're on track 💪",
+    dashScoreLow: "Let's improve today 🌱",
     dashProtein: "Protein",
     dashCarbs: "Carbs",
     dashFat: "Fat",
@@ -482,6 +496,13 @@ export const translations: Record<LangCode, TranslationMap> = {
     dashGreetingEvening: "शुभ संध्या 🌆",
     dashGreetingNight: "शुभ रात्रि 🌙",
     dashCalories: "कैलोरी",
+    dashBurned: "बर्न हुई",
+    dashActiveTime: "सक्रिय समय",
+    dashHealthScore: "हेल्थ स्कोर",
+    dashOverviewSub: "आपका स्वास्थ्य अवलोकन",
+    dashScoreGreat: "आप बहुत अच्छा कर रहे हैं 🌿",
+    dashScoreOk: "ऐसे ही जारी रखें 💪",
+    dashScoreLow: "आज सुधार करते हैं 🌱",
     dashProtein: "प्रोटीन",
     dashCarbs: "कार्ब्स",
     dashFat: "वसा",
