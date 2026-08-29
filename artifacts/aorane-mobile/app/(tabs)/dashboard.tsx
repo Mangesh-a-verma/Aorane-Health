@@ -18,7 +18,7 @@ import { DS } from "@/lib/theme";
 import {
   Flame, Droplets, Dumbbell,
   Utensils, Pill, ScanLine, Brain, FileText,
-  ChevronRight, Sparkles, Plus, Beef, Wheat, Bell, Info,
+  ChevronRight, Sparkles, Plus, Beef, Wheat, Bell, Info, Heart,
 } from "lucide-react-native";
 
 // Neumorphic soft-raised shadow — RN has no true dual-tone (light+dark)
@@ -277,18 +277,19 @@ const HealthScoreCard = React.memo(function HealthScoreCard({
   const { t } = useLanguage();
   const status = healthScore >= 76 ? t("dashScoreGreat") : healthScore >= 50 ? t("dashScoreOk") : t("dashScoreLow");
   const metrics = [
-    { Icon: Flame,     val: String(calories.eaten),  unit: "kcal", lbl: t("dashCalories"), bg: DS.color.redSoft,    color: DS.color.red },
-    { Icon: Flame,     val: String(calories.burned), unit: "kcal", lbl: t("dashBurned"),   bg: DS.color.orangeSoft, color: DS.color.orange },
-    { Icon: Droplets,  val: `${water.current}/${water.goal}`, unit: "cups", lbl: t("dashWater"), bg: DS.color.skySoft, color: DS.color.sky },
-    { Icon: Dumbbell,  val: `${exerciseMin}m`, unit: "min", lbl: t("dashActiveTime"), bg: DS.color.greenSoft, color: DS.color.green },
+    { Icon: Utensils, val: String(calories.eaten),  unit: "kcal", lbl: t("dashCalories") },
+    { Icon: Flame,    val: String(calories.burned), unit: "kcal", lbl: t("dashBurned")   },
+    { Icon: Droplets, val: `${water.current}/${water.goal}`, unit: "cups", lbl: t("dashWater") },
+    { Icon: Dumbbell, val: `${exerciseMin}m`, unit: "min", lbl: t("dashActiveTime") },
   ];
   return (
-    <View style={hc.card}>
+    <LinearGradient colors={["#0668AD", "#0B84D6", "#38B6FF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={hc.card}>
+      <View style={hc.wave} pointerEvents="none" />
       <View style={hc.top}>
         <View style={{ flex: 1 }}>
           <View style={hc.titleRow}>
             <Text style={hc.title}>{t("dashHealthScore")}</Text>
-            <Info size={13} color={DS.color.muted} strokeWidth={2} />
+            <Info size={13} color="rgba(255,255,255,0.75)" strokeWidth={2} />
           </View>
           <View style={hc.bigRow}>
             <Text style={hc.bigNum}>{healthScore}</Text>
@@ -296,13 +297,19 @@ const HealthScoreCard = React.memo(function HealthScoreCard({
           </View>
           <Text style={hc.status}>{status}</Text>
         </View>
-        <PremiumScoreRing score={healthScore} size={90} strokeWidth={9} />
+        <View style={hc.ringWrap}>
+          <PremiumScoreRing score={healthScore} size={92} strokeWidth={9} textColor="white" />
+          <View style={hc.heartOverlay} pointerEvents="none">
+            <Heart size={13} color="#fff" fill="#fff" strokeWidth={0} />
+          </View>
+        </View>
       </View>
+      <View style={hc.divider} />
       <View style={hc.metricRow}>
         {metrics.map((m, i) => (
           <View key={i} style={hc.metric}>
-            <View style={[hc.metricIcon, { backgroundColor: m.bg }]}>
-              <m.Icon size={14} color={m.color} strokeWidth={2} />
+            <View style={hc.metricIcon}>
+              <m.Icon size={14} color="#fff" strokeWidth={2} />
             </View>
             <Text style={hc.metricVal}>{m.val}</Text>
             <Text style={hc.metricUnit}>{m.unit}</Text>
@@ -310,24 +317,28 @@ const HealthScoreCard = React.memo(function HealthScoreCard({
           </View>
         ))}
       </View>
-    </View>
+    </LinearGradient>
   );
 });
 const hc = StyleSheet.create({
-  card:      { backgroundColor: DS.color.bg, borderRadius: 24, padding: 18, ...NEU_SHADOW },
-  top:       { flexDirection: "row", alignItems: "center", gap: 12 },
-  titleRow:  { flexDirection: "row", alignItems: "center", gap: 5 },
-  title:     { fontSize: 13, fontFamily: "Inter_600SemiBold", color: DS.color.textSub },
-  bigRow:    { flexDirection: "row", alignItems: "baseline", gap: 4, marginTop: 6 },
-  bigNum:    { fontSize: 38, fontFamily: "Inter_800ExtraBold", color: DS.color.primary, lineHeight: 42 },
-  bigMax:    { fontSize: 14, fontFamily: "Inter_600SemiBold", color: DS.color.muted },
-  status:    { fontSize: 12, fontFamily: "Inter_600SemiBold", color: DS.color.green, marginTop: 6 },
-  metricRow: { flexDirection: "row", marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: DS.color.divider },
-  metric:    { flex: 1, alignItems: "center", gap: 3 },
-  metricIcon:{ width: 28, height: 28, borderRadius: 10, alignItems: "center", justifyContent: "center", marginBottom: 3 },
-  metricVal: { fontSize: 15, fontFamily: "Inter_700Bold", color: DS.color.text },
-  metricUnit:{ fontSize: 9, fontFamily: "Inter_500Medium", color: DS.color.muted },
-  metricLbl: { fontSize: 10, fontFamily: "Inter_500Medium", color: DS.color.textSub, marginTop: 1 },
+  card:        { borderRadius: 24, padding: 18, overflow: "hidden" },
+  wave:        { position: "absolute", top: -30, right: -40, width: 200, height: 200, borderRadius: 100, backgroundColor: "rgba(255,255,255,0.07)" },
+  top:         { flexDirection: "row", alignItems: "center", gap: 12 },
+  titleRow:    { flexDirection: "row", alignItems: "center", gap: 5 },
+  title:       { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.85)" },
+  bigRow:      { flexDirection: "row", alignItems: "baseline", gap: 4, marginTop: 6 },
+  bigNum:      { fontSize: 38, fontFamily: "Inter_800ExtraBold", color: "#fff", lineHeight: 42 },
+  bigMax:      { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.65)" },
+  status:      { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.92)", marginTop: 6 },
+  ringWrap:    { position: "relative" },
+  heartOverlay:{ position: "absolute", top: 25, left: 0, right: 0, alignItems: "center" },
+  divider:     { height: 1, backgroundColor: "rgba(255,255,255,0.2)", marginTop: 16, marginBottom: 14 },
+  metricRow:   { flexDirection: "row" },
+  metric:      { flex: 1, alignItems: "center", gap: 3 },
+  metricIcon:  { width: 28, height: 28, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center", marginBottom: 3 },
+  metricVal:   { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  metricUnit:  { fontSize: 9, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.65)" },
+  metricLbl:   { fontSize: 10, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.82)", marginTop: 1 },
 });
 
 // ── NUTRITION CARD ─────────────────────────────────────────────────────────────
