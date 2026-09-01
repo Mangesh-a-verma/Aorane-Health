@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
   db, wearableConnectionsTable, wearableDataTable,
 } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { isBooleanFeatureEnabled } from "../../middlewares/plan-limits";
@@ -10,26 +10,50 @@ import { isBooleanFeatureEnabled } from "../../middlewares/plan-limits";
 const router = Router();
 
 // ─── Supported Providers ──────────────────────────────────────────────────────
-const PROVIDERS = [
+//
+// `status` is the single switch that turns a provider on. Everything else —
+// the connect sheet, the device cards, per-metric attribution — reads from
+// this list, so shipping Apple Health or Samsung Health later is a one-word
+// change here plus its native module, with no other edits to this file.
+//
+// `wearable_data.provider` is a free-text column, so new providers need no
+// migration; rows already written keep working.
+type ProviderStatus = "live" | "planned";
+
+const PROVIDERS: Array<{
+  id: string;
+  name: string;
+  shortName: string;
+  description: string;
+  platform: "android" | "ios";
+  status: ProviderStatus;
+  requiresCredentials: boolean;
+}> = [
   {
     id: "health_connect",
     name: "Health Connect (Android)",
+    shortName: "Health Connect",
     description: "Sync steps, heart rate, sleep, SpO2, calories from any Android wearable",
-    supported: true,
+    platform: "android",
+    status: "live",
     requiresCredentials: false,
   },
   {
     id: "apple_healthkit",
-    name: "Apple HealthKit (iOS)",
+    name: "Apple Health (iOS)",
+    shortName: "Apple Health",
     description: "Sync from Apple Watch & all iOS health apps via HealthKit",
-    supported: false,
+    platform: "ios",
+    status: "planned",
     requiresCredentials: false,
   },
   {
     id: "samsung_health",
     name: "Samsung Health",
-    description: "Sync from Samsung Galaxy Watch/Band (coming soon)",
-    supported: false,
+    shortName: "Samsung Health",
+    description: "Sync from Samsung Galaxy Watch & Galaxy Fit",
+    platform: "android",
+    status: "planned",
     requiresCredentials: false,
   },
 ];
@@ -39,9 +63,13 @@ const PROVIDERS = [
 // List available providers
 router.get("/wearable/providers", requireAuth, async (_req: AuthRequest, res) => {
   res.json({
-    providers: PROVIDERS.map((p: any) => ({
+    // `supported`/`available` are both kept so existing clients keep working,
+    // but they now derive from `status` instead of a hardcoded id comparison
+    // that had to be edited in lockstep with the list above.
+    providers: PROVIDERS.map((p) => ({
       ...p,
-      available: p.id === "health_connect",
+      supported: p.status === "live",
+      available: p.status === "live",
     })),
   });
 });
@@ -120,16 +148,40 @@ router.post("/wearable/sync/health_connect", requireAuth, async (req: AuthReques
 // Get wearable data (latest or date range)
 router.get("/wearable/data", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { limit = "30", days = "7" } = req.query as Record<string, string>;
-    const windowDays = Math.min(90, Math.max(1, parseInt(days) || 7));
-    const data = await db.select().from(wearableDataTable)
-      .where(eq(wearableDataTable.userId, req.userId!))
-      .orderBy(desc(wearableDataTable.recordedAt))
-      .limit(parseInt(limit));
-
-    const latest = data[0] || null;
+    const { limit = "30", days = "7", provider } = req.query as Record<string, string>;
+    const windowDays = Math.min(90, Math.max(1, parseInt(days, 10) || 7));
+    // `limit` arrives straight off the query string — an unparseable value
+    // used to reach the driver as `LIMIT NaN` and 500 the request.
+    const historyLimit = Math.min(200, Math.max(1, parseInt(limit, 10) || 30));
     const windowStart = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
-    const recent = data.filter((d: any) => d.recordedAt >= windowStart);
+
+    // `provider` was accepted by the mobile client's getWearableData() but
+    // never read here, so filtering by a single source silently returned
+    // every source instead.
+    const ownerFilter = provider
+      ? and(eq(wearableDataTable.userId, req.userId!), eq(wearableDataTable.provider, provider))
+      : eq(wearableDataTable.userId, req.userId!);
+
+    // Two reads on purpose. `history`/`latest` stay "the most recent rows,
+    // whatever their age", while the summary is computed over a real date
+    // window. Deriving both from ONE row-limited read is what made the
+    // 7-day summary silently cover fewer than 7 days: every sync inserts a
+    // row and Force Sync ignores the 4h cooldown, so a user who syncs often
+    // had more than `limit` rows inside a day or two and the window filter
+    // had nothing older left to find.
+    const history = await db.select().from(wearableDataTable)
+      .where(ownerFilter)
+      .orderBy(desc(wearableDataTable.recordedAt))
+      .limit(historyLimit);
+
+    const recent = await db.select().from(wearableDataTable)
+      .where(and(ownerFilter, gte(wearableDataTable.recordedAt, windowStart)))
+      .orderBy(desc(wearableDataTable.recordedAt))
+      // Safety bound only. 90 days of even very frequent syncing sits well
+      // under this, and the rows collapse to one per day just below.
+      .limit(2000);
+
+    const latest = history[0] || null;
 
     // Each sync row is a ROLLING 24h snapshot (mobile's syncManager.ts reads
     // "last 24 hours" on every sync, not a delta since the previous sync),
@@ -164,8 +216,18 @@ router.get("/wearable/data", requireAuth, async (req: AuthRequest, res) => {
     const avgSpo2 = withSpo2.length > 0 ? Math.round(withSpo2.reduce((s: any, d: any) => s + parseFloat(d.bloodOxygen || "0"), 0) / withSpo2.length * 10) / 10 : null;
 
     res.json({
-      latest, history: data,
-      summary: { avgSteps, avgHr, totalCalories: Math.round(totalCalories), totalActiveMin, avgSleep, avgSpo2, recordCount: data.length, windowDays },
+      latest, history,
+      summary: {
+        avgSteps, avgHr, totalCalories: Math.round(totalCalories), totalActiveMin,
+        avgSleep, avgSpo2,
+        // Scoped to the window the summary actually describes, so the UI's
+        // "show the 7-day summary" check can no longer pass on the strength
+        // of rows that fall outside it. `daysWithData` is what the averages
+        // are divided by — the UI can say "avg over N days" honestly.
+        recordCount: recent.length,
+        daysWithData: dailySnapshots.length,
+        windowDays,
+      },
     });
   } catch {
     res.status(500).json({ error: "Failed to fetch wearable data" });
