@@ -215,6 +215,7 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       res.json({
         suggestions: cached.suggestionsJson,
         fromCache: true,
+        isFallback: false,
         generatedAt: cached.generatedAt,
         date: today,
       }); return;
@@ -328,9 +329,14 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
     });
 
     let suggestions: unknown;
+    let usedFallback = false;
     const generatedAt = new Date();
     try {
-      const jsonStr = await callAI("health_suggestions", [{ role: "user", content: prompt }], { maxTokens: 2000 });
+      // 2000 could not fit ten fields plus a food array, so a complete answer
+      // was truncated mid-JSON, threw on parse, and landed in the generic
+      // fallback below — one of the reasons every day looked identical.
+      // (The weekly diet chart, a bigger response, already asks for 6000.)
+      const jsonStr = await callAI("health_suggestions", [{ role: "user", content: prompt }], { maxTokens: 3000 });
       let cleanJson = jsonStr.trim();
       if (cleanJson.startsWith("```json")) {
         cleanJson = cleanJson.substring(7);
@@ -345,6 +351,7 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       // it's generic rather than personalized, so refund the quota unit they
       // paid for a real AI call.
       await refundAIUsage(userId, "ai_health_coach_daily");
+      usedFallback = true;
       suggestions = {
         greeting: "Hello! Wishing you a wonderful and healthy day ahead! 🙏",
         calorieStatus: { goal: calorieGoal, eaten: caloriesToday, remaining: Math.max(0, calorieGoal - caloriesToday), message: "Keep tracking your calorie goal!" },
@@ -363,18 +370,30 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
     }
 
     // 7. Cache in DB (delete old + insert new to avoid upsert constraint complexity)
-    await db.delete(dailySuggestionsTable)
-      .where(and(eq(dailySuggestionsTable.userId, userId), eq(dailySuggestionsTable.date, today)));
-    await db.insert(dailySuggestionsTable).values({
-      userId,
-      date: today,
-      suggestionsJson: suggestions as Record<string, unknown>,
-      generatedAt,
-      calorieGoalUsed: calorieGoal,
-      isAiGenerated: true,
-    });
+    //
+    // The generic fallback is deliberately NOT cached. It used to be written
+    // here with isAiGenerated: true — a flat untruth — which meant one failed
+    // AI call froze the same three dishes in front of the user for the rest of
+    // the day, with nothing in the response or the row to show it had
+    // happened. Leaving it uncached lets the next open try the AI again and
+    // recover on its own the moment the provider is healthy.
+    if (!usedFallback) {
+      await db.delete(dailySuggestionsTable)
+        .where(and(eq(dailySuggestionsTable.userId, userId), eq(dailySuggestionsTable.date, today)));
+      await db.insert(dailySuggestionsTable).values({
+        userId,
+        date: today,
+        suggestionsJson: suggestions as Record<string, unknown>,
+        generatedAt,
+        calorieGoalUsed: calorieGoal,
+        isAiGenerated: true,
+      });
+    }
 
-    res.json({ suggestions, fromCache: false, generatedAt, date: today });
+    // `isFallback` tells the client these are generic defaults rather than
+    // anything personalised, so the screen can say so instead of presenting
+    // them as coaching.
+    res.json({ suggestions, fromCache: false, isFallback: usedFallback, generatedAt, date: today });
   } catch (err) {
     req.log.error({ err }, "Suggestions error");
     res.status(500).json({ error: "Failed to generate suggestions" });

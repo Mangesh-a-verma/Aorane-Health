@@ -172,18 +172,56 @@ Return ONLY valid JSON (no markdown, no extra text):
 });
 
 // ── AI Health Tip ─────────────────────────────────────────────────────────────
+// ── Daily health-tip cache ────────────────────────────────────────────────────
+// Goes through the same Redis-backed cache the smart-scan uses, so the tip
+// survives a restart and is shared across instances rather than being
+// regenerated per process.
+type HealthTip = { tip: string; tipHindi: string; category: string; explanation?: string };
+
+/** IST day key, matching how the rest of the app buckets a day. */
+function istDayKey(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+function healthTipCacheKey(): string {
+  return `health-tip:${istDayKey()}`;
+}
+
 router.post("/ai/health-tip", requireAuth, requireFeature("health_suggestions"), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const planType = req.userPlan || "free";
+    const { context = "" } = req.body as { context?: string };
 
+    // The dashboard calls this on every mount, and with no context the prompt
+    // below contains NOTHING user-specific — it asks for one generic daily
+    // tip. So the answer is cached for the whole app for the IST day: one
+    // generation a day instead of one per screen open.
+    //
+    // Cached only when `context` is empty. A caller that passes context gets
+    // a prompt built from that text, so it is generated fresh rather than
+    // sharing a cache entry keyed on someone else's input.
+    const cacheable = context.trim().length === 0;
+    if (cacheable) {
+      const hit = await cache.get(healthTipCacheKey());
+      if (hit) {
+        try {
+          res.json({ ...(JSON.parse(hit) as HealthTip), cached: true });
+          return;
+        } catch {
+          // Unreadable entry — fall through and regenerate rather than 500.
+        }
+      }
+    }
+
+    // Quota is spent only on a real generation, never on a cache hit — the
+    // same rule /suggestions/daily follows. This endpoint shares the Coach's
+    // `ai_health_coach_daily` key, so before the cache above, every dashboard
+    // mount was eating the user's own AI Health Coach allowance.
     const limitCheck = await checkAndUseAILimit(userId, "ai_health_coach_daily", planType);
     if (!limitCheck.allowed) {
       sendLimitBlocked(res, "ai_health_coach_daily", limitCheck.usedToday, limitCheck.limit, planType, limitCheck.planRequired);
       return;
     }
-
-    const { context = "" } = req.body as { context?: string };
 
     const prompt = `You are a certified Indian health coach. Give ONE practical, culturally relevant daily health tip for an Indian person${context ? ` who ${context}` : ""}.
 
@@ -213,7 +251,14 @@ Return ONLY valid JSON:
       res.status(502).json({ error: "AI response could not be read. Please try again." });
       return;
     }
-    res.json({ ...result, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
+    if (cacheable) {
+      // Expire at IST midnight rather than 24h from now, so the tip turns
+      // over on the day boundary instead of whenever the first caller hit it.
+      const msLeft = Date.parse(`${istDayKey()}T23:59:59+05:30`) - Date.now();
+      const ttl = Math.max(60, Math.round(msLeft / 1000));
+      await cache.set(healthTipCacheKey(), JSON.stringify(result), ttl);
+    }
+    res.json({ ...result, cached: false, aiUsage: { remaining: limitCheck.remaining, limit: limitCheck.limit } });
   } catch {
     res.status(500).json({ error: "Failed to generate health tip" });
   }
