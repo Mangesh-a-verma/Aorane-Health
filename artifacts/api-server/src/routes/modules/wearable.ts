@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
   db, wearableConnectionsTable, wearableDataTable,
 } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { isBooleanFeatureEnabled } from "../../middlewares/plan-limits";
@@ -120,16 +120,40 @@ router.post("/wearable/sync/health_connect", requireAuth, async (req: AuthReques
 // Get wearable data (latest or date range)
 router.get("/wearable/data", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { limit = "30", days = "7" } = req.query as Record<string, string>;
-    const windowDays = Math.min(90, Math.max(1, parseInt(days) || 7));
-    const data = await db.select().from(wearableDataTable)
-      .where(eq(wearableDataTable.userId, req.userId!))
-      .orderBy(desc(wearableDataTable.recordedAt))
-      .limit(parseInt(limit));
-
-    const latest = data[0] || null;
+    const { limit = "30", days = "7", provider } = req.query as Record<string, string>;
+    const windowDays = Math.min(90, Math.max(1, parseInt(days, 10) || 7));
+    // `limit` arrives straight off the query string — an unparseable value
+    // used to reach the driver as `LIMIT NaN` and 500 the request.
+    const historyLimit = Math.min(200, Math.max(1, parseInt(limit, 10) || 30));
     const windowStart = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
-    const recent = data.filter((d: any) => d.recordedAt >= windowStart);
+
+    // `provider` was accepted by the mobile client's getWearableData() but
+    // never read here, so filtering by a single source silently returned
+    // every source instead.
+    const ownerFilter = provider
+      ? and(eq(wearableDataTable.userId, req.userId!), eq(wearableDataTable.provider, provider))
+      : eq(wearableDataTable.userId, req.userId!);
+
+    // Two reads on purpose. `history`/`latest` stay "the most recent rows,
+    // whatever their age", while the summary is computed over a real date
+    // window. Deriving both from ONE row-limited read is what made the
+    // 7-day summary silently cover fewer than 7 days: every sync inserts a
+    // row and Force Sync ignores the 4h cooldown, so a user who syncs often
+    // had more than `limit` rows inside a day or two and the window filter
+    // had nothing older left to find.
+    const history = await db.select().from(wearableDataTable)
+      .where(ownerFilter)
+      .orderBy(desc(wearableDataTable.recordedAt))
+      .limit(historyLimit);
+
+    const recent = await db.select().from(wearableDataTable)
+      .where(and(ownerFilter, gte(wearableDataTable.recordedAt, windowStart)))
+      .orderBy(desc(wearableDataTable.recordedAt))
+      // Safety bound only. 90 days of even very frequent syncing sits well
+      // under this, and the rows collapse to one per day just below.
+      .limit(2000);
+
+    const latest = history[0] || null;
 
     // Each sync row is a ROLLING 24h snapshot (mobile's syncManager.ts reads
     // "last 24 hours" on every sync, not a delta since the previous sync),
@@ -164,8 +188,18 @@ router.get("/wearable/data", requireAuth, async (req: AuthRequest, res) => {
     const avgSpo2 = withSpo2.length > 0 ? Math.round(withSpo2.reduce((s: any, d: any) => s + parseFloat(d.bloodOxygen || "0"), 0) / withSpo2.length * 10) / 10 : null;
 
     res.json({
-      latest, history: data,
-      summary: { avgSteps, avgHr, totalCalories: Math.round(totalCalories), totalActiveMin, avgSleep, avgSpo2, recordCount: data.length, windowDays },
+      latest, history,
+      summary: {
+        avgSteps, avgHr, totalCalories: Math.round(totalCalories), totalActiveMin,
+        avgSleep, avgSpo2,
+        // Scoped to the window the summary actually describes, so the UI's
+        // "show the 7-day summary" check can no longer pass on the strength
+        // of rows that fall outside it. `daysWithData` is what the averages
+        // are divided by — the UI can say "avg over N days" honestly.
+        recordCount: recent.length,
+        daysWithData: dailySnapshots.length,
+        windowDays,
+      },
     });
   } catch {
     res.status(500).json({ error: "Failed to fetch wearable data" });
