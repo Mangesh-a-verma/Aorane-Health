@@ -11,6 +11,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/lib/api";
 import { logSilentError } from "@/lib/silentCatch";
 import { checkConnectionStatus, connectAndSync, forceSync } from "@/lib/health/syncManager";
+import { providerMeta, visibleProviders } from "@/lib/wearableProviders";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type WearableData = {
@@ -42,26 +43,6 @@ function openHCOrStore(): void {
 // ─── Constants ────────────────────────────────────────────────────────────────
 const { width: W } = Dimensions.get("window");
 
-const PROVIDER_META: Record<string, { emoji: string; name: string; color: string; grad: [string, string]; }> = {
-  health_connect:  { emoji: "🤖", name: "Health Connect",        color: "#0B6E4F", grad: ["#0B6E4F", "#1B998B"] },
-  apple_healthkit: { emoji: "🍎", name: "Apple HealthKit (iOS)", color: "#FF3B30", grad: ["#FF3B30", "#FF6B6B"] },
-  samsung_health:  { emoji: "💙", name: "Samsung Health",        color: "#1428A0", grad: ["#1428A0", "#00A8E0"] },
-};
-
-// ─── Provider visibility control ─────────────────────────────────────────────
-// Platform-aware: Android users dekhein sirf kaam karne wale providers.
-// Apple HealthKit iOS-only hai — Android pe dikhana confusing + Play Store issue.
-// Samsung Health + Fitbit: implementation pending, hidden until ready.
-//
-// Future mein provider add karna ho:
-//   Android: ["health_connect", "samsung_health"] — jab Samsung SDK integrate ho
-//   iOS:     ["apple_healthkit"] — jab HealthKit package install ho
-const ALLOWED_PROVIDERS: string[] = Platform.select({
-  android: ["health_connect"],     // ✅ Working
-  ios:     ["apple_healthkit"],    // 🔜 Ready karna hai — HealthKit package pending
-  default: ["health_connect"],
-}) ?? ["health_connect"];
-
 // ─── UI Components ────────────────────────────────────────────────────────────
 function MetricCard({ icon, label, value, unit, color }: {
   icon: string; label: string; value: string | number | null; unit?: string; color: string;
@@ -83,10 +64,7 @@ function MetricCard({ icon, label, value, unit, color }: {
 function DeviceCard({ conn, onSync, onDisconnect, syncing }: {
   conn: Connection; onSync: () => void; onDisconnect: () => void; syncing: boolean;
 }) {
-  const meta = PROVIDER_META[conn.provider] ?? {
-    emoji: "📱", name: conn.provider, color: "#0077B6",
-    grad: ["#0077B6", "#1B998B"] as [string, string],
-  };
+  const meta = providerMeta(conn.provider);
   const lastSync = conn.lastSyncedAt
     ? new Date(conn.lastSyncedAt).toLocaleString(undefined, {
         day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
@@ -101,7 +79,7 @@ function DeviceCard({ conn, onSync, onDisconnect, syncing }: {
             <Text style={{ fontSize: 22 }}>{meta.emoji}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.deviceName}>{meta.name}</Text>
+            <Text style={styles.deviceName}>{meta.shortName}</Text>
             <Text style={styles.deviceSync}>Last sync: {lastSync}</Text>
           </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
@@ -371,7 +349,7 @@ export default function WearableScreen() {
             : "Synchronization finished, but no recent data was located."
         );
       } else {
-        Alert.alert("Notice", `${PROVIDER_META[provider]?.name || provider} synchronization is currently unavailable.`);
+        Alert.alert("Notice", `${providerMeta(provider).shortName} synchronization is currently unavailable.`);
       }
     } catch (err: any) {
       if (!isMounted.current) return;
@@ -385,7 +363,7 @@ export default function WearableScreen() {
   const disconnectProvider = (provider: string) => {
     Alert.alert(
       "Confirm Disconnect",
-      `Are you sure you want to disconnect ${PROVIDER_META[provider]?.name || provider}? Historical data will be preserved.`,
+      `Are you sure you want to disconnect ${providerMeta(provider).shortName}? Historical data will be preserved.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -496,7 +474,7 @@ export default function WearableScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <Text style={styles.sectionTitle}>Latest Reading</Text>
                   <Text style={{ color: "#7A90A4", fontSize: 11, fontFamily: "Inter_400Regular" }}>
-                    {PROVIDER_META[latest.provider]?.emoji} {PROVIDER_META[latest.provider]?.name || latest.provider}
+                    {providerMeta(latest.provider).emoji} {providerMeta(latest.provider).shortName}
                   </Text>
                 </View>
                 <MetricCard icon="👟" label="Steps"       value={latest.steps?.toLocaleString() ?? null}                               color="#0077B6" />
@@ -618,11 +596,8 @@ export default function WearableScreen() {
             <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
               {/* providers list */}
 
-              {providers.filter((p) => ALLOWED_PROVIDERS.includes(p.id)).map((p) => {
-                const meta = PROVIDER_META[p.id] ?? {
-                  emoji: "📱", name: p.name, color: "#0077B6",
-                  grad: ["#0077B6", "#1B998B"] as [string, string],
-                };
+              {providers.filter((p) => visibleProviders().some((v) => v.id === p.id)).map((p) => {
+                const meta = providerMeta(p.id);
                 const isHC = p.id === "health_connect";
 
                 return (

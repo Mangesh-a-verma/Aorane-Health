@@ -10,26 +10,50 @@ import { isBooleanFeatureEnabled } from "../../middlewares/plan-limits";
 const router = Router();
 
 // ─── Supported Providers ──────────────────────────────────────────────────────
-const PROVIDERS = [
+//
+// `status` is the single switch that turns a provider on. Everything else —
+// the connect sheet, the device cards, per-metric attribution — reads from
+// this list, so shipping Apple Health or Samsung Health later is a one-word
+// change here plus its native module, with no other edits to this file.
+//
+// `wearable_data.provider` is a free-text column, so new providers need no
+// migration; rows already written keep working.
+type ProviderStatus = "live" | "planned";
+
+const PROVIDERS: Array<{
+  id: string;
+  name: string;
+  shortName: string;
+  description: string;
+  platform: "android" | "ios";
+  status: ProviderStatus;
+  requiresCredentials: boolean;
+}> = [
   {
     id: "health_connect",
     name: "Health Connect (Android)",
+    shortName: "Health Connect",
     description: "Sync steps, heart rate, sleep, SpO2, calories from any Android wearable",
-    supported: true,
+    platform: "android",
+    status: "live",
     requiresCredentials: false,
   },
   {
     id: "apple_healthkit",
-    name: "Apple HealthKit (iOS)",
+    name: "Apple Health (iOS)",
+    shortName: "Apple Health",
     description: "Sync from Apple Watch & all iOS health apps via HealthKit",
-    supported: false,
+    platform: "ios",
+    status: "planned",
     requiresCredentials: false,
   },
   {
     id: "samsung_health",
     name: "Samsung Health",
-    description: "Sync from Samsung Galaxy Watch/Band (coming soon)",
-    supported: false,
+    shortName: "Samsung Health",
+    description: "Sync from Samsung Galaxy Watch & Galaxy Fit",
+    platform: "android",
+    status: "planned",
     requiresCredentials: false,
   },
 ];
@@ -39,9 +63,13 @@ const PROVIDERS = [
 // List available providers
 router.get("/wearable/providers", requireAuth, async (_req: AuthRequest, res) => {
   res.json({
-    providers: PROVIDERS.map((p: any) => ({
+    // `supported`/`available` are both kept so existing clients keep working,
+    // but they now derive from `status` instead of a hardcoded id comparison
+    // that had to be edited in lockstep with the list above.
+    providers: PROVIDERS.map((p) => ({
       ...p,
-      available: p.id === "health_connect",
+      supported: p.status === "live",
+      available: p.status === "live",
     })),
   });
 });
