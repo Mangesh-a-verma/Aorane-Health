@@ -58,11 +58,17 @@ function buildPrompt(data: {
   calorieGoal: number; season: string; effectiveTDEE: number;
   sleepHoursToday: number | null; stepsToday: number | null;
   heartRateAvg: number | null; bloodOxygen: number | null;
+  recentFoods: string[]; recentSuggestedFoods: string[];
+  recentExercises: string[]; burnTarget: number; burnedToday: number;
 }): string {
   const { age, gender, weightKg, heightCm, bmi, activityLevel, workProfile, primaryGoal, targetWeightKg,
     foodPreference, foodAllergies, medicalConditions, caloriesToday, waterToday, waterGoal,
     exerciseMinToday, calorieGoal, season, effectiveTDEE,
-    sleepHoursToday, stepsToday, heartRateAvg, bloodOxygen } = data;
+    sleepHoursToday, stepsToday, heartRateAvg, bloodOxygen,
+    recentFoods, recentSuggestedFoods, recentExercises, burnTarget, burnedToday } = data;
+
+  const remainingBurn = Math.max(0, burnTarget - burnedToday);
+  const avoidList = Array.from(new Set([...recentSuggestedFoods, ...recentFoods])).slice(0, 25);
 
   const lowSleep = sleepHoursToday !== null && sleepHoursToday < 6;
   const lowOxygen = bloodOxygen !== null && bloodOxygen < 95;
@@ -102,6 +108,16 @@ TODAY'S VITALS (from wearable/manual entry, only where logged):
 - Resting heart rate: ${heartRateAvg !== null ? heartRateAvg + " bpm" : "not logged"}${highHeartRate ? " (ELEVATED)" : ""}
 - Blood oxygen (SpO2): ${bloodOxygen !== null ? bloodOxygen + "%" : "not logged"}${lowOxygen ? " (LOW — below 95%)" : ""}
 
+RECENT HISTORY (last 7 days):
+- Foods they actually logged: ${recentFoods.length ? recentFoods.join(", ") : "nothing logged"}
+- Exercises they actually did: ${recentExercises.length ? recentExercises.join(", ") : "nothing logged"}
+- Foods already suggested to them recently: ${recentSuggestedFoods.length ? recentSuggestedFoods.join(", ") : "none"}
+
+ENERGY BUDGET (computed, do not recalculate):
+- Daily burn target from exercise: ${burnTarget} kcal
+- Already burned today: ${burnedToday} kcal
+- Still to burn today: ${remainingBurn} kcal
+
 Current Season: ${season}
 
 WORK PROFILE CONTEXT:
@@ -128,16 +144,15 @@ RULES:
 10. Give work-profile-specific advice (e.g. Army: stamina foods; Office: screen fatigue tips)
 11. If sleep is LOW (under 6h): exercise suggestion should be light/moderate only (never intense), and healthTip should address sleep recovery
 12. If heart rate is ELEVATED or SpO2 is LOW: exerciseSuggestion intensity must be "light" and add a medicalWarnings entry recommending rest and, if it persists, consulting a doctor — do not suggest intense exertion
+13. VARIETY IS REQUIRED. Do NOT suggest any of these, they were eaten or suggested in the last 7 days: ${avoidList.length ? avoidList.join(", ") : "(nothing yet)"}
+14. Vary the cuisine and cooking style from what they have been eating — a different grain, dal or vegetable, not a rename of the same dish
+15. exerciseSuggestion.caloriesToBurn MUST equal ${remainingBurn} (already computed above from their TDEE, goal and what they have burned today). Pick an activity and duration that genuinely burns about that much — do not invent a different number
+16. Prefer an exercise they already do (see history) over something unfamiliar, unless variety is clearly needed
 
 Return ONLY valid JSON (no markdown):
 {
   "greeting": "Personalized morning/afternoon/evening greeting in English",
-  "calorieStatus": {
-    "goal": ${calorieGoal},
-    "eaten": ${caloriesToday},
-    "remaining": ${remainingCalories},
-    "message": "short motivational message about calorie status"
-  },
+  "calorieMessage": "short motivational message about their calorie status (the numbers themselves are computed by the app, do not repeat them as fields)",
   "foodSuggestions": [
     {
       "name": "Food name in English",
@@ -179,13 +194,7 @@ Return ONLY valid JSON (no markdown):
     }
   ],
   "motivation": "Personalized motivational message for their goal in English",
-  "targetProgress": {
-    "currentWeight": ${weightKg || 0},
-    "targetWeight": ${targetWeightKg || 0},
-    "weightGap": ${weightKg && targetWeightKg ? Math.abs(weightKg - targetWeightKg).toFixed(1) : 0},
-    "estimatedWeeks": number,
-    "weeklyMessage": "Progress update in English"
-  }
+  "weeklyMessage": "One line on how their week is going, given the history above"
 }`;
 }
 
@@ -284,6 +293,7 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
     let stepsToday: number | null = null;
     let heartRateAvg: number | null = null;
     let bloodOxygen: number | null = null;
+    let wearableCaloriesToday: number | null = null;
     try {
       const istBounds = istDayBounds(today);
       const dayStart = new Date(istBounds.dayStart);
@@ -306,6 +316,10 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
         stepsToday   = w.steps ?? null;
         heartRateAvg = w.heartRateAvg ?? null;
         bloodOxygen  = w.bloodOxygen ? Number(w.bloodOxygen) : null;
+        // Feeds the burn budget below. A wearable's calorie figure covers the
+        // whole day and normally already includes any logged workout, so it is
+        // taken as a floor rather than added to the exercise-log total.
+        wearableCaloriesToday = w.caloriesBurned ? Number(w.caloriesBurned) : null;
         // Wearable sleepHours is a secondary source — only use it if no
         // manual sleep_logs entry exists for today, never overwrite one.
         if (sleepHoursToday === null && w.sleepHours) sleepHoursToday = Number(w.sleepHours);
@@ -317,6 +331,85 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       logger.warn({ err, userId }, "[Suggestions] Failed to fetch today's food/water/exercise/vitals context — continuing with defaults");
     }
 
+    // 5b. Last 7 days of what the user ACTUALLY did, plus what we already
+    // suggested. Without this the prompt only ever saw today's totals, so the
+    // same profile and a similar day produced near-identical output — the
+    // main reason the meal plan looked frozen even when the AI was healthy.
+    let recentFoods: string[] = [];
+    let recentExercises: string[] = [];
+    let recentSuggestedFoods: string[] = [];
+    let burnedToday = 0;
+    try {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const istBounds = istDayBounds(today);
+      const [foodHist, exHist, pastSuggestions, todayEx] = await Promise.allSettled([
+        db.select({ name: foodLogsTable.foodNameEn })
+          .from(foodLogsTable)
+          .where(and(eq(foodLogsTable.userId, userId), gte(foodLogsTable.loggedAt, weekAgo)))
+          .orderBy(desc(foodLogsTable.loggedAt)).limit(40),
+        db.select({ type: exerciseLogsTable.exerciseType, mins: exerciseLogsTable.durationMinutes })
+          .from(exerciseLogsTable)
+          .where(and(eq(exerciseLogsTable.userId, userId), gte(exerciseLogsTable.loggedAt, weekAgo)))
+          .orderBy(desc(exerciseLogsTable.loggedAt)).limit(30),
+        db.select({ json: dailySuggestionsTable.suggestionsJson })
+          .from(dailySuggestionsTable)
+          .where(eq(dailySuggestionsTable.userId, userId))
+          .orderBy(desc(dailySuggestionsTable.date)).limit(3),
+        db.select({ cals: exerciseLogsTable.caloriesBurned })
+          .from(exerciseLogsTable)
+          .where(and(
+            eq(exerciseLogsTable.userId, userId),
+            gte(exerciseLogsTable.loggedAt, new Date(istBounds.dayStart)),
+            lte(exerciseLogsTable.loggedAt, new Date(istBounds.dayEnd)),
+          )),
+      ]);
+
+      if (foodHist.status === "fulfilled") {
+        recentFoods = Array.from(new Set(foodHist.value.map((r) => r.name).filter(Boolean))).slice(0, 20);
+      }
+      if (exHist.status === "fulfilled") {
+        // Collapse to "Walking (3x, 95 min)" so a week of logs stays a few
+        // tokens instead of thirty repeated lines.
+        const byType = new Map<string, { n: number; mins: number }>();
+        for (const r of exHist.value) {
+          const cur = byType.get(r.type) ?? { n: 0, mins: 0 };
+          byType.set(r.type, { n: cur.n + 1, mins: cur.mins + (r.mins || 0) });
+        }
+        recentExercises = Array.from(byType.entries())
+          .sort((a, b) => b[1].mins - a[1].mins)
+          .slice(0, 8)
+          .map(([type, v]) => `${type} (${v.n}x, ${v.mins} min)`);
+      }
+      if (pastSuggestions.status === "fulfilled") {
+        for (const row of pastSuggestions.value) {
+          const foods = (row.json as { foodSuggestions?: Array<{ name?: string }> })?.foodSuggestions;
+          if (Array.isArray(foods)) {
+            for (const f of foods) if (f?.name) recentSuggestedFoods.push(f.name);
+          }
+        }
+        recentSuggestedFoods = Array.from(new Set(recentSuggestedFoods)).slice(0, 15);
+      }
+      if (todayEx.status === "fulfilled") {
+        burnedToday = Math.round(todayEx.value.reduce((sum, r) => sum + Number(r.cals || 0), 0));
+      }
+    } catch (err) {
+      logger.warn({ err, userId }, "[Suggestions] Failed to load 7-day history — falling back to a profile-only prompt");
+    }
+
+    // Wearable calories count toward the day's burn too, but only when they
+    // exceed what the exercise logs already account for — a wearable total is
+    // a whole-day figure that usually INCLUDES the logged workout, so adding
+    // the two would double-count it.
+    if (wearableCaloriesToday !== null) {
+      burnedToday = Math.max(burnedToday, Math.round(wearableCaloriesToday));
+    }
+
+    // The burn target is the exercise half of the goal the calorie side
+    // already encodes: a weight-loss goal sets calorieGoal below TDEE, and
+    // that gap is what activity is meant to cover. Previously the model was
+    // asked to invent `caloriesToBurn` with nothing tying it to either number.
+    const burnTarget = Math.max(0, Math.round(effectiveTDEE - calorieGoal));
+
     // 6. Generate AI suggestions
     const prompt = buildPrompt({
       age, gender, weightKg, heightCm, bmi, activityLevel, workProfile,
@@ -326,6 +419,7 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       caloriesToday, waterToday, waterGoal: prefs?.waterGoalGlasses || 8,
       exerciseMinToday, calorieGoal, season: getIndianSeason(),
       effectiveTDEE, sleepHoursToday, stepsToday, heartRateAvg, bloodOxygen,
+      recentFoods, recentSuggestedFoods, recentExercises, burnTarget, burnedToday,
     });
 
     let suggestions: unknown;
@@ -336,7 +430,7 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       // was truncated mid-JSON, threw on parse, and landed in the generic
       // fallback below — one of the reasons every day looked identical.
       // (The weekly diet chart, a bigger response, already asks for 6000.)
-      const jsonStr = await callAI("health_suggestions", [{ role: "user", content: prompt }], { maxTokens: 3000 });
+      const jsonStr = await callAI("health_suggestions", [{ role: "user", content: prompt }], { maxTokens: 3000, temperature: 0.7 });
       let cleanJson = jsonStr.trim();
       if (cleanJson.startsWith("```json")) {
         cleanJson = cleanJson.substring(7);
@@ -354,7 +448,7 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       usedFallback = true;
       suggestions = {
         greeting: "Hello! Wishing you a wonderful and healthy day ahead! 🙏",
-        calorieStatus: { goal: calorieGoal, eaten: caloriesToday, remaining: Math.max(0, calorieGoal - caloriesToday), message: "Keep tracking your calorie goal!" },
+        calorieMessage: "Keep tracking your calorie goal!",
         foodSuggestions: [
           { name: "Dal Chawal", nameHindi: "दाल चावल", calories: 350, proteinG: 12, carbsG: 58, fatG: 4, portion: "1 bowl dal + 1 bowl rice", reason: "Great balance of protein and carbohydrates", mealType: "lunch", isSeasonalSpecial: false },
           { name: "Moong Dal Cheela", nameHindi: "मूंग दाल चीला", calories: 180, proteinG: 9, carbsG: 22, fatG: 5, portion: "2 cheelas", reason: "High protein, low calorie breakfast option", mealType: "breakfast", isSeasonalSpecial: false },
@@ -365,8 +459,46 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
         healthTip: { tip: "Drink 2 glasses of water right after waking up — it boosts metabolism and flushes toxins", category: "hydration", emoji: "💧" },
         medicalWarnings: [],
         motivation: "Every step brings you closer to your goal. Keep going! 💪",
-        targetProgress: { currentWeight: weightKg || 0, targetWeight: goals?.targetWeightKg ? Number(goals.targetWeightKg) : 0, weightGap: 0, estimatedWeeks: 0, weeklyMessage: "Loading your progress data..." },
+        weeklyMessage: "Keep logging — your weekly picture builds up as you go.",
       };
+    }
+
+    // 6b. Rebuild the arithmetic here rather than trusting the model with it.
+    // The server already computed the goal, the intake and the weight gap —
+    // it was previously handing those numbers to the AI purely to have them
+    // read back, which cost tokens and let a hallucinated figure through.
+    const weightGap = weightKg && goals?.targetWeightKg
+      ? Math.round(Math.abs(weightKg - Number(goals.targetWeightKg)) * 10) / 10
+      : 0;
+    // ~0.5 kg a week is the usual safe rate; with no deficit configured there
+    // is no honest estimate to give, so it stays null rather than guessing.
+    const weeklyDeficit = Math.max(0, effectiveTDEE - calorieGoal) * 7;
+    const estimatedWeeks = weightGap > 0 && weeklyDeficit > 0
+      ? Math.max(1, Math.round(weightGap / Math.min(0.5, weeklyDeficit / 7700)))
+      : null;
+
+    const s2 = suggestions as Record<string, unknown>;
+    s2.calorieStatus = {
+      goal: calorieGoal,
+      eaten: caloriesToday,
+      remaining: Math.max(0, calorieGoal - caloriesToday),
+      message: typeof s2.calorieMessage === "string" ? s2.calorieMessage : "Keep tracking your calorie goal!",
+    };
+    delete s2.calorieMessage;
+    s2.targetProgress = {
+      currentWeight: weightKg || 0,
+      targetWeight: goals?.targetWeightKg ? Number(goals.targetWeightKg) : 0,
+      weightGap,
+      estimatedWeeks,
+      weeklyMessage: typeof s2.weeklyMessage === "string" ? s2.weeklyMessage : "",
+    };
+    delete s2.weeklyMessage;
+    // Same treatment for the burn figure: the model is told to echo the
+    // computed remainder, but a wrong number here would be visible advice, so
+    // it is overwritten with the value the app actually stands behind.
+    const ex = s2.exerciseSuggestion as Record<string, unknown> | undefined;
+    if (ex && typeof ex === "object") {
+      ex.caloriesToBurn = Math.max(0, burnTarget - burnedToday);
     }
 
     // 7. Cache in DB (delete old + insert new to avoid upsert constraint complexity)
