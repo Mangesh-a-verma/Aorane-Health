@@ -43,6 +43,34 @@ type ProviderConfig = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+/** IST calendar day, matching how the backend buckets a sync into a day. */
+function istDayKey(d: Date | string): string {
+  return new Date(d).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
+/** Whole IST calendar days between a reading and today. Compares day keys
+ *  rather than subtracting timestamps, so a reading from 11pm last night is
+ *  one day old rather than zero. */
+function daysOldIST(iso: string): number {
+  const then = Date.parse(`${istDayKey(iso)}T00:00:00Z`);
+  const today = Date.parse(`${istDayKey(new Date())}T00:00:00Z`);
+  if (!Number.isFinite(then) || !Number.isFinite(today)) return 0;
+  return Math.round((today - then) / 86_400_000);
+}
+
+/** How old the newest reading is, and whether it is old enough that daily
+ *  targets should stop being judged against it. `latest` is the newest row
+ *  whatever its age, so without this a sync from ten days ago is presented
+ *  as today's activity. */
+function readingAge(iso: string): { label: string; stale: boolean; days: number } {
+  const days = daysOldIST(iso);
+  const time = new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  // days <= 0 also covers a device clock running ahead of the server.
+  if (days <= 0) return { label: `Today, ${time}`, stale: false, days: 0 };
+  if (days === 1) return { label: `Yesterday, ${time}`, stale: true, days };
+  return { label: `${days} days ago`, stale: true, days };
+}
+
 function openHCOrStore(): void {
   Linking.openURL("healthconnect://").catch(() =>
     Linking.openURL("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")
@@ -488,15 +516,23 @@ export default function WearableScreen() {
     { emoji: "🩸", label: "Avg SpO2",       value: summary.avgSpo2 ? `${summary.avgSpo2}` : null,                  color: "#EC4899", pts: series.map((d) => d.bloodOxygen) },
   ] : [];
 
+  const age = latest ? readingAge(latest.recordedAt) : null;
+  // A DAILY target judged against a reading from days ago is a wrong verdict,
+  // not a stale one — "Daily Steps 3,207 △ Improve" reads as today's shortfall
+  // when it is really last week's. Withhold the value instead; the row then
+  // says "No data today". The weekly row is window-based, so it is unaffected.
+  const forToday = <T,>(v: T | null | undefined): T | null =>
+    age && !age.stale ? (v ?? null) : null;
+
   // The bar shows where the value sits against the upper bound; the verdict
   // comes from its own predicate. Deriving both from one ratio would mark a
   // perfectly healthy 74 bpm (band 60–100) as "Improve" at 74%.
   const targets = [
-    { emoji: "👟", color: "#0B84D6", soft: "#E2EFFD", name: "Daily Steps",         target: "10,000 steps", unit: "steps", bound: 10000, value: latest?.steps ?? null,                                   good: (v: number) => v >= 10000 },
-    { emoji: "❤️", color: "#EF4444", soft: "#FDE8E8", name: "Resting Heart Rate",  target: "60–100 bpm",   unit: "bpm",   bound: 100,   value: latest?.heartRateAvg ?? null,                            good: (v: number) => v >= 60 && v <= 100 },
-    { emoji: "😴", color: "#8B5CF6", soft: "#EFE9FC", name: "Sleep Duration",      target: "7–9 hours",    unit: "hrs",   bound: 9,     value: latest?.sleepHours ? parseFloat(latest.sleepHours) : null, good: (v: number) => v >= 7 && v <= 9 },
-    { emoji: "🩸", color: "#EC4899", soft: "#FCE7F1", name: "Blood Oxygen",        target: "≥95 %",        unit: "%",     bound: 100,   value: latest?.bloodOxygen ? parseFloat(latest.bloodOxygen) : null, good: (v: number) => v >= 95 },
-    { emoji: "⚡", color: "#F59E0B", soft: "#FEF3E0", name: "Weekly Active Min",   target: "150+ min",     unit: "min",   bound: 150,   value: summary?.totalActiveMin ?? null,                          good: (v: number) => v >= 150 },
+    { emoji: "👟", color: "#0B84D6", soft: "#E2EFFD", name: "Daily Steps",         target: "10,000 steps", unit: "steps", bound: 10000, daily: true,  value: forToday(latest?.steps),                                       good: (v: number) => v >= 10000 },
+    { emoji: "❤️", color: "#EF4444", soft: "#FDE8E8", name: "Resting Heart Rate",  target: "60–100 bpm",   unit: "bpm",   bound: 100,   daily: true,  value: forToday(latest?.heartRateAvg),                                good: (v: number) => v >= 60 && v <= 100 },
+    { emoji: "😴", color: "#8B5CF6", soft: "#EFE9FC", name: "Sleep Duration",      target: "7–9 hours",    unit: "hrs",   bound: 9,     daily: true,  value: forToday(latest?.sleepHours ? parseFloat(latest.sleepHours) : null), good: (v: number) => v >= 7 && v <= 9 },
+    { emoji: "🩸", color: "#EC4899", soft: "#FCE7F1", name: "Blood Oxygen",        target: "≥95 %",        unit: "%",     bound: 100,   daily: true,  value: forToday(latest?.bloodOxygen ? parseFloat(latest.bloodOxygen) : null), good: (v: number) => v >= 95 },
+    { emoji: "⚡", color: "#F59E0B", soft: "#FEF3E0", name: "Weekly Active Min",   target: "150+ min",     unit: "min",   bound: 150,   daily: false, value: summary?.totalActiveMin ?? null,                               good: (v: number) => v >= 150 },
   ];
 
   const windowDays = summary?.windowDays ?? 7;
@@ -587,12 +623,32 @@ export default function WearableScreen() {
               <View style={s.card}>
                 <View style={s.cardHead}>
                   <Text style={s.cardTitle}>Latest Reading</Text>
-                  <View style={s.pillMuted}>
-                    <Text style={s.pillMutedTxt}>
-                      {new Date(latest.recordedAt).toLocaleString(undefined, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                    </Text>
+                  <View style={[s.pillMuted, age?.stale && s.pillWarn]}>
+                    <Text style={[s.pillMutedTxt, age?.stale && s.pillWarnTxt]}>{age?.label}</Text>
                   </View>
                 </View>
+
+                {age?.stale && (
+                  <View style={s.staleStrip}>
+                    <Text style={{ fontSize: 12 }}>⏳</Text>
+                    <Text style={s.staleTxt} numberOfLines={2}>
+                      These are your most recent readings, from {age.days === 1 ? "yesterday" : `${age.days} days ago`} — not today.
+                    </Text>
+                    {activeConnections.length > 0 && (
+                      <TouchableOpacity
+                        onPress={() => syncProvider(activeConnections[0].provider)}
+                        disabled={!!syncingProvider}
+                        style={s.stalePill}
+                        accessibilityRole="button"
+                      >
+                        {syncingProvider
+                          ? <ActivityIndicator size="small" color="#B45309" />
+                          : <Text style={s.stalePillTxt}>Sync</Text>}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+
                 <View style={s.metricGrid}>
                   {metrics.map((m) => (
                     <View key={m.label} style={s.metricCell}>
@@ -677,7 +733,7 @@ export default function WearableScreen() {
                     </View>
                     <View style={s.targetRight}>
                       <Text style={[s.targetVal, { color: has ? (good ? "#14915C" : t.color) : "#B6C2D2" }]} numberOfLines={1}>
-                        {has ? `${(t.value as number).toLocaleString()} ${t.unit}` : "No data"}
+                        {has ? `${(t.value as number).toLocaleString()} ${t.unit}` : (t.daily && age?.stale ? "No data today" : "No data")}
                       </Text>
                       {has && (
                         <Text style={[s.targetFlag, { color: good ? "#14915C" : "#C2792B" }]}>
@@ -803,6 +859,13 @@ const s = StyleSheet.create({
   devSync:     { fontSize: 8.5, fontFamily: "Inter_400Regular", color: DS.color.muted, lineHeight: 11 },
   devBtns:     { flexDirection: "row", gap: 6, marginTop: 2 },
   devBtn:      { width: 27, height: 27, borderRadius: 9, backgroundColor: DS.color.bg, alignItems: "center", justifyContent: "center", ...NEU_SM },
+
+  pillWarn:    { backgroundColor: "#FDF3E3" },
+  pillWarnTxt: { color: "#B45309" },
+  staleStrip:  { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#FDF3E3", borderRadius: 12, padding: 9, marginBottom: 10 },
+  staleTxt:    { flex: 1, fontSize: 10.5, fontFamily: "Inter_400Regular", color: "#8A5A18", lineHeight: 14 },
+  stalePill:   { paddingHorizontal: 11, paddingVertical: 6, borderRadius: 12, backgroundColor: "#FAE6C6" },
+  stalePillTxt:{ fontSize: 10.5, fontFamily: "Inter_700Bold", color: "#B45309" },
 
   statusStrip: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: RECESS, borderRadius: 12, padding: 9, marginTop: 9 },
   stripIcon:   { width: 26, height: 26, borderRadius: 9, alignItems: "center", justifyContent: "center" },
