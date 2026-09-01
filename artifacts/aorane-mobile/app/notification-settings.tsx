@@ -48,6 +48,11 @@ type Settings = {
   suggestionNotifications: boolean;
   wakeUpTime: string;
   bedTime: string;
+  // "HH:MM,HH:MM,HH:MM" — breakfast, lunch, dinner. Seeded from the user's
+  // country at signup and editable through the API. The preview below used to
+  // show a hardcoded 13:00 / 19:30 regardless of what was actually scheduled.
+  foodReminderTime: string;
+  waterReminderTimes: string;
   weeklyReportEmail: boolean;
   calorieGoal: number;
   waterGoalGlasses: number;
@@ -62,10 +67,28 @@ const DEFAULT_SETTINGS: Settings = {
   suggestionNotifications: true,
   wakeUpTime: "07:00",
   bedTime: "22:30",
+  // These must mirror the DB column defaults, not be blank: save() PUTs the
+  // whole settings object, and the server rejects an empty time list with a
+  // 400 that would fail the entire save.
+  foodReminderTime: "07:30,12:30,19:30",
+  waterReminderTimes: "09:00,13:00,18:00,21:00",
   weeklyReportEmail: false,
   calorieGoal: 2000,
   waterGoalGlasses: 8,
 };
+
+/** Nth entry of a "HH:MM,HH:MM,HH:MM" list, or null if it isn't there. */
+function mealTimeAt(list: string, i: number): string | null {
+  const parts = (list || "").split(",").map((p) => p.trim()).filter((p) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(p));
+  return parts[i] ?? null;
+}
+
+/** The scheduler's fallback breakfast: an hour after waking, never past 10:00. */
+function plusOneHour(hhmm: string): string {
+  const [h, m] = (hhmm || "07:00").split(":").map(Number);
+  const t = Math.min((h || 0) * 60 + (m || 0) + 60, 10 * 60);
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+}
 
 function SettingRow({
   icon, iconBg, title, subtitle, value, onToggle, disabled = false,
@@ -179,6 +202,8 @@ export default function NotificationSettingsScreen() {
   useEffect(() => { load();
    setupNotificationChannels(); // ✅ ADD THIS
   }, [load]);
+
+  const mealAt = (i: number) => mealTimeAt(settings.foodReminderTime, i);
 
   const update = (key: keyof Settings, val: unknown) => {
     setSettings((prev) => ({ ...prev, [key]: val }));
@@ -474,10 +499,11 @@ export default function NotificationSettingsScreen() {
           <View style={{ gap: 8 }}>
             {[
               { time: settings.wakeUpTime, icon: "🌅", label: "Wake up & first water", color: "#F5A623" },
-              { time: (() => { const [h, m] = settings.wakeUpTime.split(":").map(Number); const t = h * 60 + (m || 0) + 60; return `${String(Math.floor(t/60)).padStart(2,"0")}:${String(t%60).padStart(2,"0")}`; })(), icon: "☀️", label: "Breakfast time", color: "#10B981" },
-              { time: "13:00", icon: "🍱", label: "Lunch reminder", color: "#0EA5E9" },
-              { time: "16:00", icon: "💧", label: "Afternoon water + snack", color: "#E8622A" },
-              { time: "19:30", icon: "🌙", label: "Dinner reminder", color: "#8B5CF6" },
+              // Real values, not a hardcoded picture of them. Falls back to the
+              // same derived breakfast the scheduler uses when nothing is set.
+              { time: mealAt(0) ?? plusOneHour(settings.wakeUpTime), icon: "☀️", label: "Breakfast time", color: "#10B981" },
+              { time: mealAt(1) ?? "13:00", icon: "🍱", label: "Lunch reminder", color: "#0EA5E9" },
+              { time: mealAt(2) ?? "19:30", icon: "🌙", label: "Dinner reminder", color: "#8B5CF6" },
               { time: settings.bedTime, icon: "😴", label: "Bedtime — last reminder", color: "#6B7280" },
             ].map((item, i) => (
               <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>

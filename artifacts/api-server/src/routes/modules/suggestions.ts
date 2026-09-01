@@ -21,7 +21,7 @@ import { checkAndUseAILimit, refundAIUsage } from "../../lib/aiLimiter";
 import { callAI } from "../../lib/ai";
 import { todayIST, istDayBounds, istWeekStart, istHour, istWeekdayName } from "../../lib/dateUtils";
 import { WORK_PROFILE_ACTIVITY, calculateEffectiveTDEE } from "../../lib/workProfile";
-import { resolveLocale, seasonFor, type UserLocale } from "../../lib/locale";
+import { resolveLocale, seasonFor, mealTimesFor, type UserLocale } from "../../lib/locale";
 
 const router = Router();
 
@@ -732,6 +732,10 @@ router.get("/notifications/settings", requireAuth, async (req: AuthRequest, res)
   try {
     const [prefs] = await db.select().from(userPreferencesTable)
       .where(eq(userPreferencesTable.userId, req.userId!)).limit(1);
+    // Meal times default to the user's country, not to India's — see
+    // lib/locale.ts. A stored value always wins over this.
+    const [me] = await db.select({ countryCode: usersTable.countryCode })
+      .from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
     const DEFAULT_SETTINGS = {
       notificationsEnabled: true,
       medicineReminders: true,
@@ -740,7 +744,7 @@ router.get("/notifications/settings", requireAuth, async (req: AuthRequest, res)
       periodReminders: true,
       suggestionNotifications: true,
       waterReminderTimes: "09:00,13:00,18:00,21:00",
-      foodReminderTime: "07:30,12:30,19:30",
+      foodReminderTime: mealTimesFor(me?.countryCode),
       medicineReminderTime: "08:00,14:00,21:00",
       wakeUpTime: "07:00",
       bedTime: "22:30",
