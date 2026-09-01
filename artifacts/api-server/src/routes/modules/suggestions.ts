@@ -21,17 +21,13 @@ import { checkAndUseAILimit, refundAIUsage } from "../../lib/aiLimiter";
 import { callAI } from "../../lib/ai";
 import { todayIST, istDayBounds, istWeekStart, istHour, istWeekdayName } from "../../lib/dateUtils";
 import { WORK_PROFILE_ACTIVITY, calculateEffectiveTDEE } from "../../lib/workProfile";
+import { resolveLocale, seasonFor, type UserLocale } from "../../lib/locale";
 
 const router = Router();
 
-// ── Indian season detection ────────────────────────────────────────────────────
-function getIndianSeason(): string {
-  const month = new Date().getMonth() + 1;
-  if ([12, 1, 2].includes(month)) return "Winter (Sardi) — Seasonal foods: Sarson saag, Gajar, Peas, Bajra, Tilgud";
-  if ([3, 4, 5].includes(month)) return "Summer (Garmi) — Seasonal foods: Aam, Tarbuz, Aam Panna, Nimbu Paani, Coconut Water";
-  if ([6, 7, 8, 9].includes(month)) return "Monsoon (Barsaat) — Avoid raw salads. Prefer: Khichdi, Dahi, Ginger tea, Turmeric milk";
-  return "Autumn (Sharad) — Seasonal foods: Pomegranate, Guava, Apple, Light dal";
-}
+// Countries where the generic fallback's dal-and-roti answer is actually a
+// reasonable guess. Everyone else gets the plain set — see the fallback below.
+const SOUTH_ASIA_FALLBACK = new Set(["IN", "PK", "BD", "NP", "LK", "BT"]);
 
 // ── Weekly diet chart (Intelligence tab) — read-only here ─────────────────────
 // The Coach and the Intelligence diet chart used to plan the same day
@@ -126,13 +122,14 @@ function buildPrompt(data: {
   recentFoods: string[]; recentSuggestedFoods: string[];
   recentExercises: string[]; burnTarget: number; burnedToday: number;
   todayChart: ChartDay | null; mealsLoggedToday: string[];
+  locale: UserLocale;
 }): string {
   const { age, gender, weightKg, heightCm, bmi, activityLevel, workProfile, primaryGoal, targetWeightKg,
     foodPreference, foodAllergies, medicalConditions, caloriesToday, waterToday, waterGoal,
     exerciseMinToday, calorieGoal, season, effectiveTDEE,
     sleepHoursToday, stepsToday, heartRateAvg, bloodOxygen,
     recentFoods, recentSuggestedFoods, recentExercises, burnTarget, burnedToday,
-    todayChart, mealsLoggedToday } = data;
+    todayChart, mealsLoggedToday, locale } = data;
 
   const remainingBurn = Math.max(0, burnTarget - burnedToday);
   const avoidList = Array.from(new Set([...recentSuggestedFoods, ...recentFoods])).slice(0, 25);
@@ -169,16 +166,17 @@ ${chartLines}${todayChart!.totalCalories ? `\n- Chart day total: ${todayChart!.t
   // no-chart branch contribute different rules, and a hand-numbered list
   // would go out of order the moment either side changes.
   const rules: string[] = [
-    "All food suggestions must be AUTHENTIC INDIAN foods",
+    `All food suggestions must be AUTHENTIC ${locale.cuisine.toUpperCase()} foods — dishes people actually cook and buy in ${locale.countryName}`,
     `Respect dietary preference: ${foodPreference} (no items that violate this)`,
     `AVOID any allergens: ${allergyStr}`,
     `For medical conditions (${conditionStr}): give specific medical warnings`,
     "Suggest seasonal foods when possible",
-    "Calorie numbers should be realistic for Indian serving sizes",
+    `Calorie numbers should be realistic for ${locale.countryName} serving sizes, and weights in ${locale.unitSystem} units`,
     "If diabetes: avoid high-GI foods, suggest low-GI options",
-    "If high BP: suggest low-sodium options, avoid pickles/papad",
+    "If high BP: suggest low-sodium options and name the salty staples to avoid in their own cuisine",
     "Language: Respond entirely in English",
     "Give work-profile-specific advice (e.g. Army: stamina foods; Office: screen fatigue tips)",
+    `The user is in ${locale.countryName}. Every suggestion must fit what is actually available and eaten there — never fall back to another country's ingredients, brands or meal patterns`,
     "If sleep is LOW (under 6h): exercise suggestion should be light/moderate only (never intense), and healthTip should address sleep recovery",
     'If heart rate is ELEVATED or SpO2 is LOW: exerciseSuggestion intensity must be "light" and add a medicalWarnings entry recommending rest and, if it persists, consulting a doctor — do not suggest intense exertion',
   ];
@@ -206,7 +204,7 @@ ${chartLines}${todayChart!.totalCalories ? `\n- Chart day total: ${todayChart!.t
 
   const rulesBlock = rules.map((r, i) => `${i + 1}. ${r}`).join("\n");
 
-  return `You are Aorane, a certified Indian health coach and nutritionist. Give personalized daily health suggestions in English.
+  return `You are Aorane, a certified ${locale.cuisine} health coach and nutritionist. Give personalized daily health suggestions in English.
 
 USER PROFILE:
 - Age: ${age || "unknown"}, Gender: ${gender}
@@ -266,12 +264,12 @@ Return ONLY valid JSON (no markdown):
   "foodSuggestions": [
     {
       "name": "Food name in English",
-      "nameHindi": "Food name in Hindi",
+      "nameLocal": "Food name in ${locale.languageName} (script of that language; if it has no distinct name, repeat the English name)",
       "calories": number,
       "proteinG": number,
       "carbsG": number,
       "fatG": number,
-      "portion": "1 katori / 2 roti etc.",
+      "portion": "${locale.portionHint}",
       "reason": "Why this is good for you (English, 1 sentence)",
       "mealType": "breakfast|lunch|dinner|snack",
       "isSeasonalSpecial": boolean
@@ -358,6 +356,13 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
     }
 
     // 2. Load user data
+    const [userRow] = await db.select({
+      countryCode: usersTable.countryCode, languageCode: usersTable.languageCode,
+    }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    // Both columns are NOT NULL with India defaults, so an existing user
+    // resolves exactly as before; only a user who set something else moves.
+    const locale = resolveLocale(userRow?.countryCode, userRow?.languageCode);
+
     const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, userId)).limit(1);
     const [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId)).limit(1);
     const conditions = await db.select().from(userMedicalConditionsTable).where(eq(userMedicalConditionsTable.userId, userId));
@@ -552,10 +557,10 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       targetWeightKg: goals?.targetWeightKg ? Number(goals.targetWeightKg) : null,
       foodPreference, foodAllergies, medicalConditions,
       caloriesToday, waterToday, waterGoal: prefs?.waterGoalGlasses || 8,
-      exerciseMinToday, calorieGoal, season: getIndianSeason(),
+      exerciseMinToday, calorieGoal, season: seasonFor(locale),
       effectiveTDEE, sleepHoursToday, stepsToday, heartRateAvg, bloodOxygen,
       recentFoods, recentSuggestedFoods, recentExercises, burnTarget, burnedToday,
-      todayChart, mealsLoggedToday,
+      todayChart, mealsLoggedToday, locale,
     });
 
     let suggestions: unknown;
@@ -585,11 +590,21 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       suggestions = {
         greeting: "Hello! Wishing you a wonderful and healthy day ahead! 🙏",
         calorieMessage: "Keep tracking your calorie goal!",
-        foodSuggestions: [
-          { name: "Dal Chawal", nameHindi: "दाल चावल", calories: 350, proteinG: 12, carbsG: 58, fatG: 4, portion: "1 bowl dal + 1 bowl rice", reason: "Great balance of protein and carbohydrates", mealType: "lunch", isSeasonalSpecial: false },
-          { name: "Moong Dal Cheela", nameHindi: "मूंग दाल चीला", calories: 180, proteinG: 9, carbsG: 22, fatG: 5, portion: "2 cheelas", reason: "High protein, low calorie breakfast option", mealType: "breakfast", isSeasonalSpecial: false },
-          { name: "Mixed Vegetable Sabzi", nameHindi: "मिक्स सब्जी", calories: 120, proteinG: 4, carbsG: 15, fatG: 5, portion: "1 bowl", reason: "Packed with vitamins and fiber", mealType: "dinner", isSeasonalSpecial: false },
-        ],
+        // Two sets, because a generic fallback that names dal and sabzi is
+        // not generic — it is India's answer handed to someone in São Paulo.
+        // Outside South Asia the dishes are deliberately plain and widely
+        // available rather than an attempt at 200 national cuisines.
+        foodSuggestions: SOUTH_ASIA_FALLBACK.has(locale.countryCode)
+          ? [
+            { name: "Dal Chawal", nameLocal: "दाल चावल", calories: 350, proteinG: 12, carbsG: 58, fatG: 4, portion: "1 bowl dal + 1 bowl rice", reason: "Great balance of protein and carbohydrates", mealType: "lunch", isSeasonalSpecial: false },
+            { name: "Moong Dal Cheela", nameLocal: "मूंग दाल चीला", calories: 180, proteinG: 9, carbsG: 22, fatG: 5, portion: "2 cheelas", reason: "High protein, low calorie breakfast option", mealType: "breakfast", isSeasonalSpecial: false },
+            { name: "Mixed Vegetable Sabzi", nameLocal: "मिक्स सब्जी", calories: 120, proteinG: 4, carbsG: 15, fatG: 5, portion: "1 bowl", reason: "Packed with vitamins and fiber", mealType: "dinner", isSeasonalSpecial: false },
+          ]
+          : [
+            { name: "Oats with fruit", nameLocal: "Oats with fruit", calories: 300, proteinG: 10, carbsG: 48, fatG: 7, portion: "1 bowl", reason: "Slow-release carbohydrates and fibre to start the day", mealType: "breakfast", isSeasonalSpecial: false },
+            { name: "Grilled protein with vegetables", nameLocal: "Grilled protein with vegetables", calories: 420, proteinG: 35, carbsG: 20, fatG: 18, portion: "1 plate", reason: "High protein with a low glycemic load", mealType: "lunch", isSeasonalSpecial: false },
+            { name: "Lentil or bean soup", nameLocal: "Lentil or bean soup", calories: 260, proteinG: 15, carbsG: 34, fatG: 5, portion: "1 bowl", reason: "Filling, high in fibre and light on the stomach at night", mealType: "dinner", isSeasonalSpecial: false },
+          ],
         exerciseSuggestion: { type: "Brisk Walk", durationMinutes: 30, caloriesToBurn: 150, description: "A 30-minute brisk walk in the morning or evening is highly beneficial", intensity: "moderate" },
         healthTip: { tip: "Drink 2 glasses of water right after waking up — it boosts metabolism and flushes toxins", category: "hydration", emoji: "💧" },
         medicalWarnings: [],
@@ -620,6 +635,19 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
     // in the health tip (see the last prompt rule).
     delete s2.waterReminder;
     s2.waterStatus = { current: waterToday, goal: prefs?.waterGoalGlasses || 8 };
+    // The prompt asks for `nameLocal`, but the model has years of practice
+    // emitting `nameHindi`, and a client from before this change reads only
+    // `nameHindi`. Fill both from whichever arrived, so neither the screen nor
+    // an app still on the old build shows a blank subtitle.
+    const foods = s2.foodSuggestions;
+    if (Array.isArray(foods)) {
+      for (const f of foods as Record<string, unknown>[]) {
+        if (!f || typeof f !== "object") continue;
+        if (!f.nameLocal && typeof f.nameHindi === "string") f.nameLocal = f.nameHindi;
+        if (!f.nameHindi && typeof f.nameLocal === "string") f.nameHindi = f.nameLocal;
+      }
+    }
+
     // Lets the screen say WHY these dishes: "following your weekly diet chart"
     // vs "your next meal". Without it a one-meal answer looks like a bug.
     s2.mealPlanSource = todayChart ? "diet_chart" : "next_meal";

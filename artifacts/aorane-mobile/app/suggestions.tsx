@@ -22,7 +22,10 @@ const C = {
 };
 
 type Suggestion = Record<string, unknown>;
-type FoodItem = { name: string; nameHindi: string; calories: number; proteinG: number; carbsG: number; fatG: number; portion: string; reason: string; mealType: string; isSeasonalSpecial: boolean };
+// `nameLocal` is the dish name in the user's own language — Tamil for a Tamil
+// user, not Hindi. `nameHindi` is the old field name, still sent so an app on
+// the previous build keeps working; the server fills both.
+type FoodItem = { name: string; nameLocal?: string; nameHindi?: string; calories: number; proteinG: number; carbsG: number; fatG: number; portion: string; reason: string; mealType: string; isSeasonalSpecial: boolean };
 type ExerciseSuggestion = { type: string; durationMinutes: number; caloriesToBurn: number; description: string; intensity: string };
 // Water is a plain count now, not an AI-written section: the Water Tracker
 // card duplicated the dashboard's, so the Coach only keeps the number for the
@@ -92,7 +95,7 @@ function FoodCard({ food, index }: { food: FoodItem; index: number }) {
               <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 15 }}>{food.name}</Text>
               {food.isSeasonalSpecial && <Text style={{ fontSize: 10, color: C.accent, fontFamily: "Inter_600SemiBold" }}>🌿 Seasonal</Text>}
             </View>
-            <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>{food.nameHindi} · {food.portion}</Text>
+            <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>{[food.nameLocal || food.nameHindi, food.portion].filter(Boolean).join(" · ")}</Text>
           </View>
           <View style={{ alignItems: "flex-end", gap: 2 }}>
             <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 15 }}>{food.calories}</Text>
