@@ -204,6 +204,31 @@ router.get("/wearable/data", requireAuth, async (req: AuthRequest, res) => {
     }
     const dailySnapshots = Array.from(byDay.values());
 
+    // One entry per calendar day in the window, oldest first, with null on
+    // days that have no reading — so a sparkline shows a real gap instead of
+    // joining across missing days as if they were continuous. Built from the
+    // same deduped day buckets the averages use, so the chart and the number
+    // above it can never disagree.
+    const dailySeries: Array<{
+      date: string;
+      steps: number | null; heartRateAvg: number | null; caloriesBurned: number | null;
+      activeMinutes: number | null; sleepHours: number | null; bloodOxygen: number | null;
+    }> = [];
+    for (let i = windowDays - 1; i >= 0; i--) {
+      const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
+        .toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+      const d = byDay.get(date);
+      dailySeries.push({
+        date,
+        steps: d?.steps ?? null,
+        heartRateAvg: d?.heartRateAvg ?? null,
+        caloriesBurned: d?.caloriesBurned ? Math.round(parseFloat(d.caloriesBurned)) : null,
+        activeMinutes: d?.activeMinutes ?? null,
+        sleepHours: d?.sleepHours ? parseFloat(d.sleepHours) : null,
+        bloodOxygen: d?.bloodOxygen ? parseFloat(d.bloodOxygen) : null,
+      });
+    }
+
     const withHr = dailySnapshots.filter((d: any) => d.heartRateAvg);
     const withSleep = dailySnapshots.filter((d: any) => d.sleepHours);
     const withSpo2 = dailySnapshots.filter((d: any) => d.bloodOxygen);
@@ -216,7 +241,7 @@ router.get("/wearable/data", requireAuth, async (req: AuthRequest, res) => {
     const avgSpo2 = withSpo2.length > 0 ? Math.round(withSpo2.reduce((s: any, d: any) => s + parseFloat(d.bloodOxygen || "0"), 0) / withSpo2.length * 10) / 10 : null;
 
     res.json({
-      latest, history,
+      latest, history, dailySeries,
       summary: {
         avgSteps, avgHr, totalCalories: Math.round(totalCalories), totalActiveMin,
         avgSleep, avgSpo2,
