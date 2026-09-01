@@ -662,6 +662,12 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
     s2.targetProgress = {
       currentWeight: weightKg || 0,
       targetWeight: goals?.targetWeightKg ? Number(goals.targetWeightKg) : 0,
+      // The weight recorded when the goal was SET, which is the only anchor
+      // that makes "how far along am I" answerable — currentWeight and
+      // weightGap together describe what is left, never what is done. Null
+      // for a goal saved before this column was populated; the screen then
+      // omits the progress bar rather than drawing a meaningless one.
+      startWeight: goals?.currentWeightKg ? Number(goals.currentWeightKg) : null,
       weightGap,
       estimatedWeeks,
       weeklyMessage: typeof s2.weeklyMessage === "string" ? s2.weeklyMessage : "",
