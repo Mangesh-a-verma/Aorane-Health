@@ -7,7 +7,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
+import Svg, { Circle } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -15,14 +15,35 @@ import { DS } from "@/lib/theme";
 import { logSilentError } from "@/lib/silentCatch";
 
 const C = {
-  bg: DS.color.bgSoft, card: "#FFFFFF", primary: DS.color.primary, accent: DS.color.green,
+  bg: DS.color.bgSoft, card: DS.color.bg, primary: DS.color.primary, accent: DS.color.green,
   text: DS.color.text, muted: DS.color.muted, border: DS.color.border,
   red: DS.color.red, yellow: DS.color.yellow, green: DS.color.green, purple: DS.color.purple,
   orange: DS.color.orange,
 };
 
+// React Native renders ONE shadow direction per view — there is no light+dark
+// neumorphic pair and no inset shadow. So "raised" is a single soft drop
+// shadow and "recessed" is a darker fill. Same compromise app/wearable.tsx
+// already ships, and the same numbers, so the two screens match.
+const NEU = Platform.select({
+  ios:     { shadowColor: "#8CA3C4", shadowOffset: { width: 4, height: 5 }, shadowOpacity: 0.30, shadowRadius: 11 },
+  android: { elevation: 4 },
+  default: { shadowColor: "#8CA3C4", shadowOffset: { width: 4, height: 5 }, shadowOpacity: 0.30, shadowRadius: 11 },
+}) as object;
+const NEU_SM = Platform.select({
+  ios:     { shadowColor: "#8CA3C4", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.26, shadowRadius: 7 },
+  android: { elevation: 2 },
+  default: { shadowColor: "#8CA3C4", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.26, shadowRadius: 7 },
+}) as object;
+
+// Raised means "you can act on this", recessed means "this is a readout".
+const RECESS = "#E8EEF9";
+
 type Suggestion = Record<string, unknown>;
-type FoodItem = { name: string; nameHindi: string; calories: number; proteinG: number; carbsG: number; fatG: number; portion: string; reason: string; mealType: string; isSeasonalSpecial: boolean };
+// `nameLocal` is the dish name in the user's own language — Tamil for a Tamil
+// user, not Hindi. `nameHindi` is the old field name, still sent so an app on
+// the previous build keeps working; the server fills both.
+type FoodItem = { name: string; nameLocal?: string; nameHindi?: string; calories: number; proteinG: number; carbsG: number; fatG: number; portion: string; reason: string; mealType: string; isSeasonalSpecial: boolean };
 type ExerciseSuggestion = { type: string; durationMinutes: number; caloriesToBurn: number; description: string; intensity: string };
 // Water is a plain count now, not an AI-written section: the Water Tracker
 // card duplicated the dashboard's, so the Coach only keeps the number for the
@@ -35,29 +56,60 @@ type WaterReminder = WaterStatus;
 type HealthTip = { tip: string; category: string; emoji: string };
 type MedicalWarning = { condition: string; warning: string; foodsToAvoid: string[]; foodsToPrefer: string[] };
 type CalorieStatus = { goal: number; eaten: number; remaining: number; message: string };
-type TargetProgress = { currentWeight: number; targetWeight: number; weightGap: number; estimatedWeeks: number; weeklyMessage: string };
+type TargetProgress = { currentWeight: number; targetWeight: number; startWeight: number | null; weightGap: number; estimatedWeeks: number | null; weeklyMessage: string };
 
+// These came from constants/colors.ts, the abandoned second token source, so
+// every blue and green on this screen sat a few degrees off the rest of the
+// app. Same roles, DS values.
 const MEAL_COLORS: Record<string, string[]> = {
-  breakfast: ["#F59E0B", "#FBBF24"],
-  lunch: ["#10B981", "#34D399"],
-  dinner: ["#0077B6", "#0EA5E9"],
-  snack: ["#7C3AED", "#A78BFA"],
+  breakfast: [DS.color.orange,    "#F7B267"],
+  lunch:     [DS.color.green,     "#5FD09A"],
+  dinner:    [DS.color.primary,   DS.color.sky],
+  snack:     [DS.color.purple,    "#9B7BD4"],
 };
 const MEAL_ICONS: Record<string, string> = {
   breakfast: "☀️", lunch: "🍱", dinner: "🌙", snack: "🍎",
 };
-const INTENSITY_COLORS: Record<string, string> = { light: "#10B981", moderate: "#F59E0B", intense: "#EF4444" };
+const INTENSITY_COLORS: Record<string, string> = { light: DS.color.green, moderate: DS.color.orange, intense: DS.color.red };
+const INTENSITY_SOFT: Record<string, string> = { light: DS.color.greenSoft, moderate: DS.color.orangeSoft, intense: DS.color.redSoft };
 
-function CaloriePie({ eaten, goal }: { eaten: number; goal: number }) {
-  const pct = Math.min(100, (eaten / Math.max(goal, 1)) * 100);
-  const remaining = Math.max(0, goal - eaten);
+/** A ring that actually shows progress.
+ *
+ *  What this replaces was called CaloriePie but drew a full circle border at
+ *  all times, with the percentage only as text in the middle — so it looked
+ *  identical at 5% and at 95%. The one graphic on the screen whose whole job
+ *  is "how am I doing at a glance" was showing nothing. */
+function CalorieRing({ eaten, goal }: { eaten: number; goal: number }) {
+  const SIZE = 76, STROKE = 7;
+  const r = (SIZE - STROKE) / 2;
+  const circumference = 2 * Math.PI * r;
+
+  const rawPct = (eaten / Math.max(goal, 1)) * 100;
   const over = eaten > goal;
+  // The arc caps at a full circle; the number below it keeps telling the
+  // truth, so 140% reads as over budget rather than as a ring that wrapped.
+  const arcPct = Math.max(0, Math.min(100, rawPct));
+  const remaining = Math.max(0, goal - eaten);
+  const color = over ? C.red : C.primary;
+
   return (
     <View style={{ alignItems: "center", gap: 4 }}>
-      <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: over ? "#FEE2E2" : "#E0F2FE", alignItems: "center", justifyContent: "center", borderWidth: 5, borderColor: over ? C.red : C.primary }}>
-        <Text style={{ color: over ? C.red : C.primary, fontSize: 13, fontFamily: "Inter_700Bold" }}>{Math.round(pct)}%</Text>
+      <View style={{ width: SIZE, height: SIZE, alignItems: "center", justifyContent: "center" }}>
+        <Svg width={SIZE} height={SIZE} style={StyleSheet.absoluteFill}>
+          <Circle cx={SIZE / 2} cy={SIZE / 2} r={r} stroke="#DCE6F4" strokeWidth={STROKE} fill="none" />
+          <Circle
+            cx={SIZE / 2} cy={SIZE / 2} r={r}
+            stroke={color} strokeWidth={STROKE} fill="none" strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference * (1 - arcPct / 100)}
+            transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+          />
+        </Svg>
+        <Text style={{ color, fontSize: 15, fontFamily: "Inter_700Bold" }}>{Math.round(rawPct)}%</Text>
       </View>
-      <Text style={{ color: C.text, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>{remaining} kcal remaining</Text>
+      <Text style={{ color: C.text, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>
+        {over ? `${eaten - goal} kcal over` : `${remaining} kcal left`}
+      </Text>
     </View>
   );
 }
@@ -70,7 +122,7 @@ function MacroBar({ label, value, max, color }: { label: string; value: number; 
         <Text style={{ color: C.muted, fontSize: 10, fontFamily: "Inter_600SemiBold" }}>{label}</Text>
         <Text style={{ color: C.text, fontSize: 10, fontFamily: "Inter_600SemiBold" }}>{value}g</Text>
       </View>
-      <View style={{ height: 4, backgroundColor: "#E8F2F8", borderRadius: 2 }}>
+      <View style={{ height: 4, backgroundColor: RECESS, borderRadius: 2 }}>
         <View style={{ height: 4, width: `${pct}%`, backgroundColor: color, borderRadius: 2 }} />
       </View>
     </View>
@@ -92,7 +144,7 @@ function FoodCard({ food, index }: { food: FoodItem; index: number }) {
               <Text style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 15 }}>{food.name}</Text>
               {food.isSeasonalSpecial && <Text style={{ fontSize: 10, color: C.accent, fontFamily: "Inter_600SemiBold" }}>🌿 Seasonal</Text>}
             </View>
-            <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>{food.nameHindi} · {food.portion}</Text>
+            <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>{[food.nameLocal || food.nameHindi, food.portion].filter(Boolean).join(" · ")}</Text>
           </View>
           <View style={{ alignItems: "flex-end", gap: 2 }}>
             <Text style={{ color: C.primary, fontFamily: "Inter_700Bold", fontSize: 15 }}>{food.calories}</Text>
@@ -103,7 +155,7 @@ function FoodCard({ food, index }: { food: FoodItem; index: number }) {
 
         {open && (
           <View style={{ marginTop: 10, gap: 8 }}>
-            <Text style={{ color: C.text, fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18, backgroundColor: "#F8FCFF", borderRadius: 8, padding: 10 }}>
+            <Text style={{ color: C.text, fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18, backgroundColor: RECESS, borderRadius: 8, padding: 10 }}>
               💡 {food.reason}
             </Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
@@ -206,6 +258,21 @@ export default function SuggestionsScreen() {
   const medicalWarnings = (s?.medicalWarnings as MedicalWarning[]) || [];
   const motivation = s?.motivation as string || "";
   const targetProgress = s?.targetProgress as TargetProgress | undefined;
+  // How far they are between the weight they started at and the one they are
+  // aiming for. This needs the START weight — `weightGap` is the distance
+  // still to go, so current/target/gap alone describe only what is left and
+  // can never say what is done. `startWeight` comes from the goal row; when
+  // it is missing (a goal saved before that column was populated) or the goal
+  // was already met at the start, this returns null and the bar is not drawn
+  // rather than showing a made-up number.
+  const goalPct: number | null = (() => {
+    const tp = targetProgress;
+    if (!tp || tp.startWeight === null || tp.startWeight === undefined) return null;
+    const total = Math.abs(tp.startWeight - tp.targetWeight);
+    if (total <= 0) return null;
+    const done = total - tp.weightGap;
+    return Math.max(0, Math.min(100, Math.round((done / total) * 100)));
+  })();
   const rawGreeting = s?.greeting as string || "";
   const timeGreeting = (() => {
     const h = new Date().getHours();
@@ -228,12 +295,10 @@ export default function SuggestionsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: DS.color.bgSoft }}>
-      {/* Glass Header */}
-      <View style={{ overflow: "hidden", borderBottomWidth: 0.5, borderBottomColor: "rgba(0,0,0,0.07)" }}>
-        {Platform.OS === "ios"
-          ? <BlurView intensity={80} tint="extraLight" style={StyleSheet.absoluteFill} />
-          : <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.96)" }]} />
-        }
+      {/* Header — flat neumorphic, matching app/wearable.tsx. The blur/glass
+          treatment was the only one of its kind in the app and read as a
+          different screen family. */}
+      <View style={{ backgroundColor: C.bg }}>
         <View style={{ paddingTop: topPad + 8, paddingHorizontal: 16, paddingBottom: 12 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" accessibilityRole="button">
@@ -251,7 +316,7 @@ export default function SuggestionsScreen() {
           </View>
 
           {greeting && (
-            <View style={{ marginTop: 12, backgroundColor: DS.color.primarySoft, borderRadius: 14, padding: 13, borderWidth: 1, borderColor: DS.color.primary + "20" }}>
+            <View style={{ marginTop: 12, backgroundColor: DS.color.bg, borderRadius: 14, padding: 13, ...NEU }}>
               <Text style={{ color: DS.color.primary, fontFamily: "Inter_600SemiBold", fontSize: 14, lineHeight: 21 }}>{greeting}</Text>
             </View>
           )}
@@ -263,7 +328,7 @@ export default function SuggestionsScreen() {
                 { icon: "💧", label: "Water", val: waterStatus ? `${waterStatus.current}/${waterStatus.goal}` : "—", sub: "glasses" },
                 { icon: "💪", label: "Exercise", val: exerciseSuggestion ? `${exerciseSuggestion.durationMinutes}` : "—", sub: "min goal" },
               ].map(stat => (
-                <View key={stat.label} style={{ flex: 1, backgroundColor: "#FFF", borderRadius: 12, padding: 10, alignItems: "center", borderWidth: 1, borderColor: DS.color.border }}>
+                <View key={stat.label} style={{ flex: 1, backgroundColor: RECESS, borderRadius: 12, padding: 10, alignItems: "center" }}>
                   <Text style={{ fontSize: 16 }}>{stat.icon}</Text>
                   <Text style={{ color: DS.color.text, fontFamily: "Inter_700Bold", fontSize: 13, marginTop: 2 }}>{stat.val}</Text>
                   <Text style={{ color: DS.color.muted, fontFamily: "Inter_400Regular", fontSize: 9.5 }}>{stat.sub}</Text>
@@ -293,7 +358,7 @@ export default function SuggestionsScreen() {
       )}
 
       {error && (
-        <View style={{ margin: 16, backgroundColor: "#FEE2E2", borderRadius: 12, padding: 14, flexDirection: "row", gap: 10 }}>
+        <View style={{ margin: 16, backgroundColor: DS.color.redSoft, borderRadius: 12, padding: 14, flexDirection: "row", gap: 10 }}>
           <Ionicons name="alert-circle" size={18} color={C.red} />
           <Text style={{ color: C.red, fontFamily: "Inter_400Regular", fontSize: 13, flex: 1 }}>{error}</Text>
         </View>
@@ -309,7 +374,7 @@ export default function SuggestionsScreen() {
           <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
             <SectionHeader icon="🔥" title="Today's Calorie Status" color={C.orange} />
             <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-              <CaloriePie eaten={calorieStatus.eaten} goal={calorieStatus.goal} />
+              <CalorieRing eaten={calorieStatus.eaten} goal={calorieStatus.goal} />
               <View style={{ flex: 1, gap: 8 }}>
                 {[
                   { label: "Goal", value: calorieStatus.goal, color: C.primary },
@@ -331,17 +396,67 @@ export default function SuggestionsScreen() {
           </Animated.View>
         )}
 
+        {/* ── MEDICAL WARNINGS ──
+            Moved above the meal plan. It used to sit fifth of seven, below
+            the dishes it is warning about — a diabetic user read the
+            suggestions first and the warning several scrolls later. Still
+            renders only when they actually have a condition. */}
+        {medicalWarnings.length > 0 && (
+          <Animated.View style={{ opacity: fadeAnim, gap: 8 }}>
+            <SectionHeader icon="⚕️" title="For Your Conditions" subtitle="Read this before you eat" color={C.red} />
+            {medicalWarnings.map((w, i) => (
+              <View key={i} style={[styles.card, { borderLeftWidth: 3, borderLeftColor: C.red }]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <View style={{ backgroundColor: DS.color.redSoft, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                    <Text style={{ color: C.red, fontFamily: "Inter_700Bold", fontSize: 12 }}>{w.condition}</Text>
+                  </View>
+                </View>
+                <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13, lineHeight: 18, marginBottom: 8 }}>⚠️ {w.warning}</Text>
+                {w.foodsToAvoid?.length > 0 && (
+                  <View style={{ backgroundColor: DS.color.redSoft, borderRadius: 8, padding: 8, marginBottom: 6 }}>
+                    <Text style={{ color: C.red, fontFamily: "Inter_700Bold", fontSize: 11, marginBottom: 4 }}>❌ Avoid these:</Text>
+                    <Text style={{ color: C.text, fontFamily: "Inter_400Regular", fontSize: 12 }}>{w.foodsToAvoid.join(" · ")}</Text>
+                  </View>
+                )}
+                {w.foodsToPrefer?.length > 0 && (
+                  <View style={{ backgroundColor: DS.color.greenSoft, borderRadius: 8, padding: 8 }}>
+                    <Text style={{ color: C.green, fontFamily: "Inter_700Bold", fontSize: 11, marginBottom: 4 }}>✅ Eat these:</Text>
+                    <Text style={{ color: C.text, fontFamily: "Inter_400Regular", fontSize: 12 }}>{w.foodsToPrefer.join(" · ")}</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </Animated.View>
+        )}
+
         {/* ── FOOD SUGGESTIONS ── */}
         {foodSuggestions.length > 0 && (
           <Animated.View style={{ opacity: fadeAnim, gap: 8 }}>
             <SectionHeader
               icon="🥗"
-              title={mealPlanSource === "next_meal" ? `Your Next Meal${nextMealSlot ? ` — ${nextMealSlot[0].toUpperCase()}${nextMealSlot.slice(1)}` : ""}` : "Today's Meal Plan"}
-              subtitle={mealPlanSource === "diet_chart"
-                ? "From your weekly diet chart · tap for nutrition"
-                : "Tap to see nutrition details"}
+              title={mealPlanSource === "next_meal" ? "Your Next Meal" : "Today's Meal Plan"}
+              subtitle="Tap a dish for nutrition"
               color={C.green}
             />
+            {/* Where these dishes came from is the answer to "why is it
+                suggesting this?", so it gets a chip rather than grey subtitle
+                text — and a one-meal answer explains itself instead of
+                looking like a loading bug. */}
+            {mealPlanSource && (
+              <View style={{ flexDirection: "row", marginBottom: 2 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: DS.color.bg, borderRadius: 13, paddingHorizontal: 10, paddingVertical: 6, ...NEU_SM }}>
+                  <Ionicons
+                    name={mealPlanSource === "diet_chart" ? "calendar-outline" : "time-outline"}
+                    size={12} color={C.primary}
+                  />
+                  <Text style={{ color: C.primary, fontFamily: "Inter_600SemiBold", fontSize: 10.5 }}>
+                    {mealPlanSource === "diet_chart"
+                      ? "From your weekly diet chart"
+                      : `Next up${nextMealSlot ? ` · ${nextMealSlot[0].toUpperCase()}${nextMealSlot.slice(1)}` : ""}`}
+                  </Text>
+                </View>
+              </View>
+            )}
             {foodSuggestions.map((food, i) => (
               <FoodCard key={i} food={food} index={i} />
             ))}
@@ -353,7 +468,7 @@ export default function SuggestionsScreen() {
           <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
             <SectionHeader icon="💪" title="Exercise Suggestion" color={C.purple} />
             <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 14 }}>
-              <LinearGradient colors={["#7C3AED", "#A855F7"]} style={{ width: 60, height: 60, borderRadius: 16, alignItems: "center", justifyContent: "center" }}>
+              <LinearGradient colors={[DS.color.purple, "#9B7BD4"]} style={{ width: 60, height: 60, borderRadius: 16, alignItems: "center", justifyContent: "center", ...NEU_SM }}>
                 <Text style={{ fontSize: 28 }}>🏃</Text>
               </LinearGradient>
               <View style={{ flex: 1, gap: 6 }}>
@@ -367,7 +482,7 @@ export default function SuggestionsScreen() {
                     <Ionicons name="flame-outline" size={13} color={C.orange} />
                     <Text style={{ color: C.orange, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>~{exerciseSuggestion.caloriesToBurn} kcal burn</Text>
                   </View>
-                  <View style={{ backgroundColor: INTENSITY_COLORS[exerciseSuggestion.intensity] + "20", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                  <View style={{ backgroundColor: INTENSITY_SOFT[exerciseSuggestion.intensity] || DS.color.orangeSoft, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
                     <Text style={{ color: INTENSITY_COLORS[exerciseSuggestion.intensity], fontSize: 10, fontFamily: "Inter_700Bold" }}>{exerciseSuggestion.intensity}</Text>
                   </View>
                 </View>
@@ -380,7 +495,7 @@ export default function SuggestionsScreen() {
         {/* ── HEALTH TIP ── */}
         {healthTip && (
           <Animated.View style={{ opacity: fadeAnim }}>
-            <LinearGradient colors={["#E8F7FB", "#EDF9F5"]} style={[styles.card, { borderColor: C.accent }]}>
+            <LinearGradient colors={[DS.color.skySoft, DS.color.greenSoft]} style={styles.card}>
               <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
                 <Text style={{ fontSize: 32 }}>{healthTip.emoji}</Text>
                 <View style={{ flex: 1, gap: 4 }}>
@@ -397,55 +512,43 @@ export default function SuggestionsScreen() {
           </Animated.View>
         )}
 
-        {/* ── MEDICAL WARNINGS ── */}
-        {medicalWarnings.length > 0 && (
-          <Animated.View style={{ opacity: fadeAnim, gap: 8 }}>
-            <SectionHeader icon="⚕️" title="For Medical Conditions" subtitle="Special health recommendations for you" color={C.red} />
-            {medicalWarnings.map((w, i) => (
-              <View key={i} style={[styles.card, { borderColor: "#FECACA" }]}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <View style={{ backgroundColor: "#FEE2E2", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                    <Text style={{ color: C.red, fontFamily: "Inter_700Bold", fontSize: 12 }}>{w.condition}</Text>
-                  </View>
-                </View>
-                <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13, lineHeight: 18, marginBottom: 8 }}>⚠️ {w.warning}</Text>
-                {w.foodsToAvoid?.length > 0 && (
-                  <View style={{ backgroundColor: "#FFF5F5", borderRadius: 8, padding: 8, marginBottom: 6 }}>
-                    <Text style={{ color: C.red, fontFamily: "Inter_700Bold", fontSize: 11, marginBottom: 4 }}>❌ Avoid these:</Text>
-                    <Text style={{ color: C.text, fontFamily: "Inter_400Regular", fontSize: 12 }}>{w.foodsToAvoid.join(" · ")}</Text>
-                  </View>
-                )}
-                {w.foodsToPrefer?.length > 0 && (
-                  <View style={{ backgroundColor: "#F0FFF4", borderRadius: 8, padding: 8 }}>
-                    <Text style={{ color: C.green, fontFamily: "Inter_700Bold", fontSize: 11, marginBottom: 4 }}>✅ Eat these:</Text>
-                    <Text style={{ color: C.text, fontFamily: "Inter_400Regular", fontSize: 12 }}>{w.foodsToPrefer.join(" · ")}</Text>
-                  </View>
-                )}
-              </View>
-            ))}
-          </Animated.View>
-        )}
-
         {/* ── TARGET PROGRESS ── */}
         {targetProgress && targetProgress.targetWeight > 0 && (
           <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
             <SectionHeader icon="🎯" title="Goal Progress" color={C.primary} />
-            <View style={{ flexDirection: "row", gap: 12, marginBottom: 10 }}>
-              <View style={styles.targetBox}>
+            <View style={{ flexDirection: "row", gap: 10, alignItems: "center", marginBottom: 10 }}>
+              <View style={[styles.targetBox, { flex: 1 }]}>
                 <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>Current</Text>
                 <Text style={{ color: C.text, fontSize: 18, fontFamily: "Inter_700Bold" }}>{targetProgress.currentWeight} kg</Text>
               </View>
-              <View style={{ alignSelf: "center" }}>
-                <Ionicons name="arrow-forward" size={20} color={C.muted} />
-              </View>
-              <View style={[styles.targetBox, { borderColor: C.primary }]}>
+              <Ionicons name="arrow-forward" size={18} color={C.muted} />
+              <View style={[styles.targetBox, { flex: 1, backgroundColor: DS.color.primarySoft }]}>
                 <Text style={{ color: C.primary, fontSize: 11, fontFamily: "Inter_400Regular" }}>Target</Text>
                 <Text style={{ color: C.primary, fontSize: 18, fontFamily: "Inter_700Bold" }}>{targetProgress.targetWeight} kg</Text>
               </View>
-              <View style={{ flex: 1, alignItems: "flex-end", justifyContent: "center" }}>
-                <Text style={{ color: C.yellow, fontFamily: "Inter_700Bold", fontSize: 17 }}>{targetProgress.weightGap} kg</Text>
-                <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_400Regular" }}>remaining</Text>
+            </View>
+
+            {/* "Goal Progress" had no progress in it — three numbers and a
+                sentence. `estimatedWeeks` was already computed server-side
+                and never shown; it is null when no deficit is configured
+                (Phase 2), and then the label is simply omitted rather than
+                guessing a date. */}
+            <View style={{ gap: 5, marginBottom: 10 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_500Medium" }}>
+                  {targetProgress.weightGap} kg to go
+                </Text>
+                {targetProgress.estimatedWeeks ? (
+                  <Text style={{ color: C.muted, fontSize: 11, fontFamily: "Inter_500Medium" }}>
+                    about {targetProgress.estimatedWeeks} weeks
+                  </Text>
+                ) : null}
               </View>
+              {goalPct !== null && (
+                <View style={{ height: 7, backgroundColor: RECESS, borderRadius: 4 }}>
+                  <View style={{ height: 7, width: `${goalPct}%`, backgroundColor: C.primary, borderRadius: 4 }} />
+                </View>
+              )}
             </View>
             <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 }}>{targetProgress.weeklyMessage}</Text>
           </Animated.View>
@@ -454,7 +557,7 @@ export default function SuggestionsScreen() {
         {/* ── MOTIVATION ── */}
         {motivation && (
           <Animated.View style={{ opacity: fadeAnim }}>
-            <LinearGradient colors={["#0077B6", "#00B896"]} style={[styles.card, { borderColor: "transparent" }]}>
+            <LinearGradient colors={[DS.color.primary, DS.color.secondary]} style={styles.card}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <Text style={{ fontSize: 28 }}>🚀</Text>
                 <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 15, lineHeight: 22, flex: 1 }}>{motivation}</Text>
@@ -465,7 +568,7 @@ export default function SuggestionsScreen() {
 
         {/* Notification settings link */}
         <TouchableOpacity onPress={() => router.push("/notification-settings" as never)} style={[styles.card, { flexDirection: "row", alignItems: "center", gap: 12 }]}>
-          <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: C.primary + "15", alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: RECESS, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="notifications-outline" size={20} color={C.primary} />
           </View>
           <View style={{ flex: 1 }}>
@@ -480,9 +583,9 @@ export default function SuggestionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  backBtn: { backgroundColor: DS.color.primarySoft, borderRadius: 20, padding: 8 },
-  refreshBtn: { backgroundColor: DS.color.primarySoft, borderRadius: 16, padding: 8 },
-  card: { backgroundColor: "#FFF", borderRadius: 18, borderWidth: 1, borderColor: DS.color.border, padding: 16 },
-  foodIcon: { width: 44, height: 44, borderRadius: 13, alignItems: "center", justifyContent: "center" },
-  targetBox: { borderWidth: 1.5, borderColor: DS.color.border, borderRadius: 12, padding: 10, alignItems: "center", minWidth: 70 },
+  backBtn:    { backgroundColor: DS.color.bg, borderRadius: 20, padding: 8, ...NEU_SM },
+  refreshBtn: { backgroundColor: DS.color.bg, borderRadius: 16, padding: 8, ...NEU_SM },
+  card:       { backgroundColor: DS.color.bg, borderRadius: 18, padding: 16, ...NEU },
+  foodIcon:   { width: 44, height: 44, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  targetBox:  { backgroundColor: RECESS, borderRadius: 12, padding: 10, alignItems: "center", minWidth: 70 },
 });
