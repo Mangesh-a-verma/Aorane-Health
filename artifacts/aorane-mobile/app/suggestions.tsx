@@ -24,7 +24,14 @@ const C = {
 type Suggestion = Record<string, unknown>;
 type FoodItem = { name: string; nameHindi: string; calories: number; proteinG: number; carbsG: number; fatG: number; portion: string; reason: string; mealType: string; isSeasonalSpecial: boolean };
 type ExerciseSuggestion = { type: string; durationMinutes: number; caloriesToBurn: number; description: string; intensity: string };
-type WaterReminder = { current: number; goal: number; message: string; tipsForDrinkingMore: string[] };
+// Water is a plain count now, not an AI-written section: the Water Tracker
+// card duplicated the dashboard's, so the Coach only keeps the number for the
+// header strip and mentions hydration inside the health tip when it matters.
+// `WaterReminder` stays only to read yesterday-shaped cached payloads.
+type WaterStatus = { current: number; goal: number };
+// Only the count is read off a legacy payload — its message and tips are the
+// part that duplicated the dashboard and are deliberately not rendered.
+type WaterReminder = WaterStatus;
 type HealthTip = { tip: string; category: string; emoji: string };
 type MedicalWarning = { condition: string; warning: string; foodsToAvoid: string[]; foodsToPrefer: string[] };
 type CalorieStatus = { goal: number; eaten: number; remaining: number; message: string };
@@ -189,7 +196,12 @@ export default function SuggestionsScreen() {
   const calorieStatus = s?.calorieStatus as CalorieStatus | undefined;
   const foodSuggestions = (s?.foodSuggestions as FoodItem[]) || [];
   const exerciseSuggestion = s?.exerciseSuggestion as ExerciseSuggestion | undefined;
-  const waterReminder = s?.waterReminder as WaterReminder | undefined;
+  // A cached row generated before this change still carries `waterReminder`,
+  // so fall back to it for the count rather than showing "—" for a day.
+  const waterStatus = (s?.waterStatus as WaterStatus | undefined)
+    ?? (s?.waterReminder as WaterReminder | undefined);
+  const mealPlanSource = s?.mealPlanSource as string | undefined;
+  const nextMealSlot = s?.nextMealSlot as string | undefined;
   const healthTip = s?.healthTip as HealthTip | undefined;
   const medicalWarnings = (s?.medicalWarnings as MedicalWarning[]) || [];
   const motivation = s?.motivation as string || "";
@@ -248,7 +260,7 @@ export default function SuggestionsScreen() {
             <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
               {[
                 { icon: "🔥", label: "Calories", val: `${calorieStatus.eaten}/${calorieStatus.goal}`, sub: "kcal" },
-                { icon: "💧", label: "Water", val: waterReminder ? `${waterReminder.current}/${waterReminder.goal}` : "—", sub: "glasses" },
+                { icon: "💧", label: "Water", val: waterStatus ? `${waterStatus.current}/${waterStatus.goal}` : "—", sub: "glasses" },
                 { icon: "💪", label: "Exercise", val: exerciseSuggestion ? `${exerciseSuggestion.durationMinutes}` : "—", sub: "min goal" },
               ].map(stat => (
                 <View key={stat.label} style={{ flex: 1, backgroundColor: "#FFF", borderRadius: 12, padding: 10, alignItems: "center", borderWidth: 1, borderColor: DS.color.border }}>
@@ -322,7 +334,14 @@ export default function SuggestionsScreen() {
         {/* ── FOOD SUGGESTIONS ── */}
         {foodSuggestions.length > 0 && (
           <Animated.View style={{ opacity: fadeAnim, gap: 8 }}>
-            <SectionHeader icon="🥗" title="Today's Meal Plan" subtitle="Tap to see nutrition details" color={C.green} />
+            <SectionHeader
+              icon="🥗"
+              title={mealPlanSource === "next_meal" ? `Your Next Meal${nextMealSlot ? ` — ${nextMealSlot[0].toUpperCase()}${nextMealSlot.slice(1)}` : ""}` : "Today's Meal Plan"}
+              subtitle={mealPlanSource === "diet_chart"
+                ? "From your weekly diet chart · tap for nutrition"
+                : "Tap to see nutrition details"}
+              color={C.green}
+            />
             {foodSuggestions.map((food, i) => (
               <FoodCard key={i} food={food} index={i} />
             ))}
@@ -355,24 +374,6 @@ export default function SuggestionsScreen() {
                 <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 }}>{exerciseSuggestion.description}</Text>
               </View>
             </View>
-          </Animated.View>
-        )}
-
-        {/* ── WATER ── */}
-        {waterReminder && (
-          <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-            <SectionHeader icon="💧" title="Water Tracker" color={C.primary} />
-            <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
-              {Array.from({ length: waterReminder.goal }, (_, i) => (
-                <View key={i} style={{ flex: 1, height: 28, borderRadius: 6, backgroundColor: i < waterReminder.current ? "#0077B620" : "#E8F2F8", borderWidth: 1, borderColor: i < waterReminder.current ? C.primary : C.border, alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ fontSize: 12 }}>{i < waterReminder.current ? "💧" : "○"}</Text>
-                </View>
-              ))}
-            </View>
-            <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 13, marginBottom: 6 }}>{waterReminder.message}</Text>
-            {waterReminder.tipsForDrinkingMore?.map((tip, i) => (
-              <Text key={i} style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 17 }}>• {tip}</Text>
-            ))}
           </Animated.View>
         )}
 

@@ -12,14 +12,14 @@ import {
   db, usersTable, userProfilesTable, userPreferencesTable,
   userMedicalConditionsTable, userHealthGoalsTable,
   dailySuggestionsTable, foodLogsTable, waterLogsTable, exerciseLogsTable,
-  sleepLogsTable, wearableDataTable,
+  sleepLogsTable, wearableDataTable, weeklyDietChartsTable,
 } from "@workspace/db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { checkAndUseAILimit, refundAIUsage } from "../../lib/aiLimiter";
 import { callAI } from "../../lib/ai";
-import { todayIST, istDayBounds } from "../../lib/dateUtils";
+import { todayIST, istDayBounds, istWeekStart, istHour, istWeekdayName } from "../../lib/dateUtils";
 import { WORK_PROFILE_ACTIVITY, calculateEffectiveTDEE } from "../../lib/workProfile";
 
 const router = Router();
@@ -31,6 +31,71 @@ function getIndianSeason(): string {
   if ([3, 4, 5].includes(month)) return "Summer (Garmi) — Seasonal foods: Aam, Tarbuz, Aam Panna, Nimbu Paani, Coconut Water";
   if ([6, 7, 8, 9].includes(month)) return "Monsoon (Barsaat) — Avoid raw salads. Prefer: Khichdi, Dahi, Ginger tea, Turmeric milk";
   return "Autumn (Sharad) — Seasonal foods: Pomegranate, Guava, Apple, Light dal";
+}
+
+// ── Weekly diet chart (Intelligence tab) — read-only here ─────────────────────
+// The Coach and the Intelligence diet chart used to plan the same day
+// independently, so a user could be told to eat Poha by one screen and Idli by
+// the other. The chart is the published plan; the Coach now follows it and only
+// falls back to planning on its own when no chart exists for this week.
+type ChartMeal  = { time?: string; items?: string[]; calories?: number };
+type ChartSnack = { time?: string; item?: string; calories?: number };
+type ChartDay = {
+  day?: string; date?: string;
+  breakfast?: ChartMeal; lunch?: ChartMeal; dinner?: ChartMeal;
+  snacks?: ChartSnack[]; totalCalories?: number; tip?: string;
+};
+
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+/** Pick today's entry out of a stored weekly chart. */
+function pickTodayFromChart(chartJson: unknown, date: string): ChartDay | null {
+  const days = (chartJson as { days?: unknown } | null)?.days;
+  if (!Array.isArray(days) || days.length === 0) return null;
+  const weekday = istWeekdayName(date);
+
+  // Match on the weekday NAME first. `date` is not a reliable key: the diet
+  // chart's own static fallback stamps every one of the seven days with the
+  // week's Monday, and the AI prompt's example does the same, so matching on
+  // date would land on Monday's meals all week.
+  const byName = days.find((d) =>
+    typeof (d as ChartDay)?.day === "string" &&
+    (d as ChartDay).day!.trim().toLowerCase() === weekday.toLowerCase());
+  if (byName) return byName as ChartDay;
+
+  const byDate = days.find((d) => (d as ChartDay)?.date === date);
+  if (byDate) return byDate as ChartDay;
+
+  // Last resort: position from Monday, so a chart with abbreviated or
+  // translated day names still resolves instead of silently returning nothing.
+  const idx = WEEKDAYS.indexOf(weekday);
+  return idx >= 0 && idx < days.length ? (days[idx] as ChartDay) : null;
+}
+
+/** Render today's chart entry as prompt lines. Empty string = nothing usable. */
+function formatChartDay(c: ChartDay): string {
+  const meal = (label: string, m?: ChartMeal): string | null =>
+    m && Array.isArray(m.items) && m.items.length
+      ? `- ${label}${m.time ? ` (${m.time})` : ""}: ${m.items.join(", ")}${m.calories ? ` — ${m.calories} kcal` : ""}`
+      : null;
+  const snacks = Array.isArray(c.snacks) ? c.snacks.filter((sn) => sn?.item) : [];
+  return [
+    meal("Breakfast", c.breakfast),
+    meal("Lunch", c.lunch),
+    meal("Dinner", c.dinner),
+    snacks.length
+      ? `- Snacks: ${snacks.map((sn) => `${sn.item}${sn.time ? ` (${sn.time})` : ""}${sn.calories ? ` — ${sn.calories} kcal` : ""}`).join("; ")}`
+      : null,
+  ].filter(Boolean).join("\n");
+}
+
+/** The meal the user is heading into, by IST clock. */
+function nextMealSlot(hour: number): { slot: string; label: string } {
+  if (hour < 10) return { slot: "breakfast", label: "breakfast (this morning)" };
+  if (hour < 15) return { slot: "lunch",     label: "lunch (today)" };
+  if (hour < 19) return { slot: "snack",     label: "an evening snack (today)" };
+  if (hour < 22) return { slot: "dinner",    label: "dinner (tonight)" };
+  return { slot: "breakfast", label: "breakfast (tomorrow morning)" };
 }
 
 // ── BMR / TDEE calculation — uses BOTH workProfile + activityLevel ────────────
@@ -60,12 +125,14 @@ function buildPrompt(data: {
   heartRateAvg: number | null; bloodOxygen: number | null;
   recentFoods: string[]; recentSuggestedFoods: string[];
   recentExercises: string[]; burnTarget: number; burnedToday: number;
+  todayChart: ChartDay | null; mealsLoggedToday: string[];
 }): string {
   const { age, gender, weightKg, heightCm, bmi, activityLevel, workProfile, primaryGoal, targetWeightKg,
     foodPreference, foodAllergies, medicalConditions, caloriesToday, waterToday, waterGoal,
     exerciseMinToday, calorieGoal, season, effectiveTDEE,
     sleepHoursToday, stepsToday, heartRateAvg, bloodOxygen,
-    recentFoods, recentSuggestedFoods, recentExercises, burnTarget, burnedToday } = data;
+    recentFoods, recentSuggestedFoods, recentExercises, burnTarget, burnedToday,
+    todayChart, mealsLoggedToday } = data;
 
   const remainingBurn = Math.max(0, burnTarget - burnedToday);
   const avoidList = Array.from(new Set([...recentSuggestedFoods, ...recentFoods])).slice(0, 25);
@@ -75,13 +142,69 @@ function buildPrompt(data: {
   const highHeartRate = heartRateAvg !== null && heartRateAvg > 100;
 
   const remainingCalories = Math.max(0, calorieGoal - caloriesToday);
-  const hour = new Date().getHours();
+  // IST, not server-local: on a UTC host `new Date().getHours()` greeted a
+  // user at 9 PM IST with "morning" advice.
+  const hour = istHour();
   const timeOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+
   const allergyStr = foodAllergies.length > 0 && !foodAllergies.includes("None") ? foodAllergies.join(", ") : "none";
   const conditionStr = medicalConditions.length > 0 ? medicalConditions.join(", ") : "none";
   const workProfileDesc = workProfile
     ? `${workProfile} (${WORK_PROFILE_ACTIVITY[workProfile] || "moderate"} activity job)`
     : "unknown";
+
+  const chartLines = todayChart ? formatChartDay(todayChart) : "";
+  const hasChart = chartLines.length > 0;
+  const nextMeal = nextMealSlot(hour);
+  const alreadyEaten = mealsLoggedToday.length ? mealsLoggedToday.join(", ") : "nothing yet";
+
+  const planBlock = hasChart
+    ? `TODAY'S PUBLISHED DIET CHART (${todayChart!.day || istWeekdayName(todayIST())}) — the user already sees exactly this in the Intelligence tab:
+${chartLines}${todayChart!.totalCalories ? `\n- Chart day total: ${todayChart!.totalCalories} kcal` : ""}${todayChart!.tip ? `\n- Chart tip: ${todayChart!.tip}` : ""}
+- Meal slots they have already logged food for today: ${alreadyEaten}`
+    : `TODAY'S PUBLISHED DIET CHART: none — this user has no weekly diet chart for this week.
+- Meal slots they have already logged food for today: ${alreadyEaten}`;
+
+  // Rules are numbered at render time: the diet-chart branch and the
+  // no-chart branch contribute different rules, and a hand-numbered list
+  // would go out of order the moment either side changes.
+  const rules: string[] = [
+    "All food suggestions must be AUTHENTIC INDIAN foods",
+    `Respect dietary preference: ${foodPreference} (no items that violate this)`,
+    `AVOID any allergens: ${allergyStr}`,
+    `For medical conditions (${conditionStr}): give specific medical warnings`,
+    "Suggest seasonal foods when possible",
+    "Calorie numbers should be realistic for Indian serving sizes",
+    "If diabetes: avoid high-GI foods, suggest low-GI options",
+    "If high BP: suggest low-sodium options, avoid pickles/papad",
+    "Language: Respond entirely in English",
+    "Give work-profile-specific advice (e.g. Army: stamina foods; Office: screen fatigue tips)",
+    "If sleep is LOW (under 6h): exercise suggestion should be light/moderate only (never intense), and healthTip should address sleep recovery",
+    'If heart rate is ELEVATED or SpO2 is LOW: exerciseSuggestion intensity must be "light" and add a medicalWarnings entry recommending rest and, if it persists, consulting a doctor — do not suggest intense exertion',
+  ];
+
+  if (hasChart) {
+    rules.push(
+      "THE DIET CHART ABOVE IS THE PLAN. foodSuggestions must contain ONLY dishes from today's chart, with the dish names written as they appear there. Do not invent, substitute, rename or add dishes — the user is following that chart, and two screens disagreeing is worse than a repeat",
+      "Include only the meal slots they have NOT logged yet today, and skip any slot that is already past for the time of day. Your job is what is still ahead of them, not a recap",
+      "For each chart dish, fill in the macros (proteinG/carbsG/fatG), portion and a one-line reason. Use the chart's own calorie figure for a dish whenever it gives one",
+      "The variety rule does NOT apply to chart dishes — the weekly chart already provides the week's variety",
+    );
+  } else {
+    rules.push(
+      `NO DIET CHART EXISTS for this user this week, so do NOT produce a whole day of meals. Suggest ONLY ${nextMeal.label} — 2 or 3 options, every one with mealType "${nextMeal.slot}". A full-day plan is the weekly diet chart's job, not the Coach's`,
+      `VARIETY IS REQUIRED. Do NOT suggest any of these, they were eaten or suggested in the last 7 days: ${avoidList.length ? avoidList.join(", ") : "(nothing yet)"}`,
+      "Vary the cuisine and cooking style from what they have been eating — a different grain, dal or vegetable, not a rename of the same dish",
+    );
+  }
+
+  rules.push(
+    `exerciseSuggestion.caloriesToBurn MUST equal ${remainingBurn} (already computed above from their TDEE, goal and what they have burned today). Pick an activity and duration that genuinely burns about that much — do not invent a different number`,
+    "Prefer an exercise they already do (see history) over something unfamiliar, unless variety is clearly needed",
+    `Hydration has its own tracker elsewhere in the app, so do NOT return a water section. If they are behind on water (${waterToday}/${waterGoal} glasses) and it is past midday, the healthTip is where you mention it — one line, category "hydration"`,
+  );
+
+  const rulesBlock = rules.map((r, i) => `${i + 1}. ${r}`).join("\n");
 
   return `You are Aorane, a certified Indian health coach and nutritionist. Give personalized daily health suggestions in English.
 
@@ -118,6 +241,8 @@ ENERGY BUDGET (computed, do not recalculate):
 - Already burned today: ${burnedToday} kcal
 - Still to burn today: ${remainingBurn} kcal
 
+${planBlock}
+
 Current Season: ${season}
 
 WORK PROFILE CONTEXT:
@@ -132,22 +257,7 @@ ${workProfile === "Factory Worker" ? "- Factory worker: physical labor, high pro
 ${workProfile === "Construction Worker" ? "- Construction worker: heavy physical labor, very high calorie needs, protein for muscle" : ""}
 
 RULES:
-1. All food suggestions must be AUTHENTIC INDIAN foods
-2. Respect dietary preference: ${foodPreference} (no items that violate this)
-3. AVOID any allergens: ${allergyStr}
-4. For medical conditions (${conditionStr}): give specific medical warnings
-5. Suggest seasonal foods when possible
-6. Calorie numbers should be realistic for Indian serving sizes
-7. If diabetes: avoid high-GI foods, suggest low-GI options
-8. If high BP: suggest low-sodium options, avoid pickles/papad
-9. Language: Respond entirely in English
-10. Give work-profile-specific advice (e.g. Army: stamina foods; Office: screen fatigue tips)
-11. If sleep is LOW (under 6h): exercise suggestion should be light/moderate only (never intense), and healthTip should address sleep recovery
-12. If heart rate is ELEVATED or SpO2 is LOW: exerciseSuggestion intensity must be "light" and add a medicalWarnings entry recommending rest and, if it persists, consulting a doctor — do not suggest intense exertion
-13. VARIETY IS REQUIRED. Do NOT suggest any of these, they were eaten or suggested in the last 7 days: ${avoidList.length ? avoidList.join(", ") : "(nothing yet)"}
-14. Vary the cuisine and cooking style from what they have been eating — a different grain, dal or vegetable, not a rename of the same dish
-15. exerciseSuggestion.caloriesToBurn MUST equal ${remainingBurn} (already computed above from their TDEE, goal and what they have burned today). Pick an activity and duration that genuinely burns about that much — do not invent a different number
-16. Prefer an exercise they already do (see history) over something unfamiliar, unless variety is clearly needed
+${rulesBlock}
 
 Return ONLY valid JSON (no markdown):
 {
@@ -173,12 +283,6 @@ Return ONLY valid JSON (no markdown):
     "caloriesToBurn": number,
     "description": "Short description in English",
     "intensity": "light|moderate|intense"
-  },
-  "waterReminder": {
-    "current": ${waterToday},
-    "goal": ${waterGoal},
-    "message": "Water reminder message in English",
-    "tipsForDrinkingMore": ["tip1", "tip2"]
   },
   "healthTip": {
     "tip": "Today's health tip in English (2 sentences max)",
@@ -294,6 +398,7 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
     let heartRateAvg: number | null = null;
     let bloodOxygen: number | null = null;
     let wearableCaloriesToday: number | null = null;
+    let mealsLoggedToday: string[] = [];
     try {
       const istBounds = istDayBounds(today);
       const dayStart = new Date(istBounds.dayStart);
@@ -307,7 +412,14 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
         db.select().from(wearableDataTable).where(and(eq(wearableDataTable.userId, userId), gte(wearableDataTable.syncedAt, dayStart), lte(wearableDataTable.syncedAt, dayEnd))).orderBy(desc(wearableDataTable.syncedAt)).limit(1),
       ]);
 
-      if (foodLogs.status === "fulfilled") caloriesToday = Math.round(foodLogs.value.reduce((s: any, l: any) => s + Number(l.calories || 0), 0));
+      if (foodLogs.status === "fulfilled") {
+        caloriesToday = Math.round(foodLogs.value.reduce((s: any, l: any) => s + Number(l.calories || 0), 0));
+        // Which slots they have already eaten, so the Coach suggests what is
+        // still ahead of them instead of re-listing this morning's breakfast.
+        mealsLoggedToday = Array.from(new Set(
+          foodLogs.value.map((l: any) => String(l.mealType || "")).filter(Boolean)
+        ));
+      }
       if (waterLogs.status === "fulfilled") waterToday = waterLogs.value.reduce((s: any, l: any) => s + (l.glassesCount || 0), 0);
       if (exerciseLogs.status === "fulfilled") exerciseMinToday = exerciseLogs.value.reduce((s: any, l: any) => s + (l.durationMinutes || 0), 0);
       if (sleepLog.status === "fulfilled" && sleepLog.value[0]) sleepHoursToday = Number(sleepLog.value[0].sleepHours) || null;
@@ -404,6 +516,29 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       burnedToday = Math.max(burnedToday, Math.round(wearableCaloriesToday));
     }
 
+    // 5c. This week's published diet chart (Intelligence tab). The Coach reads
+    // it read-only — it never generates or refreshes one, so this adds no AI
+    // call and no plan gate: it is the user's own already-generated plan.
+    let todayChart: ChartDay | null = null;
+    try {
+      const [chartRow] = await db.select({ json: weeklyDietChartsTable.dietChartJson })
+        .from(weeklyDietChartsTable)
+        .where(and(
+          eq(weeklyDietChartsTable.userId, userId),
+          eq(weeklyDietChartsTable.weekStart, istWeekStart()),
+        ))
+        .limit(1);
+      if (chartRow?.json) {
+        const day = pickTodayFromChart(chartRow.json, today);
+        // A chart entry with no usable meals is the same as having no chart —
+        // better to fall through to next-meal mode than to prompt with an
+        // empty plan the model would then "helpfully" fill in itself.
+        todayChart = day && formatChartDay(day).length > 0 ? day : null;
+      }
+    } catch (err) {
+      logger.warn({ err, userId }, "[Suggestions] Failed to read this week's diet chart — coaching without it");
+    }
+
     // The burn target is the exercise half of the goal the calorie side
     // already encodes: a weight-loss goal sets calorieGoal below TDEE, and
     // that gap is what activity is meant to cover. Previously the model was
@@ -420,6 +555,7 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       exerciseMinToday, calorieGoal, season: getIndianSeason(),
       effectiveTDEE, sleepHoursToday, stepsToday, heartRateAvg, bloodOxygen,
       recentFoods, recentSuggestedFoods, recentExercises, burnTarget, burnedToday,
+      todayChart, mealsLoggedToday,
     });
 
     let suggestions: unknown;
@@ -455,7 +591,6 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
           { name: "Mixed Vegetable Sabzi", nameHindi: "मिक्स सब्जी", calories: 120, proteinG: 4, carbsG: 15, fatG: 5, portion: "1 bowl", reason: "Packed with vitamins and fiber", mealType: "dinner", isSeasonalSpecial: false },
         ],
         exerciseSuggestion: { type: "Brisk Walk", durationMinutes: 30, caloriesToBurn: 150, description: "A 30-minute brisk walk in the morning or evening is highly beneficial", intensity: "moderate" },
-        waterReminder: { current: waterToday, goal: prefs?.waterGoalGlasses || 8, message: "Don't forget to stay hydrated! 💧", tipsForDrinkingMore: ["Drink one glass every hour", "Have 1 glass of water before meals"] },
         healthTip: { tip: "Drink 2 glasses of water right after waking up — it boosts metabolism and flushes toxins", category: "hydration", emoji: "💧" },
         medicalWarnings: [],
         motivation: "Every step brings you closer to your goal. Keep going! 💪",
@@ -478,6 +613,17 @@ router.get("/suggestions/daily", requireAuth, async (req: AuthRequest, res) => {
       : null;
 
     const s2 = suggestions as Record<string, unknown>;
+    // Hydration is no longer an AI-written section here — it duplicated the
+    // dashboard's water tracker, and asking the model for a message plus tips
+    // cost tokens for something the app already knows exactly. The header
+    // still shows the real count; the advice, when it is needed, rides along
+    // in the health tip (see the last prompt rule).
+    delete s2.waterReminder;
+    s2.waterStatus = { current: waterToday, goal: prefs?.waterGoalGlasses || 8 };
+    // Lets the screen say WHY these dishes: "following your weekly diet chart"
+    // vs "your next meal". Without it a one-meal answer looks like a bug.
+    s2.mealPlanSource = todayChart ? "diet_chart" : "next_meal";
+    s2.nextMealSlot = todayChart ? null : nextMealSlot(istHour()).slot;
     s2.calorieStatus = {
       goal: calorieGoal,
       eaten: caloriesToday,
