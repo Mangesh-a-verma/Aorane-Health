@@ -178,6 +178,12 @@ const DEFAULT_NOTIF_SETTINGS = {
   wakeUpTime:           "07:00",
   bedTime:              "22:30",
   waterGoalGlasses:     8,
+  // Everyone eats at a different hour. These two columns have existed in
+  // user_preferences from the start and the API has always returned and
+  // accepted them — the app just never read them, so lunch was hardcoded at
+  // 13:00 and dinner at 19:30 for every user on earth.
+  foodReminderTime:     "07:30,12:30,19:30",
+  waterReminderTimes:   "",
 };
 
 type NotifSettings = typeof DEFAULT_NOTIF_SETTINGS;
@@ -206,6 +212,13 @@ async function readCachedNotifSettings(): Promise<NotifSettings> {
 
 // ── In-session guard — prevents overlapping restore calls ────────────────────
 let isRestoring = false;
+
+/** Surface the rejections Promise.allSettled would otherwise discard. */
+function reportSettled(results: PromiseSettledResult<unknown>[], labels: string[]): void {
+  results.forEach((r, i) => {
+    if (r.status === "rejected") logSilentError(`notif-${labels[i] ?? i}`, r.reason);
+  });
+}
 
 /**
  * restoreAllNotifications — LOCAL-FIRST, BACKEND-OPTIONAL
@@ -262,6 +275,8 @@ async function restoreAllNotifications() {
           wakeUpTime:           (s.wakeUpTime      as string)       || "07:00",
           bedTime:              (s.bedTime         as string)       || "22:30",
           waterGoalGlasses:     (s.waterGoalGlasses as number)      || 8,
+          foodReminderTime:     (s.foodReminderTime as string)      || "",
+          waterReminderTimes:   (s.waterReminderTimes as string)    || "",
         };
 
         // Save for next cold start
@@ -269,12 +284,14 @@ async function restoreAllNotifications() {
 
         // Only reschedule if settings actually differ from cached
         const changed =
-          fresh.wakeUpTime       !== cachedSettings.wakeUpTime       ||
-          fresh.bedTime          !== cachedSettings.bedTime          ||
-          fresh.waterGoalGlasses !== cachedSettings.waterGoalGlasses ||
-          fresh.waterReminders   !== cachedSettings.waterReminders   ||
-          fresh.foodReminders    !== cachedSettings.foodReminders    ||
-          fresh.medicineReminders !== cachedSettings.medicineReminders;
+          fresh.wakeUpTime        !== cachedSettings.wakeUpTime        ||
+          fresh.bedTime           !== cachedSettings.bedTime           ||
+          fresh.waterGoalGlasses  !== cachedSettings.waterGoalGlasses  ||
+          fresh.waterReminders    !== cachedSettings.waterReminders    ||
+          fresh.foodReminders     !== cachedSettings.foodReminders     ||
+          fresh.medicineReminders !== cachedSettings.medicineReminders ||
+          fresh.foodReminderTime  !== cachedSettings.foodReminderTime  ||
+          fresh.waterReminderTimes !== cachedSettings.waterReminderTimes;
 
         if (changed) {
           console.debug("[Notifications] Fresh settings differ — rescheduling");
@@ -287,7 +304,7 @@ async function restoreAllNotifications() {
       });
 
   } catch (err) {
-    console.debug("[Notifications] restoreAllNotifications error:", err);
+    logSilentError("notif-restore", err);
   } finally {
     isRestoring = false;
   }
@@ -308,15 +325,26 @@ async function _scheduleFromSettings(s: NotifSettings): Promise<void> {
   const bedTime   = s.bedTime           || "22:30";
   const waterGoal = s.waterGoalGlasses  || 8;
 
+  // On Android a notification scheduled into a channel that does not exist yet
+  // is dropped. Channel creation used to run on a 1.5s setTimeout while this
+  // ran the moment auth resolved — and auth resolves from AsyncStorage in well
+  // under 1.5s on a warm start, so scheduling could win the race.
+  // setNotificationChannelAsync is idempotent, so awaiting it here is free.
+  await setupNotificationChannels();
+
   // Water + Food in parallel (independent of each other)
-  await Promise.allSettled([
+  const results = await Promise.allSettled([
     s.waterReminders !== false
-      ? scheduleWaterReminders(wakeUp, bedTime, waterGoal)
+      ? scheduleWaterReminders(wakeUp, bedTime, waterGoal, s.waterReminderTimes)
       : cancelWaterReminders(),
     s.foodReminders !== false
-      ? scheduleFoodReminders(wakeUp, bedTime)
+      ? scheduleFoodReminders(wakeUp, bedTime, s.foodReminderTime)
       : cancelFoodReminders(),
   ]);
+  // allSettled swallows rejections by design. That is exactly how every
+  // scheduled notification on Android could fail for months without one line
+  // in the logs — report them instead of discarding them.
+  reportSettled(results, ["water-reminders", "food-reminders"]);
 
   // ── Medicine reminders ──────────────────────────────────────────────────
   // BUG FIX: this used to always (re)schedule medicine reminders regardless
@@ -341,7 +369,7 @@ async function _scheduleFromSettings(s: NotifSettings): Promise<void> {
       );
 
       if (activeMedicines.length > 0) {
-        await Promise.allSettled(
+        const medResults = await Promise.allSettled(
           activeMedicines.map((med) =>
             scheduleMedicineReminders({
               medicineId:   `medicine_${med.id}`,
@@ -352,6 +380,7 @@ async function _scheduleFromSettings(s: NotifSettings): Promise<void> {
             })
           )
         );
+        reportSettled(medResults, activeMedicines.map((m) => `medicine-${m.id}`));
       }
 
       // BUG FIX: clear out any legacy name-based-id medicine notifications
@@ -362,7 +391,11 @@ async function _scheduleFromSettings(s: NotifSettings): Promise<void> {
       cleanupOrphanMedicineNotifications(validIds).catch((e) =>
         logSilentError("medicine-notif-cleanup", e)
       );
-    } catch { /* medicine reminders non-critical */ }
+    } catch (e) {
+      // Non-critical — water and food are already scheduled — but silence is
+      // what let a total scheduling failure go unnoticed, so it gets reported.
+      logSilentError("medicine-reminders", e);
+    }
   }
 
   // Period reminders — also non-blocking

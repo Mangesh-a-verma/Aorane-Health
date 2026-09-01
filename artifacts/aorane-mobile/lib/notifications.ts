@@ -1,9 +1,30 @@
 /**
- * lib/notifications.ts — Aorane Advanced Notification System v3.1
+ * lib/notifications.ts — Aorane Notification System v4.0
  *
- * Android + iOS dono ke liye fully working.
+ * READ THIS BEFORE CHANGING A TRIGGER (v4.0):
  *
- * BUGS FIXED in this pass (v3.1):
+ * Every recurring reminder in this app was dead on Android for months, and no
+ * log line ever said so. The cause was one enum:
+ *
+ *   SchedulableTriggerInputTypes.CALENDAR is iOS-ONLY.
+ *
+ * The Android native module's trigger decoder handles exactly
+ * timeInterval / date / daily / weekly / monthly / yearly / channel, and ends
+ * with `else -> throw InvalidArgumentException("Trigger of type: $type is not
+ * supported on Android.")`. So every scheduleNotificationAsync() call using
+ * CALENDAR rejected — medicine, water and food, all three — while
+ * Promise.allSettled and a few empty catch blocks swallowed the rejection.
+ * Nothing crashed, nothing was logged, and two previous fix passes went to
+ * other parts of this file without touching the line that mattered.
+ *
+ * For a daily repeating reminder use DAILY ({ type, hour, minute, channelId }).
+ * hour and minute MUST be numbers (a string throws), 0-23 and 0-59. DAILY has
+ * no `repeats` field; it repeats by definition.
+ *
+ * The rejections are now reported through logSilentError (see
+ * reportSettled in app/_layout.tsx), so this cannot go quiet again.
+ *
+ * BUGS FIXED in the earlier pass (v3.1):
  * 1. This is now the ONLY place that calls setNotificationHandler — the
  *    duplicate registration in app/_layout.tsx has been removed. Having two
  *    handlers meant one silently overrode the other with a different config.
@@ -256,6 +277,17 @@ function parseTime(timeStr: string): { hour: number; minute: number } | null {
   return { hour, minute };
 }
 
+/** "07:30,12:30,19:30" → [{hour,minute},…]. Invalid entries are dropped, and a
+ *  list with nothing valid in it returns [] so the caller can fall back to its
+ *  derived times rather than scheduling nothing. */
+function parseTimeList(list?: string | null): { hour: number; minute: number }[] {
+  if (typeof list !== "string" || !list.trim()) return [];
+  return list.split(",")
+    .map((part) => parseTime(part.trim()))
+    .filter((t): t is { hour: number; minute: number } => t !== null)
+    .sort((a, b) => (a.hour * 60 + a.minute) - (b.hour * 60 + b.minute));
+}
+
 // ─── MEDICINE REMINDERS ───────────────────────────────────────────────────────
 export async function scheduleMedicineReminders(medicine: {
   medicineId: string;
@@ -295,10 +327,9 @@ export async function scheduleMedicineReminders(medicine: {
         },
       },
       trigger: {
-        type:    SchedulableTriggerInputTypes.CALENDAR,
-        hour:    parsed.hour,
-        minute:  parsed.minute,
-        repeats: true,
+        type:   SchedulableTriggerInputTypes.DAILY,
+        hour:   parsed.hour,
+        minute: parsed.minute,
         ...(Platform.OS === "android" ? { channelId: "medicine" } : {}),
       },
     });
@@ -313,43 +344,62 @@ export async function scheduleMedicineReminders(medicine: {
 export async function scheduleWaterReminders(
   wakeUp  = "07:00",
   bedTime = "22:30",
-  glasses = 8
+  glasses = 8,
+  /** The user's own reminder times, from user_preferences.water_reminder_times.
+   *  That column has existed (and been editable through the API) since the
+   *  beginning, but nothing on the device ever read it — the app always spread
+   *  reminders evenly instead. When it is set, it wins. */
+  explicitTimes?: string | null,
 ): Promise<string[]> {
   if (!(await ensurePermission())) return [];
 
   await cancelWaterReminders();
 
-  const wake = parseTime(wakeUp) ?? { hour: 7, minute: 0 };
-  const bed  = parseTime(bedTime) ?? { hour: 22, minute: 30 };
+  const chosen = parseTimeList(explicitTimes);
 
-  const wakeMinutes = wake.hour * 60 + wake.minute;
-  const bedMinutes  = bed.hour  * 60 + bed.minute;
-  const totalWindow = bedMinutes - wakeMinutes;
+  let slots: { hour: number; minute: number }[];
+  if (chosen.length > 0) {
+    slots = chosen;
+  } else {
+    // No stored times — keep the original evenly-spread behaviour.
+    const wake = parseTime(wakeUp) ?? { hour: 7, minute: 0 };
+    const bed  = parseTime(bedTime) ?? { hour: 22, minute: 30 };
+    const wakeMinutes = wake.hour * 60 + wake.minute;
+    const bedMinutes  = bed.hour  * 60 + bed.minute;
+    const totalWindow = bedMinutes - wakeMinutes;
+    if (totalWindow <= 0 || glasses <= 0) return [];
 
-  if (totalWindow <= 0 || glasses <= 0) return [];
+    const intervalMin = Math.floor(totalWindow / glasses);
+    slots = [];
+    for (let i = 0; i < glasses; i++) {
+      const totalMin = wakeMinutes + intervalMin * i + Math.floor(intervalMin / 2);
+      slots.push({ hour: Math.floor(totalMin / 60) % 24, minute: totalMin % 60 });
+    }
+  }
 
-  const intervalMin  = Math.floor(totalWindow / glasses);
+  // Only the evenly-spread path has one reminder per glass, so only there can
+  // the body honestly count "3/8". With the user's own times the two numbers
+  // are unrelated, and claiming otherwise would be wrong on every tap.
+  const countsGlasses = chosen.length === 0;
   const scheduledIds: string[] = [];
 
-  for (let i = 0; i < glasses; i++) {
-    const totalMin = wakeMinutes + intervalMin * i + Math.floor(intervalMin / 2);
-    const hour     = Math.floor(totalMin / 60) % 24;
-    const minute   = totalMin % 60;
-
+  for (let i = 0; i < slots.length; i++) {
+    const { hour, minute } = slots[i];
     if (hour < 0 || hour > 23) continue;
 
     const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: "💧 Water Reminder",
-        body:  `Drink a glass of water! (${i + 1}/${glasses} today)`,
+        body:  countsGlasses
+          ? `Drink a glass of water! (${i + 1}/${glasses} today)`
+          : `Time for a glass of water — today's goal is ${glasses} glasses.`,
         sound: true,
         data:  { type: "water_reminder", glass: i + 1, screen: "/(tabs)/dashboard" },
       },
       trigger: {
-        type:    SchedulableTriggerInputTypes.CALENDAR,
+        type:   SchedulableTriggerInputTypes.DAILY,
         hour,
         minute,
-        repeats: true,
         ...(Platform.OS === "android" ? { channelId: "water" } : {}),
       },
     });
@@ -361,22 +411,49 @@ export async function scheduleWaterReminders(
 }
 
 // ─── FOOD / MEAL REMINDERS ───────────────────────────────────────────────────
+const MEAL_LABELS = [
+  { title: "🍳 Breakfast Time!", body: "Start your day right — have a healthy breakfast." },
+  { title: "🍱 Lunch Time!",     body: "Time for lunch — don't skip your midday meal."    },
+  { title: "🌙 Dinner Time!",    body: "Evening meal time — eat light and healthy."       },
+];
+
 export async function scheduleFoodReminders(
   wakeUp  = "07:00",
-  _bedTime = "22:30"
+  _bedTime = "22:30",
+  /** The user's own meal times, from user_preferences.food_reminder_time.
+   *  Nobody eats lunch at the same hour — this column has always been there
+   *  and editable, but the app hardcoded lunch at 13:00 and dinner at 19:30
+   *  and never looked at it. When it is set, it wins. */
+  mealTimes?: string | null,
 ): Promise<string[]> {
   if (!(await ensurePermission())) return [];
 
   await cancelFoodReminders();
 
-  const wake      = parseTime(wakeUp) ?? { hour: 7, minute: 0 };
-  const bfMinutes = Math.min(wake.hour * 60 + wake.minute + 60, 10 * 60);
+  const chosen = parseTimeList(mealTimes);
 
-  const meals = [
-    { hour: Math.floor(bfMinutes / 60), minute: bfMinutes % 60, title: "🍳 Breakfast Time!", body: "Start your day right — have a healthy breakfast." },
-    { hour: 13, minute: 0,  title: "🍱 Lunch Time!",  body: "Time for lunch — don't skip your midday meal."  },
-    { hour: 19, minute: 30, title: "🌙 Dinner Time!", body: "Evening meal time — eat light and healthy."     },
-  ];
+  let slots: { hour: number; minute: number }[];
+  if (chosen.length > 0) {
+    slots = chosen;
+  } else {
+    // No stored times — keep the original behaviour: breakfast an hour after
+    // waking (never later than 10:00), then the old fixed lunch and dinner.
+    const wake      = parseTime(wakeUp) ?? { hour: 7, minute: 0 };
+    const bfMinutes = Math.min(wake.hour * 60 + wake.minute + 60, 10 * 60);
+    slots = [
+      { hour: Math.floor(bfMinutes / 60), minute: bfMinutes % 60 },
+      { hour: 13, minute: 0 },
+      { hour: 19, minute: 30 },
+    ];
+  }
+
+  // Slots are sorted by time, so the first three are breakfast/lunch/dinner.
+  // A user who wants a fourth (a night shift, a late supper) gets a neutral
+  // label rather than a second "Dinner".
+  const meals = slots.map((slot, i) => ({
+    ...slot,
+    ...(MEAL_LABELS[i] ?? { title: "🍽️ Meal Time!", body: "Time for your next meal." }),
+  }));
 
   const scheduledIds: string[] = [];
   for (const meal of meals) {
@@ -388,10 +465,9 @@ export async function scheduleFoodReminders(
         data:  { type: "food_reminder", screen: "/(tabs)/food" },
       },
       trigger: {
-        type:    SchedulableTriggerInputTypes.CALENDAR,
-        hour:    meal.hour,
-        minute:  meal.minute,
-        repeats: true,
+        type:   SchedulableTriggerInputTypes.DAILY,
+        hour:   meal.hour,
+        minute: meal.minute,
         ...(Platform.OS === "android" ? { channelId: "food" } : {}),
       },
     });

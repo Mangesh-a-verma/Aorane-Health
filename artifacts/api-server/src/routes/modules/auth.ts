@@ -8,6 +8,7 @@ import { signUserToken, signRefreshToken, verifyRefreshToken } from "../../lib/j
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
 import { logger, safeErrorMessage } from "../../lib/logger";
+import { mealTimesFor } from "../../lib/locale";
 
 const router = Router();
 
@@ -196,7 +197,14 @@ router.post("/auth/verify-otp", async (req, res) => {
     }
 
     // Ensure supporting rows exist using raw SQL (bypasses Drizzle for pooler compat)
-    await pool.query(`INSERT INTO user_preferences (user_id, language_code) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [user.id, languageCode]).catch(() => {});
+    await pool.query(
+      // Seed meal times from the user's country — dinner at 19:30 is right in
+      // Delhi, early in Madrid and late in Stockholm, and a reminder at the
+      // wrong hour is worse than none. Only ever set at creation; once the
+      // user edits them their own times are the source of truth.
+      `INSERT INTO user_preferences (user_id, language_code, food_reminder_time) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+      [user.id, languageCode, mealTimesFor(user.countryCode)]
+    ).catch(() => {});
     await pool.query(`INSERT INTO user_privacy_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
     await pool.query(`INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
     await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]).catch(() => {});
@@ -298,7 +306,14 @@ router.post("/auth/firebase-login", async (req, res) => {
       }
     }
 
-    await pool.query(`INSERT INTO user_preferences (user_id, language_code) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [user.id, languageCode]).catch(() => {});
+    await pool.query(
+      // Seed meal times from the user's country — dinner at 19:30 is right in
+      // Delhi, early in Madrid and late in Stockholm, and a reminder at the
+      // wrong hour is worse than none. Only ever set at creation; once the
+      // user edits them their own times are the source of truth.
+      `INSERT INTO user_preferences (user_id, language_code, food_reminder_time) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+      [user.id, languageCode, mealTimesFor(user.countryCode)]
+    ).catch(() => {});
     await pool.query(`INSERT INTO user_privacy_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
     await pool.query(`INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
     await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]).catch(() => {});
@@ -461,7 +476,7 @@ router.post("/auth/google", async (req, res) => {
         }).returning();
         user = newUser;
         isNewUser = true;
-        await db.insert(userPreferencesTable).values({ userId: user.id, languageCode });
+        await db.insert(userPreferencesTable).values({ userId: user.id, languageCode, foodReminderTime: mealTimesFor(countryCode) });
         await db.insert(userPrivacySettingsTable).values({ userId: user.id });
         await db.insert(userProfilesTable).values({
           userId: user.id,
@@ -630,7 +645,14 @@ router.post("/auth/verify-email-otp", async (req, res) => {
         } else { throw insertErr; }
       }
     }
-    await pool.query(`INSERT INTO user_preferences (user_id, language_code) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [user.id, languageCode]).catch(() => {});
+    await pool.query(
+      // Seed meal times from the user's country — dinner at 19:30 is right in
+      // Delhi, early in Madrid and late in Stockholm, and a reminder at the
+      // wrong hour is worse than none. Only ever set at creation; once the
+      // user edits them their own times are the source of truth.
+      `INSERT INTO user_preferences (user_id, language_code, food_reminder_time) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+      [user.id, languageCode, mealTimesFor(user.countryCode)]
+    ).catch(() => {});
     await pool.query(`INSERT INTO user_privacy_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
     await pool.query(`INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]).catch(() => {});
     await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]).catch(() => {});

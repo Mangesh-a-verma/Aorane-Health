@@ -195,3 +195,56 @@ export function seasonFor(locale: UserLocale, month?: number): string {
   const index = locale.hemisphere === "south" ? (northIndex + 2) % 4 : northIndex;
   return `${TEMPERATE_SEASONS[index]} (${locale.countryName})`;
 }
+
+// ── Meal times ────────────────────────────────────────────────────────────────
+// When people actually eat differs by more than an hour across countries, and a
+// reminder at the wrong hour is worse than none: dinner at 19:30 is right in
+// Delhi, early in Madrid and late in Stockholm. These are the defaults a NEW
+// account starts with; the user can change them, and once they do their own
+// times are the source of truth (user_preferences.food_reminder_time).
+//
+// Format matches that column exactly: "HH:MM,HH:MM,HH:MM" = breakfast, lunch,
+// dinner. India's value is the one the column already defaults to, so nothing
+// changes for existing users.
+const MEAL_TIMES: Record<string, string> = {
+  // South Asia — the column's existing default
+  IN: "07:30,12:30,19:30", PK: "07:30,13:00,20:00", BD: "07:30,13:30,20:30",
+  NP: "07:30,12:30,19:30", LK: "07:00,12:30,19:30",
+  // Anglosphere — early dinner
+  US: "07:30,12:00,18:30", CA: "07:30,12:00,18:30", GB: "07:30,13:00,18:30",
+  IE: "07:30,13:00,18:30", AU: "07:30,12:30,18:30", NZ: "07:30,12:30,18:30",
+  ZA: "07:30,13:00,19:00",
+  // Continental Europe — later, and Spain later still
+  DE: "07:00,12:30,18:30", NL: "07:30,12:30,18:00", BE: "07:30,12:30,19:00",
+  FR: "07:30,12:30,20:00", IT: "07:30,13:00,20:00", ES: "08:00,14:00,21:30",
+  PT: "08:00,13:00,20:00", GR: "08:00,14:00,21:00", PL: "07:30,13:00,19:00",
+  SE: "07:00,12:00,18:00", NO: "07:00,11:30,17:00", DK: "07:00,12:00,18:00",
+  FI: "07:00,11:30,17:30", CH: "07:00,12:00,19:00", AT: "07:00,12:30,18:30",
+  RU: "08:00,13:00,19:00", UA: "08:00,13:00,19:00", TR: "08:00,13:00,20:00",
+  // Middle East
+  AE: "08:00,13:30,20:30", SA: "08:00,13:30,21:00", QA: "08:00,13:30,20:30",
+  KW: "08:00,13:30,20:30", IL: "07:30,13:00,19:30", EG: "08:00,14:00,21:00",
+  // East and Southeast Asia — early dinner
+  CN: "07:00,12:00,18:00", JP: "07:00,12:00,19:00", KR: "07:00,12:00,18:30",
+  TW: "07:00,12:00,18:30", HK: "07:30,13:00,19:00", TH: "07:00,12:00,18:30",
+  VN: "06:30,11:30,18:30", ID: "07:00,12:00,19:00", MY: "07:30,13:00,20:00",
+  SG: "07:30,12:30,19:00", PH: "07:00,12:00,19:00",
+  // Latin America — late lunch, late dinner
+  BR: "07:30,12:30,20:00", MX: "08:00,14:30,20:30", AR: "08:00,13:00,21:30",
+  CL: "08:00,13:30,21:00", CO: "07:00,12:30,19:30", PE: "07:30,13:00,20:30",
+  // Africa
+  NG: "07:30,13:30,20:00", KE: "07:30,13:00,20:00", GH: "07:30,13:00,20:00",
+  ET: "07:00,12:30,19:30", MA: "08:00,13:30,20:30", TZ: "07:30,13:00,20:00",
+};
+const DEFAULT_MEAL_TIMES = "07:30,13:00,19:30";
+
+/**
+ * Default breakfast/lunch/dinner times for a country, as the
+ * "HH:MM,HH:MM,HH:MM" string user_preferences.food_reminder_time stores.
+ * Used only when an account is first created — never to override a choice the
+ * user has already made.
+ */
+export function mealTimesFor(countryCode?: string | null): string {
+  const cc = (countryCode || "IN").trim().toUpperCase();
+  return MEAL_TIMES[cc] ?? DEFAULT_MEAL_TIMES;
+}
