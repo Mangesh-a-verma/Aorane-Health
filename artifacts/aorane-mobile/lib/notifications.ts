@@ -268,8 +268,32 @@ export async function runSchedulingSelfTest(): Promise<{ ok: boolean; detail: st
     });
     return { ok: true, detail: `Scheduled successfully (id ${id.slice(0, 8)}…). It will arrive in about a minute — if it does not, the OS is holding it back, not the app.` };
   } catch (e) {
-    // The whole point: show the platform's own words instead of a shrug.
-    return { ok: false, detail: (e as Error)?.message || String(e) };
+    const msg = (e as Error)?.message || String(e);
+
+    // Second probe, with NO `data` payload. That field is what expo-notifications
+    // turns into an org.json.JSONObject on the native side, and it is the only
+    // JSONObject in the object graph it serializes into SharedPreferences. If
+    // this one succeeds where the first failed, the fault is that serialization
+    // path — which on release builds means R8 renamed NotificationContent's
+    // writeObject/readObject (Java finds them by name, via reflection) and
+    // default serialization then choked on the raw JSONObject field.
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: { title: "✅ Aorane test reminder", body: "Scheduling works.", sound: true },
+        trigger: {
+          type: SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 60,
+          repeats: false,
+          ...(Platform.OS === "android" ? { channelId: "general" } : {}),
+        },
+      });
+      return {
+        ok: false,
+        detail: `${msg}\n\nA reminder WITHOUT any data payload scheduled fine, so the fault is in serializing that payload — on a release build this means the ProGuard keep rules for java.io.Serializable are missing.`,
+      };
+    } catch {
+      return { ok: false, detail: msg };
+    }
   }
 }
 

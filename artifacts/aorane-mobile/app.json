@@ -94,7 +94,6 @@
             "buildToolsVersion": "36.0.0",
             "kotlinVersion": "2.0.21",
             "ndkVersion": "27.1.12297006",
-            "enableProguardInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
             "packagingOptions": {
               "jniLibs": {
@@ -110,10 +109,8 @@
                 ]
               }
             },
-            "proguardFiles": [
-              "android-proguard-rules.pro"
-            ],
-            "jsEngine": "hermes"
+            "jsEngine": "hermes",
+            "extraProguardRules": "# CRITICAL \u2014 Java serialization finds writeObject/readObject by NAME via\n# reflection. R8 renaming them makes it fall back to DEFAULT serialization,\n# which then hits expo-notifications' raw org.json.JSONObject field and throws\n# java.io.NotSerializableException: org.json.JSONObject. That is exactly the\n# error every scheduled reminder died with on release builds.\n-keepclassmembers class * implements java.io.Serializable {\n    static final long serialVersionUID;\n    private static final java.io.ObjectStreamField[] serialPersistentFields;\n    private void writeObject(java.io.ObjectOutputStream);\n    private void readObject(java.io.ObjectInputStream);\n    java.lang.Object writeReplace();\n    java.lang.Object readResolve();\n}\n-keep class org.json.** { *; }\n\n-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.swmansion.** { *; }\n-keep class expo.modules.** { *; }\n-keep class host.exp.** { *; }\n-keep class expo.modules.notifications.** { *; }\n-keep class androidx.health.connect.** { *; }\n-keep class com.razorpay.** { *; }\n-keep class com.google.firebase.** { *; }\n-keep class com.google.android.gms.** { *; }\n-dontwarn org.slf4j.**\n-keep class com.facebook.jni.** { *; }"
           },
           "ios": {
             "jsEngine": "hermes"
