@@ -596,6 +596,25 @@ export async function requestIgnoreBatteryOptimizations(): Promise<void> {
 }
 
 /**
+ * Opens this app's page in the system Settings.
+ *
+ * This is the only way back once Android has stopped showing the permission
+ * dialog. After two denials (or a "Don't allow" on Android 13+),
+ * requestPermissionsAsync() returns "denied" immediately WITHOUT any dialog —
+ * so an in-app "Allow notifications" button silently does nothing, forever.
+ * The user has to flip the switch in Settings, and the app has to take them
+ * there.
+ */
+export async function openNotificationSettings(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    await Linking.openSettings();
+  } catch {
+    // Nothing else to try — the caller already tells the user the path.
+  }
+}
+
+/**
  * Convenience: call both reliability prompts back-to-back. Intended to be
  * triggered from a clear, contextual user action (e.g. "Fix delayed
  * notifications" button in Settings, or right after adding the first

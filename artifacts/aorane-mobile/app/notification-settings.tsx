@@ -15,6 +15,7 @@ import {
   requestExactAlarmPermission,
   requestIgnoreBatteryOptimizations,
   getNotificationDiagnostics,
+  openNotificationSettings,
   type NotificationDiagnosticEntry,
 } from "@/lib/notifications";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -199,8 +200,19 @@ export default function NotificationSettingsScreen() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load();
-   setupNotificationChannels(); // ✅ ADD THIS
+  useEffect(() => {
+    load();
+    setupNotificationChannels();
+    // Check on open, not only when someone happens to find the Diagnostics
+    // button. Every way this feature fails — permission off, nothing
+    // scheduled — is completely silent otherwise, which is how "no
+    // notifications" stayed a mystery through three fix attempts.
+    getNotificationDiagnostics()
+      .then(({ permissionGranted, entries }) => {
+        setDiagPermission(permissionGranted);
+        setDiagEntries(entries);
+      })
+      .catch((e) => logSilentError("notif-diagnostics", e));
   }, [load]);
 
   const mealAt = (i: number) => mealTimeAt(settings.foodReminderTime, i);
@@ -342,6 +354,60 @@ export default function NotificationSettingsScreen() {
         contentContainerStyle={{ padding: 18, paddingBottom: insets.bottom + 80, gap: 14 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── Health banner — the first thing on the screen when something is
+             actually wrong. Permission off means nothing will EVER arrive, no
+             matter what the toggles below say; zero scheduled means the
+             toggles never took effect. Both used to be completely invisible. */}
+        {Platform.OS !== "web" && diagPermission === false && (
+          <View style={{ backgroundColor: "#FDEAEA", borderRadius: 14, borderWidth: 1, borderColor: "#F5B5B5", padding: 14, gap: 10 }}>
+            <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+              <Ionicons name="notifications-off" size={22} color={C.red} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: C.red, fontFamily: "Inter_700Bold", fontSize: 13, marginBottom: 3 }}>
+                  Notifications are blocked for Aorane
+                </Text>
+                <Text style={{ color: C.text, fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 17 }}>
+                  Nothing below will be delivered until you turn them on. Android stops
+                  showing the in-app prompt after it has been declined, so this has to be
+                  switched on in your phone&rsquo;s Settings.
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); openNotificationSettings(); }}
+              style={{ backgroundColor: C.red, borderRadius: 10, paddingVertical: 10, alignItems: "center" }}
+              accessibilityRole="button"
+              accessibilityLabel="Open system notification settings for Aorane"
+            >
+              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 13 }}>Open Settings</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {Platform.OS !== "web" && diagPermission === true && diagEntries.length === 0 && (
+          <View style={{ backgroundColor: "#FEF3E8", borderRadius: 14, borderWidth: 1, borderColor: "#F0C48A", padding: 14, flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+            <Ionicons name="alert-circle" size={22} color="#B45309" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: "#B45309", fontFamily: "Inter_700Bold", fontSize: 13, marginBottom: 3 }}>
+                No reminders are scheduled yet
+              </Text>
+              <Text style={{ color: C.text, fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 17 }}>
+                Permission is granted, but nothing is queued on this device. Tap Save below
+                to schedule them now.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {Platform.OS !== "web" && diagPermission === true && diagEntries.length > 0 && (
+          <View style={{ backgroundColor: "#E7F6EE", borderRadius: 14, padding: 12, flexDirection: "row", gap: 10, alignItems: "center" }}>
+            <Ionicons name="checkmark-circle" size={20} color={C.green} />
+            <Text style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 12.5, flex: 1 }}>
+              {diagEntries.length} reminder{diagEntries.length === 1 ? "" : "s"} scheduled on this device
+            </Text>
+          </View>
+        )}
+
         {/* Web Notice */}
         {Platform.OS === "web" && (
           <View style={{ backgroundColor: "#FFF3CD", borderRadius: 14, borderWidth: 1, borderColor: "#FBBF24", padding: 14, flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
