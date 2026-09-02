@@ -15,6 +15,7 @@ import { sendIndividualInvoiceEmail } from "../../lib/invoice-email";
 import { computeGstInclusive } from "../../lib/gst";
 import { getNextInvoiceNumber } from "../../lib/invoice-number";
 import { signUserToken, signRefreshToken } from "../../lib/jwt";
+import { notifyPlanActivated } from "../../lib/planNotify";
 import { invalidateUserPlanCache } from "../../middlewares/user-auth";
 
 // FIX C3 + B1 — Issue fresh tokens after plan change
@@ -288,6 +289,7 @@ router.post("/payment/verify", requireAuth, async (req: AuthRequest, res) => {
         source: "razorpay", expiresAt, paymentType: "one_time", autoRenew: false, nextRenewalAt: expiresAt,
       }).onConflictDoNothing();
       await tx.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, req.userId!));
+      notifyPlanActivated(req.userId!, plan as string, expiresAt).catch(() => {});
     });
 
     const tokens = await rotateUserTokensForPlan(req.userId!).catch(() => null);
@@ -394,6 +396,7 @@ router.post("/payment/subscription/create", requireAuth, async (req: AuthRequest
         expiresAt, paymentType: "recurring", autoRenew: true, nextRenewalAt: expiresAt,
       }).returning();
       await db.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, req.userId!));
+      notifyPlanActivated(req.userId!, plan as string, null).catch(() => {});
       const tokens = await rotateUserTokensForPlan(req.userId!).catch(() => null);
       return res.json({
         isTestMode: true, subscriptionId: sub.id, plan, amount: finalAmount, promoUsed,
@@ -447,6 +450,7 @@ router.post("/payment/subscription/verify", requireAuth, async (req: AuthRequest
     await db.transaction(async (tx) => {
       await tx.update(subscriptionsTable).set({ status: "active", expiresAt, nextRenewalAt: expiresAt }).where(eq(subscriptionsTable.id, subscriptionId));
       await tx.update(usersTable).set({ plan: plan as "free" | "pro" | "max" | "family" }).where(eq(usersTable.id, req.userId!));
+      notifyPlanActivated(req.userId!, plan as string, expiresAt).catch(() => {});
     });
 
     const tokens = await rotateUserTokensForPlan(req.userId!).catch(() => null);
@@ -694,6 +698,9 @@ router.post("/payment/rzp-callback", async (req, res) => {
             .set({ plan: payment.plan as "free" | "pro" | "max" | "family" })
             .where(eq(usersTable.id, payment.userId!));
         });
+        // This callback and the app's own /payment/verify can both complete
+        // for one purchase; notifyPlanActivated dedupes per user/plan/day.
+        notifyPlanActivated(payment.userId!, payment.plan as string, expiresAt).catch(() => {});
         if (payment.plan === "family") await autoCreateFamilyGroup(payment.userId!);
         pool.query(
           `SELECT u.email, up.full_name, up.aorane_id FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = $1 LIMIT 1`,
@@ -907,6 +914,9 @@ router.post("/payment/subscription-rzp-callback", async (req, res) => {
           await tx.update(usersTable).set({ plan: subBefore.plan as "free" | "max" | "pro" | "family" }).where(eq(usersTable.id, subBefore.userId));
         }
       });
+      if (subBefore?.userId && subBefore?.plan) {
+        notifyPlanActivated(subBefore.userId, subBefore.plan as string, null).catch(() => {});
+      }
     } catch (err) {
       // FIX CB-PAY-2: same reasoning as the one-time-payment case above —
       // this guards activating a subscription RENEWAL. A silent failure

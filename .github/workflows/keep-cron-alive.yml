@@ -1,0 +1,63 @@
+# Wakes the API shortly before each scheduled job runs.
+#
+# The API is hosted on Render's free tier, which spins the instance down after
+# ~15 minutes of inactivity. node-cron runs IN-PROCESS, so a spun-down instance
+# runs no jobs at all — a subscription that expired overnight stays "active"
+# until someone happens to open the app, and the 7/3/1-day renewal warnings are
+# missed outright for anyone whose day they fell on.
+#
+# Each job sets timezone: "Asia/Kolkata", so the pings below are the IST times
+# minus 5 minutes, expressed in UTC (IST = UTC+5:30).
+#
+#   IST     UTC     job
+#   23:55   18:25   subscription-expiry            (00:00 IST)
+#   01:55   20:25   payment-reconciliation         (02:00 IST)
+#   07:55   02:25   monthly-health-summary         (08:00 IST, 1st of month)
+#   08:55   03:25   expiry-reminders: auto-debit   (09:00 IST)
+#   09:55   04:25   expiry-reminders: expiry       (10:00 IST)
+#   10:55   05:25   win-back                       (11:00 IST)
+#
+# A ping only has to WAKE the instance; the cron then fires on its own. Waking
+# takes up to ~60s cold, hence the five-minute head start and the retry.
+name: Keep cron alive
+
+on:
+  schedule:
+    - cron: "25 18 * * *"   # 23:55 IST — before subscription-expiry
+    - cron: "25 20 * * *"   # 01:55 IST — before payment-reconciliation
+    - cron: "25 2 * * *"    # 07:55 IST — before monthly-health-summary
+    - cron: "25 3 * * *"    # 08:55 IST — before auto-debit reminders
+    - cron: "25 4 * * *"    # 09:55 IST — before expiry reminders
+    - cron: "25 5 * * *"    # 10:55 IST — before win-back
+  workflow_dispatch:        # so it can be run by hand to check it works
+
+concurrency:
+  group: keep-cron-alive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wake the API
+        env:
+          # Override in repo settings if the host ever changes. Not a secret —
+          # it is the public health endpoint.
+          API_HEALTH_URL: ${{ vars.API_HEALTH_URL || 'https://aorane.onrender.com/api/health' }}
+        run: |
+          set -u
+          # A cold Render instance can take ~60s to answer the first request,
+          # and may drop it entirely. Retry with a generous timeout, and treat
+          # any HTTP response as "awake" — a 4xx still means the process is up.
+          for attempt in 1 2 3 4; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 90 "$API_HEALTH_URL" || echo "000")
+            echo "attempt $attempt -> HTTP $code"
+            if [ "$code" != "000" ]; then
+              echo "API is awake (HTTP $code); the in-process cron will fire on schedule."
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::API did not respond after 4 attempts — scheduled jobs may not run."
+          exit 1

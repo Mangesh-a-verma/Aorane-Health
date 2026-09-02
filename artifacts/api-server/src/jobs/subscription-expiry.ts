@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { pool } from "@workspace/db";
 import { logger } from "../lib/logger"; 
 import { sendSubscriptionExpiredEmail } from "../lib/welcome-email";
+import { notifyPlansExpired, expiredRowsToNotifications } from "../lib/planNotify";
 
 export function startSubscriptionExpiryJob() {
   // Runs daily at 12:00 AM (Asia/Kolkata time)
@@ -45,6 +46,11 @@ export function startSubscriptionExpiryJob() {
         } catch (emailErr) {
           logger.warn({ err: emailErr }, "[Cron] Failed to send some subscription-expired emails");
         }
+
+        // 4. And tell them on the phone. Until now an expiry was announced by
+        //    email only — the user's first sign in the app was features
+        //    quietly missing, which reads as a bug rather than a lapsed plan.
+        notifyPlansExpired(expiredRowsToNotifications(result.rows)).catch(() => {});
 
         logger.info({ count: expiredUserIds.length }, "[Cron] Successfully downgraded expired users to free plan");
       } else {
