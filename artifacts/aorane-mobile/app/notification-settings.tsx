@@ -248,11 +248,23 @@ export default function NotificationSettingsScreen() {
   const save = async () => {
     setSaving(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // ORDER MATTERS. This used to `await api.updateNotificationSettings()`
+    // first, inside the same try that does the scheduling — so if that one
+    // call failed, every schedule call below it was skipped and the user got
+    // "Could not save settings" with nothing queued. The backend runs on
+    // Render's free tier, which sleeps and can take longer to wake than the
+    // 15s request timeout, so this failed for the most ordinary reason there
+    // is. Scheduling a local reminder needs no network at all; it must not
+    // sit behind one.
+    //
+    // Now: cache locally, schedule locally, and sync to the server last.
+    let serverSynced = true;
     try {
-      await api.updateNotificationSettings(settings as unknown as Record<string, unknown>);
-      // ✅ Update local cache so restoreAllNotifications uses fresh values
-      // even if backend is cold on next app launch
-      AsyncStorage.setItem(NOTIF_SETTINGS_CACHE_KEY, JSON.stringify(settings)).catch((e) => logSilentError('storage-write', e));
+      // 1. Local cache first — this is what restoreAllNotifications reads on
+      //    the next cold start, so the user's choice survives even if
+      //    everything else here fails.
+      await AsyncStorage.setItem(NOTIF_SETTINGS_CACHE_KEY, JSON.stringify(settings))
+        .catch((e) => logSilentError('storage-write', e));
       setIsDirty(false);
 
       const notifEnabled = settings.notificationsEnabled;
@@ -281,15 +293,20 @@ export default function NotificationSettingsScreen() {
         await scheduleWaterReminders(
           settings.wakeUpTime,
           settings.bedTime,
-          settings.waterGoalGlasses
+          settings.waterGoalGlasses,
+          settings.waterReminderTimes,
         );
       }
 
       // Food / Meal reminders
       if (notifEnabled && settings.foodReminders) {
+        // Without the third argument this schedules the DERIVED times and
+        // silently ignores the meal times the user set — the exact dead
+        // column Phase A existed to bring to life.
         await scheduleFoodReminders(
           settings.wakeUpTime,
-          settings.bedTime
+          settings.bedTime,
+          settings.foodReminderTime,
         );
       }
 
@@ -341,11 +358,29 @@ export default function NotificationSettingsScreen() {
         }
       }
 
-      Alert.alert("Saved! ✅",
-        "Notification settings saved. Reminders are now active."
+      // 3. Sync to the server LAST. A failure here means the settings did not
+      //    reach the account, not that the reminders failed — they are already
+      //    scheduled on this device and cached for the next launch.
+      try {
+        await api.updateNotificationSettings(settings as unknown as Record<string, unknown>);
+      } catch (e) {
+        serverSynced = false;
+        logSilentError("notif-settings-sync", e);
+      }
+
+      // Say what actually happened, and prove it with the count.
+      const { permissionGranted, entries } = await getNotificationDiagnostics();
+      setDiagPermission(permissionGranted);
+      setDiagEntries(entries);
+
+      Alert.alert(
+        serverSynced ? "Saved! ✅" : "Saved on this device ✅",
+        `${entries.length} reminder${entries.length === 1 ? "" : "s"} scheduled.` +
+          (serverSynced ? "" : "\n\nCouldn't reach the server, so this hasn't synced to your account yet — it will next time you open the app.")
       );
-    } catch {
-      Alert.alert("Error", "Could not save settings. Please try again.");
+    } catch (e) {
+      logSilentError("notif-settings-save", e);
+      Alert.alert("Error", "Could not schedule reminders on this device. Please try again.");
     }
     setSaving(false);
   };
