@@ -330,6 +330,12 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS food_reminders BOOLEAN NOT NULL DEFAULT TRUE`,
     `ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS water_goal_glasses INTEGER NOT NULL DEFAULT 8`,
 
+    // ── Phase B notification settings ──
+    `ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS sleep_reminders BOOLEAN NOT NULL DEFAULT TRUE`,
+    `ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS stress_reminders BOOLEAN NOT NULL DEFAULT TRUE`,
+    `ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS stress_reminder_times TEXT NOT NULL DEFAULT '12:00,20:00'`,
+    `ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS quiet_hours_enabled BOOLEAN NOT NULL DEFAULT TRUE`,
+
     // user_health_goals unique constraint
     `DO $$ BEGIN
       IF NOT EXISTS (

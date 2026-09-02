@@ -104,6 +104,20 @@ export async function setupNotificationChannels(): Promise<void> {
       enableVibrate: true,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
     }),
+    Notifications.setNotificationChannelAsync("sleep", {
+      name: "Sleep Reminders",
+      description: "A nudge to start winding down before bedtime",
+      importance: Notifications.AndroidImportance.DEFAULT,
+      sound: "default",
+      enableVibrate: true,
+    }),
+    Notifications.setNotificationChannelAsync("stress", {
+      name: "Stress Check-ins",
+      description: "Reminders to log how you're feeling",
+      importance: Notifications.AndroidImportance.DEFAULT,
+      sound: "default",
+      enableVibrate: true,
+    }),
     Notifications.setNotificationChannelAsync("general", {
       name: "General",
       description: "Health tips and general app notifications",
@@ -166,6 +180,8 @@ export const cancelWaterReminders    = () => cancelByType("water_reminder");
 export const cancelFoodReminders     = () => cancelByType("food_reminder");
 export const cancelPeriodReminders   = () => cancelByType("period_reminder");
 export const cancelMedicineReminders = () => cancelByType("medicine_reminder");
+export const cancelSleepReminders     = () => cancelByType("sleep_reminder");
+export const cancelStressReminders    = () => cancelByType("stress_reminder");
 export { cancelMedicineById };
 export async function cancelAllNotifications(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
@@ -356,6 +372,136 @@ function parseTimeList(list?: string | null): { hour: number; minute: number }[]
     .sort((a, b) => (a.hour * 60 + a.minute) - (b.hour * 60 + b.minute));
 }
 
+// ─── QUIET HOURS & DAILY CAP ─────────────────────────────────────────────────
+//
+// Add up everything this app wants to send and it reaches roughly 15 a day:
+// 4 water, 3 meals, medicine, 2 stress check-ins, a bedtime nudge, plus period
+// alerts. That is the number at which people stop reading them and mute the
+// app — and muting is done per CHANNEL, so a user annoyed by water reminders
+// silences their medicine reminders along with them. Volume control is not a
+// nicety here; it protects the one reminder that actually matters.
+
+/** Priority order for the daily cap: what survives when there is too much.
+ *  Medicine is health-critical and never dropped; water is the most numerous
+ *  and the least individually important, so it gives way first. */
+const REMINDER_PRIORITY = ["medicine", "period", "food", "sleep", "stress", "water"] as const;
+export type ReminderKind = typeof REMINDER_PRIORITY[number];
+
+/** Ceiling on the app's OWN recurring reminders per day — water, meals and
+ *  stress check-ins. Ten is roughly one every ninety waking minutes:
+ *  noticeable without becoming wallpaper.
+ *
+ *  Deliberately NOT counted: medicines, which the user added one at a time and
+ *  explicitly asked for, and period alerts, which are a few days a month. It
+ *  would be perverse to silence a dose because the app also wanted to mention
+ *  water. */
+export const DAILY_NOTIFICATION_CAP = 10;
+
+const toMinutes = (t: { hour: number; minute: number }) => t.hour * 60 + t.minute;
+
+/** True when `slot` falls inside the sleep window, which may wrap midnight. */
+export function isQuietHour(
+  slot: { hour: number; minute: number },
+  bedTime: string,
+  wakeUp: string,
+): boolean {
+  const bed = parseTime(bedTime), wake = parseTime(wakeUp);
+  if (!bed || !wake) return false;
+  const m = toMinutes(slot), b = toMinutes(bed), w = toMinutes(wake);
+  // A normal night wraps past midnight (22:30 → 07:00): quiet is m >= b OR m < w.
+  // A night shift does not (07:00 → 22:30): quiet is the plain span between.
+  return b > w ? (m >= b || m < w) : (m >= b && m < w);
+}
+
+export type PlannedReminder = {
+  kind: ReminderKind;
+  hour: number;
+  minute: number;
+  /** Set when the cap or quiet hours removed it — carried so the UI can say why. */
+  droppedReason?: "quiet-hours" | "daily-cap";
+};
+
+/**
+ * Applies quiet hours and the daily cap to a day's planned reminders.
+ *
+ * Returns every reminder, in time order, with the ones that will not be
+ * scheduled marked and explained — the caller filters, and the settings screen
+ * can show the user exactly what was cut and why instead of silently dropping
+ * reminders they asked for.
+ */
+export function applyVolumeRules(
+  planned: PlannedReminder[],
+  opts: { bedTime: string; wakeUp: string; quietHours: boolean; cap?: number },
+): PlannedReminder[] {
+  const cap = opts.cap ?? DAILY_NOTIFICATION_CAP;
+
+  const afterQuiet: PlannedReminder[] = planned.map((p) => ({
+    ...p,
+    droppedReason: opts.quietHours && isQuietHour(p, opts.bedTime, opts.wakeUp)
+      ? "quiet-hours"
+      : undefined,
+  }));
+
+  // Cap the survivors, dropping lowest priority first and, within a kind, the
+  // latest in the day — an early reminder has the whole day left to act on.
+  const kept = afterQuiet.filter((p) => !p.droppedReason);
+  if (kept.length > cap) {
+    const order = [...kept].sort((a, b) => {
+      const pa = REMINDER_PRIORITY.indexOf(a.kind), pb = REMINDER_PRIORITY.indexOf(b.kind);
+      return pa !== pb ? pa - pb : toMinutes(a) - toMinutes(b);
+    });
+    const survivors = new Set(order.slice(0, cap));
+    for (const p of afterQuiet) {
+      if (!p.droppedReason && !survivors.has(p)) p.droppedReason = "daily-cap";
+    }
+  }
+
+  return afterQuiet.sort((a, b) => toMinutes(a) - toMinutes(b));
+}
+
+/** The times water reminders land on: the user's own if set, otherwise spread
+ *  evenly across their waking hours. Exported so a day can be PLANNED — and
+ *  run through the volume rules — before anything is handed to the OS. */
+export function waterSlots(
+  wakeUp = "07:00", bedTime = "22:30", glasses = 8, explicitTimes?: string | null,
+): { hour: number; minute: number }[] {
+  const chosen = parseTimeList(explicitTimes);
+  if (chosen.length > 0) return chosen;
+
+  const wake = parseTime(wakeUp) ?? { hour: 7, minute: 0 };
+  const bed  = parseTime(bedTime) ?? { hour: 22, minute: 30 };
+  const wakeMinutes = wake.hour * 60 + wake.minute;
+  const totalWindow = (bed.hour * 60 + bed.minute) - wakeMinutes;
+  if (totalWindow <= 0 || glasses <= 0) return [];
+
+  const intervalMin = Math.floor(totalWindow / glasses);
+  return Array.from({ length: glasses }, (_, i) => {
+    const totalMin = wakeMinutes + intervalMin * i + Math.floor(intervalMin / 2);
+    return { hour: Math.floor(totalMin / 60) % 24, minute: totalMin % 60 };
+  });
+}
+
+/** Breakfast/lunch/dinner times: the user's own if set, otherwise breakfast an
+ *  hour after waking (never past 10:00) and the historical fixed lunch/dinner. */
+export function mealSlots(
+  wakeUp = "07:00", mealTimes?: string | null,
+): { hour: number; minute: number }[] {
+  const chosen = parseTimeList(mealTimes);
+  if (chosen.length > 0) return chosen;
+
+  const wake      = parseTime(wakeUp) ?? { hour: 7, minute: 0 };
+  const bfMinutes = Math.min(wake.hour * 60 + wake.minute + 60, 10 * 60);
+  return [
+    { hour: Math.floor(bfMinutes / 60), minute: bfMinutes % 60 },
+    { hour: 13, minute: 0 },
+    { hour: 19, minute: 30 },
+  ];
+}
+
+/** "HH:MM" for a slot — the format every schedule function accepts back. */
+export const slotToHHMM = (t: { hour: number; minute: number }) =>
+  `${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}`;
+
 // ─── MEDICINE REMINDERS ───────────────────────────────────────────────────────
 export async function scheduleMedicineReminders(medicine: {
   medicineId: string;
@@ -387,7 +533,7 @@ export async function scheduleMedicineReminders(medicine: {
         title: "💊 Medicine Reminder",
         body:  `Time to take ${medicine.medicineName}${medicine.dosage ? " " + medicine.dosage : ""}!${mealHint}`,
         sound: true,
-        ...(Platform.OS === "ios" ? { categoryIdentifier: "MEDICINE_REMINDER" } : {}),
+        categoryIdentifier: "MEDICINE_REMINDER",
         data: {
           type:       "medicine_reminder",
           medicineId: medicine.medicineId,
@@ -424,26 +570,8 @@ export async function scheduleWaterReminders(
   await cancelWaterReminders();
 
   const chosen = parseTimeList(explicitTimes);
-
-  let slots: { hour: number; minute: number }[];
-  if (chosen.length > 0) {
-    slots = chosen;
-  } else {
-    // No stored times — keep the original evenly-spread behaviour.
-    const wake = parseTime(wakeUp) ?? { hour: 7, minute: 0 };
-    const bed  = parseTime(bedTime) ?? { hour: 22, minute: 30 };
-    const wakeMinutes = wake.hour * 60 + wake.minute;
-    const bedMinutes  = bed.hour  * 60 + bed.minute;
-    const totalWindow = bedMinutes - wakeMinutes;
-    if (totalWindow <= 0 || glasses <= 0) return [];
-
-    const intervalMin = Math.floor(totalWindow / glasses);
-    slots = [];
-    for (let i = 0; i < glasses; i++) {
-      const totalMin = wakeMinutes + intervalMin * i + Math.floor(intervalMin / 2);
-      slots.push({ hour: Math.floor(totalMin / 60) % 24, minute: totalMin % 60 });
-    }
-  }
+  const slots = waterSlots(wakeUp, bedTime, glasses, explicitTimes);
+  if (slots.length === 0) return [];
 
   // Only the evenly-spread path has one reminder per glass, so only there can
   // the body honestly count "3/8". With the user's own times the two numbers
@@ -462,6 +590,7 @@ export async function scheduleWaterReminders(
           ? `Drink a glass of water! (${i + 1}/${glasses} today)`
           : `Time for a glass of water — today's goal is ${glasses} glasses.`,
         sound: true,
+        categoryIdentifier: "WATER_REMINDER",
         data:  { type: "water_reminder", glass: i + 1, screen: "/(tabs)/dashboard" },
       },
       trigger: {
@@ -498,22 +627,7 @@ export async function scheduleFoodReminders(
 
   await cancelFoodReminders();
 
-  const chosen = parseTimeList(mealTimes);
-
-  let slots: { hour: number; minute: number }[];
-  if (chosen.length > 0) {
-    slots = chosen;
-  } else {
-    // No stored times — keep the original behaviour: breakfast an hour after
-    // waking (never later than 10:00), then the old fixed lunch and dinner.
-    const wake      = parseTime(wakeUp) ?? { hour: 7, minute: 0 };
-    const bfMinutes = Math.min(wake.hour * 60 + wake.minute + 60, 10 * 60);
-    slots = [
-      { hour: Math.floor(bfMinutes / 60), minute: bfMinutes % 60 },
-      { hour: 13, minute: 0 },
-      { hour: 19, minute: 30 },
-    ];
-  }
+  const slots = mealSlots(wakeUp, mealTimes);
 
   // Slots are sorted by time, so the first three are breakfast/lunch/dinner.
   // A user who wants a fourth (a night shift, a late supper) gets a neutral
@@ -545,6 +659,77 @@ export async function scheduleFoodReminders(
   return scheduledIds;
 }
 
+// ─── SLEEP REMINDER ──────────────────────────────────────────────────────────
+/**
+ * A single nudge shortly BEFORE bedTime.
+ *
+ * Firing at bedTime itself is useless — by then you are either asleep or you
+ * are not, and no notification changes that. Winding down is what needs the
+ * prompt, so it lands 30 minutes early.
+ */
+export async function scheduleSleepReminder(bedTime = "22:30"): Promise<string[]> {
+  if (!(await ensurePermission())) return [];
+  await cancelSleepReminders();
+
+  const bed = parseTime(bedTime);
+  if (!bed) return [];
+
+  // 30 min earlier, wrapping correctly when bedtime is just after midnight.
+  const total = (bed.hour * 60 + bed.minute - 30 + 24 * 60) % (24 * 60);
+  const hour = Math.floor(total / 60), minute = total % 60;
+
+  const id = await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "😴 Time to wind down",
+      body:  `Bedtime is at ${bedTime}. Start winding down for a good night's sleep.`,
+      sound: true,
+      data:  { type: "sleep_reminder", screen: "/sleep" },
+    },
+    trigger: {
+      type:   SchedulableTriggerInputTypes.DAILY,
+      hour,
+      minute,
+      ...(Platform.OS === "android" ? { channelId: "sleep" } : {}),
+    },
+  });
+  return [id];
+}
+
+// ─── STRESS CHECK-IN REMINDERS ───────────────────────────────────────────────
+/**
+ * Prompts to log a stress check-in. Two a day by default — the Stress Tracker
+ * needs more than one point to show a trend, and midday and evening are when
+ * people can actually stop and answer.
+ */
+export async function scheduleStressReminders(times = "12:00,20:00"): Promise<string[]> {
+  if (!(await ensurePermission())) return [];
+  await cancelStressReminders();
+
+  const slots = parseTimeList(times);
+  if (slots.length === 0) return [];
+
+  const ids: string[] = [];
+  for (const { hour, minute } of slots) {
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "🧘 Stress check-in",
+        body:  "How are you feeling right now? A quick check-in keeps your stress trend accurate.",
+        sound: true,
+        categoryIdentifier: "STRESS_REMINDER",
+        data:  { type: "stress_reminder", screen: "/stress" },
+      },
+      trigger: {
+        type:   SchedulableTriggerInputTypes.DAILY,
+        hour,
+        minute,
+        ...(Platform.OS === "android" ? { channelId: "stress" } : {}),
+      },
+    });
+    ids.push(id);
+  }
+  return ids;
+}
+
 // ─── PERIOD REMINDERS ────────────────────────────────────────────────────────
 export async function schedulePeriodReminders(dateStr: string): Promise<void> {
   if (!(await ensurePermission())) return;
@@ -573,7 +758,8 @@ export async function schedulePeriodReminders(dateStr: string): Promise<void> {
           title: "🌸 Period Reminder",
           body,
           sound: true,
-          data:  { type: "period_reminder", screen: "/sleep" },
+          // app/period.tsx is the cycle screen; this used to open /sleep.
+          data:  { type: "period_reminder", screen: "/period" },
         },
         trigger: {
           type: SchedulableTriggerInputTypes.DATE,
@@ -587,7 +773,11 @@ export async function schedulePeriodReminders(dateStr: string): Promise<void> {
 
 // ─── iOS ACTION CATEGORIES ───────────────────────────────────────────────────
 export async function registerNotificationCategories(): Promise<void> {
-  if (Platform.OS !== "ios") return;
+  // This was iOS-only, so Android users — the overwhelming majority here — got
+  // a reminder with no way to act on it. setNotificationCategoryAsync works on
+  // both platforms; Android just needs the category attached to the content
+  // rather than passed as `categoryIdentifier` only on iOS.
+  if (Platform.OS === "web") return;
   await Notifications.setNotificationCategoryAsync("MEDICINE_REMINDER", [
     {
       identifier: "MARK_TAKEN",
@@ -599,6 +789,13 @@ export async function registerNotificationCategories(): Promise<void> {
       buttonTitle: "⏰ Snooze 15 min",
       options: { opensAppToForeground: false },
     },
+  ]);
+
+  await Notifications.setNotificationCategoryAsync("WATER_REMINDER", [
+    { identifier: "WATER_DONE", buttonTitle: "✅ Logged it", options: { opensAppToForeground: false } },
+  ]);
+  await Notifications.setNotificationCategoryAsync("STRESS_REMINDER", [
+    { identifier: "STRESS_CHECKIN", buttonTitle: "🧘 Check in", options: { opensAppToForeground: true } },
   ]);
 }
 
