@@ -9,7 +9,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
-import { View, StatusBar, Platform } from "react-native";
+import {
+  AppState, Platform, StatusBar, View,
+} from "react-native";
 import * as Notifications from "expo-notifications";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -213,6 +215,14 @@ async function readCachedNotifSettings(): Promise<NotifSettings> {
 // ── In-session guard — prevents overlapping restore calls ────────────────────
 let isRestoring = false;
 
+// Set when a restore bailed out because permission was off. Android stops
+// showing the permission dialog after it has been declined, so the only way
+// back is the system Settings screen — which means the app returns to the
+// foreground with permission newly granted and nothing scheduled. Without
+// this, the user turns notifications on and still gets nothing until the next
+// cold start.
+let permissionWasDenied = false;
+
 /** Surface the rejections Promise.allSettled would otherwise discard. */
 function reportSettled(results: PromiseSettledResult<unknown>[], labels: string[]): void {
   results.forEach((r, i) => {
@@ -246,9 +256,15 @@ async function restoreAllNotifications() {
   try {
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== "granted") {
-      console.debug("[Notifications] Permission not granted — skipping restore");
+      // The quietest failure in the app: nothing is scheduled, nothing is
+      // logged, and the user is never told. Report it, and remember it so the
+      // next foreground can pick up where this left off (see the AppState
+      // listener below) once they enable it in Settings.
+      permissionWasDenied = true;
+      logSilentError("notif-permission-denied", new Error(`Notification permission is "${status}" — nothing will be scheduled`));
       return;
     }
+    permissionWasDenied = false;
 
     // iOS: register action button categories (no-op on Android)
     registerNotificationCategories().catch((e) => logSilentError('notif-categories', e));
@@ -448,6 +464,21 @@ function PushNotificationRegistrar() {
     };
 
     initializeAppServices();
+  }, [isAuthenticated]);
+
+  // Recover from a permission that was granted OUTSIDE the app. Android hides
+  // the in-app prompt once it has been declined, so the user has to enable
+  // notifications in system Settings — and comes back to an app that already
+  // gave up. Re-running restore on foreground costs one permission read and
+  // is a no-op unless something actually changed.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next !== "active" || !isAuthenticated || !permissionWasDenied) return;
+      Notifications.getPermissionsAsync()
+        .then(({ status }) => { if (status === "granted") return restoreAllNotifications(); })
+        .catch((e) => logSilentError("notif-permission-recheck", e));
+    });
+    return () => sub.remove();
   }, [isAuthenticated]);
 
   // Handle tap on notification (works in foreground, background, and killed state)
