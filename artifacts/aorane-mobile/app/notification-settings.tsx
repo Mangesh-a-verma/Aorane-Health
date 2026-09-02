@@ -25,6 +25,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { api } from "@/lib/api";
 import { logSilentError } from "@/lib/silentCatch";
+import TimePickerField from "@/components/TimePickerField";
 
 // Keep in sync with _layout.tsx NOTIF_SETTINGS_KEY
 const NOTIF_SETTINGS_CACHE_KEY = "aorane_notif_settings_v1";
@@ -55,10 +56,17 @@ type Settings = {
   // show a hardcoded 13:00 / 19:30 regardless of what was actually scheduled.
   foodReminderTime: string;
   waterReminderTimes: string;
+  sleepReminders: boolean;
+  stressReminders: boolean;
+  stressReminderTimes: string;
+  quietHoursEnabled: boolean;
   weeklyReportEmail: boolean;
   calorieGoal: number;
   waterGoalGlasses: number;
 };
+
+const MEAL_FALLBACK   = ["07:30", "12:30", "19:30"];
+const STRESS_FALLBACK = ["12:00", "20:00"];
 
 const DEFAULT_SETTINGS: Settings = {
   notificationsEnabled: true,
@@ -74,6 +82,10 @@ const DEFAULT_SETTINGS: Settings = {
   // 400 that would fail the entire save.
   foodReminderTime: "07:30,12:30,19:30",
   waterReminderTimes: "09:00,13:00,18:00,21:00",
+  sleepReminders: true,
+  stressReminders: true,
+  stressReminderTimes: "12:00,20:00",
+  quietHoursEnabled: true,
   weeklyReportEmail: false,
   calorieGoal: 2000,
   waterGoalGlasses: 8,
@@ -83,6 +95,19 @@ const DEFAULT_SETTINGS: Settings = {
 function mealTimeAt(list: string, i: number): string | null {
   const parts = (list || "").split(",").map((p) => p.trim()).filter((p) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(p));
   return parts[i] ?? null;
+}
+
+/** Replace the Nth time in a "HH:MM,HH:MM" list, padding the list if needed so
+ *  a picker can always write to its own slot. Keeps the list sorted, which is
+ *  what the scheduler expects and what the preview reads back. */
+function setTimeAt(list: string, i: number, value: string, fallback: string[]): string {
+  const parts = (list || "").split(",").map((p) => p.trim()).filter(Boolean);
+  while (parts.length <= i) parts.push(fallback[parts.length] ?? "12:00");
+  parts[i] = value;
+  return parts
+    .filter((p) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(p))
+    .sort((a, b) => a.localeCompare(b))
+    .join(",");
 }
 
 /** The scheduler's fallback breakfast: an hour after waking, never past 10:00. */
@@ -548,12 +573,70 @@ export default function NotificationSettingsScreen() {
           <SettingRow
             icon="🌸" iconBg="#FDF2F8"
             title="Period Reminders"
-            subtitle="Monthly cycle alerts (for women)"
+            subtitle="Monthly cycle alerts — only sent if your profile says female"
             value={settings.periodReminders}
             onToggle={(v) => update("periodReminders", v)}
             disabled={!settings.notificationsEnabled}
           />
+          <View style={styles.divider} />
+          <SettingRow
+            icon="😴" iconBg="#EEF2FF"
+            title="Sleep Reminder"
+            subtitle="A nudge 30 minutes before your bedtime"
+            value={settings.sleepReminders}
+            onToggle={(v) => update("sleepReminders", v)}
+            disabled={!settings.notificationsEnabled}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            icon="🧘" iconBg="#F0FDF4"
+            title="Stress Check-ins"
+            subtitle="Twice a day, so your stress trend stays accurate"
+            value={settings.stressReminders}
+            onToggle={(v) => update("stressReminders", v)}
+            disabled={!settings.notificationsEnabled}
+          />
         </View>
+
+        {/* ── Meal times — the whole point of Phase A's dead columns ────────
+             Everyone eats at a different hour; these were seeded from the
+             user's country at signup and until now could not be changed. */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>🍽️ Meal Times</Text>
+          <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, marginBottom: 14, lineHeight: 17 }}>
+            When do you usually eat? Your breakfast, lunch and dinner reminders fire at these times.
+          </Text>
+          {(["Breakfast", "Lunch", "Dinner"] as const).map((label, i) => (
+            <View key={label} style={{ marginBottom: i === 2 ? 0 : 12 }}>
+              <TimePickerField
+                label={label}
+                value={mealAt(i) ?? MEAL_FALLBACK[i]}
+                onChange={(next) => update("foodReminderTime", setTimeAt(settings.foodReminderTime, i, next, MEAL_FALLBACK))}
+                accentColor={C.primary}
+              />
+            </View>
+          ))}
+        </View>
+
+        {/* ── Stress check-in times ── */}
+        {settings.stressReminders && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>🧘 Check-in Times</Text>
+            <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, marginBottom: 14, lineHeight: 17 }}>
+              Two moments when you can actually stop and answer honestly.
+            </Text>
+            {(["Midday", "Evening"] as const).map((label, i) => (
+              <View key={label} style={{ marginBottom: i === 1 ? 0 : 12 }}>
+                <TimePickerField
+                  label={label}
+                  value={mealTimeAt(settings.stressReminderTimes, i) ?? STRESS_FALLBACK[i]}
+                  onChange={(next) => update("stressReminderTimes", setTimeAt(settings.stressReminderTimes, i, next, STRESS_FALLBACK))}
+                  accentColor={C.green}
+                />
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Daily Schedule — drives water reminder spacing */}
         <View style={styles.card}>
@@ -561,6 +644,16 @@ export default function NotificationSettingsScreen() {
           <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, marginBottom: 14, lineHeight: 17 }}>
             Set your daily routine so we can space your water & meal reminders perfectly.
           </Text>
+
+          <SettingRow
+            icon="🌙" iconBg="#EEF2FF"
+            title="Quiet Hours"
+            subtitle="Nothing fires between your bedtime and wake-up time"
+            value={settings.quietHoursEnabled}
+            onToggle={(v) => update("quietHoursEnabled", v)}
+            disabled={!settings.notificationsEnabled}
+          />
+          <View style={styles.divider} />
 
           {/* Wake-Up Time */}
           <View style={{ gap: 8 }}>

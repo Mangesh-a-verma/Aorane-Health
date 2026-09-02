@@ -37,6 +37,15 @@ import {
   cleanupOrphanMedicineNotifications,
   registerNotificationCategories,
   getScheduledNotificationSummary,
+  scheduleSleepReminder,
+  cancelSleepReminders,
+  scheduleStressReminders,
+  cancelStressReminders,
+  applyVolumeRules,
+  waterSlots,
+  mealSlots,
+  slotToHHMM,
+  type PlannedReminder,
 } from "@/lib/notifications";
 
 import { useHealthSync } from "@/hooks/useHealthSync";
@@ -210,6 +219,10 @@ const DEFAULT_NOTIF_SETTINGS = {
   // 13:00 and dinner at 19:30 for every user on earth.
   foodReminderTime:     "07:30,12:30,19:30",
   waterReminderTimes:   "",
+  sleepReminders:       true,
+  stressReminders:      true,
+  stressReminderTimes:  "12:00,20:00",
+  quietHoursEnabled:    true,
 };
 
 type NotifSettings = typeof DEFAULT_NOTIF_SETTINGS;
@@ -246,6 +259,35 @@ let isRestoring = false;
 // this, the user turns notifications on and still gets nothing until the next
 // cold start.
 let permissionWasDenied = false;
+
+// Gender is asked for at onboarding and stored on the profile. Cached here so
+// a cold backend cannot silently turn period reminders off for the women who
+// want them, nor on for everyone else.
+const GENDER_CACHE_KEY = "aorane_gender_v1";
+
+/** True only for users whose profile says female. Unknown gender = no. */
+async function isPeriodRelevant(): Promise<boolean> {
+  try {
+    const res = await rawRequest("GET", "/users/profile") as { profile?: { gender?: string } };
+    const gender = res?.profile?.gender;
+    if (typeof gender === "string" && gender) {
+      await AsyncStorage.setItem(GENDER_CACHE_KEY, gender).catch(() => {});
+      return gender.toLowerCase() === "female";
+    }
+  } catch { /* fall through to the cached value */ }
+  try {
+    return (await AsyncStorage.getItem(GENDER_CACHE_KEY))?.toLowerCase() === "female";
+  } catch {
+    return false;
+  }
+}
+
+/** "12:00,20:00" → slots, dropping anything unparseable. */
+function parseStressSlots(list?: string | null): { hour: number; minute: number }[] {
+  return (list || "").split(",").map((p) => p.trim())
+    .filter((p) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(p))
+    .map((p) => { const [h, m] = p.split(":").map(Number); return { hour: h, minute: m }; });
+}
 
 /** Surface the rejections Promise.allSettled would otherwise discard. */
 function reportSettled(results: PromiseSettledResult<unknown>[], labels: string[]): void {
@@ -317,6 +359,10 @@ async function restoreAllNotifications() {
           waterGoalGlasses:     (s.waterGoalGlasses as number)      || 8,
           foodReminderTime:     (s.foodReminderTime as string)      || "",
           waterReminderTimes:   (s.waterReminderTimes as string)    || "",
+          sleepReminders:       (s.sleepReminders as boolean)       ?? true,
+          stressReminders:      (s.stressReminders as boolean)      ?? true,
+          stressReminderTimes:  (s.stressReminderTimes as string)   || "12:00,20:00",
+          quietHoursEnabled:    (s.quietHoursEnabled as boolean)    ?? true,
         };
 
         // Save for next cold start
@@ -331,7 +377,11 @@ async function restoreAllNotifications() {
           fresh.foodReminders     !== cachedSettings.foodReminders     ||
           fresh.medicineReminders !== cachedSettings.medicineReminders ||
           fresh.foodReminderTime  !== cachedSettings.foodReminderTime  ||
-          fresh.waterReminderTimes !== cachedSettings.waterReminderTimes;
+          fresh.waterReminderTimes !== cachedSettings.waterReminderTimes ||
+          fresh.sleepReminders    !== cachedSettings.sleepReminders    ||
+          fresh.stressReminders   !== cachedSettings.stressReminders   ||
+          fresh.stressReminderTimes !== cachedSettings.stressReminderTimes ||
+          fresh.quietHoursEnabled !== cachedSettings.quietHoursEnabled;
 
         if (changed) {
           console.debug("[Notifications] Fresh settings differ — rescheduling");
@@ -372,19 +422,54 @@ async function _scheduleFromSettings(s: NotifSettings): Promise<void> {
   // setNotificationChannelAsync is idempotent, so awaiting it here is free.
   await setupNotificationChannels();
 
-  // Water + Food in parallel (independent of each other)
+  // ── Plan the whole day BEFORE scheduling any of it ──────────────────────
+  // Quiet hours and the daily cap are decisions about the day as a whole: you
+  // cannot tell whether the 21:00 water reminder is one too many by looking at
+  // water alone. So every slot is derived first, run through the rules
+  // together, and only the survivors are handed to the schedulers — each of
+  // which already accepts an explicit list of times, so nothing else changes.
+  const planned: PlannedReminder[] = [
+    ...(s.waterReminders !== false
+      ? waterSlots(wakeUp, bedTime, waterGoal, s.waterReminderTimes).map((t) => ({ kind: "water" as const, ...t }))
+      : []),
+    ...(s.foodReminders !== false
+      ? mealSlots(wakeUp, s.foodReminderTime).map((t) => ({ kind: "food" as const, ...t }))
+      : []),
+    ...(s.stressReminders !== false
+      ? parseStressSlots(s.stressReminderTimes).map((t) => ({ kind: "stress" as const, ...t }))
+      : []),
+  ];
+  const ruled = applyVolumeRules(planned, {
+    bedTime, wakeUp, quietHours: s.quietHoursEnabled !== false,
+  });
+  const survivorsOf = (kind: PlannedReminder["kind"]) =>
+    ruled.filter((r) => r.kind === kind && !r.droppedReason).map(slotToHHMM).join(",");
+
+  const waterTimes  = survivorsOf("water");
+  const foodTimes   = survivorsOf("food");
+  const stressTimes = survivorsOf("stress");
+
+  // Water + Food + Sleep + Stress in parallel (independent of each other)
   const results = await Promise.allSettled([
-    s.waterReminders !== false
-      ? scheduleWaterReminders(wakeUp, bedTime, waterGoal, s.waterReminderTimes)
+    waterTimes
+      ? scheduleWaterReminders(wakeUp, bedTime, waterGoal, waterTimes)
       : cancelWaterReminders(),
-    s.foodReminders !== false
-      ? scheduleFoodReminders(wakeUp, bedTime, s.foodReminderTime)
+    foodTimes
+      ? scheduleFoodReminders(wakeUp, bedTime, foodTimes)
       : cancelFoodReminders(),
+    // The sleep nudge fires 30 min before bedTime, i.e. never inside quiet
+    // hours, and one a day cannot breach the cap — so it needs no filtering.
+    s.sleepReminders !== false
+      ? scheduleSleepReminder(bedTime)
+      : cancelSleepReminders(),
+    stressTimes
+      ? scheduleStressReminders(stressTimes)
+      : cancelStressReminders(),
   ]);
   // allSettled swallows rejections by design. That is exactly how every
   // scheduled notification on Android could fail for months without one line
   // in the logs — report them instead of discarding them.
-  reportSettled(results, ["water-reminders", "food-reminders"]);
+  reportSettled(results, ["water-reminders", "food-reminders", "sleep-reminder", "stress-reminders"]);
 
   // ── Medicine reminders ──────────────────────────────────────────────────
   // BUG FIX: this used to always (re)schedule medicine reminders regardless
@@ -438,8 +523,13 @@ async function _scheduleFromSettings(s: NotifSettings): Promise<void> {
     }
   }
 
-  // Period reminders — also non-blocking
-  if (s.periodReminders !== false) {
+  // Period reminders — also non-blocking.
+  //
+  // Gated on gender. A male user with the toggle left on (it defaults on) was
+  // being told his period was expected in two days. The profile read is
+  // cached-tolerant: if it fails we skip rather than guess, because guessing
+  // wrong here is the embarrassing direction.
+  if (s.periodReminders !== false && (await isPeriodRelevant())) {
     rawRequest("GET", "/period/logs")
       .then(async (periodData) => {
         const nextDate = ((periodData as Record<string, unknown>)
@@ -532,6 +622,19 @@ function PushNotificationRegistrar() {
       // iOS action buttons (MEDICINE_REMINDER category)
       if (response.actionIdentifier === "MARK_TAKEN") {
         router.push("/(tabs)/medicine" as never);
+        return;
+      }
+      // "Logged it" on a water reminder — record the glass without opening the
+      // app. The whole point of the button is not having to.
+      if (response.actionIdentifier === "WATER_DONE") {
+        // Same route and body the water screen uses (api.logWater) — the
+        // server also refreshes the daily activity and health scores from it.
+        rawRequest("POST", "/health/water", { glassesCount: 1, mlAmount: 250, drinkType: "water" })
+          .catch((e) => logSilentError("water-quick-log", e));
+        return;
+      }
+      if (response.actionIdentifier === "STRESS_CHECKIN") {
+        router.push("/stress" as never);
         return;
       }
       if (response.actionIdentifier === "SNOOZE_15") {

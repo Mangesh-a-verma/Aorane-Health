@@ -748,6 +748,10 @@ router.get("/notifications/settings", requireAuth, async (req: AuthRequest, res)
       medicineReminderTime: "08:00,14:00,21:00",
       wakeUpTime: "07:00",
       bedTime: "22:30",
+      sleepReminders: true,
+      stressReminders: true,
+      stressReminderTimes: "12:00,20:00",
+      quietHoursEnabled: true,
       weeklyReportEmail: false,
       calorieGoal: 2000,
       waterGoalGlasses: 8,
@@ -769,6 +773,10 @@ router.get("/notifications/settings", requireAuth, async (req: AuthRequest, res)
         medicineReminderTime: (prefs as Record<string, unknown>).medicineReminderTime ?? DEFAULT_SETTINGS.medicineReminderTime,
         wakeUpTime: (prefs as Record<string, unknown>).wakeUpTime ?? DEFAULT_SETTINGS.wakeUpTime,
         bedTime: (prefs as Record<string, unknown>).bedTime ?? DEFAULT_SETTINGS.bedTime,
+        sleepReminders: (prefs as Record<string, unknown>).sleepReminders ?? DEFAULT_SETTINGS.sleepReminders,
+        stressReminders: (prefs as Record<string, unknown>).stressReminders ?? DEFAULT_SETTINGS.stressReminders,
+        stressReminderTimes: (prefs as Record<string, unknown>).stressReminderTimes ?? DEFAULT_SETTINGS.stressReminderTimes,
+        quietHoursEnabled: (prefs as Record<string, unknown>).quietHoursEnabled ?? DEFAULT_SETTINGS.quietHoursEnabled,
         weeklyReportEmail: prefs.weeklyReportEmail ?? DEFAULT_SETTINGS.weeklyReportEmail,
         calorieGoal: prefs.calorieGoal ?? DEFAULT_SETTINGS.calorieGoal,
         waterGoalGlasses: prefs.waterGoalGlasses ?? DEFAULT_SETTINGS.waterGoalGlasses,
@@ -806,9 +814,10 @@ router.put("/notifications/settings", requireAuth, async (req: AuthRequest, res)
       "notificationsEnabled", "medicineReminders", "waterReminders",
       "foodReminders", "periodReminders", "suggestionNotifications",
       "weeklyReportEmail",
+      "sleepReminders", "stressReminders", "quietHoursEnabled",
     ];
     const singleTimeFields = ["wakeUpTime", "bedTime"];
-    const timeListFields = ["waterReminderTimes", "foodReminderTime", "medicineReminderTime"];
+    const timeListFields = ["waterReminderTimes", "foodReminderTime", "medicineReminderTime", "stressReminderTimes"];
 
     const updates: Record<string, unknown> = {};
     const invalidFields: string[] = [];

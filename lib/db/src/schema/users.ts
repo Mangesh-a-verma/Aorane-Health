@@ -132,6 +132,18 @@ export const userPreferencesTable = pgTable("user_preferences", {
   medicineReminderTime: text("medicine_reminder_time").notNull().default("08:00,14:00,21:00"),
   wakeUpTime: text("wake_up_time").notNull().default("07:00"),
   bedTime: text("bed_time").notNull().default("22:30"),
+  // ── Phase B ───────────────────────────────────────────────────────────────
+  // A bedtime nudge, fired shortly BEFORE bedTime (going to bed on time is the
+  // point; a reminder at the moment you should already be asleep is useless).
+  sleepReminders: boolean("sleep_reminders").notNull().default(true),
+  // Stress check-ins. Two a day is what the Stress Tracker needs to plot a
+  // trend, and midday/evening are when people can actually stop and answer.
+  stressReminders: boolean("stress_reminders").notNull().default(true),
+  stressReminderTimes: text("stress_reminder_times").notNull().default("12:00,20:00"),
+  // Nothing fires between bedTime and wakeUpTime. Derived from those two
+  // columns rather than adding a second pair to keep in sync — the user has
+  // already told us when they sleep.
+  quietHoursEnabled: boolean("quiet_hours_enabled").notNull().default(true),
   weeklyReportEmail: boolean("weekly_report_email").notNull().default(false),
   appLockEnabled: boolean("app_lock_enabled").notNull().default(false),
   appLockMethod: text("app_lock_method"),
