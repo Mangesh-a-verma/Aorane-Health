@@ -229,6 +229,50 @@ export type NotificationDiagnosticEntry = {
   nextTriggerAtLabel: string;
 };
 
+/**
+ * Force-schedules one reminder right now and reports what actually happened.
+ *
+ * "0 reminders scheduled" has three completely different causes that look
+ * identical on screen — permission off, the master toggle off, or
+ * scheduleNotificationAsync() throwing — and for months the third one was
+ * invisible because every caller swallowed the rejection. This makes the OS
+ * answer the question directly: it tries a real schedule and hands back the
+ * error verbatim if the platform refuses.
+ *
+ * The probe fires ~1 minute from now, so a success is also a live end-to-end
+ * test the user can watch land on their lock screen.
+ */
+export async function runSchedulingSelfTest(): Promise<{ ok: boolean; detail: string }> {
+  if (Platform.OS === "web") return { ok: false, detail: "Not supported on web." };
+
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status !== "granted") {
+    return { ok: false, detail: `Notification permission is "${status}". Enable notifications for Aorane in your phone's Settings — Android stops showing the in-app prompt once it has been declined.` };
+  }
+
+  try {
+    await setupNotificationChannels();
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "✅ Aorane test reminder",
+        body:  "Scheduling works on this device. Your real reminders will arrive the same way.",
+        sound: true,
+        data:  { type: "self_test", screen: "/notification-settings" },
+      },
+      trigger: {
+        type:   SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 60,
+        repeats: false,
+        ...(Platform.OS === "android" ? { channelId: "general" } : {}),
+      },
+    });
+    return { ok: true, detail: `Scheduled successfully (id ${id.slice(0, 8)}…). It will arrive in about a minute — if it does not, the OS is holding it back, not the app.` };
+  } catch (e) {
+    // The whole point: show the platform's own words instead of a shrug.
+    return { ok: false, detail: (e as Error)?.message || String(e) };
+  }
+}
+
 export async function getNotificationDiagnostics(): Promise<{
   permissionGranted: boolean;
   entries: NotificationDiagnosticEntry[];

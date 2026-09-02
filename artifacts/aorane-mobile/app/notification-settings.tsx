@@ -16,6 +16,7 @@ import {
   requestIgnoreBatteryOptimizations,
   getNotificationDiagnostics,
   openNotificationSettings,
+  runSchedulingSelfTest,
   type NotificationDiagnosticEntry,
 } from "@/lib/notifications";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -168,6 +169,28 @@ export default function NotificationSettingsScreen() {
   const [diagOpen, setDiagOpen] = useState(false);
   const [diagPermission, setDiagPermission] = useState<boolean | null>(null);
   const [diagEntries, setDiagEntries] = useState<NotificationDiagnosticEntry[]>([]);
+
+  const [selfTest, setSelfTest] = useState<{ ok: boolean; detail: string } | null>(null);
+  const [selfTesting, setSelfTesting] = useState(false);
+
+  // "0 scheduled" has three causes that look identical on screen. This asks the
+  // OS directly instead of leaving the user to guess between them.
+  const runSelfTest = async () => {
+    setSelfTesting(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      const result = await runSchedulingSelfTest();
+      setSelfTest(result);
+      const { permissionGranted, entries } = await getNotificationDiagnostics();
+      setDiagPermission(permissionGranted);
+      setDiagEntries(entries);
+      setDiagOpen(true);
+    } catch (e) {
+      setSelfTest({ ok: false, detail: (e as Error)?.message || "Unknown error" });
+      logSilentError("notif-self-test", e);
+    }
+    setSelfTesting(false);
+  };
 
   const runDiagnostics = async () => {
     setDiagLoading(true);
@@ -645,6 +668,34 @@ export default function NotificationSettingsScreen() {
               )}
             </TouchableOpacity>
 
+            <TouchableOpacity
+              onPress={runSelfTest}
+              disabled={selfTesting}
+              style={{ marginTop: 10, borderWidth: 1.5, borderColor: C.primary, backgroundColor: C.primary, borderRadius: 12, paddingVertical: 13, alignItems: "center", opacity: selfTesting ? 0.6 : 1 }}
+              accessibilityRole="button"
+              accessibilityLabel="Send a test reminder to check scheduling on this device"
+            >
+              <Text style={{ color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 14 }}>
+                {selfTesting ? "Testing…" : "Send Test Reminder (1 min)"}
+              </Text>
+            </TouchableOpacity>
+
+            {selfTest && (
+              <View style={{ marginTop: 10, backgroundColor: selfTest.ok ? "#E7F6EE" : "#FDEAEA", borderRadius: 12, padding: 12, flexDirection: "row", gap: 9, alignItems: "flex-start" }}>
+                <Ionicons name={selfTest.ok ? "checkmark-circle" : "close-circle"} size={18} color={selfTest.ok ? C.green : C.red} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: selfTest.ok ? C.green : C.red, fontFamily: "Inter_700Bold", fontSize: 12.5, marginBottom: 2 }}>
+                    {selfTest.ok ? "Scheduling works on this device" : "This device refused to schedule"}
+                  </Text>
+                  {/* The platform's own message, verbatim — this is the line
+                      that would have named the real bug months ago. */}
+                  <Text style={{ color: C.text, fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 17 }}>
+                    {selfTest.detail}
+                  </Text>
+                </View>
+              </View>
+            )}
+
             {diagOpen && (
               <View style={{ marginTop: 14, gap: 10 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -669,8 +720,9 @@ export default function NotificationSettingsScreen() {
                 </Text>
 
                 {diagEntries.length === 0 && (
-                  <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12 }}>
-                    Nothing is scheduled. Turn on a reminder toggle above and tap Save, or add a medicine, to schedule one.
+                  <Text style={{ color: C.muted, fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 17 }}>
+                    Nothing is scheduled. Check that &ldquo;Enable All Notifications&rdquo; is on above and tap Save —
+                    or run the test below to see exactly what this device says.
                   </Text>
                 )}
 
