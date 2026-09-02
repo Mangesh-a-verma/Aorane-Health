@@ -106,6 +106,18 @@ const setupAndroidChannels = setupNotificationChannels;
 // know which device token to deactivate server-side.
 const PUSH_TOKEN_CACHE_KEY = "aorane_push_token_v1";
 
+/** Rejects if `p` has not settled within `ms`, so a hung network call cannot
+ *  leave a promise pending for the life of the process. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
+  });
+}
+
 // ── Updated Bulletproof Push Token Registration ─────────────────────────────────
 async function registerPushToken() {
   if (Platform.OS === "web") return;
@@ -133,7 +145,17 @@ async function registerPushToken() {
     const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
     if (!projectId) return; // Fail safely if EAS config is missing
 
-    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+    // expo-notifications fetches the token from exp.host with a bare fetch() —
+    // no AbortController, and React Native's fetch has no default timeout, so
+    // this can hang forever on a slow or blocked network. It no longer blocks
+    // reminders (see the caller), but an unbounded promise is still a leak, and
+    // a hang that is never reported is how this went unnoticed in the first
+    // place. 20s is generous for one POST.
+    const tokenData = await withTimeout(
+      Notifications.getExpoPushTokenAsync({ projectId }),
+      20_000,
+      "getExpoPushTokenAsync",
+    );
     const token = tokenData.data;
 
     // FIX: Removed strict ExponentPushToken check for broader compatibility
@@ -146,8 +168,10 @@ async function registerPushToken() {
       });
     }
   } catch (error) {
-    // Silent fail — gracefully handles iOS Simulator rejection
-    console.debug("Push token registration bypassed (likely simulator or missing config).");
+    // Push is a nice-to-have — local reminders no longer depend on it — but a
+    // timeout or an FCM misconfiguration should be visible, not shrugged off
+    // into console.debug where nobody will ever read it.
+    logSilentError("push-token-register", error);
   }
 }
 
@@ -450,12 +474,29 @@ function PushNotificationRegistrar() {
     const initializeAppServices = async () => {
       if (isAuthenticated && !hasInitializedRef.current) {
         hasInitializedRef.current = true;
+        // ORDER MATTERS, AND IT USED TO BE BACKWARDS.
+        //
+        // This ran `await registerPushToken()` first, on the reasoning "pehle
+        // token register karo, jab token ho jaye tab alarms set karo". But a
+        // local reminder needs no push token and no network at all — it is
+        // handed to the OS alarm clock. Putting it behind token registration
+        // made every reminder on the device depend on two network calls:
+        // FCM registration, and expo-notifications' fetch to exp.host, which
+        // is a bare fetch() with no AbortController. React Native's fetch has
+        // no default timeout, so on a slow or blocked connection that await
+        // never settles — and scheduling never runs. Permission granted,
+        // toggles on, correct build, and still zero reminders, with nothing
+        // logged, because a hang is not an error.
+        //
+        // Reminders are scheduled FIRST now, from cached settings, offline,
+        // in milliseconds. The push token follows in the background where a
+        // slow network costs nothing.
         try {
-          await registerPushToken(); // Pehle token register karo
-          await restoreAllNotifications(); // Jab token ho jaye, tab alarms set karo
+          await restoreAllNotifications();
         } catch (error) {
-          console.debug("Error initializing services:", error);
+          logSilentError("notif-restore-init", error);
         }
+        registerPushToken().catch((e) => logSilentError("push-token-register", e));
       } else if (!isAuthenticated) {
         // Reset guard on logout so a fresh login (possibly a different user)
         // re-registers the push token and re-syncs notifications correctly.
