@@ -17,26 +17,54 @@ export type UserProfile = {
   conditions: string | null; // Any known disease / medical condition
 };
 
+/** A pillar's period score.
+ *
+ *  `pct` is the average of the SERVER's per-day sub-score for that pillar
+ *  (foodScore/waterScore/exerciseScore/sleepScore from GET /health/score/:date),
+ *  which grades QUALITY — 7-9h of sleep scores well, 4h does not.
+ *
+ *  It used to be `days the user logged anything / days in period`, which is
+ *  a tracking-consistency number wearing a health label: log a meal every
+ *  day and Nutrition read 100/100 no matter what was eaten, and log four
+ *  hours of sleep every night and Sleep read 100/100 "healthy".
+ *
+ *  `pct` is null when the pillar was never logged in the period. Null is NOT
+ *  zero: "no data" and "did badly" are different facts and a health report
+ *  must not present one as the other. `days` says how many days the average
+ *  actually covers, so the report can show its own coverage honestly. */
+export type PillarScore = {
+  pct: number | null;
+  days: number;
+};
+
 export type ScoreData = {
   // FIX: "todayScore" removed — report now shows only period average
   periodAvgScore: number;   // 7-day avg for weekly, 30-day avg for monthly
   activePercent: number;    // Period-computed active % (not today's scorecard)
-  foodPct: number;          // Period-computed
-  waterPct: number;         // Period-computed
-  exercisePct: number;      // Period-computed
-  sleepPct: number;         // Period-computed (new)
-  stressPct: number;        // Period-computed (new — inverted: low stress = high %)
+  food: PillarScore;        // Quality score from the server, period-averaged
+  water: PillarScore;
+  exercise: PillarScore;
+  sleep: PillarScore;
+  stressPct: number;        // Period-computed (inverted: low stress = high %)
   medicinePct: number;
   streakDays: number;
+  /** Days in the period with any logged pillar at all - the denominator the
+   *  report cites when it says "averaged over N of M days". */
+  daysWithAnyData: number;
 };
 
+/** "Unknown" is a real verdict, not a gap to be filled. The old shape had
+ *  no way to say it, so every consumer defaulted to `|| "Low"` and a user
+ *  who had never logged water was told their hydration risk was Low. */
+export type RiskLevel = "Low" | "Moderate" | "High" | "Unknown";
+
 export type RiskData = {
-  hydrationRisk: "Low" | "Moderate" | "High";
-  nutritionRisk: "Low" | "Moderate" | "High";
-  stressRisk: "Low" | "Moderate" | "High";
-  hydrationScore: number;   // 0-100
-  nutritionScore: number;
-  stressScore: number;
+  hydrationRisk: RiskLevel;
+  nutritionRisk: RiskLevel;
+  stressRisk: RiskLevel;
+  hydrationScore: number | null;   // 0-100, null = never logged
+  nutritionScore: number | null;
+  stressScore: number | null;
 };
 
 export type DayLog = {

@@ -13,9 +13,12 @@
 // the native summary screen update automatically — that's the point.
 // ─────────────────────────────────────────────────────────────────────────
 
-import { ReportData } from "./reportTypes";
+import { ReportData, RiskLevel, PillarScore } from "./reportTypes";
 
-export type RiskLevel = "Low" | "Moderate" | "High";
+// RiskLevel now lives in reportTypes.ts so the report data and the
+// screens that render it cannot drift apart on what a risk can be —
+// notably on whether "Unknown" is expressible.
+export type { RiskLevel };
 
 // ─── Score → Grade / Status / Color ────────────────────────────────────
 
@@ -80,7 +83,8 @@ export function calcHealthAge(
 // (ReportData.risks). Sleep/Activity/Medication risk are derived here
 // from period percentages, same thresholds as buildHealthReport.ts.
 
-export function deriveSleepRisk(sleepPct: number): RiskLevel {
+export function deriveSleepRisk(sleepPct: number | null): RiskLevel {
+  if (sleepPct == null) return "Unknown";
   return sleepPct >= 80 ? "Low" : sleepPct >= 50 ? "Moderate" : "High";
 }
 
@@ -105,15 +109,18 @@ export type RiskCard = {
   key: "hydration" | "nutrition" | "stress" | "sleep" | "activity" | "medication";
   name: string;
   risk: RiskLevel;
-  score: number; // 0-100
+  /** null = never logged in this period, which is not the same as 0. */
+  score: number | null;
   tip: string;
 };
 
 export function buildRiskCards(d: ReportData, medPct: number): RiskCard[] {
-  const hr = d.risks?.hydrationRisk || "Low";
-  const nr = d.risks?.nutritionRisk || "Low";
-  const sr = d.risks?.stressRisk || "Low";
-  const sleepPct = d.scores?.sleepPct || 0;
+  // `|| "Low"` here used to turn every missing measurement into a clean bill
+  // of health. An absent risk is Unknown.
+  const hr = d.risks?.hydrationRisk ?? "Unknown";
+  const nr = d.risks?.nutritionRisk ?? "Unknown";
+  const sr = d.risks?.stressRisk ?? "Unknown";
+  const sleepPct = d.scores?.sleep?.pct ?? null;
   const activePct = d.scores?.activePercent || 0;
   const sleepRisk = deriveSleepRisk(sleepPct);
   const activityRisk = deriveActivityRisk(activePct);
@@ -126,9 +133,11 @@ export function buildRiskCards(d: ReportData, medPct: number): RiskCard[] {
       key: "hydration",
       name: "Hydration",
       risk: hr,
-      score: d.risks?.hydrationScore || 0,
+      score: d.risks?.hydrationScore ?? null,
       tip:
-        hr === "High"
+        hr === "Unknown"
+          ? "No water logged this period — start logging to see your hydration score."
+          : hr === "High"
           ? "Critical dehydration. Increase fluid intake to 8+ glasses immediately."
           : hr === "Moderate"
           ? "Slightly dehydrated. Add 2–3 more glasses daily."
@@ -138,10 +147,12 @@ export function buildRiskCards(d: ReportData, medPct: number): RiskCard[] {
       key: "nutrition",
       name: "Nutrition",
       risk: nr,
-      score: d.risks?.nutritionScore || 0,
+      score: d.risks?.nutritionScore ?? null,
       tip:
-        nr === "High"
-          ? "Poor nutritional tracking. Start logging all meals consistently."
+        nr === "Unknown"
+          ? "No meals logged this period — start logging to see your nutrition score."
+          : nr === "High"
+          ? "Nutrient intake is well below target. Focus on balanced meals."
           : nr === "Moderate"
           ? "Diet imbalance detected. Focus on balanced macro intake."
           : "Nutritional habits are on track.",
@@ -150,9 +161,11 @@ export function buildRiskCards(d: ReportData, medPct: number): RiskCard[] {
       key: "stress",
       name: "Stress",
       risk: sr,
-      score: Math.max(0, 100 - (d.risks?.stressScore || 0)),
+      score: d.risks?.stressScore == null ? null : Math.max(0, 100 - d.risks.stressScore),
       tip:
-        sr === "High"
+        sr === "Unknown"
+          ? "No stress check-ins this period."
+          : sr === "High"
           ? "Elevated stress markers. Consider mindfulness and professional guidance."
           : sr === "Moderate"
           ? "Moderate stress. Short breaks and breathing exercises can help."
@@ -164,7 +177,9 @@ export function buildRiskCards(d: ReportData, medPct: number): RiskCard[] {
       risk: sleepRisk,
       score: sleepPct,
       tip:
-        sleepRisk === "High"
+        sleepRisk === "Unknown"
+          ? "No sleep logged this period — start logging to see your sleep score."
+          : sleepRisk === "High"
           ? "Poor sleep detected. Aim for 7–9 hours nightly."
           : sleepRisk === "Moderate"
           ? "Sleep duration below optimal. Improve sleep hygiene."
@@ -203,7 +218,7 @@ export function buildRiskCards(d: ReportData, medPct: number): RiskCard[] {
 export function buildAiKeyFindings(d: ReportData, avgEx: number): string[] {
   const avgScore = d.scores?.periodAvgScore || 0;
   const activePct = d.scores?.activePercent || 0;
-  const hr = d.risks?.hydrationRisk || "Low";
+  const hr = d.risks?.hydrationRisk ?? "Unknown";
 
   return [
     avgScore >= 70
@@ -221,22 +236,66 @@ export function buildAiKeyFindings(d: ReportData, avgEx: number): string[] {
   ];
 }
 
+
+// ─── Pillar averaging ───────────────────────────────────────────────────
+
+/**
+ * Average one pillar's per-day sub-score from GET /health/score/:date across
+ * the period.
+ *
+ * These four pillars used to be computed in health-report.tsx as
+ * `days with any log / days in period` — a tracking-consistency number
+ * presented as a health verdict. Logging a meal every day scored Nutrition
+ * 100/100 whatever was eaten; logging four hours of sleep nightly scored
+ * Sleep 100/100 "healthy". The graded numbers were already on the wire and
+ * being discarded.
+ *
+ * Days with no log are EXCLUDED rather than averaged in as zero: a zero
+ * reads as "did badly", which is a different claim from "did not log".
+ * `days` reports the coverage so callers can state their own denominator.
+ */
+export function averagePillar(
+  scoreByDate: Map<string, Record<string, unknown>>,
+  dates: string[],
+  key: "foodScore" | "waterScore" | "exerciseScore" | "sleepScore",
+): PillarScore {
+  const vals = dates
+    .map((d) => scoreByDate.get(d)?.[key])
+    .filter((v): v is number => typeof v === "number");
+  return vals.length
+    ? { pct: Math.round(vals.reduce((a, b) => a + b, 0) / vals.length), days: vals.length }
+    : { pct: null, days: 0 };
+}
+
+// ─── Threshold helpers for nullable pillar scores ──────────────────────
+// A pillar the user never logged has a null score. `|| 0` used to turn that
+// into a hard zero, which then read as "did badly" — so a report could
+// advise someone to fix their sleep on the strength of no sleep data at all.
+// These two make absence unable to pass EITHER test: it is not evidence of
+// good and not evidence of bad.
+const atLeast = (v: number | null | undefined, n: number): boolean => v != null && v >= n;
+const below   = (v: number | null | undefined, n: number): boolean => v != null && v < n;
+const untracked = (v: number | null | undefined): boolean => v == null;
+
 // ─── A single one-line "AI Health Insight" banner (short form of the above) ──
 // Used at the top of the native summary screen (one sentence, not a bulleted list).
 
 export function buildAiHealthInsight(d: ReportData): string {
   const avgScore = d.scores?.periodAvgScore || 0;
-  const hr = d.risks?.hydrationRisk || "Low";
-  const sleepPct = d.scores?.sleepPct || 0;
-  const nr = d.risks?.nutritionRisk || "Low";
+  const hr = d.risks?.hydrationRisk ?? "Unknown";
+  const sleepPct = d.scores?.sleep?.pct ?? null;
+  const nr = d.risks?.nutritionRisk ?? "Unknown";
   const activePct = d.scores?.activePercent || 0;
 
   const good: string[] = [];
   const bad: string[] = [];
 
-  if (hr === "Low") good.push("Hydration"); else bad.push("hydration");
-  if (sleepPct >= 70) good.push("sleep"); else bad.push("sleep");
-  if (nr === "Low") good.push("nutrition"); else bad.push("protein intake");
+  // An untracked pillar goes in NEITHER list. It used to fall through to
+  // `bad`, so a user who simply had not logged water was told to focus on
+  // improving their hydration.
+  if (hr === "Low") good.push("Hydration"); else if (hr !== "Unknown") bad.push("hydration");
+  if (atLeast(sleepPct, 70)) good.push("sleep"); else if (below(sleepPct, 70)) bad.push("sleep");
+  if (nr === "Low") good.push("nutrition"); else if (nr !== "Unknown") bad.push("nutrition");
   if (activePct >= 70) good.push("activity"); else bad.push("daily activity");
 
   const trend = avgScore >= 70 ? "improved" : avgScore >= 50 ? "held steady" : "needs attention";
@@ -250,30 +309,37 @@ export function buildAiHealthInsight(d: ReportData): string {
 
 export function buildPositiveTrends(d: ReportData, medPct: number): string[] {
   const activePct = d.scores?.activePercent || 0;
-  const waterPct = d.scores?.waterPct || 0;
-  const hr = d.risks?.hydrationRisk || "Low";
-  const sleepPct = d.scores?.sleepPct || 0;
+  const waterPct = d.scores?.water?.pct ?? null;
+  const hr = d.risks?.hydrationRisk ?? "Unknown";
+  const sleepPct = d.scores?.sleep?.pct ?? null;
 
   return [
     activePct >= 70 ? "Consistent daily activity engagement" : null,
-    hr === "Low" && waterPct >= 70 ? "Excellent hydration habits" : null,
+    hr === "Low" && atLeast(waterPct, 70) ? "Excellent hydration habits" : null,
     medPct >= 80 ? "Excellent medication adherence" : null,
-    sleepPct >= 70 ? "Sleep quality within healthy range" : null,
+    atLeast(sleepPct, 70) ? "Sleep quality within healthy range" : null,
   ].filter((x): x is string => Boolean(x)).slice(0, 3);
 }
 
 export function buildAreasForImprovement(d: ReportData): string[] {
   const activePct = d.scores?.activePercent || 0;
-  const waterPct = d.scores?.waterPct || 0;
-  const foodPct = d.scores?.foodPct || 0;
-  const sleepPct = d.scores?.sleepPct || 0;
+  const waterPct = d.scores?.water?.pct ?? null;
+  const foodPct = d.scores?.food?.pct ?? null;
+  const sleepPct = d.scores?.sleep?.pct ?? null;
   const stressPct = d.scores?.stressPct || 0;
 
+  // Two distinct messages per pillar: one for a score that IS low, and one
+  // for a pillar with no data. Telling someone to prioritise 7-9 hours of
+  // sleep because they never opened the sleep log is not advice, it is a
+  // guess dressed as a finding.
   return [
     activePct < 60 ? "Increase daily physical activity" : null,
-    waterPct < 70 ? "Improve daily water intake" : null,
-    foodPct < 60 ? "Track nutrition consistently" : null,
-    sleepPct < 60 ? "Prioritize 7–9 hours of sleep" : null,
+    untracked(waterPct) ? "Start logging water to track hydration"
+      : below(waterPct, 70) ? "Improve daily water intake" : null,
+    untracked(foodPct) ? "Start logging meals to track nutrition"
+      : below(foodPct, 60) ? "Improve meal balance and nutrient intake" : null,
+    untracked(sleepPct) ? "Start logging sleep to track rest quality"
+      : below(sleepPct, 60) ? "Prioritize 7–9 hours of sleep" : null,
     stressPct < 60 ? "Implement stress management techniques" : null,
   ].filter((x): x is string => Boolean(x)).slice(0, 3);
 }
@@ -282,19 +348,26 @@ export function buildAreasForImprovement(d: ReportData): string[] {
 
 export function buildRecommendations(d: ReportData): string[] {
   const activePct = d.scores?.activePercent || 0;
-  const waterPct = d.scores?.waterPct || 0;
-  const foodPct = d.scores?.foodPct || 0;
+  const waterPct = d.scores?.water?.pct ?? null;
+  const foodPct = d.scores?.food?.pct ?? null;
   const stressPct = d.scores?.stressPct || 0;
 
   return [
     activePct < 60
       ? "Schedule 30-minute walks at a fixed time daily to build exercise habit."
       : "Maintain your activity level — consider adding strength training 2x weekly.",
-    waterPct < 70
+    // The "else" arm of each of these is praise. Without an untracked case a
+    // null score would fall into it and congratulate the user on hydration
+    // they never recorded.
+    untracked(waterPct)
+      ? "Start logging your water intake — Aorane's reminders can prompt you hourly."
+      : below(waterPct, 70)
       ? "Use Aorane water reminders — drink one glass every 2 hours."
       : "Excellent hydration — continue tracking to maintain consistency.",
-    foodPct < 60
+    untracked(foodPct)
       ? "Log all meals, even snacks, for accurate nutritional analysis."
+      : below(foodPct, 60)
+      ? "Focus on balanced meals — your logged intake is below nutrient targets."
       : "Explore Aorane's meal planner for optimized nutrition targets.",
     stressPct < 60
       ? "Practice 5-minute breathing exercises each morning to reduce cortisol."
@@ -302,49 +375,17 @@ export function buildRecommendations(d: ReportData): string[] {
   ];
 }
 
-// ─── AI Predictions (30-day / 90-day) ──────────────────────────────────
+// ─── AI Predictions — REMOVED ──────────────────────────────────────────
+// buildPredictions() lived here and returned "forecasts" that were plain
+// arithmetic on the current score: trend30 = avgScore + 3 if active, and a
+// 30-day predicted weight of currentWeight - 1.5 for anybody with a
+// lose_weight goal, regardless of their actual rate of change. Presented in
+// a health report under an "AI Prediction" heading, that is invented
+// clinical information, so it is gone rather than relabelled. Nothing
+// imported it — the PDF builder carried its own inline copy, now also
+// removed. A real forecast needs a fitted trend over enough history to
+// justify one; until that exists the report states measured facts only.
 
-export type Predictions = {
-  trend30Score: number;
-  trend90Score: number;
-  predictedWeight30: string | null;
-  predictedWeight90: string | null;
-  lifestyleRisk: RiskLevel;
-  weightRisk: RiskLevel;
-  wellnessRisk: RiskLevel;
-};
-
-export function buildPredictions(d: ReportData): Predictions {
-  const avgScore = d.scores?.periodAvgScore || 0;
-  const activePct = d.scores?.activePercent || 0;
-  const hr = d.risks?.hydrationRisk || "Low";
-  const nr = d.risks?.nutritionRisk || "Low";
-  const cW = d.goals?.currentWeight || 0;
-  const gType = d.goals?.goalType || "maintain";
-
-  const trend30Score = Math.min(100, Math.max(0, Math.round(avgScore + (activePct >= 60 ? 3 : -2) + (hr === "Low" ? 2 : -1))));
-  const trend90Score = Math.min(100, Math.max(0, Math.round(avgScore + (activePct >= 60 ? 8 : -5) + (nr === "Low" ? 4 : -2))));
-
-  const predictedWeight30 =
-    cW > 0
-      ? gType === "lose_weight" ? (cW - 1.5).toFixed(1)
-      : gType === "gain_weight" ? (cW + 1.2).toFixed(1)
-      : cW.toFixed(1)
-      : null;
-  const predictedWeight90 =
-    cW > 0
-      ? gType === "lose_weight" ? (cW - 4.0).toFixed(1)
-      : gType === "gain_weight" ? (cW + 3.5).toFixed(1)
-      : cW.toFixed(1)
-      : null;
-
-  const lifestyleRisk: RiskLevel = avgScore >= 70 ? "Low" : avgScore >= 50 ? "Moderate" : "High";
-  const weightRisk: RiskLevel =
-    d.profile?.bmiCategory === "Normal" ? "Low" : d.profile?.bmiCategory === "Overweight" ? "Moderate" : "High";
-  const wellnessRisk: RiskLevel = avgScore >= 75 ? "Low" : avgScore >= 55 ? "Moderate" : "High";
-
-  return { trend30Score, trend90Score, predictedWeight30, predictedWeight90, lifestyleRisk, weightRisk, wellnessRisk };
-}
 
 // ─── Medicine compliance % (used across multiple sections) ────────────
 
