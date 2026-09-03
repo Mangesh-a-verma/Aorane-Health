@@ -1,4 +1,4 @@
-import { ReportData } from "./reportTypes";
+import { ReportData, RiskLevel } from "./reportTypes";
 import { getGrade, calcHealthAge } from "./reportLogic";
 
 // ═══════════════════════════════════════════════════════════════
@@ -32,19 +32,23 @@ function getStatus(s: number): string {
   return "Needs Attention";
 }
 
-function riskColor(r: "Low" | "Moderate" | "High"): string {
+function riskColor(r: RiskLevel): string {
+  if (r === "Unknown") return "#94A3B8";
   if (r === "Low") return "#059669";
   if (r === "Moderate") return "#F59E0B";
   return "#EF4444";
 }
 
-function riskBg(r: "Low" | "Moderate" | "High"): string {
+function riskBg(r: RiskLevel): string {
+  if (r === "Unknown") return "#F1F5F9";
   if (r === "Low") return "#ECFDF5";
   if (r === "Moderate") return "#FFFBEB";
   return "#FEF2F2";
 }
 
-function pctColor(p: number): string {
+function pctColor(p: number | null): string {
+  // Grey, not red: an untracked pillar has no verdict to colour.
+  if (p == null) return "#94A3B8";
   if (p >= 80) return "#059669";
   if (p >= 50) return "#F59E0B";
   return "#EF4444";
@@ -89,7 +93,10 @@ function scoreRing(score: number, size: number, label: string, sublabel: string,
 }
 
 /** Mini donut for pillar breakdown */
-function miniDonut(pct: number, color: string, label: string): string {
+function miniDonut(pct: number | null, color: string, label: string): string {
+  // A null pillar draws an empty ring with a dash, so it reads as "no data"
+  // rather than as a score of zero.
+  if (pct == null) return miniDonut(0, "#CBD5E1", label).replace(">0%<", ">—<");
   const r = 19;
   const circ = 2 * Math.PI * r;
   const dash = (Math.min(pct, 100) / 100) * circ;
@@ -215,26 +222,38 @@ export function buildHealthReport(d: ReportData): string {
   const streakDays = d.scores?.streakDays || 0;
 
   // ── Pillar scores from ReportData.scores ─────────────────
-  const foodPct     = d.scores?.foodPct     || 0;
-  const waterPct    = d.scores?.waterPct    || 0;
-  const exercisePct = d.scores?.exercisePct || 0;
-  const sleepPct    = d.scores?.sleepPct    || 0;
-  const stressPct   = d.scores?.stressPct   || 0;
+  // Null = the pillar was never logged this period. `|| 0` would render that
+  // as a hard zero — an accusation rather than a gap — so nulls are carried
+  // through and shown as "Not tracked".
+  const foodPct     = d.scores?.food?.pct     ?? null;
+  const waterPct    = d.scores?.water?.pct    ?? null;
+  const exercisePct = d.scores?.exercise?.pct ?? null;
+  const sleepPct    = d.scores?.sleep?.pct    ?? null;
+  const stressPct   = d.scores?.stressPct     ?? 0;
+  const pctText = (v: number | null) => (v == null ? "Not tracked" : `${v}%`);
+
+  // Both caloric-balance bars used to be drawn against the wrong reference:
+  // "Consumed" was hardcoded to a full 100% bar whatever the user ate, and
+  // "Burned" was drawn as a fraction of intake, so eating very little made a
+  // small burn look like a large one. Both now share the daily calorie
+  // target as their denominator, which is what makes the two comparable.
+  const calTarget = d.goals?.targetCalories || 0;
   // medicinePct: re-derive from logs, same as medPct above (authoritative)
   const medicinePct = medPct;
 
   const actualAge  = d.profile?.age ?? null;
   const healthAge  = actualAge
-    ? calcHealthAge(actualAge, avgScore, d.risks?.stressRisk || "Low", d.profile?.bmiCategory || null, medPct, activePct)
+    ? calcHealthAge(actualAge, avgScore, d.risks?.stressRisk ?? "Unknown", d.profile?.bmiCategory || null, medPct, activePct)
     : null;
 
   // ── Risk levels ──────────────────────────────────────────
-  const hr = d.risks?.hydrationRisk || "Low";
-  const nr = d.risks?.nutritionRisk || "Low";
-  const sr = d.risks?.stressRisk || "Low";
-  const sleepRisk: "Low" | "Moderate" | "High"    = sleepPct >= 80 ? "Low" : sleepPct >= 50 ? "Moderate" : "High";
-  const activityRisk: "Low" | "Moderate" | "High" = activePct >= 70 ? "Low" : activePct >= 40 ? "Moderate" : "High";
-  const medRisk: "Low" | "Moderate" | "High"      = medsTotal === 0 ? "Low" : medPct >= 85 ? "Low" : medPct >= 60 ? "Moderate" : "High";
+  // `|| "Low"` turned every absent measurement into a clean bill of health.
+  const hr = d.risks?.hydrationRisk ?? "Unknown";
+  const nr = d.risks?.nutritionRisk ?? "Unknown";
+  const sr = d.risks?.stressRisk ?? "Unknown";
+  const sleepRisk: RiskLevel    = sleepPct == null ? "Unknown" : sleepPct >= 80 ? "Low" : sleepPct >= 50 ? "Moderate" : "High";
+  const activityRisk: RiskLevel = activePct >= 70 ? "Low" : activePct >= 40 ? "Moderate" : "High";
+  const medRisk: RiskLevel      = medsTotal === 0 ? "Unknown" : medPct >= 85 ? "Low" : medPct >= 60 ? "Moderate" : "High";
 
   // ── Seasonal guide ───────────────────────────────────────
   const sgMap: Record<string, { title: string; color: string; bg: string; border: string; tips: string[] }> = {
@@ -250,9 +269,12 @@ export function buildHealthReport(d: ReportData): string {
   const season = d.weather?.season?.toLowerCase() || "summer";
   const guide  = sgMap[season] || sgMap.summer;
 
-  // ── AI predictions ───────────────────────────────────────
-  const trend30Score = Math.min(100, Math.max(0, Math.round(avgScore + (activePct >= 60 ? 3 : -2) + (hr === "Low" ? 2 : -1))));
-  const trend90Score = Math.min(100, Math.max(0, Math.round(avgScore + (activePct >= 60 ? 8 : -5) + (nr === "Low" ? 4 : -2))));
+  // The 30-/90-day "AI forecasts" that used to be computed here were
+  // arithmetic on the current score (avgScore + 3 when active, and so on),
+  // rendered under an "AI Future Health Prediction" heading alongside four
+  // hardcoded string verdicts. Both are gone — see the section further down.
+  // The risk levels below are kept because each is a stated derivation from
+  // a measured value, not a forecast.
   const lifestyleRisk: "Low" | "Moderate" | "High" = avgScore >= 70 ? "Low" : avgScore >= 50 ? "Moderate" : "High";
   const wellnessRisk: "Low" | "Moderate" | "High"  = avgScore >= 75 ? "Low" : avgScore >= 55 ? "Moderate" : "High";
   const weightRisk: "Low" | "Moderate" | "High"    = d.profile?.bmiCategory === "Normal" ? "Low" : d.profile?.bmiCategory === "Overweight" ? "Moderate" : "High";
@@ -424,13 +446,15 @@ export function buildHealthReport(d: ReportData): string {
         <!-- Pillar detail bars -->
         <div style="display:flex;flex-direction:column;gap:7px;margin-top:10px">
           ${pillars.map(p => {
+            const v = p.pct;
             const desc =
-              p.label === "Nutrition"  ? (p.pct >= 80 ? "Excellent dietary habits" : p.pct >= 50 ? "Moderate nutrition" : "Nutritional gaps") :
-              p.label === "Hydration"  ? (p.pct >= 80 ? "Well hydrated" : p.pct >= 50 ? "Slightly low intake" : "Dehydration risk") :
-              p.label === "Exercise"   ? (p.pct >= 80 ? "Highly active" : p.pct >= 50 ? "Moderate activity" : "Needs more movement") :
-              p.label === "Sleep"      ? (p.pct >= 80 ? "Excellent sleep quality" : p.pct >= 50 ? "Average sleep" : "Poor sleep pattern") :
-              p.label === "Low Stress" ? (p.pct >= 80 ? "Low stress levels" : p.pct >= 50 ? "Moderate stress" : "High stress detected") :
-              /* Medication */            (medsTotal === 0 ? "No medication scheduled" : p.pct >= 85 ? "Excellent adherence" : p.pct >= 60 ? "Partial compliance" : "Low compliance");
+              v == null                ? "Not tracked this period" :
+              p.label === "Nutrition"  ? (v >= 80 ? "Excellent dietary habits" : v >= 50 ? "Moderate nutrition" : "Nutritional gaps") :
+              p.label === "Hydration"  ? (v >= 80 ? "Well hydrated" : v >= 50 ? "Slightly low intake" : "Dehydration risk") :
+              p.label === "Exercise"   ? (v >= 80 ? "Highly active" : v >= 50 ? "Moderate activity" : "Needs more movement") :
+              p.label === "Sleep"      ? (v >= 80 ? "Excellent sleep quality" : v >= 50 ? "Average sleep" : "Poor sleep pattern") :
+              p.label === "Low Stress" ? (v >= 80 ? "Low stress levels" : v >= 50 ? "Moderate stress" : "High stress detected") :
+              /* Medication */            (medsTotal === 0 ? "No medication scheduled" : v >= 85 ? "Excellent adherence" : v >= 60 ? "Partial compliance" : "Low compliance");
             const c = pctColor(p.pct);
             return `
               <div style="display:flex;align-items:center;gap:9px;background:#F8FAFC;border:1px solid #E8F0F8;border-radius:10px;padding:8px 11px">
@@ -439,10 +463,10 @@ export function buildHealthReport(d: ReportData): string {
                     <span style="font-size:10px;font-weight:700;color:#1E293B">${p.label}</span>
                     <div style="display:flex;align-items:center;gap:7px">
                       <span style="font-size:9px;color:#64748B">${desc}</span>
-                      <span style="font-size:11px;font-weight:900;color:${c}">${p.pct}%</span>
+                      <span style="font-size:11px;font-weight:900;color:${c}">${pctText(p.pct)}</span>
                     </div>
                   </div>
-                  ${gradBar(p.pct, c, c + "88", 6)}
+                  ${gradBar(p.pct ?? 0, c, c + "88", 6)}
                 </div>
               </div>`;
           }).join("")}
@@ -597,7 +621,7 @@ export function buildHealthReport(d: ReportData): string {
             { lbl: "Active Days",   val: `${Math.round(activePct/100*periodDays)}/${periodDays}`, sub: `${activePct}% active`, c: pctColor(activePct) },
             { lbl: "Avg Exercise",  val: avgEx > 0 ? `${avgEx}m` : "—",       sub: "per session",   c: "#8B5CF6" },
             { lbl: "Cal. Burned",   val: avgCalBurn > 0 ? `${avgCalBurn}` : "—", sub: "kcal/day",   c: "#10B981" },
-            { lbl: "Exercise %",    val: `${exercisePct}%`,                      sub: exercisePct >= 80 ? "Excellent" : exercisePct >= 50 ? "Fair" : "Low", c: pctColor(exercisePct) },
+            { lbl: "Exercise %",    val: pctText(exercisePct),                   sub: exercisePct == null ? "No data" : exercisePct >= 80 ? "Excellent" : exercisePct >= 50 ? "Fair" : "Low", c: pctColor(exercisePct) },
           ].map(s => `
             <div style="flex:1;min-width:60px;background:#F8FAFC;border:1px solid #E8F0F8;border-radius:10px;padding:9px 8px;text-align:center">
               <div style="font-size:7.5px;color:#94A3B8;text-transform:uppercase;font-weight:700;margin-bottom:2px">${s.lbl}</div>
@@ -631,13 +655,13 @@ export function buildHealthReport(d: ReportData): string {
               <div style="display:flex;justify-content:space-between;font-size:9.5px;margin-bottom:3px">
                 <span style="color:#F97316;font-weight:600">Consumed</span><span style="font-weight:800;color:#F97316">${avgCalIn} kcal</span>
               </div>
-              ${gradBar(100, "#F97316", "#FCA5A5", 6)}
+              ${gradBar(calTarget > 0 ? Math.round((avgCalIn / calTarget) * 100) : 0, "#F97316", "#FCA5A5", 6)}
             </div>
             <div>
               <div style="display:flex;justify-content:space-between;font-size:9.5px;margin-bottom:3px">
                 <span style="color:#10B981;font-weight:600">Burned</span><span style="font-weight:800;color:#10B981">${avgCalBurn} kcal</span>
               </div>
-              ${gradBar(Math.round((avgCalBurn / avgCalIn) * 100), "#10B981", "#6EE7B7", 6)}
+              ${gradBar(calTarget > 0 ? Math.round((avgCalBurn / calTarget) * 100) : 0, "#10B981", "#6EE7B7", 6)}
             </div>
             <div style="margin-top:7px;font-size:10px;font-weight:700;color:${avgCalIn-avgCalBurn > 200 ? "#F97316" : "#059669"}">
               Net: ${avgCalIn-avgCalBurn > 0 ? "+" : ""}${avgCalIn-avgCalBurn} kcal/day (${avgCalIn-avgCalBurn > 200 ? "Surplus" : avgCalBurn > avgCalIn ? "Deficit" : "Balanced"})
@@ -714,12 +738,15 @@ export function buildHealthReport(d: ReportData): string {
 
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
           ${[
-            { name: "Hydration",   risk: hr,           score: d.risks?.hydrationScore || 0, tip: hr === "High" ? "Critical dehydration. Increase fluid intake immediately." : hr === "Moderate" ? "Add 2–3 more glasses daily." : "Hydration levels are optimal." },
-            { name: "Nutrition",   risk: nr,           score: d.risks?.nutritionScore || 0, tip: nr === "High" ? "Poor nutritional tracking. Log all meals consistently." : nr === "Moderate" ? "Diet imbalance detected." : "Nutritional habits are on track." },
-            { name: "Stress",      risk: sr,           score: Math.max(0, 100-(d.risks?.stressScore||0)), tip: sr === "High" ? "Elevated stress markers. Consider mindfulness." : sr === "Moderate" ? "Short breaks and breathing exercises help." : "Stress well-managed." },
-            { name: "Sleep",       risk: sleepRisk,    score: sleepPct,  tip: sleepRisk === "High" ? "Poor sleep. Aim for 7–9 hours nightly." : sleepRisk === "Moderate" ? "Sleep duration below optimal." : "Sleep patterns are healthy." },
+            // Every tip below leads with its Unknown case. Without it the
+            // chain falls through to the final "else", so a pillar with no
+            // data at all was reported as "Hydration levels are optimal".
+            { name: "Hydration",   risk: hr,           score: d.risks?.hydrationScore ?? null, tip: hr === "Unknown" ? "No water logged this period." : hr === "High" ? "Critical dehydration. Increase fluid intake immediately." : hr === "Moderate" ? "Add 2–3 more glasses daily." : "Hydration levels are optimal." },
+            { name: "Nutrition",   risk: nr,           score: d.risks?.nutritionScore ?? null, tip: nr === "Unknown" ? "No meals logged this period." : nr === "High" ? "Nutrient intake well below target. Focus on balanced meals." : nr === "Moderate" ? "Diet imbalance detected." : "Nutritional habits are on track." },
+            { name: "Stress",      risk: sr,           score: d.risks?.stressScore == null ? null : Math.max(0, 100 - d.risks.stressScore), tip: sr === "Unknown" ? "No stress check-ins this period." : sr === "High" ? "Elevated stress markers. Consider mindfulness." : sr === "Moderate" ? "Short breaks and breathing exercises help." : "Stress well-managed." },
+            { name: "Sleep",       risk: sleepRisk,    score: sleepPct,  tip: sleepRisk === "Unknown" ? "No sleep logged this period." : sleepRisk === "High" ? "Poor sleep. Aim for 7–9 hours nightly." : sleepRisk === "Moderate" ? "Sleep duration below optimal." : "Sleep patterns are healthy." },
             { name: "Activity",    risk: activityRisk, score: activePct, tip: activityRisk === "High" ? "Sedentary lifestyle. Add 30 min exercise daily." : activityRisk === "Moderate" ? "Increase movement gradually." : "Activity levels are excellent." },
-            { name: "Medication",  risk: medRisk,      score: medsTotal === 0 ? 0 : medPct, tip: medsTotal === 0 ? "No medication schedules found in the app." : medRisk === "High" ? `Only ${medPct}% compliance. Follow your prescribed schedule strictly.` : medRisk === "Moderate" ? "Some missed doses detected. Set daily reminders." : "Medication adherence is excellent." },
+            { name: "Medication",  risk: medRisk,      score: medsTotal === 0 ? null : medPct, tip: medsTotal === 0 ? "No medication schedules found in the app." : medRisk === "High" ? `Only ${medPct}% compliance. Follow your prescribed schedule strictly.` : medRisk === "Moderate" ? "Some missed doses detected. Set daily reminders." : "Medication adherence is excellent." },
           ].map(r => `
             <div style="border-radius:12px;padding:12px;background:${riskBg(r.risk)};border:1.5px solid ${riskColor(r.risk)}44">
               <div style="font-size:8px;color:#64748B;text-transform:uppercase;font-weight:700;letter-spacing:0.4px;margin-bottom:4px">${r.name}</div>
@@ -727,50 +754,19 @@ export function buildHealthReport(d: ReportData): string {
                 <div style="width:7px;height:7px;border-radius:50%;background:${riskColor(r.risk)}"></div>
                 <span style="font-size:12px;font-weight:800;color:${riskColor(r.risk)}">${r.risk}</span>
               </div>
-              <div style="font-size:8px;color:#94A3B8;margin-bottom:5px">Score: ${r.score}/100</div>
-              ${bar(r.score, riskColor(r.risk), 5)}
+              <div style="font-size:8px;color:#94A3B8;margin-bottom:5px">${r.score == null ? "Not tracked" : `Score: ${r.score}/100`}</div>
+              ${bar(r.score ?? 0, riskColor(r.risk), 5)}
               <div style="font-size:8.5px;color:#475569;line-height:1.4;font-weight:500;margin-top:6px">${r.tip}</div>
             </div>`).join("")}
         </div>
 
-        <!-- AI Prediction -->
-        ${sectionTitle("AI Future Health Prediction", "Powered by Aorane AI", "#38BDF8")}
-        <div style="display:flex;gap:10px">
-          <div style="flex:1;background:linear-gradient(135deg,#1E293B,#0F1F38);border:1.5px solid #334155;border-radius:12px;padding:14px">
-            <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;color:#38BDF8;margin-bottom:10px">30-Day Forecast</div>
-            ${[
-              { m: "Health Score",    v: `${trend30Score}/100`, c: scoreColor(trend30Score) },
-              { m: "Activity Status", v: "Maintaining",         c: "#10B981" },
-              { m: "Hydration",       v: "On track",            c: "#0EA5E9" },
-              { m: "Wellness Trend",  v: "Stable",              c: "#F59E0B" },
-            ].map(r => `
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
-                <span style="font-size:10px;color:#94A3B8;font-weight:600">${r.m}</span>
-                <span style="font-size:10.5px;font-weight:800;color:${r.c}">${r.v}</span>
-              </div>`).join("")}
-          </div>
-          <div style="flex:1;background:linear-gradient(135deg,#1A103A,#0F1A30);border:1.5px solid #4C1D95;border-radius:12px;padding:14px">
-            <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;color:#A78BFA;margin-bottom:10px">90-Day Forecast</div>
-            ${[
-              { m: "Health Score",    v: `${trend90Score}/100`,       c: scoreColor(trend90Score) },
-              { m: "Activity Status", v: "Sustained Active",          c: "#10B981" },
-              { m: "Nutrition",       v: "Well balanced",             c: "#F59E0B" },
-              { m: "Wellness Trend",  v: "Intervention advised",      c: "#F97316" },
-            ].map(r => `
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
-                <span style="font-size:10px;color:#94A3B8;font-weight:600">${r.m}</span>
-                <span style="font-size:10.5px;font-weight:800;color:${r.c}">${r.v}</span>
-              </div>`).join("")}
-          </div>
-        </div>
-
-        <!-- Future Risk cards -->
+        <!-- Risk profile, derived from this period's measured values -->
         <div style="display:flex;gap:8px">
           ${[
-            { lbl: "Lifestyle Risk",  risk: lifestyleRisk, note: "Based on activity and score trend" },
-            { lbl: "Weight Risk",     risk: weightRisk,    note: "Based on BMI and goal trajectory" },
-            { lbl: "Activity Risk",   risk: activityRisk,  note: "Based on exercise consistency" },
-            { lbl: "Wellness Risk",   risk: wellnessRisk,  note: "Based on overall health composite" },
+            { lbl: "Lifestyle Risk",  risk: lifestyleRisk, note: "From this period's average score" },
+            { lbl: "Weight Risk",     risk: weightRisk,    note: "From current BMI category" },
+            { lbl: "Activity Risk",   risk: activityRisk,  note: "From logged exercise this period" },
+            { lbl: "Wellness Risk",   risk: wellnessRisk,  note: "From the overall health composite" },
           ].map(r => `
             <div style="flex:1;border-radius:10px;padding:10px;border:1.5px solid ${riskColor(r.risk)}44;background:${riskBg(r.risk)}">
               <div style="font-size:7.5px;color:#64748B;text-transform:uppercase;font-weight:700;margin-bottom:3px">${r.lbl}</div>

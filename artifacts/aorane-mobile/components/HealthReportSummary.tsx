@@ -77,19 +77,26 @@ function MiniBarTrend({ values, labels, color, max }: { values: number[]; labels
 function riskBadgeColors(risk: RiskCard["risk"]) {
   if (risk === "Low") return { bg: "#ECFDF5", fg: "#059669" };
   if (risk === "Moderate") return { bg: "#FFFBEB", fg: "#D97706" };
+  // Grey, not red: an untracked pillar is unknown, not alarming.
+  if (risk === "Unknown") return { bg: "#F1F5F9", fg: "#64748B" };
   return { bg: "#FEF2F2", fg: "#DC2626" };
 }
 
-const PILLAR_META: { key: keyof ReportData["scores"]; label: string; color: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: "foodPct", label: "Nutrition", color: "#10B981", icon: "leaf-outline" },
-  { key: "waterPct", label: "Hydration", color: "#0EA5E9", icon: "water-outline" },
-  { key: "exercisePct", label: "Exercise", color: "#F97316", icon: "walk-outline" },
-  { key: "sleepPct", label: "Sleep", color: "#8B5CF6", icon: "moon-outline" },
-  { key: "stressPct", label: "Stress", color: "#14B8A6", icon: "leaf" },
-  { key: "medicinePct", label: "Medication", color: "#3B82F6", icon: "medkit-outline" },
+// `read` pulls a pillar's percentage out of ReportData.scores. Nutrition,
+// Hydration, Exercise and Sleep are now {pct, days} objects carrying the
+// server's quality score and its coverage; Stress and Medication are still
+// plain numbers. `pct` is null for a pillar never logged in the period.
+const PILLAR_META: { label: string; color: string; icon: keyof typeof Ionicons.glyphMap; read: (s: ReportData["scores"]) => number | null }[] = [
+  { label: "Nutrition",  color: "#10B981", icon: "leaf-outline",   read: (s) => s?.food?.pct ?? null },
+  { label: "Hydration",  color: "#0EA5E9", icon: "water-outline",  read: (s) => s?.water?.pct ?? null },
+  { label: "Exercise",   color: "#F97316", icon: "walk-outline",   read: (s) => s?.exercise?.pct ?? null },
+  { label: "Sleep",      color: "#8B5CF6", icon: "moon-outline",   read: (s) => s?.sleep?.pct ?? null },
+  { label: "Stress",     color: "#14B8A6", icon: "leaf",           read: (s) => s?.stressPct ?? null },
+  { label: "Medication", color: "#3B82F6", icon: "medkit-outline", read: (s) => s?.medicinePct ?? null },
 ];
 
-function pillarStatusLabel(pct: number): string {
+function pillarStatusLabel(pct: number | null): string {
+  if (pct == null) return "Not tracked";
   if (pct >= 90) return "Excellent";
   if (pct >= 76) return "Good";
   if (pct >= 61) return "Fair";
@@ -97,7 +104,8 @@ function pillarStatusLabel(pct: number): string {
   return "Needs Focus";
 }
 
-function pillarStatusColor(pct: number): string {
+function pillarStatusColor(pct: number | null): string {
+  if (pct == null) return "#94A3B8";
   if (pct >= 76) return "#059669";
   if (pct >= 41) return "#D97706";
   return "#DC2626";
@@ -160,12 +168,15 @@ export function HealthReportSummary({
   const medPct = calcMedPct(data);
   const actualAge = data.profile?.age ?? null;
   const healthAge = actualAge
-    ? calcHealthAge(actualAge, avgScore, data.risks?.stressRisk || "Low", data.profile?.bmiCategory || null, medPct, data.scores?.activePercent || 0)
+    ? calcHealthAge(actualAge, avgScore, data.risks?.stressRisk ?? "Unknown", data.profile?.bmiCategory || null, medPct, data.scores?.activePercent || 0)
     : null;
 
   const aiInsight = buildAiHealthInsight(data);
   const riskCards = buildRiskCards(data, medPct);
-  const topRisks = [...riskCards].filter((r) => r.risk !== "Low").slice(0, 3);
+  // "Unknown" is excluded alongside "Low": a pillar the user never logged is
+  // not a finding, and listing it here would fill the top-risks strip with
+  // things the app simply has no data about.
+  const topRisks = [...riskCards].filter((r) => r.risk !== "Low" && r.risk !== "Unknown").slice(0, 3);
   const recommendations = buildRecommendations(data).slice(0, 3);
 
   // Last 7 logged days for the mini-trend bars (works for both weekly & monthly —
@@ -250,10 +261,11 @@ export function HealthReportSummary({
       <Text style={st.sectionTitle}>YOUR HEALTH PILLARS</Text>
       <View style={st.pillarsRow}>
         {PILLAR_META.map((p) => {
-          const pct = (data.scores?.[p.key] as number) || 0;
+          const pct = p.read(data.scores);
           return (
             <View key={p.label} style={st.pillarCol}>
-              <MiniRing pct={pct} color={p.color} />
+              {/* A null pillar draws an empty grey ring, not a zero-scored red one */}
+              <MiniRing pct={pct ?? 0} color={pct == null ? "#CBD5E1" : p.color} />
               <Text style={st.pillarLabel}>{p.label}</Text>
               <Text style={[st.pillarStatus, { color: pillarStatusColor(pct) }]}>{pillarStatusLabel(pct)}</Text>
             </View>

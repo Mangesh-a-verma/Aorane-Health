@@ -16,7 +16,8 @@ import * as FileSystem from "expo-file-system/legacy";
 import { api } from "@/lib/api";
 import { smartSync } from "@/lib/health/syncManager";
 import { buildHealthReport } from "@/lib/reports/buildHealthReport";
-import { ReportData, ReportType } from "@/lib/reports/reportTypes";
+import { ReportData, ReportType, RiskLevel } from "@/lib/reports/reportTypes";
+import { averagePillar } from "@/lib/reports/reportLogic";
 import { HealthReportSummary } from "@/components/HealthReportSummary";
 // NOTE: Logo is intentionally NOT imported here — logo shows in PDF only, not in screen header
 
@@ -59,10 +60,16 @@ function getDateRange(type: ReportType): { from: Date; to: Date; days: number } 
     from.setDate(now.getDate() - 6);  // Last 7 days
     return { from, to, days: 7 };
   }
-  // Monthly: 1st of current month → today
-  const from = new Date(now.getFullYear(), now.getMonth(), 1);
-  const days = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  return { from, to, days };
+  // Monthly: the last 30 days ending today.
+  //
+  // This used to be "1st of the current month -> today", which is a
+  // month-to-date window, not a month: on the 3rd it covered three days and
+  // called the result a monthly report, and on the 1st it covered one. The
+  // period also shrank and grew as the month went on, so two monthly reports
+  // were never comparable to each other.
+  const from = new Date(now);
+  from.setDate(now.getDate() - 29);
+  return { from, to, days: 30 };
 }
 
 function calcGoalProgress(
@@ -418,25 +425,47 @@ export default function HealthReportScreen() {
         ? Math.round(validLogs.reduce((s, l) => s + l.healthScore, 0) / validCount)
         : (sc?.healthScore ?? 0);
 
-      // FIX: Period-computed active percentages from actual logs
-      const logsWithFood  = dailyLogs.filter(l => l.caloriesIn > 0);
-      const logsWithWater = dailyLogs.filter(l => l.waterGlasses > 0);
-      const logsWithEx    = dailyLogs.filter(l => l.exerciseMinutes > 0);
-      const logsWithSleep = dailyLogs.filter(l => l.sleepHours > 0);
       const logsWithStress = dailyLogs.filter(l => l.stressLevel > 0);
 
-      // Active % = how many days did they log / total days
-      const foodPct     = Math.round((logsWithFood.length  / numDays) * 100);
-      const waterPct    = Math.round((logsWithWater.length / numDays) * 100);
-      const exercisePct = Math.round((logsWithEx.length    / numDays) * 100);
-      const sleepPct    = Math.round((logsWithSleep.length / numDays) * 100);
-      // Stress %: inverted (lower stress = higher score)
+      // ── Pillar scores: QUALITY, from the server ───────────────────────
+      // These four used to be `days with any log / days in period` — a
+      // tracking-consistency number presented as a health verdict. Logging a
+      // meal every day scored Nutrition 100/100 whatever was eaten, and four
+      // hours of sleep logged nightly scored Sleep 100/100 "healthy".
+      //
+      // The correct numbers were already on the wire and being thrown away:
+      // every day of the period is fetched from GET /health/score/:date,
+      // which returns the server's foodScore/waterScore/exerciseScore/
+      // sleepScore — graded against ICMR/WHO/CDC bands in scoring.ts, with
+      // null meaning "not logged that day". So average those instead.
+      //
+      // Days with no log are EXCLUDED from the average rather than counted
+      // as zero: a zero would read as "ate badly", which is a different
+      // claim from "did not log". `days` carries the coverage so the report
+      // can state the denominator instead of hiding it.
+      const foodScore     = averagePillar(scoreByDate, periodDates, "foodScore");
+      const waterScore    = averagePillar(scoreByDate, periodDates, "waterScore");
+      const exerciseScore = averagePillar(scoreByDate, periodDates, "exerciseScore");
+      const sleepScore    = averagePillar(scoreByDate, periodDates, "sleepScore");
+
+      // Stress %: inverted (lower stress = higher score). Stress is NOT part
+      // of computeDailyScore's response, so it still comes from the weekly
+      // stress endpoint.
       const avgStressRaw = logsWithStress.length
         ? logsWithStress.reduce((s, l) => s + l.stressLevel, 0) / logsWithStress.length
         : 0;
       const stressPct = logsWithStress.length ? Math.max(0, 100 - Math.round(avgStressRaw)) : 0;
 
-      const activePercent = Math.round((foodPct + waterPct + exercisePct + sleepPct) / 4);
+      // Average of the pillars that HAVE data. Averaging in a null as zero
+      // would drag the composite down for a pillar the user simply never
+      // tracked, which is the same conflation the pillar scores just fixed.
+      const presentPillars = [foodScore, waterScore, exerciseScore, sleepScore]
+        .map((p) => p.pct)
+        .filter((v): v is number => v !== null);
+      const activePercent = presentPillars.length
+        ? Math.round(presentPillars.reduce((a, b) => a + b, 0) / presentPillars.length)
+        : 0;
+      const daysWithAnyData = periodDates.filter((dt) => scoreByDate.has(dt)).length;
 
       // Medicine compliance
       const medsTaken = dailyLogs.reduce((s, l) => s + (l.medicinesTaken || 0), 0);
@@ -461,20 +490,29 @@ export default function HealthReportScreen() {
       const nutTotals = nut?.monthlyTotals ?? nut?.weeklyTotals ?? {};
 
       // ── Risks — period-aware ──────────────────────────────────────────
-      const avgWaterGlasses = logsWithWater.length
-        ? logsWithWater.reduce((s, l) => s + l.waterGlasses, 0) / logsWithWater.length
-        : 0;
+      // Hydration and nutrition risk now ride on the same server-graded
+      // scores as the pillars above, so the report cannot say "Nutrition
+      // 100/100, Low risk" on the strength of having logged something.
+      //
+      // The old hydration number had a second, independent bug: it averaged
+      // glasses over `logsWithWater.length` — the days water was logged —
+      // rather than over the period. Two good days out of seven and five
+      // days of silence averaged to a full eight glasses, i.e. 100.
+      const hydrationScore  = waterScore.pct;
+      const nutritionScore  = foodScore.pct;
+      const stressScoreVal  = logsWithStress.length ? Math.round(avgStressRaw) : null;
 
-      const hydrationScore  = Math.min(100, Math.round((avgWaterGlasses / 8) * 100));
-      const nutritionScore  = foodPct;
-      const stressScoreVal  = logsWithStress.length ? Math.round(avgStressRaw) : 0;
+      // A pillar that was never logged is Unknown, not Low. Defaulting an
+      // absent measurement to the reassuring end is the one direction a
+      // health report must never round.
+      const bandRisk = (v: number | null): RiskLevel =>
+        v == null ? "Unknown" : v >= 70 ? "Low" : v >= 40 ? "Moderate" : "High";
 
-      const hydrationRisk: "Low" | "Moderate" | "High" =
-        hydrationScore >= 70 ? "Low" : hydrationScore >= 40 ? "Moderate" : "High";
-      const nutritionRisk: "Low" | "Moderate" | "High" =
-        nutritionScore >= 70 ? "Low" : nutritionScore >= 40 ? "Moderate" : "High";
-      const stressRisk: "Low" | "Moderate" | "High" =
-        stressScoreVal < 30 ? "Low" : stressScoreVal < 60 ? "Moderate" : "High";
+      const hydrationRisk = bandRisk(hydrationScore);
+      const nutritionRisk = bandRisk(nutritionScore);
+      const stressRisk: RiskLevel =
+        stressScoreVal == null ? "Unknown"
+          : stressScoreVal < 30 ? "Low" : stressScoreVal < 60 ? "Moderate" : "High";
 
       // ── Goals ────────────────────────────────────────────────────────
       const currentW = pr?.weight_kg    ? Number(pr.weight_kg)    : null;
@@ -514,10 +552,11 @@ export default function HealthReportScreen() {
           // FIX: No todayScore — only period average
           periodAvgScore,
           activePercent,
-          foodPct,
-          waterPct,
-          exercisePct,
-          sleepPct,
+          food:     foodScore,
+          water:    waterScore,
+          exercise: exerciseScore,
+          sleep:    sleepScore,
+          daysWithAnyData,
           stressPct,
           medicinePct,
           streakDays: pr?.streak_days ?? sc?.streakDays ?? 0,
