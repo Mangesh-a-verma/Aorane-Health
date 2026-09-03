@@ -300,33 +300,51 @@ export default function HealthReportScreen() {
       // Monthly: use monthly endpoints if available, else fallback gracefully
       const isMonthly = reportType === "monthly";
 
-      // ✅ FIX: `getWeeklyHealthLogs` / `getMonthlyHealthLogs` referenced below
-      // do NOT exist anywhere in lib/api.ts or the backend (verified against
-      // the api-server routes) — they were always `undefined`, so `wl` was
-      // always `null` and periodAvgScore / pillar %s / dailyLogs were always
-      // empty (silently falling back to "today only"). The only endpoint
-      // that actually returns a full per-day breakdown is
-      // `GET /health/score/:date` (api.getHealthScore), so we fetch it once
-      // per day in the period — in small batches rather than all at once,
-      // since `computeDailyScore` runs ~16 DB queries server-side per call;
-      // firing all 30 days of a monthly report simultaneously would mean
-      // ~480 queries in one burst, which can strain the backend and time
-      // out on slower mobile connections.
+      // Per-day scores come from GET /health/score/range in ONE request.
+      //
+      // This used to fetch GET /health/score/:date once per day of the
+      // period, in batches of six: five sequential round trips for a 30-day
+      // report, each waiting on the previous, over a mobile connection and
+      // possibly a cold Render instance. The range endpoint also shares one
+      // query memo across the days, so the six user-scoped queries run once
+      // instead of once per day.
+      //
+      // (An older note here said getWeeklyHealthLogs/getMonthlyHealthLogs
+      // were referenced but never existed. They are long gone; the per-day
+      // score endpoint replaced them, and this replaces that.)
       const periodDates = Array.from({ length: numDays }, (_, i) => {
         const d = new Date(dateRange.from);
         d.setDate(dateRange.from.getDate() + i);
         return getLocalISODate(d);
       });
 
+      // Falls back to the old per-day fetch when the range endpoint is not
+      // there — a phone updated ahead of the server would otherwise show an
+      // empty report rather than a slow one.
       const BATCH_SIZE = 6;
-      async function fetchScoresBatched(dates: string[]) {
-        const results: PromiseSettledResult<any>[] = [];
+      async function fetchScoresBatched(dates: string[]): Promise<Record<string, any>> {
+        const out: Record<string, any> = {};
         for (let i = 0; i < dates.length; i += BATCH_SIZE) {
           const batch = dates.slice(i, i + BATCH_SIZE);
-          const batchResults = await Promise.allSettled(batch.map((d) => api.getHealthScore(d)));
-          results.push(...batchResults);
+          const results = await Promise.allSettled(batch.map((d) => api.getHealthScore(d)));
+          results.forEach((r, j) => {
+            if (r.status === "fulfilled") out[batch[j]] = (r.value as any)?.score ?? null;
+          });
         }
-        return results;
+        return out;
+      }
+
+      async function fetchScores(dates: string[]): Promise<Record<string, any>> {
+        if (dates.length === 0) return {};
+        try {
+          const res = await api.getHealthScoreRange(dates[0], dates[dates.length - 1]);
+          // An empty `scores` from a server that does have the route is a
+          // real answer (no data yet); only a missing route falls through.
+          if (res && typeof res.scores === "object" && res.scores !== null) return res.scores;
+        } catch {
+          // older server — no /health/score/range
+        }
+        return fetchScoresBatched(dates);
       }
 
       const [
@@ -336,7 +354,7 @@ export default function HealthReportScreen() {
         api.getProfile(),
         // Real per-day score+breakdown fetch (replaces the non-existent
         // getWeeklyHealthLogs/getMonthlyHealthLogs ghost calls), batched.
-        fetchScoresBatched(periodDates),
+        fetchScores(periodDates),
         // Nutrition: monthly totals vs weekly totals
         isMonthly && (api as any).getMonthlyFoodNutrition
           ? (api as any).getMonthlyFoodNutrition(startDate, endDate)
@@ -357,20 +375,18 @@ export default function HealthReportScreen() {
 
       const sc  = rScorecard.status === "fulfilled" ? (rScorecard.value as any) : null;
       const pr  = rProfile.status   === "fulfilled" ? ((rProfile.value as any)?.profile ?? null) : null;
-      const dailyScoreResults = rDailyScores.status === "fulfilled"
-        ? (rDailyScores.value as PromiseSettledResult<any>[])
-        : [];
+      const scoresByDateRaw: Record<string, any> = rDailyScores.status === "fulfilled"
+        ? (rDailyScores.value as Record<string, any>)
+        : {};
       // Map of date -> score object, only for days that actually returned data
-      // with a non-zero confidence (computeDailyScore returns a zeroed
-      // placeholder object on error/no-data, not a rejection — see backend
-      // health.ts catch block — so we treat dataConfidence === 0 as "no log").
+      // with a non-zero confidence (the backend returns a zeroed placeholder
+      // object on error/no-data, not a rejection — see health.ts's catch —
+      // so dataConfidence === 0 is treated as "no log").
       const scoreByDate = new Map<string, any>();
-      dailyScoreResults.forEach((r, i) => {
-        if (r.status === "fulfilled") {
-          const s = (r.value as any)?.score;
-          if (s && (s.dataConfidence ?? 0) > 0) scoreByDate.set(periodDates[i], s);
-        }
-      });
+      for (const date of periodDates) {
+        const s = scoresByDateRaw[date];
+        if (s && (s.dataConfidence ?? 0) > 0) scoreByDate.set(date, s);
+      }
       const nut = rNut.status       === "fulfilled" ? (rNut.value as any) : null;
       const str = rStress.status    === "fulfilled" ? (rStress.value as any) : null;
       const co  = rCompany.status   === "fulfilled" ? ((rCompany.value as any)?.settings ?? null) : null;

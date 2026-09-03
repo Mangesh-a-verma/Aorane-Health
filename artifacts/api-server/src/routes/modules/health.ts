@@ -4,7 +4,7 @@ import { getCumulativeActivePercent } from "../../lib/activityScore";
 import { pool } from "@workspace/db";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { computeScientificScore } from "../../lib/scoring";
+import { computeScientificScore, type ScoreQueryMemo } from "../../lib/scoring";
 import { istDayBounds, todayIST } from "../../lib/dateUtils";
 import { safeErrorMessage } from "../../lib/logger";
 import { isBooleanFeatureEnabled } from "../../middlewares/plan-limits";
@@ -231,6 +231,76 @@ router.get("/health/water/:date", requireAuth, async (req: AuthRequest, res) => 
     res.json({ logs, totalGlasses: total, goal });
   } catch (e) {
     res.status(500).json({ error: "Failed to fetch water logs", detail: safeErrorMessage(e) });
+  }
+});
+
+/**
+ * Every day of a date range in ONE request.
+ *
+ * The health report needs a score for each day of its period. It used to ask
+ * for them one date at a time — 7 calls for a weekly report and 30 for a
+ * monthly one, issued from a phone in batches of six. That is up to five
+ * sequential round trips over a mobile network before the report can render,
+ * on top of a Render free-tier instance that may be cold for the first of
+ * them.
+ *
+ * Two things make this cheaper than the loop it replaces:
+ *   - one HTTP round trip instead of `days`;
+ *   - a ScoreQueryMemo shared across the days, which collapses the six
+ *     user-scoped queries (preferences, profile x2, goals, conditions,
+ *     medicine schedules) from `days x 6` down to six in total. For 30 days
+ *     that is 180 queries saved.
+ *
+ * Days are scored with bounded concurrency rather than all at once:
+ * computeScientificScore issues ~11 date-scoped queries per day, so firing
+ * 30 days simultaneously would put ~330 queries on the pool in one burst.
+ *
+ * A day that fails to score is returned as null rather than failing the
+ * whole range — one bad day should not cost the user their report.
+ */
+router.get("/health/score/range", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { from, to } = req.query as Record<string, string>;
+    const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    if (!isDate(from) || !isDate(to)) {
+      return res.status(400).json({ error: "from and to are required as YYYY-MM-DD" });
+    }
+    if (from > to) return res.status(400).json({ error: "from must not be after to" });
+    // The regex accepts shapes like 2026-13-45, which Date.parse answers with
+    // NaN. Without this the loop below never runs and the caller gets an
+    // empty range with a 200 — a blank report instead of an error.
+    const fromMs = Date.parse(`${from}T12:00:00Z`), toMs = Date.parse(`${to}T12:00:00Z`);
+    if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) {
+      return res.status(400).json({ error: "from and to must be real calendar dates" });
+    }
+
+    // Build the list of IST calendar days in [from, to]. Stepping by a day
+    // through UTC noon avoids a DST-style shift landing twice on one date.
+    const dates: string[] = [];
+    for (let t = fromMs; t <= toMs; t += 86_400_000) {
+      dates.push(new Date(t).toISOString().slice(0, 10));
+      // Bound the work a single request can ask for, whatever the client sends.
+      if (dates.length >= 92) break;
+    }
+
+    const memo: ScoreQueryMemo = new Map();
+    const scores: Record<string, unknown> = {};
+    const CONCURRENCY = 6;
+    for (let i = 0; i < dates.length; i += CONCURRENCY) {
+      const chunk = dates.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(
+        chunk.map((d) =>
+          computeScientificScore(req.userId!, d, memo)
+            .then((s) => ({ d, s }))
+            .catch(() => ({ d, s: null })),
+        ),
+      );
+      for (const { d, s } of results) scores[d] = s ? toScoreResponse(req.userId!, d, s) : null;
+    }
+
+    return res.json({ scores, days: dates.length });
+  } catch (e) {
+    return res.status(500).json({ error: "Failed to fetch score range", detail: safeErrorMessage(e) });
   }
 });
 
@@ -647,7 +717,20 @@ router.get("/health/active-percent", requireAuth, async (req: AuthRequest, res) 
 });
 
 async function computeDailyScore(userId: string, date: string): Promise<Record<string, unknown>> {
-  const s = await computeScientificScore(userId, date);
+  return toScoreResponse(userId, date, await computeScientificScore(userId, date));
+}
+
+/** The wire shape of a day's score.
+ *
+ *  Extracted so GET /health/score/:date and GET /health/score/range cannot
+ *  drift apart: the report reads whichever is available, and a field present
+ *  in one but not the other would change the report depending on which path
+ *  served it. */
+function toScoreResponse(
+  userId: string,
+  date: string,
+  s: Awaited<ReturnType<typeof computeScientificScore>>,
+): Record<string, unknown> {
   return {
     userId,
     scoreDate:          date,

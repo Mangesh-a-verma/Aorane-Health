@@ -459,8 +459,40 @@ function buildCompositeScore(
 }
 
 // ─── Main Engine ──────────────────────────────────────────────────────────────
-export async function computeScientificScore(userId: string, date: string): Promise<DailyHealthScore> {
+/** Optional per-request memo for the queries whose answer does not depend on
+ *  `date`. Scoring one day runs 17 queries, six of which — medicine schedules,
+ *  preferences, profile (twice), goals and conditions — return the same rows
+ *  for every date. A 30-day report therefore re-ran those six 30 times over.
+ *
+ *  Passing a Map shared across the days of one request collapses them to six
+ *  in total. Omit it and every query runs exactly as before, so the
+ *  single-day path is untouched. Scoped to one request and then discarded —
+ *  this is NOT a cache across requests, so it can never serve stale data. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- matches the
+// untyped pool.query() rows the rest of this file already works with.
+export type ScoreQueryMemo = Map<string, Promise<{ rows: any[] }>>;
+
+export async function computeScientificScore(
+  userId: string,
+  date: string,
+  memo?: ScoreQueryMemo,
+): Promise<DailyHealthScore> {
   const { dayStart, dayEnd } = istDayBounds(date);
+
+  // Runs a user-scoped (date-independent) query, through the memo when one
+  // was supplied. The key is the caller-chosen tag; every such query is
+  // parameterised by userId alone, which is fixed for the whole memo.
+  // The memo is keyed by a fixed tag per call site, so a hit always has the
+  // shape that call site stored. TypeScript cannot see that through the Map,
+  // hence the cast; the keys are literals below, not caller input.
+  const userScoped = <T extends { rows: any[] }>(key: string, run: () => Promise<T>): Promise<T> => {
+    if (!memo) return run();
+    const hit = memo.get(key) as Promise<T> | undefined;
+    if (hit) return hit;
+    const p = run();
+    memo.set(key, p);
+    return p;
+  };
 
   // ── Fetch all data in parallel ──────────────────────────────────────────────
   const [
@@ -495,10 +527,10 @@ export async function computeScientificScore(userId: string, date: string): Prom
       [userId, dayStart, dayEnd],
     ).catch(() => ({ rows: [{ total_ml: "0", total_glasses: "0" }] })),
 
-    pool.query(
+    userScoped("medSched", () => pool.query(
       `SELECT COUNT(*) FROM medicine_schedules WHERE user_id=$1 AND is_active=true`,
       [userId],
-    ).catch(() => ({ rows: [{ count: "0" }] })),
+    ).catch(() => ({ rows: [{ count: "0" }] }))),
 
     pool.query(
       `SELECT COUNT(*) FROM medicine_logs
@@ -506,28 +538,28 @@ export async function computeScientificScore(userId: string, date: string): Prom
       [userId, dayStart, dayEnd],
     ).catch(() => ({ rows: [{ count: "0" }] })),
 
-    pool.query(
+    userScoped("prefs", () => pool.query(
       `SELECT water_goal_glasses, calorie_goal FROM user_preferences WHERE user_id=$1`,
       [userId],
-    ).catch(() => ({ rows: [{}] })),
+    ).catch(() => ({ rows: [{}] }))),
 
-    pool.query(
+    userScoped("profileBasic", () => pool.query(
       `SELECT weight_kg, gender, bmi,
               current_health_streak, longest_health_streak,
               rolling_7_day_score, rolling_30_day_score, biological_age
        FROM user_profiles WHERE user_id=$1`,
       [userId],
-    ).catch(() => ({ rows: [{}] })),
+    ).catch(() => ({ rows: [{}] }))),
 
-    pool.query(
+    userScoped("goals", () => pool.query(
       `SELECT primary_goal FROM user_health_goals WHERE user_id=$1 LIMIT 1`,
       [userId],
-    ).catch(() => ({ rows: [{ primary_goal: "general_wellness" }] })),
+    ).catch(() => ({ rows: [{ primary_goal: "general_wellness" }] }))),
 
-    pool.query(
+    userScoped("conditions", () => pool.query(
       `SELECT condition FROM user_medical_conditions WHERE user_id=$1 AND is_active=true`,
       [userId],
-    ).catch(() => ({ rows: [] })),
+    ).catch(() => ({ rows: [] }))),
 
     // Sleep: ONLY from sleep_logs for today — NO profile average fallback
     pool.query(
@@ -546,10 +578,10 @@ export async function computeScientificScore(userId: string, date: string): Prom
 
   // ── Optional columns — silently degrade if not yet migrated ─────────────────
   const [profileExtR, exMetR, foodMicroR, wearableR, bpR, sugarR] = await Promise.all([
-    pool.query(
+    userScoped("profileExt", () => pool.query(
       `SELECT height_cm, date_of_birth, activity_level, work_profile FROM user_profiles WHERE user_id=$1`,
       [userId],
-    ).catch(() => ({ rows: [{}] })),
+    ).catch(() => ({ rows: [{}] }))),
 
     pool.query(
       `SELECT COALESCE(SUM(met_value::numeric * duration_minutes), 0) AS met_minutes
@@ -766,7 +798,14 @@ export async function computeScientificScore(userId: string, date: string): Prom
     ],
   ).catch(() => {});
 
-  import("./health-trends.js").then(m => m.updateHealthTrends(userId)).catch(() => {});
+  // updateHealthTrends recomputes the user's streaks and rolling averages
+  // from scratch and ignores `date`, so scoring a 30-day range fired 30
+  // identical recomputes. It is user-scoped like the queries above, so the
+  // same memo gates it to once per request; with no memo it fires as before.
+  if (!memo || !memo.has("__trendsFired")) {
+    memo?.set("__trendsFired", Promise.resolve({ rows: [] }));
+    import("./health-trends.js").then(m => m.updateHealthTrends(userId)).catch(() => {});
+  }
 
   return {
     overallScore, grade, gradeLabel, dataConfidence,
