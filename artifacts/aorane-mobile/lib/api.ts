@@ -489,6 +489,15 @@ export const api = {
   getHealthScore: (date: string) =>
     request<{ score: Record<string, unknown> }>("GET", `/health/score/${date}`),
 
+  /** Every day in [from, to] in one request. Replaces `days` separate
+   *  getHealthScore() calls — a 30-day report used to need 30 of them,
+   *  issued in batches of six, i.e. five sequential round trips before the
+   *  report could render. A day the server could not score comes back as
+   *  null rather than failing the whole range. */
+  getHealthScoreRange: (from: string, to: string) =>
+    request<{ scores: Record<string, Record<string, unknown> | null>; days: number }>(
+      "GET", `/health/score/range?from=${from}&to=${to}`),
+
   computeHealthScore: (date: string) =>
     request<{ score: Record<string, unknown> }>("POST", `/health/score/${date}/compute`),
 

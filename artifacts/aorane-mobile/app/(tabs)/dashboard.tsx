@@ -292,14 +292,13 @@ const HealthScoreCard = React.memo(function HealthScoreCard({
             <Text style={hc.title}>{t("dashHealthScore")}</Text>
             <Info size={13} color="rgba(255,255,255,0.75)" strokeWidth={2} />
           </View>
-          <View style={hc.bigRow}>
-            <Text style={hc.bigNum}>{healthScore}</Text>
-            <Text style={hc.bigMax}>/100</Text>
-          </View>
+          {/* The score itself lives in the ring on the right — PremiumScoreRing
+              renders the number inside it. A second copy here printed the
+              same figure twice in one card. */}
           <Text style={hc.status}>{status}</Text>
         </View>
         <View style={hc.ringWrap}>
-          <PremiumScoreRing score={healthScore} size={92} strokeWidth={9} textColor="white" />
+          <PremiumScoreRing score={healthScore} size={92} strokeWidth={9} textColor="white" subLabel="/100" />
           <View style={hc.heartOverlay} pointerEvents="none">
             <Heart size={13} color="#fff" fill="#fff" strokeWidth={0} />
           </View>
@@ -327,9 +326,6 @@ const hc = StyleSheet.create({
   top:         { flexDirection: "row", alignItems: "center", gap: 12 },
   titleRow:    { flexDirection: "row", alignItems: "center", gap: 5 },
   title:       { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.85)" },
-  bigRow:      { flexDirection: "row", alignItems: "baseline", gap: 4, marginTop: 6 },
-  bigNum:      { fontSize: 38, fontFamily: "Inter_800ExtraBold", color: "#fff", lineHeight: 42 },
-  bigMax:      { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.65)" },
   status:      { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.92)", marginTop: 6 },
   ringWrap:    { position: "relative" },
   heartOverlay:{ position: "absolute", top: 25, left: 0, right: 0, alignItems: "center" },

@@ -622,17 +622,30 @@ export default function WearableScreen() {
             {latest ? (
               <View style={s.card}>
                 <View style={s.cardHead}>
-                  <Text style={s.cardTitle}>Latest Reading</Text>
+                  {/* Titled by the window it actually covers. Every sync reads
+                      Health Connect for the ROLLING 24 hours ending at the
+                      sync (lib/health/syncManager.ts), so at 11am these
+                      numbers run from 11am yesterday — they are not a
+                      midnight-to-now calendar day. Under a heading that read
+                      "Latest Reading", beside daily targets, that looked like
+                      today's totals with older activity folded in. */}
+                  <Text style={s.cardTitle}>Last 24 Hours</Text>
                   <View style={[s.pillMuted, age?.stale && s.pillWarn]}>
                     <Text style={[s.pillMutedTxt, age?.stale && s.pillWarnTxt]}>{age?.label}</Text>
                   </View>
                 </View>
 
+                {!age?.stale && (
+                  <Text style={s.windowNote}>
+                    The 24 hours up to your last sync — so it can include some of yesterday.
+                  </Text>
+                )}
+
                 {age?.stale && (
                   <View style={s.staleStrip}>
                     <Text style={{ fontSize: 12 }}>⏳</Text>
                     <Text style={s.staleTxt} numberOfLines={2}>
-                      These are your most recent readings, from {age.days === 1 ? "yesterday" : `${age.days} days ago`} — not today.
+                      Your most recent readings — the 24 hours up to a sync {age.days === 1 ? "yesterday" : `${age.days} days ago`}, not recent activity.
                     </Text>
                     {activeConnections.length > 0 && (
                       <TouchableOpacity
@@ -864,6 +877,7 @@ const s = StyleSheet.create({
   pillWarnTxt: { color: "#B45309" },
   staleStrip:  { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#FDF3E3", borderRadius: 12, padding: 9, marginBottom: 10 },
   staleTxt:    { flex: 1, fontSize: 10.5, fontFamily: "Inter_400Regular", color: "#8A5A18", lineHeight: 14 },
+  windowNote:  { fontSize: 10, fontFamily: "Inter_400Regular", color: DS.color.muted, marginBottom: 9, lineHeight: 13 },
   stalePill:   { paddingHorizontal: 11, paddingVertical: 6, borderRadius: 12, backgroundColor: "#FAE6C6" },
   stalePillTxt:{ fontSize: 10.5, fontFamily: "Inter_700Bold", color: "#B45309" },
 
