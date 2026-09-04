@@ -9,6 +9,16 @@ import { checkAndUseAILimit, refundAIUsage } from "../../lib/aiLimiter";
 import { callAI } from "../../lib/ai";
 import { todayIST, istDayBounds } from "../../lib/dateUtils";
 
+/** The IST calendar day a timestamp falls on.
+ *
+ *  Every date in this codebase is an IST day. `toISOString().split("T")[0]`
+ *  buckets in UTC instead, which files a 2am IST check-in under the previous
+ *  day — so a day's average was computed from the wrong logs, and the health
+ *  report, which matches on IST dates, found nothing for that day. */
+function istDay(d: Date): string {
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
 // ── Work profile → estimated daily work hours map ───────────────────────────
 const WORK_HOURS_MAP: Record<string, number> = {
   "Office/Desk Job":    9,
@@ -211,7 +221,7 @@ router.get("/stress/today", requireAuth, async (req: AuthRequest, res) => {
 
     const dayMap: Record<string, number[]> = {};
     recentLogs.forEach(l => {
-      const day = l.loggedAt.toISOString().split("T")[0]!;
+      const day = istDay(l.loggedAt);
       if (!dayMap[day]) dayMap[day] = [];
       dayMap[day]!.push(l.stressScore);
     });
@@ -260,12 +270,18 @@ router.get("/stress/logs", requireAuth, async (req: AuthRequest, res) => {
 // ─────────────────────────────────────────────────────────
 router.get("/stress/weekly", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-    sevenDaysAgo.setHours(0, 0, 0, 0);
+    // `days` widens the window past the default week. The monthly health
+    // report covers 30 days but had only this endpoint to ask, so its stress
+    // figure was an average of the last 7 days presented as a month's.
+    // Default stays 7, so every existing caller is unchanged.
+    const requestedDays = Math.min(90, Math.max(1, parseInt(String((req.query as { days?: string }).days ?? "7"), 10) || 7));
+
+    const windowStart = new Date();
+    windowStart.setDate(windowStart.getDate() - (requestedDays - 1));
+    windowStart.setHours(0, 0, 0, 0);
 
     const logs = await db.select().from(stressLogsTable)
-      .where(and(eq(stressLogsTable.userId, req.userId!), gte(stressLogsTable.loggedAt, sevenDaysAgo)))
+      .where(and(eq(stressLogsTable.userId, req.userId!), gte(stressLogsTable.loggedAt, windowStart)))
       .orderBy(desc(stressLogsTable.loggedAt));
 
     const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -275,11 +291,11 @@ router.get("/stress/weekly", requireAuth, async (req: AuthRequest, res) => {
       avgScore: number; count: number; dominantMood: string | null;
     }> = [];
 
-    for (let i = 6; i >= 0; i--) {
+    for (let i = requestedDays - 1; i >= 0; i--) {
       const d       = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr  = d.toISOString().split("T")[0]!;
-      const dayLogs  = logs.filter(l => l.loggedAt.toISOString().split("T")[0] === dateStr);
+      const dateStr  = istDay(d);
+      const dayLogs  = logs.filter(l => istDay(l.loggedAt) === dateStr);
       const avg      = dayLogs.length ? Math.round(dayLogs.reduce((s: any, l: any) => s + l.stressScore, 0) / dayLogs.length) : 0;
 
       const moods     = dayLogs.filter(l => l.mood).map(l => l.mood!);
@@ -367,7 +383,7 @@ router.get("/stress/insight", requireAuth, async (req: AuthRequest, res) => {
         const logSummary = recentLogs.slice(0, 7).map(l => {
           const pData = l.pillars as Record<string, unknown> | null;
           const mode  = pData?.mode as string || l.stressType;
-          return `${l.loggedAt.toISOString().split("T")[0]}: score=${l.stressScore}, type=${mode}${l.mood ? `, mood=${l.mood}` : ""}`;
+          return `${istDay(l.loggedAt)}: score=${l.stressScore}, type=${mode}${l.mood ? `, mood=${l.mood}` : ""}`;
         }).join("\n");
 
         const prompt = `You are an Indian health AI assistant for the Aorane health app. Analyze this user's stress data and give personalized advice in English.

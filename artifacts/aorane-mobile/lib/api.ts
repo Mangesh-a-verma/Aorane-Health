@@ -495,8 +495,16 @@ export const api = {
    *  report could render. A day the server could not score comes back as
    *  null rather than failing the whole range. */
   getHealthScoreRange: (from: string, to: string) =>
-    request<{ scores: Record<string, Record<string, unknown> | null>; days: number }>(
-      "GET", `/health/score/range?from=${from}&to=${to}`),
+    request<{
+      scores: Record<string, Record<string, unknown> | null>;
+      days: number; served: number; computed: number; pending: number;
+    }>(
+      "GET", `/health/score/range?from=${from}&to=${to}`, undefined, true,
+      // 45s, not the usual 15s. Most days come straight off persisted rows,
+      // but a first-ever monthly report still computes a handful, and every
+      // query in the request serialises through a single pooled connection.
+      // The old 15s was what made monthly reports come back empty.
+      45000),
 
   computeHealthScore: (date: string) =>
     request<{ score: Record<string, unknown> }>("POST", `/health/score/${date}/compute`),
@@ -633,8 +641,10 @@ export const api = {
     request<{ checkedIn: boolean; latestScore: number | null; avgScore: number | null; count: number; latestMood: string | null; latestMode: string | null; burnoutRisk: boolean }>("GET", "/stress/today"),
   getStressLogs: (limit?: number) =>
     request<{ logs: Array<Record<string, unknown>>; avgScore: number; count: number }>("GET", `/stress/logs${limit ? `?limit=${limit}` : ""}`),
-  getStressWeekly: () =>
-    request<{ days: Array<{ date: string; dayLabel: string; dayLabelHi: string; avgScore: number; count: number; dominantMood: string | null }>; weekAvg: number; totalLogs: number; highStreakDays: number; burnoutRisk: boolean; personalBaseline: number | null; vsBaseline: number | null; baselineLogsCount: number }>("GET", "/stress/weekly"),
+  /** `days` widens the window past the default week — the monthly report asks
+   *  for 30 so its stress figure covers the period it claims to. */
+  getStressWeekly: (days?: number) =>
+    request<{ days: Array<{ date: string; dayLabel: string; dayLabelHi: string; avgScore: number; count: number; dominantMood: string | null }>; weekAvg: number; totalLogs: number; highStreakDays: number; burnoutRisk: boolean; personalBaseline: number | null; vsBaseline: number | null; baselineLogsCount: number }>("GET", days ? `/stress/weekly?days=${days}` : "/stress/weekly"),
   getStressInsight: () =>
     request<{ avgScore: number; insight: string; tips: string[]; logsCount: number; aiPowered: boolean }>("GET", "/stress/insight"),
 

@@ -341,8 +341,15 @@ export default function HealthReportScreen() {
           // An empty `scores` from a server that does have the route is a
           // real answer (no data yet); only a missing route falls through.
           if (res && typeof res.scores === "object" && res.scores !== null) return res.scores;
-        } catch {
-          // older server — no /health/score/range
+        } catch (e) {
+          // Fall back ONLY when the route genuinely is not there — an older
+          // server against a newer app. On a timeout the server is still
+          // working through the request it was given, and firing `dates.length`
+          // more at it would queue behind that same single pooled connection
+          // and make the stall worse, not better.
+          const msg = (e as Error)?.message || "";
+          const routeMissing = /\(404\)|not found/i.test(msg);
+          if (!routeMissing) throw e;
         }
         return fetchScoresBatched(dates);
       }
@@ -356,14 +363,15 @@ export default function HealthReportScreen() {
         // getWeeklyHealthLogs/getMonthlyHealthLogs ghost calls), batched.
         fetchScores(periodDates),
         // Nutrition: monthly totals vs weekly totals
-        isMonthly && (api as any).getMonthlyFoodNutrition
-          ? (api as any).getMonthlyFoodNutrition(startDate, endDate)
-          : api.getWeeklyFoodNutrition(),
-        // Stress: per-day lookup table built from the weekly endpoint.
-        // NOTE: there is no monthly stress endpoint on the backend yet, so
-        // monthly reports currently only get stress data for the last 7
-        // days within the period (see "Known limitation" below this block).
-        api.getStressWeekly(),
+        // Both endpoints take no arguments — monthly is "last 30 days grouped
+        // by week" server-side. This used to be called through an `as any`
+        // cast with (startDate, endDate) passed in, which TypeScript could not
+        // flag and the server silently ignored.
+        isMonthly ? api.getMonthlyFoodNutrition() : api.getWeeklyFoodNutrition(),
+        // Stress: per-day lookup table. Asked for the report's own period —
+        // a monthly report used to average the last 7 days of stress and
+        // present the result as a month's figure.
+        api.getStressWeekly(numDays),
         api.getCompanySettings(),
         // Health Connect vitals (Heart Rate, SpO2, Active Minutes), averaged
         // over the same period as the rest of this report. Purely additive —
@@ -375,9 +383,16 @@ export default function HealthReportScreen() {
 
       const sc  = rScorecard.status === "fulfilled" ? (rScorecard.value as any) : null;
       const pr  = rProfile.status   === "fulfilled" ? ((rProfile.value as any)?.profile ?? null) : null;
-      const scoresByDateRaw: Record<string, any> = rDailyScores.status === "fulfilled"
-        ? (rDailyScores.value as Record<string, any>)
-        : {};
+      // A failed score fetch used to fall through to `{}`, and the report then
+      // rendered as though the user had simply never logged anything — which
+      // is exactly how a timed-out monthly report looked. Say what happened
+      // instead of showing an empty month.
+      if (rDailyScores.status === "rejected") {
+        throw new Error(
+          "Couldn't load your daily scores — the server took too long. Pull down to retry.",
+        );
+      }
+      const scoresByDateRaw: Record<string, any> = rDailyScores.value as Record<string, any>;
       // Map of date -> score object, only for days that actually returned data
       // with a non-zero confidence (the backend returns a zeroed placeholder
       // object on error/no-data, not a rejection — see health.ts's catch —

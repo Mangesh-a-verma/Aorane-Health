@@ -4,7 +4,7 @@ import { getCumulativeActivePercent } from "../../lib/activityScore";
 import { pool } from "@workspace/db";
 import { requireAuth } from "../../middlewares/user-auth";
 import type { AuthRequest } from "../../middlewares/user-auth";
-import { computeScientificScore, type ScoreQueryMemo } from "../../lib/scoring";
+import { computeScientificScore, SCORE_ROW_VERSION, type ScoreQueryMemo } from "../../lib/scoring";
 import { istDayBounds, todayIST } from "../../lib/dateUtils";
 import { safeErrorMessage } from "../../lib/logger";
 import { isBooleanFeatureEnabled } from "../../middlewares/plan-limits";
@@ -283,22 +283,71 @@ router.get("/health/score/range", requireAuth, async (req: AuthRequest, res) => 
       if (dates.length >= 92) break;
     }
 
-    const memo: ScoreQueryMemo = new Map();
-    const scores: Record<string, unknown> = {};
-    const CONCURRENCY = 6;
-    for (let i = 0; i < dates.length; i += CONCURRENCY) {
-      const chunk = dates.slice(i, i + CONCURRENCY);
-      const results = await Promise.all(
-        chunk.map((d) =>
-          computeScientificScore(req.userId!, d, memo)
-            .then((s) => ({ d, s }))
-            .catch(() => ({ d, s: null })),
-        ),
-      );
-      for (const { d, s } of results) scores[d] = s ? toScoreResponse(req.userId!, d, s) : null;
+    // ── Serve from persisted rows first ──────────────────────────────────
+    // Computing one day costs ~17 queries, and the pool runs at max 1 against
+    // the Supabase pooler (lib/db/index.ts), so every query in this request
+    // serialises through a single connection. Computing 30 of them meant ~336
+    // serialised queries — past the client's timeout, which is why monthly
+    // reports came back empty while weekly (~119) squeaked through.
+    //
+    // scoring.ts already persists every day it computes, so the range is
+    // almost entirely a read. One SELECT covers it.
+    const persisted = await pool.query(
+      `SELECT score_date, health_score, data_confidence_pct,
+              food_score, exercise_score, water_score, medicine_score, sleep_score,
+              total_calories_in, total_calories_out, water_glasses, exercise_minutes,
+              sleep_hours, medicines_taken, medicines_scheduled, score_version
+         FROM daily_health_scores
+        WHERE user_id = $1 AND score_date = ANY($2::text[])`,
+      [req.userId!, dates],
+    );
+
+    const rows = new Map<string, Record<string, unknown>>();
+    for (const r of persisted.rows) {
+      // score_date can come back as a Date or a string depending on the driver's
+      // type parsing; normalise before it is used as a map key against the
+      // YYYY-MM-DD strings this endpoint generated.
+      const key = typeof r.score_date === "string"
+        ? r.score_date.slice(0, 10)
+        : new Date(r.score_date).toISOString().slice(0, 10);
+      rows.set(key, r);
     }
 
-    return res.json({ scores, days: dates.length });
+    const scores: Record<string, unknown> = {};
+    const missing: string[] = [];
+    for (const d of dates) {
+      const row = rows.get(d);
+      if (row) scores[d] = persistedRowToScoreResponse(req.userId!, d, row);
+      else missing.push(d);
+    }
+
+    // Days with no row at all still have to be computed. Bounded, because
+    // each one is another ~17 queries down that single connection — a user
+    // opening a monthly report for the first time should get a mostly-served
+    // report now rather than a timeout, and the days computed here persist,
+    // so the gap closes over the next couple of opens.
+    const MAX_COMPUTE = 6;
+    const memo: ScoreQueryMemo = new Map();
+    let computed = 0;
+    for (const d of missing.slice(-MAX_COMPUTE)) {
+      const s = await computeScientificScore(req.userId!, d, memo).catch(() => null);
+      if (s) { scores[d] = toScoreResponse(req.userId!, d, s); computed++; }
+      else scores[d] = null;
+    }
+    for (const d of missing.slice(0, Math.max(0, missing.length - MAX_COMPUTE))) {
+      scores[d] = null;
+    }
+
+    return res.json({
+      scores,
+      days: dates.length,
+      // Told plainly so a partial answer is visible rather than looking like
+      // a user with no history: served = read from persisted rows, computed =
+      // calculated now, pending = left for a later request by MAX_COMPUTE.
+      served: dates.length - missing.length,
+      computed,
+      pending: Math.max(0, missing.length - MAX_COMPUTE),
+    });
   } catch (e) {
     return res.status(500).json({ error: "Failed to fetch score range", detail: safeErrorMessage(e) });
   }
@@ -720,6 +769,81 @@ async function computeDailyScore(userId: string, date: string): Promise<Record<s
   return toScoreResponse(userId, date, await computeScientificScore(userId, date));
 }
 
+/** Rebuilds a day's score response from a persisted `daily_health_scores`
+ *  row, so a range request can answer without recomputing the day.
+ *
+ *  Deliberately produces the SAME key set as toScoreResponse(): a consumer
+ *  must not be able to tell a served day from a computed one by shape alone,
+ *  or it would branch on which path happened to answer. Fields the row does
+ *  not carry (grade, methodology, personalisation, BMI, blood pressure,
+ *  blood sugar) come back null rather than invented — the health report reads
+ *  none of them, and a wrong value would be worse than an absent one.
+ *
+ *  Version 1 rows predate sub-scores being nullable and stored 0 where the
+ *  pillar was never logged. A genuine computed score of exactly 0 is possible
+ *  but vanishingly rare — every scorer returns null, not 0, when there is no
+ *  data — so a 0 on a version 1 row is read back as "not logged". Without
+ *  this the first report after the migration would claim the user ate badly
+ *  on every day they simply never opened the food log. */
+function persistedRowToScoreResponse(
+  userId: string,
+  date: string,
+  r: Record<string, any>,
+): Record<string, unknown> {
+  const legacy = Number(r.score_version ?? 1) < SCORE_ROW_VERSION;
+  const num = (v: unknown): number | null =>
+    v === null || v === undefined ? null : Number(v);
+  /** Sub-score, with the version-1 zero-means-unlogged reading applied. */
+  const sub = (v: unknown): number | null => {
+    const n = num(v);
+    if (n === null) return null;
+    return legacy && n === 0 ? null : n;
+  };
+
+  const calories   = num(r.total_calories_in) ?? 0;
+  const burned     = num(r.total_calories_out) ?? 0;
+  const glasses    = num(r.water_glasses) ?? 0;
+  const exMinutes  = num(r.exercise_minutes) ?? 0;
+  const sleepHours = num(r.sleep_hours);
+  const medTaken   = num(r.medicines_taken) ?? 0;
+  const medSched   = num(r.medicines_scheduled) ?? 0;
+
+  return {
+    userId,
+    scoreDate:          date,
+    healthScore:        num(r.health_score) ?? 0,
+    grade:              null,
+    gradeLabel:         null,
+    dataConfidence:     num(r.data_confidence_pct) ?? 0,
+    dataConfidencePct:  String(num(r.data_confidence_pct) ?? 0),
+    foodScore:          sub(r.food_score),
+    exerciseScore:      sub(r.exercise_score),
+    waterScore:         sub(r.water_score),
+    medicineScore:      sub(r.medicine_score),
+    sleepScore:         sub(r.sleep_score),
+    bmiScore:           null,
+    bloodPressureScore: null,
+    bloodSugarScore:    null,
+    food:     { calories, meals: 0 },
+    exercise: { durationMinutes: exMinutes, caloriesBurned: burned, sessions: 0 },
+    water:    { glasses },
+    medicine: { taken: medTaken, scheduled: medSched },
+    sleep:    { hoursLogged: sleepHours, isLogged: sleepHours !== null },
+    bmi:          null,
+    bloodPressure: null,
+    bloodSugar:    null,
+    totalCaloriesIn:  String(calories),
+    waterGlasses:     glasses,
+    exerciseMinutes:  exMinutes,
+    fieldsLogged:     [calories > 0, exMinutes > 0, glasses > 0].filter(Boolean).length,
+    totalPossibleFields: 3,
+    methodology:     null,
+    personalisation: null,
+    /** Where this day came from, so a caller can tell without guessing. */
+    source: "persisted",
+  };
+}
+
 /** The wire shape of a day's score.
  *
  *  Extracted so GET /health/score/:date and GET /health/score/range cannot
@@ -767,6 +891,8 @@ function toScoreResponse(
     methodology:        s.methodology,
     // Personalisation metadata (v2 engine)
     personalisation:    s.personalisation,
+    /** Counterpart to the same field on a persisted row. */
+    source:             "computed",
   };
 }
 

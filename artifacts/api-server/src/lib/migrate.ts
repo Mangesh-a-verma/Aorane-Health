@@ -1721,6 +1721,36 @@ export async function runStartupMigrations(): Promise<void> {
     `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
     `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS donor_inactive_until TIMESTAMPTZ`,
 
+    // ── daily_health_scores: make the persisted row enough to serve a report ──
+    // The health report needs a score for every day of its period. Computing
+    // one costs ~17 queries, and the connection pool runs at max 1 against the
+    // Supabase pooler, so a 30-day report serialised ~336 queries through a
+    // single connection and blew past the client's 15s timeout — weekly (~119)
+    // squeaked under it, monthly never did. Serving those days from this table
+    // turns the whole range into one SELECT.
+    //
+    // Four columns the report reads were missing, so a persisted row could not
+    // stand in for a computed one:
+    `ALTER TABLE daily_health_scores ADD COLUMN IF NOT EXISTS sleep_hours NUMERIC(4,2)`,
+    `ALTER TABLE daily_health_scores ADD COLUMN IF NOT EXISTS medicines_taken INTEGER`,
+    `ALTER TABLE daily_health_scores ADD COLUMN IF NOT EXISTS medicines_scheduled INTEGER`,
+    // total_calories_out already existed but was never written by scoring.ts.
+
+    // Sub-scores were NOT NULL DEFAULT 0, which cannot express "this pillar was
+    // never logged". The report distinguishes those cases — a zero reads as
+    // "ate badly", a null as "not tracked" — so the columns have to allow null.
+    `ALTER TABLE daily_health_scores ALTER COLUMN food_score DROP NOT NULL`,
+    `ALTER TABLE daily_health_scores ALTER COLUMN exercise_score DROP NOT NULL`,
+    `ALTER TABLE daily_health_scores ALTER COLUMN water_score DROP NOT NULL`,
+    `ALTER TABLE daily_health_scores ALTER COLUMN medicine_score DROP NOT NULL`,
+    `ALTER TABLE daily_health_scores ALTER COLUMN sleep_score DROP NOT NULL`,
+
+    // Rows written before the change above store 0 where they should store
+    // null, so they cannot be trusted for the "not tracked" distinction. This
+    // marks which engine wrote a row: 1 = the old shape, 2 = null-aware and
+    // carrying the four new columns. Version 1 rows get recomputed on demand.
+    `ALTER TABLE daily_health_scores ADD COLUMN IF NOT EXISTS score_version SMALLINT NOT NULL DEFAULT 1`,
+
     // ── blood_donors: phone column + auto-verify all existing donors (OTP flow removed) ─
     `ALTER TABLE blood_donors ADD COLUMN IF NOT EXISTS phone TEXT`,
     `UPDATE blood_donors SET otp_verified = TRUE WHERE otp_verified = FALSE`,
