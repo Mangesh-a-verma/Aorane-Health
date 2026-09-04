@@ -39,6 +39,16 @@ export type WearableProvider = {
   grad: [string, string];
   platform: "android" | "ios";
   status: ProviderStatus;
+  /** Minimum Android API level this provider's SDK can run on. Omitted when
+   *  the provider works everywhere the app does.
+   *
+   *  This is not cosmetic. The Samsung Health Data SDK's AAR declares
+   *  minSdkVersion 29 while this app ships minSdkVersion 26, and
+   *  plugins/with-samsung-health.js uses tools:overrideLibrary to let the two
+   *  merge — which means Gradle no longer protects us. Loading a
+   *  com.samsung.android.sdk.health class below API 29 is a hard crash, so
+   *  keeping those users away from it is now entirely this check's job. */
+  minAndroidApi?: number;
 };
 
 export const WEARABLE_PROVIDERS: WearableProvider[] = [
@@ -65,6 +75,8 @@ export const WEARABLE_PROVIDERS: WearableProvider[] = [
     grad: ["#00A8E0", "#1428A0"],
     platform: "android",
     status: "planned",
+    // Samsung Health Data SDK 1.1.0 — see native-libs/samsung-health/README.md.
+    minAndroidApi: 29,
   },
   {
     id: "apple_healthkit",
@@ -101,12 +113,25 @@ export function providerMeta(id: string): WearableProvider {
   return WEARABLE_PROVIDERS.find((p) => p.id === id) ?? { ...FALLBACK, id, shortName: id, name: id };
 }
 
-/** Providers to actually render right now: shipping, and for this platform.
- *  Today that is Health Connect on Android and nothing on iOS — which is
- *  honest, rather than showing an Apple Health card that cannot connect. */
+/** True if this device's OS is new enough for the provider's SDK.
+ *  Android reports Platform.Version as the numeric API level; iOS reports a
+ *  version string, and no iOS provider declares a minimum, so it never
+ *  applies there. An unreadable version is treated as too old — refusing to
+ *  offer a provider is recoverable, crashing on an unsupported device is not. */
+export function meetsOsRequirement(p: WearableProvider): boolean {
+  if (p.minAndroidApi === undefined) return true;
+  if (Platform.OS !== "android") return false;
+  const api = typeof Platform.Version === "number" ? Platform.Version : Number(Platform.Version);
+  return Number.isFinite(api) && api >= p.minAndroidApi;
+}
+
+/** Providers to actually render right now: shipping, for this platform, and
+ *  supported by this device's OS version. Today that is Health Connect on
+ *  Android and nothing on iOS — which is honest, rather than showing an Apple
+ *  Health card that cannot connect. */
 export function visibleProviders(): WearableProvider[] {
   return WEARABLE_PROVIDERS.filter(
-    (p) => p.status === "live" && p.platform === Platform.OS
+    (p) => p.status === "live" && p.platform === Platform.OS && meetsOsRequirement(p)
   );
 }
 
