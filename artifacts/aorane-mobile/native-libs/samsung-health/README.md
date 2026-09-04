@@ -48,3 +48,61 @@ the docs (which ship as redirect stubs to developer.samsung.com):
 
 Download the new zip from the Samsung Developer portal, replace the AAR,
 update the filename in `plugins/with-samsung-health.js` and the hash above.
+
+## Status: parked, not in the build
+
+The plugin exists, is tested, and is **deliberately not registered in
+`app.json`**. Nothing here is abandoned — it is waiting on Samsung.
+
+**Why.** A production release needs Samsung partner approval (package name +
+the release key's SHA-256 registered in Samsung's system), and Samsung's
+Partner Apps Program was reported as not accepting applications when this was
+built, with no published timeline. Registering the plugin meanwhile would ship
+a ~500KB AAR and the Kotlin coroutines runtime into every APK with no native
+module to use them, and would put an untested Gradle dependency into the next
+EAS build for no user-visible gain.
+
+**What already ships without any of this.** Health Connect gives us heart rate
+and total sleep duration today, and `lib/health/aggregate.ts`'s
+`resolveDataSource()` credits Samsung Health by name when a Galaxy Watch is
+what wrote the records. What is still missing is only the granularity the
+Samsung SDK adds: sleep stages, sleep score, apnea and IHRN.
+
+## Re-enabling
+
+Two edits to `artifacts/aorane-mobile/app.json`. Both are needed — the second
+is easy to forget, and forgetting it produces a release build that works in
+debug and fails at run time.
+
+1. Add `"./plugins/with-samsung-health.js"` to `expo.plugins`, next to
+   `"./plugins/with-health-connect.js"`.
+
+2. Append these to `expo-build-properties` -> `android.extraProguardRules`.
+   `enableMinifyInReleaseBuilds` is true, and Gradle does **not** apply a flat
+   AAR's bundled consumer ProGuard rules, so without them R8 renames classes
+   the SDK resolves by name across its AIDL boundary to Samsung Health:
+
+   ```
+   -keep public class com.samsung.android.sdk.health.data.** { public protected *; }
+   -keep public class com.samsung.android.sdk.health.data.data.entries.** { <fields>; public protected *; }
+   -keep public class com.samsung.android.sdk.health.data.request.** { <fields>; public protected *; }
+   -keep @interface com.samsung.android.sdk.health.data.internal.annotation.ApiVersion
+   -keepclassmembers class * {
+       @com.samsung.android.sdk.health.data.internal.annotation.ApiVersion <methods>;
+   }
+   -dontwarn com.samsung.android.sdk.health.data.**
+   ```
+
+Then continue from S3 (the native Kotlin module) — S1 and S2 are done.
+
+## Testing before approval arrives
+
+Approval gates **distribution**, not development. Samsung Health's developer
+mode grants **read** access with no partner request and no access code, which
+is all this app needs — we never write to Samsung Health. On a Galaxy device:
+Samsung Health -> ⋮ -> Settings -> About Samsung Health -> tap the version line
+10+ times -> enable "Developer Mode for Data Read".
+
+`tool/DataViewer_1.1.0.apk` in Samsung's zip is their own test client; running
+it on the device confirms developer mode works before any of our code is
+written.
