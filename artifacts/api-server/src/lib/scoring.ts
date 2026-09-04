@@ -470,6 +470,18 @@ function buildCompositeScore(
  *  this is NOT a cache across requests, so it can never serve stale data. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- matches the
 // untyped pool.query() rows the rest of this file already works with.
+/** Shape version of a persisted `daily_health_scores` row.
+ *
+ *  1 — sub-scores coerced to 0, and no sleep_hours / medicines_taken /
+ *      medicines_scheduled. A row at this version cannot tell "never logged"
+ *      apart from "scored zero", so readers recompute it instead of trusting it.
+ *  2 — nulls preserved, and the four report-facing columns written.
+ *
+ *  Bump this whenever the persisted shape changes in a way that would make an
+ *  older row misleading, so readers fall back to recomputing rather than
+ *  silently serving a row that means something different than they think. */
+export const SCORE_ROW_VERSION = 2;
+
 export type ScoreQueryMemo = Map<string, Promise<{ rows: any[] }>>;
 
 export async function computeScientificScore(
@@ -774,27 +786,36 @@ export async function computeScientificScore(
   const { grade, gradeLabel } = gradeFromScore(overallScore);
 
   // ── Persist ──────────────────────────────────────────────────────────────────
+  // Sub-scores are written as they are, nulls included. They used to be
+  // coerced with `?? 0`, which was harmless while nothing read them back —
+  // but the health report now serves whole date ranges from this table, and
+  // there a stored 0 would claim the user ate badly on a day they simply
+  // never opened the food log. SCORE_ROW_VERSION marks rows written by this
+  // null-aware shape; older rows are recomputed rather than trusted.
   await pool.query(
     `INSERT INTO daily_health_scores
       (user_id, score_date, health_score, data_confidence_pct,
        food_score, exercise_score, water_score, medicine_score,
        sleep_score, stress_score,
-       total_calories_in, water_glasses, exercise_minutes,
-       fields_logged, total_possible_fields)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+       total_calories_in, total_calories_out, water_glasses, exercise_minutes,
+       sleep_hours, medicines_taken, medicines_scheduled,
+       fields_logged, total_possible_fields, score_version)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
      ON CONFLICT (user_id, score_date) DO UPDATE SET
        health_score=$3, data_confidence_pct=$4,
        food_score=$5, exercise_score=$6, water_score=$7, medicine_score=$8,
        sleep_score=$9, stress_score=$10,
-       total_calories_in=$11, water_glasses=$12, exercise_minutes=$13, fields_logged=$14,
-       total_possible_fields=$15`,
+       total_calories_in=$11, total_calories_out=$12, water_glasses=$13, exercise_minutes=$14,
+       sleep_hours=$15, medicines_taken=$16, medicines_scheduled=$17,
+       fields_logged=$18, total_possible_fields=$19, score_version=$20`,
     [
       userId, date, overallScore, String(dataConfidence),
-      foodResult.score ?? 0, exResult.score ?? 0,
-      waterResult.score ?? 0, medResult.score ?? 0,
-      sleepResult.score ?? 0, stressResult.score ?? 0,
-      String(Math.round(totalCalories)), totalGlasses, exDuration,
-      activeMetrics.length, Object.keys(METRIC_WEIGHTS).length,
+      foodResult.score, exResult.score,
+      waterResult.score, medResult.score,
+      sleepResult.score, stressResult.score,
+      String(Math.round(totalCalories)), String(Math.round(exCalories)), totalGlasses, exDuration,
+      sleepHours, medTaken, medScheduled,
+      activeMetrics.length, Object.keys(METRIC_WEIGHTS).length, SCORE_ROW_VERSION,
     ],
   ).catch(() => {});
 

@@ -178,17 +178,29 @@ export const dailyHealthScoresTable = pgTable("daily_health_scores", {
   scoreDate: text("score_date").notNull(),
   healthScore: integer("health_score").notNull().default(0),
   dataConfidencePct: decimal("data_confidence_pct", { precision: 5, scale: 2 }).notNull().default("0"),
-  foodScore: integer("food_score").notNull().default(0),
-  exerciseScore: integer("exercise_score").notNull().default(0),
-  waterScore: integer("water_score").notNull().default(0),
-  medicineScore: integer("medicine_score").notNull().default(0),
-  sleepScore: integer("sleep_score").notNull().default(0),
+  // Nullable on purpose: null means the pillar was never logged that day,
+  // which the health report renders as "Not tracked" rather than as a zero.
+  // These were NOT NULL DEFAULT 0 until the report started serving days from
+  // this table — a stored 0 could not be told apart from a genuine bad score.
+  foodScore: integer("food_score"),
+  exerciseScore: integer("exercise_score"),
+  waterScore: integer("water_score"),
+  medicineScore: integer("medicine_score"),
+  sleepScore: integer("sleep_score"),
   stressScore: integer("stress_score"),
   totalCaloriesIn: decimal("total_calories_in", { precision: 8, scale: 2 }),
   totalCaloriesOut: decimal("total_calories_out", { precision: 8, scale: 2 }),
   waterGlasses: integer("water_glasses").notNull().default(0),
   exerciseMinutes: integer("exercise_minutes").notNull().default(0),
   medicineAdherencePct: decimal("medicine_adherence_pct", { precision: 5, scale: 2 }),
+  // Detail the report needs from a persisted row, so it never has to
+  // recompute a day just to read them back.
+  sleepHours: decimal("sleep_hours", { precision: 4, scale: 2 }),
+  medicinesTaken: integer("medicines_taken"),
+  medicinesScheduled: integer("medicines_scheduled"),
+  /** 1 = written before sub-scores could be null; 2 = null-aware. A version-1
+   *  row is recomputed rather than trusted. */
+  scoreVersion: integer("score_version").notNull().default(1),
   fieldsLogged: integer("fields_logged").notNull().default(0),
   totalPossibleFields: integer("total_possible_fields").notNull().default(5),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
