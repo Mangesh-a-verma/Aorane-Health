@@ -17,6 +17,10 @@ import { CardShell, EmptyState, NeuCard, PageHeader, ProgressBar, StatCard } fro
 const GENDER_COLORS = ["hsl(var(--primary))", "oklch(0.68 0.55 0)", "hsl(var(--muted-foreground))"];
 const STATUS_COLORS = ["oklch(0.68 0.12 162)", "oklch(0.8 0.13 78)", "hsl(var(--muted-foreground))"];
 const STRESS_COLORS = ["hsl(var(--destructive))", "oklch(0.8 0.13 78)", "oklch(0.68 0.12 162)"];
+/** A sub-score average as a percentage, or an em dash when the metric was
+ *  never tracked by anyone. "0%" would claim the staff scored zero at it. */
+const pct = (value: number | null): string => (value === null ? "—" : `${Math.round(value)}%`);
+
 const VITALS_COLORS = ["oklch(0.68 0.17 25)", "oklch(0.7 0.1 205)", "oklch(0.68 0.12 162)", "oklch(0.7 0.1 292)"];
 const AGE_COLORS = ["hsl(var(--primary))", "hsl(var(--secondary))", "oklch(0.7 0.1 205)", "oklch(0.78 0.08 210)", "oklch(0.85 0.05 210)"];
 const PLAN_COLORS = ["hsl(var(--primary))", "oklch(0.68 0.12 162)", "oklch(0.8 0.13 78)", "oklch(0.7 0.1 292)"];
@@ -68,19 +72,27 @@ export default function AnalyticsPage() {
     { name: "Low Stress", value: health.lowStressCount },
   ] : [];
 
-  const vitalsData = health ? [
-    { name: "Nutrition", fullMark: 100, score: Math.round(health.avgFood) },
-    { name: "Hydration", fullMark: 100, score: Math.round(health.avgWater) },
-    { name: "Exercise", fullMark: 100, score: Math.round(health.avgExercise) },
-    { name: "Medication", fullMark: 100, score: Math.round(health.avgMedicine) },
+  // A metric nobody tracked comes back null. Dropping it is the honest
+  // rendering — plotting it as a 0 spoke would tell the company its staff
+  // score zero at something they were never measured on.
+  const allVitals: Array<{ name: string; value: number | null; color: string }> = health ? [
+    { name: "Nutrition",  value: health.avgFood,     color: VITALS_COLORS[0] },
+    { name: "Hydration",  value: health.avgWater,    color: VITALS_COLORS[1] },
+    { name: "Exercise",   value: health.avgExercise, color: VITALS_COLORS[2] },
+    { name: "Medication", value: health.avgMedicine, color: VITALS_COLORS[3] },
   ] : [];
 
-  const vitalsBar = health ? [
-    { name: "Nutrition", value: Math.round(health.avgFood), color: VITALS_COLORS[0] },
-    { name: "Hydration", value: Math.round(health.avgWater), color: VITALS_COLORS[1] },
-    { name: "Exercise", value: Math.round(health.avgExercise), color: VITALS_COLORS[2] },
-    { name: "Medication", value: Math.round(health.avgMedicine), color: VITALS_COLORS[3] },
-  ] : [];
+  const trackedVitals = allVitals.filter(
+    (v): v is { name: string; value: number; color: string } => v.value !== null
+  );
+
+  const vitalsData = trackedVitals.map(({ name, value }) => ({
+    name, fullMark: 100, score: Math.round(value),
+  }));
+
+  const vitalsBar = trackedVitals.map(({ name, value, color }) => ({
+    name, value: Math.round(value), color,
+  }));
 
   return (
     <Layout>
@@ -185,10 +197,10 @@ export default function AnalyticsPage() {
               <CardShell title="Organization Health Summary">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { icon: Flame, label: "Avg Nutrition", value: `${Math.round(health.avgFood)}%`, tone: "tone-amber" },
-                    { icon: Droplets, label: "Avg Hydration", value: `${Math.round(health.avgWater)}%`, tone: "tone-teal" },
-                    { icon: Dumbbell, label: "Avg Exercise", value: `${Math.round(health.avgExercise)}%`, tone: "tone-mint" },
-                    { icon: Pill, label: "Avg Medication", value: `${Math.round(health.avgMedicine)}%`, tone: "tone-lavender" },
+                    { icon: Flame, label: "Avg Nutrition", value: pct(health.avgFood), tone: "tone-amber" },
+                    { icon: Droplets, label: "Avg Hydration", value: pct(health.avgWater), tone: "tone-teal" },
+                    { icon: Dumbbell, label: "Avg Exercise", value: pct(health.avgExercise), tone: "tone-mint" },
+                    { icon: Pill, label: "Avg Medication", value: pct(health.avgMedicine), tone: "tone-lavender" },
                   ].map(({ icon: Icon, label, value, tone }) => (
                     <div key={label} className="flex items-center gap-3">
                       <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${tone}`}>

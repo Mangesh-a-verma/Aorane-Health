@@ -13,7 +13,7 @@ import { api } from "@/lib/api";
 import { DS } from "@/lib/theme";
 import { logSilentError } from "@/lib/silentCatch";
 import { checkConnectionStatus, connectAndSync, forceSync } from "@/lib/health/syncManager";
-import { providerMeta, visibleProviders } from "@/lib/wearableProviders";
+import { originLabel, providerMeta, visibleProviders } from "@/lib/wearableProviders";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type WearableData = {
@@ -21,6 +21,12 @@ type WearableData = {
   heartRateMax: number | null; caloriesBurned: string | null; sleepHours: string | null;
   bloodOxygen: string | null; activeMinutes: number | null; distanceKm: string | null;
   provider: string; recordedAt: string; syncedAt: string;
+  /** The app that actually recorded the readings, e.g. Samsung Health writing
+   *  into Health Connect. Null on rows synced before attribution existed and
+   *  on manual entries — originLabel() falls back to the provider name. */
+  sourcePackage?: string | null;
+  /** e.g. "Samsung SM-R930". Null when no record carried device metadata. */
+  sourceDevice?: string | null;
 };
 type Summary = {
   avgSteps: number | null; avgHr: number | null; totalCalories: number;
@@ -495,7 +501,10 @@ export default function WearableScreen() {
   const { latest, summary, dailySeries } = data;
   const activeConnections = connections.filter((c) => c.isActive);
   const series = dailySeries ?? [];
-  const sourceLabel = latest ? providerMeta(latest.provider).shortName : "";
+  // Credit whoever really recorded the data (Samsung Health, Fitbit, ...) and
+  // fall back to the syncing provider when Health Connect stamped no origin.
+  const sourceLabel = latest ? originLabel(latest.sourcePackage, latest.provider) : "";
+  const sourceDevice = latest?.sourceDevice ?? null;
 
   const metrics = latest ? [
     { emoji: "👟", label: "Steps",      value: latest.steps?.toLocaleString() ?? null,                                      unit: "steps", color: "#0B84D6", soft: "#E2EFFD" },
@@ -634,6 +643,15 @@ export default function WearableScreen() {
                     <Text style={[s.pillMutedTxt, age?.stale && s.pillWarnTxt]}>{age?.label}</Text>
                   </View>
                 </View>
+
+                {/* Health Connect records the device that produced them, so a
+                    Galaxy Watch user sees their watch named rather than a flat
+                    "Health Connect". Absent on older rows and manual entries. */}
+                {sourceDevice && (
+                  <Text style={s.windowNote} numberOfLines={1}>
+                    Recorded by {sourceDevice} via {sourceLabel}.
+                  </Text>
+                )}
 
                 {!age?.stale && (
                   <Text style={s.windowNote}>

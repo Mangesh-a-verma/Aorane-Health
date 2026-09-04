@@ -39,6 +39,13 @@ export const wearableDataTable = pgTable("wearable_data", {
   bloodOxygen: decimal("blood_oxygen", { precision: 5, scale: 2 }),
   activeMinutes: integer("active_minutes"),
   distanceKm: decimal("distance_km", { precision: 6, scale: 2 }),
+  // Which app actually recorded the readings, and on what device. On Android,
+  // Samsung Health / Fitbit / Garmin write INTO Health Connect rather than
+  // exposing their own sync API, so `provider` alone always reads
+  // "health_connect" and loses the fact that a Galaxy Watch produced it.
+  // Null for rows synced before this existed, and for manual entries.
+  sourcePackage: text("source_package"),
+  sourceDevice: text("source_device"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   // routes/modules/wearable.ts: WHERE user_id=$1 ORDER BY recorded_at DESC

@@ -85,6 +85,16 @@ router.get("/wearable/connections", requireAuth, async (req: AuthRequest, res) =
   }
 });
 
+/** Normalise a client-supplied attribution string (the package that wrote the
+ *  records, or a device label) into something safe to store: a trimmed string
+ *  of at most 128 chars, or undefined. Never throws and never rejects the
+ *  sync — bad attribution just means no attribution. */
+function attributionText(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim().slice(0, 128);
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 // Health Connect sync — mobile reads data natively, sends to server
 router.post("/wearable/sync/health_connect", requireAuth, async (req: AuthRequest, res) => {
   try {
@@ -104,6 +114,7 @@ router.post("/wearable/sync/health_connect", requireAuth, async (req: AuthReques
     const {
       steps, heartRateAvg, heartRateMin, heartRateMax,
       caloriesBurned, sleepHours, bloodOxygen, activeMinutes, distanceKm,
+      sourcePackage, sourceDevice,
     } = req.body as Record<string, unknown>;
 
     // Upsert connection record
@@ -136,6 +147,12 @@ router.post("/wearable/sync/health_connect", requireAuth, async (req: AuthReques
       bloodOxygen: bloodOxygen != null ? String(bloodOxygen) : undefined,
       activeMinutes: activeMinutes != null ? Number(activeMinutes) : undefined,
       distanceKm: distanceKm != null ? String(distanceKm) : undefined,
+      // Free text straight off the device, so bound it before it reaches the
+      // column. An absent/blank/oversized value stores as NULL rather than
+      // failing the whole sync — attribution is a nice-to-have, the readings
+      // are not.
+      sourcePackage: attributionText(sourcePackage),
+      sourceDevice: attributionText(sourceDevice),
     }).returning();
 
     const hasData = [steps, heartRateAvg, caloriesBurned, sleepHours, bloodOxygen, distanceKm, activeMinutes].some((v) => v != null);

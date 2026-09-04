@@ -12,7 +12,7 @@ import { Platform } from "react-native";
 import { api } from "@/lib/api";
 import { SyncStorage } from "@/lib/syncStorage";
 import * as hc from "./client";
-import { aggregateHealthMetrics, hasAnyData } from "./aggregate";
+import { aggregateHealthMetrics, hasAnyData, resolveDataSource } from "./aggregate";
 import { HealthConnectStatus } from "./types";
 
 export type SyncResult =
@@ -49,9 +49,13 @@ async function readAndPush(): Promise<SyncResult> {
 
     const raw = await hc.readAllRecords(last24HoursRange());
     const metrics = aggregateHealthMetrics(raw);
+    // Which app actually recorded this batch (Samsung Health, Fitbit, ...).
+    // Sent alongside the metrics but kept out of them, so it can never make an
+    // empty sync look like it found data — see hasAnyData() below.
+    const source = resolveDataSource(raw);
 
     try {
-      const result = await api.syncHealthConnect(metrics);
+      const result = await api.syncHealthConnect({ ...metrics, ...source });
 
       const today = new Date().toISOString().split("T")[0];
       // Best-effort — a failure to recompute the score should not make the
