@@ -1352,7 +1352,10 @@ router.get("/business/health-analytics", requireBusinessAuth, async (req: Busine
       ));
 
     // Latest score per user (for avg, distribution)
-    const latestByUser = new Map<string, { scoreDate: string; healthScore: number; foodScore: number; waterScore: number; exerciseScore: number; medicineScore: number }>();
+    // Sub-scores are nullable: null means "this member never tracked that
+    // metric", which is not the same as scoring 0 at it. healthScore is
+    // NOT NULL in the schema, so only the four sub-scores carry null.
+    const latestByUser = new Map<string, { scoreDate: string; healthScore: number; foodScore: number | null; waterScore: number | null; exerciseScore: number | null; medicineScore: number | null }>();
     for (const s of scores) {
       const existing = latestByUser.get(s.userId);
       if (!existing || s.scoreDate > existing.scoreDate) {
@@ -1367,11 +1370,26 @@ router.get("/business/health-analytics", requireBusinessAuth, async (req: Busine
 
     // Distribution
     let healthyCount = 0, atRiskCount = 0, inactiveCount = 0;
-    let sumHealth = 0, sumFood = 0, sumWater = 0, sumExercise = 0, sumMedicine = 0;
+    // Mean of the tracked values only; null when none were tracked.
+    const avgSub = (bucket: [number, number] | number[]): number | null =>
+      bucket[1] > 0 ? Math.round(bucket[0] / bucket[1]) : null;
+    let sumHealth = 0;
+    // Each sub-score averages over the members who actually tracked it, not
+    // over everyone. Summing a null as 0 would both produce NaN and drag a
+    // company's average down for metrics its staff simply never logged.
+    const subScores = { food: [0, 0], water: [0, 0], exercise: [0, 0], medicine: [0, 0] };
+    const addSub = (bucket: [number, number] | number[], value: number | null) => {
+      if (value === null) return;
+      bucket[0] += value;
+      bucket[1] += 1;
+    };
     const scored = Array.from(latestByUser.values());
     for (const s of scored) {
-      sumHealth += s.healthScore; sumFood += s.foodScore; sumWater += s.waterScore;
-      sumExercise += s.exerciseScore; sumMedicine += s.medicineScore;
+      sumHealth += s.healthScore;
+      addSub(subScores.food, s.foodScore);
+      addSub(subScores.water, s.waterScore);
+      addSub(subScores.exercise, s.exerciseScore);
+      addSub(subScores.medicine, s.medicineScore);
       if (s.healthScore >= 70) healthyCount++;
       else if (s.healthScore >= 40) atRiskCount++;
       else inactiveCount++;
@@ -1435,10 +1453,12 @@ router.get("/business/health-analytics", requireBusinessAuth, async (req: Busine
       activeLast7Days: activeUserIds7.size,
       avgHealthScore: Math.round(sumHealth / scoredCount),
       healthScoreTrendPct,
-      avgFood: Math.round(sumFood / scoredCount),
-      avgWater: Math.round(sumWater / scoredCount),
-      avgExercise: Math.round(sumExercise / scoredCount),
-      avgMedicine: Math.round(sumMedicine / scoredCount),
+      // null (not 0) when nobody in the company tracked that metric at all —
+      // the client already renders a null sub-score as "not tracked".
+      avgFood: avgSub(subScores.food),
+      avgWater: avgSub(subScores.water),
+      avgExercise: avgSub(subScores.exercise),
+      avgMedicine: avgSub(subScores.medicine),
       healthyCount,
       atRiskCount,
       inactiveCount,

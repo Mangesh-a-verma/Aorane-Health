@@ -115,12 +115,14 @@ export function visibleProviders(): WearableProvider[] {
 // On Android, Samsung Health (and Fitbit, Garmin, Mi Fitness…) write their
 // data INTO Health Connect rather than exposing a separate sync API — which
 // is why "connect Samsung Health" is mostly an attribution problem, not a
-// second integration. Health Connect stamps every record with the package
-// that wrote it (`metadata.dataOrigin.packageName`), so a reading can be
-// credited to the app it really came from instead of a flat "Health Connect".
+// second integration. Health Connect stamps every record with the package that
+// wrote it (`metadata.dataOrigin`, a plain package-name string), so a reading
+// can be credited to the app it really came from instead of a flat
+// "Health Connect".
 //
-// Not wired into the sync payload yet — this is the lookup that makes it a
-// small change when it is.
+// Wired up: lib/health/aggregate.ts resolveDataSource() picks the dominant
+// origin out of a sync batch, syncManager sends it, and the server stores it
+// on wearable_data.source_package.
 export const ORIGIN_PACKAGE_LABELS: Record<string, string> = {
   "com.sec.android.app.shealth": "Samsung Health",
   "com.fitbit.FitbitMobile": "Fitbit",
@@ -128,6 +130,9 @@ export const ORIGIN_PACKAGE_LABELS: Record<string, string> = {
   "com.xiaomi.wearable": "Mi Fitness",
   "com.huawei.health": "Huawei Health",
   "com.google.android.apps.fitness": "Google Fit",
+  // Health Connect itself is the origin on rows the user typed into the
+  // Health Connect app by hand, rather than any wearable's app.
+  "com.google.android.apps.healthdata": "Health Connect",
 };
 
 /** Human label for whichever app originally recorded a reading, falling back

@@ -91,10 +91,12 @@ export interface HealthAnalytics {
   activeLast7Days: number;
   avgHealthScore: number;
   healthScoreTrendPct: number | null;
-  avgFood: number;
-  avgWater: number;
-  avgExercise: number;
-  avgMedicine: number;
+  // null when nobody in the company tracked that metric at all. A sub-score
+  // of 0 means "tracked, and scored badly" — the two must not be conflated.
+  avgFood: number | null;
+  avgWater: number | null;
+  avgExercise: number | null;
+  avgMedicine: number | null;
   healthyCount: number;
   atRiskCount: number;
   inactiveCount: number;

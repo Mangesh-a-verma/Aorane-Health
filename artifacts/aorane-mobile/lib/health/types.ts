@@ -85,3 +85,28 @@ export const EMPTY_METRICS: HealthMetrics = {
   distanceKm: null,
   activeMinutes: null,
 };
+
+/** Where a batch of Health Connect records actually came from.
+ *
+ *  On Android, Samsung Health / Fitbit / Garmin / Mi Fitness do not expose a
+ *  separate sync API — they write INTO Health Connect. Health Connect then
+ *  stamps every record with the package that wrote it, so a Galaxy Watch
+ *  reading that reached us through Health Connect can still be credited to
+ *  Samsung Health instead of a flat "Health Connect".
+ *
+ *  Deliberately NOT part of HealthMetrics: hasAnyData() reports true when any
+ *  field is non-null, and knowing where nothing came from is not data. Keeping
+ *  this separate means attribution can never make an empty sync look full. */
+export type HealthSource = {
+  /** Android package that wrote the records, e.g. "com.sec.android.app.shealth".
+   *  Null when Health Connect returned no records, or stamped none of them. */
+  sourcePackage: string | null;
+  /** Device label built from the record's device metadata, e.g. "Samsung SM-R930".
+   *  Null when no record carried device metadata. */
+  sourceDevice: string | null;
+};
+
+export const EMPTY_SOURCE: HealthSource = {
+  sourcePackage: null,
+  sourceDevice: null,
+};

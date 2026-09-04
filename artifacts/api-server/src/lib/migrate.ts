@@ -300,6 +300,14 @@ export async function runStartupMigrations(): Promise<void> {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
 
+    // wearable_data: attribution for who really recorded a reading. Samsung
+    // Health / Fitbit / Garmin write INTO Health Connect instead of exposing
+    // their own sync API, so `provider` is always "health_connect" and the
+    // originating app was being thrown away. Additive and nullable — existing
+    // rows keep working with no attribution.
+    `ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS source_package TEXT`,
+    `ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS source_device TEXT`,
+
     // user_profiles missing columns
     `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS city TEXT`,
     `ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS state TEXT`,

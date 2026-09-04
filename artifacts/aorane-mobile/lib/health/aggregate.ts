@@ -5,7 +5,7 @@
 // null-handling) in both lib/healthSyncManager.ts and app/wearable.tsx.
 // Now it lives in exactly one place.
 
-import { EMPTY_METRICS, HealthMetrics, RawRecordsByType } from "./types";
+import { EMPTY_METRICS, EMPTY_SOURCE, HealthMetrics, HealthSource, RawRecordsByType } from "./types";
 
 function durationHours(records: unknown[]): number | null {
   if (records.length === 0) return null;
@@ -93,6 +93,73 @@ export function aggregateHealthMetrics(records: RawRecordsByType): HealthMetrics
   metrics.activeMinutes = durationMinutes(exercise);
 
   return metrics;
+}
+
+// ── Data-origin attribution ───────────────────────────────────────────────────
+
+/** Health Connect's own package. It appears as the origin on records the user
+ *  entered by hand in the Health Connect app itself. Real wearable data always
+ *  carries the writing app's package instead, so this is a valid origin — just
+ *  a much less interesting one than "Samsung Health". */
+const HEALTH_CONNECT_PACKAGE = "com.google.android.apps.healthdata";
+
+type RecordMetadata = {
+  metadata?: {
+    dataOrigin?: string;
+    device?: { manufacturer?: string; model?: string };
+  };
+};
+
+/** Best-effort human device label from one record's device metadata.
+ *  Returns null rather than a half-empty string when neither field is set. */
+function deviceLabel(record: unknown): string | null {
+  const device = (record as RecordMetadata).metadata?.device;
+  if (!device) return null;
+  const parts = [device.manufacturer, device.model]
+    .map((v) => (typeof v === "string" ? v.trim() : ""))
+    .filter((v) => v.length > 0);
+  return parts.length > 0 ? parts.join(" ") : null;
+}
+
+/** Which app actually recorded this batch, and on what device.
+ *
+ *  Picks the package that wrote the most records. Health Connect's own package
+ *  only wins if nothing else wrote anything, so a single manually-entered row
+ *  never outranks a watch that synced all day. Ties break on package name so
+ *  the same input always produces the same answer.
+ *
+ *  Pure — takes the records already read by client.readAllRecords() and reads
+ *  nothing else. Kept out of aggregateHealthMetrics() so that attribution can
+ *  never influence hasAnyData(). */
+export function resolveDataSource(records: RawRecordsByType): HealthSource {
+  const counts = new Map<string, number>();
+  const devices = new Map<string, string>();
+
+  for (const list of Object.values(records)) {
+    for (const record of list ?? []) {
+      const origin = (record as RecordMetadata).metadata?.dataOrigin;
+      if (typeof origin !== "string" || origin.length === 0) continue;
+      counts.set(origin, (counts.get(origin) ?? 0) + 1);
+      if (!devices.has(origin)) {
+        const label = deviceLabel(record);
+        if (label) devices.set(origin, label);
+      }
+    }
+  }
+
+  if (counts.size === 0) return { ...EMPTY_SOURCE };
+
+  // Rank real writer apps above Health Connect's own manual entries, then by
+  // how much each wrote, then alphabetically so the result is deterministic.
+  const winner = [...counts.entries()].sort((a, b) => {
+    const aIsHC = a[0] === HEALTH_CONNECT_PACKAGE ? 1 : 0;
+    const bIsHC = b[0] === HEALTH_CONNECT_PACKAGE ? 1 : 0;
+    if (aIsHC !== bIsHC) return aIsHC - bIsHC;
+    if (a[1] !== b[1]) return b[1] - a[1];
+    return a[0] < b[0] ? -1 : 1;
+  })[0][0];
+
+  return { sourcePackage: winner, sourceDevice: devices.get(winner) ?? null };
 }
 
 /** True if at least one metric came back non-null — used to tell the

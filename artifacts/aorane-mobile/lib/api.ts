@@ -828,6 +828,11 @@ export const api = {
     steps?: number | null; heartRateAvg?: number | null; caloriesBurned?: number | null;
     sleepHours?: number | null; bloodOxygen?: number | null; distanceKm?: number | null;
     activeMinutes?: number | null; heartRateMin?: number | null; heartRateMax?: number | null;
+    // Which app/device actually recorded the batch, e.g.
+    // "com.sec.android.app.shealth" / "Samsung SM-R930". Optional: an older
+    // build that does not send them still syncs fine, the row just has no
+    // attribution. Never counted as data — see lib/health/aggregate.ts.
+    sourcePackage?: string | null; sourceDevice?: string | null;
   }) =>
     request<{ success: boolean; hasData: boolean; data: unknown }>("POST", "/wearable/sync/health_connect", data),
   addManualWearableData: (data: Record<string, unknown>) =>
