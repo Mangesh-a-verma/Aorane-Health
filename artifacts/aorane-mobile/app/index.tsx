@@ -1,5 +1,6 @@
 import { Redirect } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
+import { MULTI_LANGUAGE_ENABLED } from "@/constants/features";
 import { View, StyleSheet, Dimensions, Animated, Platform } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
@@ -64,8 +65,13 @@ export default function Index() {
   // 1. Wait until authentication state and local storage are both loaded
   if (isLoading || hasSeenIntro === null || hasSelectedLanguage === null) return <SplashScreen />;
 
-  // 2. Very first thing any fresh install sees: pick a language
-  if (!hasSelectedLanguage) return <Redirect href={"/(onboarding)/language" as never} />;
+  // 2. Language picker used to be the very first thing a fresh install saw.
+  // While multi-language is off there is nothing to pick, so the step is
+  // skipped and the user lands on the intro instead. The flag guards the
+  // redirect rather than the screen being deleted — see constants/features.ts.
+  if (MULTI_LANGUAGE_ENABLED && !hasSelectedLanguage) {
+    return <Redirect href={"/(onboarding)/language" as never} />;
+  }
 
   // 3. First-time user must see the Introduction / Terms screen
   if (!hasSeenIntro) return <Redirect href={"/(onboarding)/intro" as never} />;
