@@ -2,6 +2,7 @@ import React, { createContext, useContext, useCallback, useEffect, useState, use
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Localization from "expo-localization";
 import { type LangCode, t as translate, SUPPORTED_LANGS } from "@/lib/translations";
+import { MULTI_LANGUAGE_ENABLED } from "@/constants/features";
 import { api } from "@/lib/api";
 import { logSilentError } from "@/lib/silentCatch";
 
@@ -42,6 +43,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     mountedRef.current = true;
     (async () => {
       try {
+        // While multi-language is off, neither a saved preference nor the
+        // device locale may select a language. Skipping this would leave a
+        // user whose phone is set to Hindi — or who picked Hindi before the
+        // switcher was hidden — on a half-translated app with no way back.
+        if (!MULTI_LANGUAGE_ENABLED) {
+          if (mountedRef.current) setLangState("en");
+          return;
+        }
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (stored && (SUPPORTED_LANGS as readonly string[]).includes(stored)) {
           if (mountedRef.current) setLangState(stored as LangCode);

@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "@/context/LanguageContext";
 import { LANGUAGE_NAMES, type LangCode } from "@/lib/translations";
 import { LanguagePickerList, ENGLISH_LABEL } from "@/components/LanguagePickerList";
+import { MULTI_LANGUAGE_ENABLED } from "@/constants/features";
 
 const { width: W } = Dimensions.get("window");
 const P = DS.color.primary;
@@ -348,7 +349,12 @@ export default function ProfileScreen() {
               { Icon: Briefcase,  label: "Join Organization",         color: "#0077B6",       bg: "#EBF5FB",            onPress: () => router.push("/enrollment" as never) },
               { Icon: Users,      label: "Family Health",             color: "#10B981",       bg: "#ECFDF5",            onPress: () => router.push("/family" as never) },
               { Icon: Shield,     label: "Privacy & Security",        color: DS.color.primary, bg: DS.color.primarySoft, onPress: () => router.push("/privacy-security" as never) },
-              { Icon: Globe,      label: `Language — ${ENGLISH_LABEL[lang]}`, color: "#8B5CF6", bg: "#F3E8FF",           onPress: () => setShowLanguageModal(true) },
+              // Language picker is hidden while multi-language is off — see
+              // constants/features.ts. Spread rather than render-and-disable,
+              // so the row leaves no gap and the separator borders stay right.
+              ...(MULTI_LANGUAGE_ENABLED
+                ? [{ Icon: Globe, label: `Language — ${ENGLISH_LABEL[lang]}`, color: "#8B5CF6", bg: "#F3E8FF", onPress: () => setShowLanguageModal(true) }]
+                : []),
               { Icon: Bell,       label: "Notifications & Reminders", color: P,               bg: DS.color.primarySoft, onPress: () => router.push("/notification-settings" as never) },
               { Icon: HelpCircle, label: "Help & Support",            color: G,               bg: DS.color.greenSoft,   onPress: () => router.push("/help" as never) },
             ].map((item, idx) => (
@@ -395,9 +401,11 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
 
-      {/* Language Picker Modal */}
+      {/* Language Picker Modal — nothing can open it while multi-language is
+          off (the row that sets showLanguageModal is hidden), but gate the
+          visibility too so a stale state value can never surface it. */}
       <Modal
-        visible={showLanguageModal}
+        visible={MULTI_LANGUAGE_ENABLED && showLanguageModal}
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={() => setShowLanguageModal(false)}

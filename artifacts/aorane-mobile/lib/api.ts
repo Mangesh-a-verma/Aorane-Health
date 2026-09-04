@@ -267,7 +267,7 @@ export const api = {
   sendWhatsappOtp: (phone: string) =>
     request<{ success: boolean; message: string; channel: "whatsapp" | "sms"; devOtp?: string }>("POST", "/auth/send-otp-whatsapp", { phone }, false),
 
-  verifyOtp: (phone: string, otp: string, languageCode = "hi") =>
+  verifyOtp: (phone: string, otp: string, languageCode = "en") =>
     request<{ accessToken: string; refreshToken: string; isNewUser: boolean; user: { id: string; phone: string; plan: string; languageCode: string } }>(
       "POST", "/auth/verify-otp", { phone, otp, languageCode }, false
     ),
@@ -277,7 +277,7 @@ export const api = {
       "POST", "/auth/send-email-otp", { email }, false
     ),
 
-  verifyEmailOtp: (email: string, otp: string, languageCode = "hi") =>
+  verifyEmailOtp: (email: string, otp: string, languageCode = "en") =>
     request<{ accessToken: string; refreshToken: string; isNewUser: boolean; user: { id: string; email: string; plan: string; languageCode: string } }>(
       "POST", "/auth/verify-email-otp", { email, otp, languageCode }, false
     ),
@@ -287,7 +287,7 @@ export const api = {
       "POST", "/auth/google", { idToken }, false
     ),
 
-  firebaseLogin: (idToken: string, phone: string, languageCode = "hi") =>
+  firebaseLogin: (idToken: string, phone: string, languageCode = "en") =>
     request<{ accessToken: string; refreshToken: string; isNewUser: boolean; user: { id: string; phone: string; plan: string; languageCode: string } }>(
       "POST", "/auth/firebase-login", { idToken, phone, languageCode }, false
     ),
