@@ -1,13 +1,25 @@
 {
-    "installCommand": "npx --yes pnpm@10 install --no-frozen-lockfile --ignore-scripts && npx --yes pnpm@10 rebuild esbuild",
-    "buildCommand": "NODE_ENV=production VITE_API_URL=https://aorane.onrender.com npx pnpm@10 --filter @workspace/business-portal build",
-    "outputDirectory": "dist/public",
-    "framework": null,
-    "redirects": [
-      { "source": "/business-portal/:path*", "destination": "/:path*", "permanent": false }
-    ],
-    "rewrites": [
-      { "source": "/(.*)", "destination": "/index.html" }
-    ]
-  }
-  
+  "installCommand": "npx --yes pnpm@10 install --no-frozen-lockfile --ignore-scripts && npx --yes pnpm@10 rebuild esbuild",
+  "buildCommand": "NODE_ENV=production VITE_API_URL=https://aorane.onrender.com npx pnpm@10 --filter @workspace/business-portal build",
+  "outputDirectory": "dist/public",
+  "framework": null,
+  "redirects": [
+    {
+      "source": "/business-portal/:path*",
+      "destination": "/:path*",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "claude/*": false
+    }
+  },
+  "ignoreCommand": "git rev-parse HEAD^ >/dev/null 2>&1 || exit 1; git diff --quiet HEAD^ HEAD -- artifacts/business-portal lib/analytics pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json"
+}

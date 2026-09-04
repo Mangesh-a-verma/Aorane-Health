@@ -4,29 +4,107 @@
   "outputDirectory": "dist/public",
   "framework": null,
   "rewrites": [
-    { "source": "/features", "destination": "/features/index.html" },
-    { "source": "/pricing", "destination": "/pricing/index.html" },
-    { "source": "/about", "destination": "/about/index.html" },
-    { "source": "/contact", "destination": "/contact/index.html" },
-    { "source": "/careers", "destination": "/careers/index.html" },
-    { "source": "/privacy", "destination": "/privacy/index.html" },
-    { "source": "/terms", "destination": "/terms/index.html" },
-    { "source": "/medical-disclaimer", "destination": "/medical-disclaimer/index.html" },
-    { "source": "/cookie-policy", "destination": "/cookie-policy/index.html" },
-    { "source": "/refund-policy", "destination": "/refund-policy/index.html" },
-    { "source": "/sub-processors", "destination": "/sub-processors/index.html" },
-    { "source": "/security", "destination": "/security/index.html" },
-    { "source": "/data-processing-agreement", "destination": "/data-processing-agreement/index.html" },
-    { "source": "/business-associate-agreement", "destination": "/business-associate-agreement/index.html" },
-    { "source": "/sla", "destination": "/sla/index.html" },
-    { "source": "/master-service-agreement", "destination": "/master-service-agreement/index.html" },
-    { "source": "/ai-disclosure", "destination": "/ai-disclosure/index.html" },
-    { "source": "/accessibility", "destination": "/accessibility/index.html" },
-    { "source": "/careers-privacy", "destination": "/careers-privacy/index.html" },
-    { "source": "/vulnerability-disclosure", "destination": "/vulnerability-disclosure/index.html" },
-    { "source": "/childrens-privacy", "destination": "/childrens-privacy/index.html" },
-    { "source": "/international-transfer-addendum", "destination": "/international-transfer-addendum/index.html" },
-    { "source": "/abdm-compliance", "destination": "/abdm-compliance/index.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+    {
+      "source": "/features",
+      "destination": "/features/index.html"
+    },
+    {
+      "source": "/pricing",
+      "destination": "/pricing/index.html"
+    },
+    {
+      "source": "/about",
+      "destination": "/about/index.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/contact/index.html"
+    },
+    {
+      "source": "/careers",
+      "destination": "/careers/index.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy/index.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms/index.html"
+    },
+    {
+      "source": "/medical-disclaimer",
+      "destination": "/medical-disclaimer/index.html"
+    },
+    {
+      "source": "/cookie-policy",
+      "destination": "/cookie-policy/index.html"
+    },
+    {
+      "source": "/refund-policy",
+      "destination": "/refund-policy/index.html"
+    },
+    {
+      "source": "/sub-processors",
+      "destination": "/sub-processors/index.html"
+    },
+    {
+      "source": "/security",
+      "destination": "/security/index.html"
+    },
+    {
+      "source": "/data-processing-agreement",
+      "destination": "/data-processing-agreement/index.html"
+    },
+    {
+      "source": "/business-associate-agreement",
+      "destination": "/business-associate-agreement/index.html"
+    },
+    {
+      "source": "/sla",
+      "destination": "/sla/index.html"
+    },
+    {
+      "source": "/master-service-agreement",
+      "destination": "/master-service-agreement/index.html"
+    },
+    {
+      "source": "/ai-disclosure",
+      "destination": "/ai-disclosure/index.html"
+    },
+    {
+      "source": "/accessibility",
+      "destination": "/accessibility/index.html"
+    },
+    {
+      "source": "/careers-privacy",
+      "destination": "/careers-privacy/index.html"
+    },
+    {
+      "source": "/vulnerability-disclosure",
+      "destination": "/vulnerability-disclosure/index.html"
+    },
+    {
+      "source": "/childrens-privacy",
+      "destination": "/childrens-privacy/index.html"
+    },
+    {
+      "source": "/international-transfer-addendum",
+      "destination": "/international-transfer-addendum/index.html"
+    },
+    {
+      "source": "/abdm-compliance",
+      "destination": "/abdm-compliance/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "claude/*": false
+    }
+  },
+  "ignoreCommand": "git rev-parse HEAD^ >/dev/null 2>&1 || exit 1; git diff --quiet HEAD^ HEAD -- artifacts/aorane-landing lib/analytics pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json"
 }

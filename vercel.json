@@ -4,14 +4,47 @@
   "outputDirectory": "artifacts/aorane-landing/dist/public",
   "framework": null,
   "rewrites": [
-    { "source": "/features", "destination": "/features/index.html" },
-    { "source": "/pricing", "destination": "/pricing/index.html" },
-    { "source": "/about", "destination": "/about/index.html" },
-    { "source": "/contact", "destination": "/contact/index.html" },
-    { "source": "/careers", "destination": "/careers/index.html" },
-    { "source": "/privacy", "destination": "/privacy/index.html" },
-    { "source": "/terms", "destination": "/terms/index.html" },
-    { "source": "/medical-disclaimer", "destination": "/medical-disclaimer/index.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+    {
+      "source": "/features",
+      "destination": "/features/index.html"
+    },
+    {
+      "source": "/pricing",
+      "destination": "/pricing/index.html"
+    },
+    {
+      "source": "/about",
+      "destination": "/about/index.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/contact/index.html"
+    },
+    {
+      "source": "/careers",
+      "destination": "/careers/index.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy/index.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms/index.html"
+    },
+    {
+      "source": "/medical-disclaimer",
+      "destination": "/medical-disclaimer/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "claude/*": false
+    }
+  },
+  "ignoreCommand": "git rev-parse HEAD^ >/dev/null 2>&1 || exit 1; git diff --quiet HEAD^ HEAD -- artifacts/aorane-landing lib/analytics pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json"
 }
