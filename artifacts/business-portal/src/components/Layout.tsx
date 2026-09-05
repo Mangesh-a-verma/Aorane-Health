@@ -5,7 +5,7 @@ import { api, type MemberSearchResult } from "@/lib/api";
 import {
   LayoutDashboard, Users, QrCode, Settings, LogOut,
   Menu, Bell, ChevronRight, ChevronsLeft, ChevronsRight, Search, HelpCircle, Loader2, Sparkles,
-  BarChart2, Megaphone, CreditCard, ShieldCheck, ShieldAlert, FileText,
+  BarChart2, Megaphone, CreditCard, ShieldCheck, ShieldAlert, FileText, Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,7 @@ function InactivityBanner({ onStay }: { onStay: () => void }) {
 const navItems = [
   { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", group: "Overview" },
   { path: "/members", icon: Users, label: "Members", group: "People" },
+  { path: "/departments", icon: Building2, label: "Departments", group: "People" },
   { path: "/codes", icon: QrCode, label: "Enrollment Codes", group: "People" },
   { path: "/communications", icon: Megaphone, label: "Communications", group: "People" },
   { path: "/analytics", icon: BarChart2, label: "Analytics", group: "Insights" },

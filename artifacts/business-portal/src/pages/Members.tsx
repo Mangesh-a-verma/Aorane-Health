@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import Layout from "@/components/Layout";
-import { api, type Member, type MemberSearchResult, type MemberDetail } from "@/lib/api";
+import { api, type Member, type MemberSearchResult, type MemberDetail, type Department, type DepartmentStatus } from "@/lib/api";
 import {
-  Users, Search, UserCheck, RefreshCw, Fingerprint, X,
+  Users, Search, UserCheck, RefreshCw, Fingerprint, X, Building2,
   Download, ChevronRight, Activity, Calendar, UserMinus, Loader2,
   ShieldCheck, PauseCircle, PlayCircle, EyeOff,
 } from "lucide-react";
@@ -48,6 +48,84 @@ function exportCSV(members: Member[]) {
   URL.revokeObjectURL(url);
 }
 
+/* ============ DEPARTMENT PICKER ============ */
+/* Department is self-declared at onboarding and cannot be verified without an
+   HRMS/SSO integration. Rather than pretend otherwise, an admin can correct it
+   here — except when the member chose not to say, which the server refuses and
+   this control does not offer. */
+function DepartmentPicker({
+  userId, status, currentId, onChanged,
+}: {
+  userId: string;
+  status: DepartmentStatus;
+  currentId: string | null;
+  onChanged: () => void;
+}) {
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const declined = status === "declined";
+
+  useEffect(() => {
+    if (declined) return;
+    api.getDepartments()
+      .then((r) => setDepartments(r.departments.filter((d) => d.isActive)))
+      .catch(() => setDepartments([]));
+  }, [declined]);
+
+  if (declined) {
+    return (
+      <div className="neu-inset rounded-2xl px-4 py-3">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 flex items-center gap-1">
+          <EyeOff size={11} /> Department
+        </div>
+        <div className="text-sm text-foreground">Not shared</div>
+        <div className="text-[11px] text-muted-foreground mt-1">
+          This member chose not to state a department. That choice cannot be overridden.
+        </div>
+      </div>
+    );
+  }
+
+  const change = async (value: string) => {
+    setSaving(true); setError("");
+    try {
+      await api.setMemberDepartment(userId, value || null);
+      onChanged();
+    } catch (e) {
+      setError((e as Error).message || "Could not update department");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="neu-inset rounded-2xl px-4 py-3">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 flex items-center gap-1">
+        <Building2 size={11} className="text-primary" /> Department
+      </div>
+      <div className="flex items-center gap-2">
+        <select
+          value={currentId ?? ""}
+          onChange={(e) => void change(e.target.value)}
+          disabled={saving}
+          aria-label="Member department"
+          className="flex-1 min-w-0 rounded-lg bg-transparent text-sm font-medium text-foreground py-1 outline-none"
+        >
+          <option value="">No department</option>
+          {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
+        {saving && <Loader2 size={14} className="animate-spin text-muted-foreground shrink-0" />}
+      </div>
+      {departments.length === 0 && (
+        <div className="text-[11px] text-muted-foreground mt-1">
+          No departments defined yet — add them on the Departments page.
+        </div>
+      )}
+      {error && <div className="text-[11px] text-destructive mt-1">{error}</div>}
+    </div>
+  );
+}
+
 /* ============ MEMBER DETAIL DRAWER ============ */
 function MemberDetailDrawer({
   userId, name, gradient, onClose,
@@ -62,6 +140,12 @@ function MemberDetailDrawer({
   const [cancellingSubscription, setCancellingSubscription] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [isActiveCurrent, setIsActiveCurrent] = useState<boolean | null>(null);
+
+  const refetchDetail = () => {
+    api.getMemberDetail(userId)
+      .then(d => { setDetail(d); setIsActiveCurrent(d.member.isActive); })
+      .catch(e => setError((e as Error).message || "Failed to load"));
+  };
 
   useEffect(() => {
     api.getMemberDetail(userId)
@@ -181,6 +265,13 @@ function MemberDetailDrawer({
                   <div className="text-[11px] text-muted-foreground mt-0.5">Subscription tier</div>
                 </NeuCard>
               </div>
+
+              <DepartmentPicker
+                userId={userId}
+                status={detail.member?.departmentStatus ?? "not_listed"}
+                currentId={detail.member?.departmentId ?? null}
+                onChanged={refetchDetail}
+              />
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="neu-inset-sm rounded-xl p-3">
@@ -544,6 +635,22 @@ export default function Members() {
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           <UserCheck size={11} className="text-primary" />
                           <span className="text-xs text-muted-foreground capitalize">{m.role}</span>
+                          <span className="text-muted-foreground/30">•</span>
+                          {m.departmentStatus === "declined" ? (
+                            // Not a gap to be filled - the member opted out, and the
+                            // reassign control is withheld to match.
+                            <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                              <EyeOff size={11} /> Not shared
+                            </span>
+                          ) : m.departmentName ? (
+                            <span className="text-xs text-foreground inline-flex items-center gap-1">
+                              <Building2 size={11} className="text-primary" /> {m.departmentName}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                              <Building2 size={11} /> No department
+                            </span>
+                          )}
                         </div>
                         <div className="text-[11px] text-muted-foreground/70 mt-1.5">
                           Joined {new Date(m.joinedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}

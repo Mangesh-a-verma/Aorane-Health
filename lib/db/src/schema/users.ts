@@ -19,6 +19,12 @@ export const foodPrefEnum = pgEnum("food_preference", ["veg", "nonveg", "eggetar
 export const activityLevelEnum = pgEnum("activity_level", ["sedentary", "light", "moderate", "very", "athlete"]);
 export const authProviderEnum = pgEnum("auth_provider", ["mobile", "google", "facebook", "x"]);
 
+// Which path the user took at the start of onboarding. This records the user's
+// own intent and stays on `users`; which organization they actually belong to
+// lives on org_members, which is the single source of truth for membership.
+// Duplicating an org_id here would create a second one that could disagree.
+export const joinTypeEnum = pgEnum("join_type", ["individual", "employee"]);
+
 export const usersTable = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   phone: text("phone").unique(),
@@ -33,6 +39,9 @@ export const usersTable = pgTable("users", {
   languageCode: text("language_code").notNull().default("hi"),
   timezone: text("timezone").notNull().default("Asia/Kolkata"),
   currencyCode: text("currency_code").notNull().default("INR"),
+  // Defaults to individual: that is the existing flow, and every user who
+  // signed up before the employee path existed took it.
+  joinType: joinTypeEnum("join_type").notNull().default("individual"),
   referralCode: text("referral_code").unique(),
   referredBy: uuid("referred_by"),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
@@ -179,6 +188,15 @@ export const userPrivacySettingsTable = pgTable("user_privacy_settings", {
   shareMedicineDetails: boolean("share_medicine_details").notNull().default(false),
   shareMedicalConditions: boolean("share_medical_conditions").notNull().default(false),
   shareFoodData: boolean("share_food_data").notNull().default(true),
+  // Consent for this member's health data to be counted into their employer's
+  // department-level averages. Default FALSE, unlike the sharing flags above:
+  // wellness profiling is not "legitimate use" for an employer under the DPDP
+  // Act - it needs consent that was actually given, so the absence of an
+  // answer must mean no. Onboarding asks explicitly and sets this.
+  //
+  // Opting out excludes the member from the aggregate COMPUTATION, not merely
+  // from its display - see the department analytics query.
+  shareOrgAggregate: boolean("share_org_aggregate").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

@@ -8,6 +8,7 @@ import {
   pgEnum,
   decimal,
   jsonb,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -27,6 +28,18 @@ export const orgTypeEnum = pgEnum("org_type", [
 
 export const orgPlanEnum = pgEnum("org_plan", ["basic", "pro", "max"]);
 export const orgRoleEnum = pgEnum("org_role", ["owner", "admin", "manager", "viewer"]);
+
+// How a member's department was arrived at. The distinction matters because
+// the two non-assigned cases need opposite treatment:
+//   assigned    - picked from the org's own department list
+//   not_listed  - "my department isn't on the list". A DATA-QUALITY signal:
+//                 the admin should see these and extend the list, and the
+//                 member can be reassigned once it exists.
+//   declined    - "prefer not to say". A PRIVACY choice, so an admin must NOT
+//                 be able to reassign it - that would defeat the opt-out.
+// Collapsing these into one "unassigned" bucket would lose the first signal
+// and silently override the second.
+export const departmentStatusEnum = pgEnum("department_status", ["assigned", "not_listed", "declined"]);
 
 export const organizationsTable = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -111,9 +124,71 @@ export const orgMembersTable = pgTable("org_members", {
   userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   role: text("role").notNull().default("member"),
   enrolledViaCode: text("enrolled_via_code"),
+  // Department lives on the membership, not on the user: it is org-scoped, and
+  // a user who leaves one org and joins another should not carry the old org's
+  // department with them. ON DELETE SET NULL so removing a department leaves
+  // its members without one rather than deleting the memberships.
+  departmentId: uuid("department_id").references(() => orgDepartmentsTable.id, { onDelete: "set null" }),
+  // Defaults to not_listed rather than assigned: every member who existed
+  // before departments did genuinely has no department yet, and that is a
+  // prompt for the admin to extend the list, not a privacy choice.
+  departmentStatus: departmentStatusEnum("department_status").notNull().default("not_listed"),
   isActive: boolean("is_active").notNull().default(true),
   joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // The department aggregate query groups active members of one org by
+  // department; no existing index covers that access path.
+  orgDepartmentIdx: index("idx_org_members_org_department").on(t.orgId, t.departmentId),
+}));
+
+// Admin-managed list of departments for one organization. Employee onboarding
+// offers exactly this list as a dropdown - never free text - so that analytics
+// cannot fragment across "Sales", "sales" and "Sale". The case-insensitive
+// unique index below is what actually enforces that; a plain UNIQUE(org_id,
+// name) would happily accept "Sales" and "sales" as two departments.
+//
+// EXTENSION POINT: departments are self-declared today because there is no
+// HRMS/SSO integration to verify them against. If one is added later, this is
+// the table an automatic sync would write to, and org_members.department_status
+// is where a "verified by HRMS" state would go alongside the existing three.
+export const orgDepartmentsTable = pgTable("org_departments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (t) => ({
+  orgIdx: index("idx_org_departments_org_id").on(t.orgId),
+}));
+
+// Every department reassignment an org admin performs, kept as an append-only
+// trail. Two reasons, and the second is the load-bearing one:
+//   1. A self-declared department that an admin can silently rewrite needs a
+//      record of who rewrote it.
+//   2. Department aggregates are vulnerable to a differencing attack - move
+//      one member between two departments and compare the averages before and
+//      after, and you have recovered that individual's score. Knowing exactly
+//      when a department's membership changed is what lets the aggregate layer
+//      freeze or suppress around it.
+export const orgDepartmentChangesTable = pgTable("org_department_changes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  // Nullable on both sides: a move can start from or end at "no department".
+  // ON DELETE SET NULL so deleting a department never erases the history of
+  // members having been in it.
+  fromDepartmentId: uuid("from_department_id").references(() => orgDepartmentsTable.id, { onDelete: "set null" }),
+  toDepartmentId: uuid("to_department_id").references(() => orgDepartmentsTable.id, { onDelete: "set null" }),
+  fromStatus: departmentStatusEnum("from_status").notNull(),
+  toStatus: departmentStatusEnum("to_status").notNull(),
+  // Null when the change came from the member themselves during onboarding
+  // rather than from an admin acting on them.
+  changedByAdminId: uuid("changed_by_admin_id").references(() => orgAdminsTable.id, { onDelete: "set null" }),
+  changedAt: timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  orgChangedAtIdx: index("idx_org_department_changes_org_changed_at").on(t.orgId, t.changedAt),
+}));
 
 export const enrollmentCodesTable = pgTable("enrollment_codes", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -188,3 +263,5 @@ export type OrgMember = typeof orgMembersTable.$inferSelect;
 export type EnrollmentCode = typeof enrollmentCodesTable.$inferSelect;
 export type OrgPayment = typeof orgPaymentsTable.$inferSelect;
 export type OrgAnnouncement = typeof orgAnnouncementsTable.$inferSelect;
+export type OrgDepartment = typeof orgDepartmentsTable.$inferSelect;
+export type OrgDepartmentChange = typeof orgDepartmentChangesTable.$inferSelect;

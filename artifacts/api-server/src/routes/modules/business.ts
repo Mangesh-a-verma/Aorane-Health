@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { logger } from "../../lib/logger";
-import { db, pool, organizationsTable, orgAdminsTable, orgMembersTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable, subscriptionsTable, companySettingsTable, stressLogsTable, userPrivacySettingsTable, enquiriesTable } from "@workspace/db";
+import { db, pool, organizationsTable, orgAdminsTable, orgMembersTable, orgDepartmentsTable, orgDepartmentChangesTable, enrollmentCodesTable, usersTable, dailyHealthScoresTable, userProfilesTable, orgPaymentsTable, orgAnnouncementsTable, planPricingTable, subscriptionsTable, companySettingsTable, stressLogsTable, userPrivacySettingsTable, enquiriesTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte, desc, ilike, sql } from "drizzle-orm";
 import { requireBusinessAuth } from "../../middlewares/business-auth";
 import { requireAuth } from "../../middlewares/user-auth";
@@ -452,10 +452,16 @@ router.get("/business/members", requireBusinessAuth, async (req: BusinessRequest
       role: orgMembersTable.role,
       joinedAt: orgMembersTable.joinedAt,
       fullName: userProfilesTable.fullName,
-      // No health fields here. These lists exist so an admin can see who holds
-      // a seat; bloodGroup used to ride along and had nothing to do with that.
+      // Department is org/employment data, not health data, so it belongs on
+      // this list. departmentStatus travels with it because the UI has to tell
+      // "no department yet" (reassignable) apart from "chose not to say"
+      // (must not be reassigned).
+      departmentId: orgMembersTable.departmentId,
+      departmentName: orgDepartmentsTable.name,
+      departmentStatus: orgMembersTable.departmentStatus,
     }).from(orgMembersTable)
       .leftJoin(userProfilesTable, eq(orgMembersTable.userId, userProfilesTable.userId))
+      .leftJoin(orgDepartmentsTable, eq(orgMembersTable.departmentId, orgDepartmentsTable.id))
       .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.isActive, true)));
     res.json({ members });
   } catch {
@@ -763,6 +769,234 @@ router.get("/business/enrollment-codes", requireBusinessAuth, async (req: Busine
     res.json({ codes });
   } catch {
     res.status(500).json({ error: "Failed to fetch enrollment codes" });
+  }
+});
+
+// ─── ORG DEPARTMENTS ──────────────────────────────────────────────────────────
+// The admin-managed list that employee onboarding offers as a dropdown. Kept a
+// closed list on purpose: free-text departments fragment analytics across
+// "Sales" / "sales" / "Sale", and no amount of cleaning afterwards recovers
+// which of them was meant.
+
+/** Shape returned to the portal for one department, with its live headcount. */
+type DepartmentRow = {
+  id: string; name: string; isActive: boolean;
+  memberCount: number; createdAt: Date;
+};
+
+async function listDepartments(orgId: string): Promise<DepartmentRow[]> {
+  const rows = await db
+    .select({
+      id: orgDepartmentsTable.id,
+      name: orgDepartmentsTable.name,
+      isActive: orgDepartmentsTable.isActive,
+      createdAt: orgDepartmentsTable.createdAt,
+      // Counts ACTIVE members only: a suspended or removed member still holds
+      // a department row, but showing them in the headcount would disagree
+      // with every other member count in the portal.
+      memberCount: sql<number>`count(${orgMembersTable.id}) FILTER (WHERE ${orgMembersTable.isActive})::int`,
+    })
+    .from(orgDepartmentsTable)
+    .leftJoin(orgMembersTable, eq(orgMembersTable.departmentId, orgDepartmentsTable.id))
+    .where(eq(orgDepartmentsTable.orgId, orgId))
+    .groupBy(orgDepartmentsTable.id)
+    .orderBy(orgDepartmentsTable.name);
+  return rows as DepartmentRow[];
+}
+
+router.get("/business/departments", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const departments = await listDepartments(req.orgId!);
+    // The two non-assigned buckets are reported alongside the departments
+    // because they mean different things to an admin: `needsDepartment` is a
+    // to-do (people whose department is not on the list yet), `declined` is
+    // not (people who chose not to say, and must be left alone).
+    const [counts] = await db
+      .select({
+        needsDepartment: sql<number>`count(*) FILTER (WHERE ${orgMembersTable.departmentStatus} = 'not_listed')::int`,
+        declined: sql<number>`count(*) FILTER (WHERE ${orgMembersTable.departmentStatus} = 'declined')::int`,
+      })
+      .from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.isActive, true)));
+    res.json({ departments, unassigned: counts ?? { needsDepartment: 0, declined: 0 } });
+  } catch (err) {
+    req.log.error({ err }, "Department list error");
+    res.status(500).json({ error: "Failed to fetch departments" });
+  }
+});
+
+router.post("/business/departments", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const name = String((req.body as { name?: unknown }).name ?? "").trim();
+    if (!name) { res.status(400).json({ error: "Department name required" }); return; }
+    if (name.length > 60) { res.status(400).json({ error: "Department name must be 60 characters or fewer" }); return; }
+
+    // A soft-deleted department keeps its name (the unique index covers
+    // inactive rows too), so "create Sales" when an inactive Sales exists is
+    // a reactivation, not a conflict. Doing it any other way would leave the
+    // admin unable to create a department whose name they can't see.
+    const [existing] = await db.select().from(orgDepartmentsTable)
+      .where(and(eq(orgDepartmentsTable.orgId, req.orgId!), sql`lower(${orgDepartmentsTable.name}) = lower(${name})`))
+      .limit(1);
+    if (existing) {
+      if (existing.isActive) { res.status(409).json({ error: `"${existing.name}" already exists` }); return; }
+      const [revived] = await db.update(orgDepartmentsTable)
+        .set({ isActive: true, name })
+        .where(eq(orgDepartmentsTable.id, existing.id)).returning();
+      res.status(200).json({ department: revived, reactivated: true });
+      return;
+    }
+
+    const [created] = await db.insert(orgDepartmentsTable)
+      .values({ orgId: req.orgId!, name }).returning();
+    res.status(201).json({ department: created });
+  } catch (err) {
+    req.log.error({ err }, "Department create error");
+    res.status(500).json({ error: "Failed to create department" });
+  }
+});
+
+router.patch("/business/departments/:id", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const id = String(req.params["id"]);
+    const body = req.body as { name?: unknown; isActive?: unknown };
+    // Scoped by orgId as well as id, so an admin cannot rename another org's
+    // department by guessing its UUID.
+    const [dept] = await db.select().from(orgDepartmentsTable)
+      .where(and(eq(orgDepartmentsTable.id, id), eq(orgDepartmentsTable.orgId, req.orgId!))).limit(1);
+    if (!dept) { res.status(404).json({ error: "Department not found" }); return; }
+
+    const patch: { name?: string; isActive?: boolean } = {};
+    if (body.name !== undefined) {
+      const name = String(body.name).trim();
+      if (!name) { res.status(400).json({ error: "Department name required" }); return; }
+      if (name.length > 60) { res.status(400).json({ error: "Department name must be 60 characters or fewer" }); return; }
+      const [clash] = await db.select({ id: orgDepartmentsTable.id }).from(orgDepartmentsTable)
+        .where(and(
+          eq(orgDepartmentsTable.orgId, req.orgId!),
+          sql`lower(${orgDepartmentsTable.name}) = lower(${name})`,
+          sql`${orgDepartmentsTable.id} <> ${id}`,
+        )).limit(1);
+      if (clash) { res.status(409).json({ error: `"${name}" already exists` }); return; }
+      patch.name = name;
+    }
+    if (body.isActive !== undefined) patch.isActive = Boolean(body.isActive);
+    if (!Object.keys(patch).length) { res.status(400).json({ error: "Nothing to update" }); return; }
+
+    const [updated] = await db.update(orgDepartmentsTable).set(patch)
+      .where(eq(orgDepartmentsTable.id, id)).returning();
+    res.json({ department: updated });
+  } catch (err) {
+    req.log.error({ err }, "Department update error");
+    res.status(500).json({ error: "Failed to update department" });
+  }
+});
+
+router.delete("/business/departments/:id", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const id = String(req.params["id"]);
+    const [dept] = await db.select().from(orgDepartmentsTable)
+      .where(and(eq(orgDepartmentsTable.id, id), eq(orgDepartmentsTable.orgId, req.orgId!))).limit(1);
+    if (!dept) { res.status(404).json({ error: "Department not found" }); return; }
+
+    // Deactivate rather than DELETE, and move its members out explicitly.
+    // The foreign key would already null out department_id on a hard delete,
+    // but it would leave department_status reading 'assigned' with nothing
+    // assigned - a state no other code path can produce. Members land in
+    // 'not_listed', which is exactly right: their department no longer exists
+    // and somebody has to choose a new one.
+    //
+    // Members who chose 'declined' are untouched: they have no department_id
+    // to move, and overwriting their status would silently undo an opt-out.
+    let movedMembers = 0;
+    await db.transaction(async (tx) => {
+      const affected = await tx.select({ userId: orgMembersTable.userId })
+        .from(orgMembersTable)
+        .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.departmentId, id)));
+      if (affected.length) {
+        await tx.insert(orgDepartmentChangesTable).values(affected.map((m) => ({
+          orgId: req.orgId!, userId: m.userId,
+          fromDepartmentId: id, toDepartmentId: null,
+          fromStatus: "assigned" as const, toStatus: "not_listed" as const,
+          changedByAdminId: req.orgAdminId!,
+        })));
+        await tx.update(orgMembersTable)
+          .set({ departmentId: null, departmentStatus: "not_listed" })
+          .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.departmentId, id)));
+      }
+      await tx.update(orgDepartmentsTable).set({ isActive: false }).where(eq(orgDepartmentsTable.id, id));
+      movedMembers = affected.length;
+    });
+
+    res.json({ success: true, movedMembers,
+      message: movedMembers
+        ? `"${dept.name}" removed. ${movedMembers} member${movedMembers === 1 ? "" : "s"} now need a department.`
+        : `"${dept.name}" removed.` });
+  } catch (err) {
+    req.log.error({ err }, "Department delete error");
+    res.status(500).json({ error: "Failed to delete department" });
+  }
+});
+
+// ─── Reassign one member's department ────────────────────────────────────────
+// The documented answer to the fact that departments are self-declared and
+// cannot be verified without an HRMS/SSO integration: rather than pretend the
+// declaration is trustworthy, let an admin correct it afterwards, and record
+// every correction.
+router.post("/business/members/:userId/department", requireBusinessAuth, async (req: BusinessRequest, res) => {
+  try {
+    const userId = String(req.params["userId"]);
+    const raw = (req.body as { departmentId?: unknown }).departmentId;
+    const departmentId = raw === null || raw === undefined || raw === "" ? null : String(raw);
+
+    const [member] = await db.select().from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId))).limit(1);
+    if (!member) { res.status(404).json({ error: "Member not in organization" }); return; }
+
+    // 'declined' means the member explicitly chose not to state a department.
+    // An admin overriding that would make the opt-out decorative, so it is
+    // refused here rather than merely hidden in the UI.
+    if (member.departmentStatus === "declined") {
+      res.status(403).json({
+        error: "This member chose not to share their department. That choice cannot be overridden.",
+        declined: true,
+      });
+      return;
+    }
+
+    let toStatus: "assigned" | "not_listed" = "not_listed";
+    if (departmentId) {
+      const [dept] = await db.select().from(orgDepartmentsTable)
+        .where(and(
+          eq(orgDepartmentsTable.id, departmentId),
+          eq(orgDepartmentsTable.orgId, req.orgId!),
+          eq(orgDepartmentsTable.isActive, true),
+        )).limit(1);
+      if (!dept) { res.status(404).json({ error: "Department not found in this organization" }); return; }
+      toStatus = "assigned";
+    }
+
+    if (member.departmentId === departmentId && member.departmentStatus === toStatus) {
+      res.json({ success: true, unchanged: true });
+      return;
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.update(orgMembersTable)
+        .set({ departmentId, departmentStatus: toStatus })
+        .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.userId, userId)));
+      await tx.insert(orgDepartmentChangesTable).values({
+        orgId: req.orgId!, userId,
+        fromDepartmentId: member.departmentId, toDepartmentId: departmentId,
+        fromStatus: member.departmentStatus, toStatus,
+        changedByAdminId: req.orgAdminId!,
+      });
+    });
+
+    res.json({ success: true, departmentId, departmentStatus: toStatus });
+  } catch (err) {
+    req.log.error({ err }, "Department reassign error");
+    res.status(500).json({ error: "Failed to update member department" });
   }
 });
 
