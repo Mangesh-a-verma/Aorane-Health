@@ -37,15 +37,18 @@ export interface Admin {
   id: string; fullName: string; role: string; email: string;
 }
 
+// Health data is aggregate-only in this CRM, so none of the per-member shapes
+// below carry a health field. The server stopped sending bloodGroup/bmi/health
+// scores per person (see routes/modules/business.ts); these types match that.
 export interface Member {
   memberId: string; userId: string; role: string; joinedAt: string;
-  fullName: string | null; bloodGroup: string | null;
+  fullName: string | null;
 }
 
 export interface MemberSearchResult {
   userId: string; aoraneId: string | null; name: string | null;
-  bloodGroup: string | null; gender: string | null; age: number | null;
-  city: string | null; bmi: string | null; plan: string;
+  gender: string | null; age: number | null;
+  city: string | null; plan: string;
 }
 
 export interface EnrollmentCode {
@@ -141,21 +144,15 @@ export interface Announcement {
 
 export interface MemberDetail {
   member: { userId: string; role: string; joinedAt: string; isActive: boolean };
-  profile: { fullName: string | null; bloodGroup: string | null; gender: string | null; bmi: string | null; dateOfBirth: string | null } | null;
+  profile: { fullName: string | null; gender: string | null; dateOfBirth: string | null } | null;
   user: { plan: string; aoraneId: string | null };
-  recentScores: { scoreDate: string; overallScore: number | null }[];
 }
 
-export interface MemberStress {
-  userId: string;
-  name: string | null;
-  latestScore: number | null;
-  avgScore: number | null;
-  logsCount: number;
-  burnoutRisk: boolean;
-  level: string;
-  trend: { date: string; score: number }[];
-}
+// MemberStress and api.getMemberStress used to live here, backed by
+// GET /business/members/:userId/stress - one named employee's stress score,
+// trend and burnout flag, shown to their employer. Both the endpoint and this
+// type are gone. Org-wide stress lives on HealthAnalytics (avgStressScore and
+// the high/moderate/low counts), which is what the dashboard renders now.
 
 export const api = {
   login: (email: string, password: string) =>
@@ -203,9 +200,6 @@ export const api = {
 
   getMemberDetail: (userId: string) =>
     request<MemberDetail>(`/business/members/${userId}/detail`),
-
-  getMemberStress: (userId: string) =>
-    request<MemberStress>(`/business/members/${userId}/stress`),
 
   removeMember: (userId: string) =>
     request<{ success: boolean }>(`/business/members/${userId}/remove`, { method: "POST" }),

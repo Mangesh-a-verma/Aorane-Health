@@ -2,11 +2,11 @@ import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "wouter";
-import { api, type Overview, type HealthAnalytics, type MemberStress, type MemberSearchResult, type Member } from "@/lib/api";
+import { api, type Overview, type HealthAnalytics, type Member } from "@/lib/api";
 import {
   Users, Server, TrendingUp, Activity, Copy, Check,
   Building2, MapPin, Mail, Phone, Shield, Heart, Droplets, Dumbbell, Pill,
-  AlertTriangle, UserCheck, UserX, Search, X as XIcon, Loader2,
+  AlertTriangle, UserCheck, UserX, Loader2,
   FileText, Megaphone, QrCode, ArrowRight, Clock, CreditCard,
 } from "lucide-react";
 import {
@@ -73,14 +73,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
-  // Employee stress lookup state
-  const [stressQuery, setStressQuery] = useState("");
-  const [stressResults, setStressResults] = useState<MemberSearchResult[]>([]);
-  const [stressSearching, setStressSearching] = useState(false);
-  const [stressSearchErr, setStressSearchErr] = useState("");
-  const [selectedStressUser, setSelectedStressUser] = useState<MemberSearchResult | null>(null);
-  const [memberStress, setMemberStress] = useState<MemberStress | null>(null);
-  const [stressLookupLoading, setStressLookupLoading] = useState(false);
 
   useEffect(() => {
     api.overview().then(setOverview).catch(console.error).finally(() => setLoading(false));
@@ -98,38 +90,10 @@ export default function Dashboard() {
     });
   };
 
-  const handleStressSearch = async (q: string) => {
-    setStressQuery(q);
-    setStressSearchErr("");
-    if (q.trim().length < 4) { setStressResults([]); return; }
-    setStressSearching(true);
-    try {
-      const res = await api.searchMembers(q.trim());
-      setStressResults(res.results);
-    } catch { setStressSearchErr("Search failed. Try again."); }
-    finally { setStressSearching(false); }
-  };
-
-  const handleSelectStressUser = async (m: MemberSearchResult) => {
-    setSelectedStressUser(m);
-    setStressResults([]);
-    setStressQuery(m.name || m.aoraneId || "");
-    setMemberStress(null);
-    setStressLookupLoading(true);
-    try {
-      const stress = await api.getMemberStress(m.userId);
-      setMemberStress(stress);
-    } catch { setMemberStress(null); }
-    finally { setStressLookupLoading(false); }
-  };
-
-  const clearStressLookup = () => {
-    setStressQuery("");
-    setStressResults([]);
-    setSelectedStressUser(null);
-    setMemberStress(null);
-    setStressSearchErr("");
-  };
+  // The per-employee stress lookup that lived here (search a member, then
+  // GET /business/members/:userId/stress) was removed along with its
+  // endpoint. Health data in this CRM is aggregate-only; the Workforce
+  // Stress Level panel above already shows it at org level.
 
   const seatPct = org ? Math.min(100, (org.usedSeats / org.totalSeats) * 100) : 0;
 
@@ -286,123 +250,6 @@ export default function Dashboard() {
           );
         })()}
 
-        {/* Employee Stress Lookup */}
-        {!analyticsLoading && (
-          <CardShell
-            title="Employee Stress Lookup"
-            description="Search by name or Aorane ID — individual stress data (DPDP compliant)"
-          >
-            <div className="neu-inset flex h-11 items-center gap-2 rounded-2xl px-3.5 mb-3">
-              {stressSearching ? <Loader2 size={15} className="shrink-0 text-muted-foreground animate-spin" /> : <Search size={15} className="shrink-0 text-muted-foreground" />}
-              <input
-                type="text"
-                value={stressQuery}
-                onChange={(e) => handleStressSearch(e.target.value)}
-                placeholder="Type employee name or Aorane ID (min 4 chars)…"
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-              />
-              {(stressQuery || selectedStressUser) && (
-                <button onClick={clearStressLookup} className="shrink-0 text-muted-foreground hover:text-foreground">
-                  <XIcon size={14} />
-                </button>
-              )}
-            </div>
-
-            {stressSearchErr && <div className="text-xs text-destructive mb-2">{stressSearchErr}</div>}
-
-            {stressResults.length > 0 && !selectedStressUser && (
-              <div className="neu rounded-2xl overflow-hidden mb-3 max-h-48 overflow-y-auto">
-                {stressResults.map((m) => (
-                  <button
-                    key={m.userId}
-                    onClick={() => handleSelectStressUser(m)}
-                    className="w-full text-left px-4 py-2.5 hover:bg-secondary/60 flex items-center gap-3 transition-colors border-b border-border/60 last:border-0"
-                  >
-                    <Avatar name={m.name || "?"} tone="lavender" size="sm" />
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-foreground truncate">{m.name || "Unknown"}</div>
-                      <div className="text-[11px] text-muted-foreground truncate">{m.aoraneId ? `ID: ${m.aoraneId}` : ""} {m.city || ""}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {stressQuery.trim().length >= 4 && !stressSearching && stressResults.length === 0 && !selectedStressUser && (
-              <div className="text-xs text-muted-foreground mb-2">No members found matching "{stressQuery}"</div>
-            )}
-
-            {selectedStressUser && (
-              <NeuCard variant="flat" className="p-4">
-                {stressLookupLoading ? (
-                  <div className="flex items-center gap-2 py-3 justify-center">
-                    <Loader2 size={16} className="text-muted-foreground animate-spin" />
-                    <span className="text-sm text-muted-foreground">Loading stress data…</span>
-                  </div>
-                ) : memberStress ? (() => {
-                  const score = memberStress.latestScore;
-                  const levelTone: Record<string, { text: string; bar: string; badge: "success" | "warning" | "danger" | "outline" }> = {
-                    "Low":      { text: "text-[oklch(0.5_0.13_162)]", bar: "oklch(0.68 0.12 162)", badge: "success" },
-                    "Moderate": { text: "text-[oklch(0.55_0.13_80)]", bar: "oklch(0.8 0.13 80)",   badge: "warning" },
-                    "High":     { text: "text-[oklch(0.55_0.16_50)]", bar: "oklch(0.68 0.17 50)",  badge: "warning" },
-                    "Critical": { text: "text-destructive",           bar: "hsl(var(--destructive))", badge: "danger" },
-                    "No Data":  { text: "text-muted-foreground",      bar: "hsl(var(--muted-foreground))", badge: "outline" },
-                  };
-                  const c = levelTone[memberStress.level] || levelTone["No Data"];
-                  return (
-                    <>
-                      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                        <div className="flex items-center gap-2">
-                          <Avatar name={selectedStressUser.name || "?"} tone="lavender" />
-                          <div>
-                            <div className="font-bold text-sm text-foreground">{selectedStressUser.name || "Member"}</div>
-                            <div className="text-[11px] text-muted-foreground">{memberStress.logsCount} check-in{memberStress.logsCount !== 1 ? "s" : ""} in last 30 days</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {memberStress.burnoutRisk && <Badge variant="danger">⚠️ Burnout Risk</Badge>}
-                          <Badge variant={c.badge}>{memberStress.level}</Badge>
-                          <div className={`text-2xl font-bold ${c.text}`}>
-                            {score !== null ? score : "—"}<span className="text-sm font-normal opacity-60">{score !== null ? "/100" : ""}</span>
-                          </div>
-                        </div>
-                      </div>
-                      {score !== null && (
-                        <div className="neu-inset-sm h-1.5 rounded-full overflow-hidden mb-3">
-                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${score}%`, background: c.bar }} />
-                        </div>
-                      )}
-                      <div className="grid grid-cols-2 gap-2 mt-1">
-                        <div className="neu-inset rounded-xl px-3 py-2 text-center">
-                          <div className="font-bold text-base text-foreground">{memberStress.avgScore !== null ? memberStress.avgScore : "—"}</div>
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">30-day Avg</div>
-                        </div>
-                        <div className="neu-inset rounded-xl px-3 py-2 text-center">
-                          <div className="font-bold text-base text-foreground">{memberStress.logsCount}</div>
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Check-ins</div>
-                        </div>
-                      </div>
-                      {memberStress.trend.length > 0 && (
-                        <div className="mt-3">
-                          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Stress Trend (Last 14 days)</div>
-                          <ResponsiveContainer width="100%" height={60}>
-                            <BarChart data={memberStress.trend} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
-                              <YAxis domain={[0, 100]} tick={false} axisLine={false} tickLine={false} />
-                              <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number) => [v, "Stress Score"]} />
-                              <Bar dataKey="score" fill={c.bar} radius={[3, 3, 0, 0]} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      )}
-                    </>
-                  );
-                })() : (
-                  <div className="text-sm text-muted-foreground text-center py-3">Could not load stress data for this member.</div>
-                )}
-              </NeuCard>
-            )}
-          </CardShell>
-        )}
 
         {/* Recent Enrollments + Quick Actions */}
         <div className="grid md:grid-cols-2 gap-4">

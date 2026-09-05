@@ -2,8 +2,8 @@ import React, { useEffect, useState, useRef } from "react";
 import Layout from "@/components/Layout";
 import { api, type Member, type MemberSearchResult, type MemberDetail } from "@/lib/api";
 import {
-  Users, Search, UserCheck, Droplet, RefreshCw, Fingerprint, X,
-  Download, ChevronRight, Activity, Calendar, TrendingUp, UserMinus, Loader2,
+  Users, Search, UserCheck, RefreshCw, Fingerprint, X,
+  Download, ChevronRight, Activity, Calendar, UserMinus, Loader2,
   ShieldCheck, PauseCircle, PlayCircle, EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,10 +29,12 @@ function getInitials(name: string | null): string {
 }
 
 function exportCSV(members: Member[]) {
-  const headers = ["Name", "Blood Group", "Role", "Joined At"];
+  // Seat administration data only - no health columns. An exported CSV is the
+  // easiest thing in the product to forward to someone who should never have
+  // had the data in the first place.
+  const headers = ["Name", "Role", "Joined At"];
   const rows = members.map(m => [
     m.fullName || "Unknown",
-    m.bloodGroup || "—",
     m.role,
     new Date(m.joinedAt).toLocaleDateString("en-IN"),
   ]);
@@ -116,18 +118,6 @@ function MemberDetailDrawer({
     }
   };
 
-  const latestScore = detail?.recentScores?.[0]?.overallScore ?? null;
-  const healthLabel =
-    latestScore == null ? "—" :
-    latestScore >= 80 ? "Excellent" :
-    latestScore >= 60 ? "Good" :
-    latestScore >= 40 ? "Fair" : "Needs Care";
-  const healthColor =
-    latestScore == null ? "hsl(var(--muted-foreground))" :
-    latestScore >= 80 ? "oklch(0.68 0.12 162)" :
-    latestScore >= 60 ? "hsl(var(--primary))" :
-    latestScore >= 40 ? "oklch(0.8 0.13 80)" : "hsl(var(--destructive))";
-
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md p-0">
@@ -176,12 +166,12 @@ function MemberDetailDrawer({
               <div className="grid grid-cols-2 gap-3">
                 <NeuCard variant="flat" className="p-3.5">
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 flex items-center gap-1">
-                    <Activity size={11} style={{ color: healthColor }} /> Health Index
+                    <UserCheck size={11} className="text-primary" /> Seat
                   </div>
-                  <div className="text-2xl font-bold" style={{ color: healthColor }}>
-                    {latestScore ?? "—"}<span className="text-sm text-muted-foreground font-normal">{latestScore != null ? "/100" : ""}</span>
+                  <div className="text-2xl font-bold text-foreground">
+                    {detail.member?.isActive ? "Active" : "Suspended"}
                   </div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">{healthLabel}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5 capitalize">{detail.member?.role || "member"}</div>
                 </NeuCard>
                 <NeuCard variant="flat" className="p-3.5">
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 flex items-center gap-1">
@@ -192,16 +182,13 @@ function MemberDetailDrawer({
                 </NeuCard>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="neu-inset-sm rounded-xl p-3">
-                  <Droplet size={12} className="text-destructive mb-1" />
-                  <div className="text-[10px] text-muted-foreground font-medium uppercase">Blood</div>
-                  <div className="font-bold text-sm text-foreground">{detail.profile?.bloodGroup || "—"}</div>
-                </div>
-                <div className="neu-inset-sm rounded-xl p-3">
-                  <Activity size={12} className="text-primary mb-1" />
-                  <div className="text-[10px] text-muted-foreground font-medium uppercase">BMI</div>
-                  <div className="font-bold text-sm text-foreground">{detail.profile?.bmi || "—"}</div>
+                  <Calendar size={12} className="text-primary mb-1" />
+                  <div className="text-[10px] text-muted-foreground font-medium uppercase">Joined</div>
+                  <div className="font-bold text-sm text-foreground">
+                    {detail.member?.joinedAt ? new Date(detail.member.joinedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                  </div>
                 </div>
                 <div className="neu-inset-sm rounded-xl p-3">
                   <UserCheck size={12} className="text-[oklch(0.68_0.12_162)] mb-1" />
@@ -210,42 +197,11 @@ function MemberDetailDrawer({
                 </div>
               </div>
 
-              {detail.recentScores?.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <TrendingUp size={14} className="text-primary" />
-                    <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Recent Scores</span>
-                  </div>
-                  <div className="space-y-2">
-                    {detail.recentScores.slice(0, 5).map((s) => {
-                      const score = s.overallScore ?? 0;
-                      const c = score >= 70 ? "oklch(0.68 0.12 162)" : score >= 40 ? "oklch(0.8 0.13 80)" : "hsl(var(--destructive))";
-                      return (
-                        <div key={s.scoreDate} className="flex items-center justify-between gap-3">
-                          <span className="text-xs text-muted-foreground shrink-0 w-20">
-                            {new Date(s.scoreDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                          </span>
-                          <div className="flex-1 neu-inset-sm h-1.5 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all" style={{ width: `${score}%`, background: c }} />
-                          </div>
-                          <span className="text-xs font-mono-data font-semibold tabular-nums w-8 text-right" style={{ color: c }}>
-                            {s.overallScore ?? "—"}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="neu-inset-sm rounded-xl px-3 py-2.5 text-xs text-muted-foreground">
-                <span className="text-foreground font-medium">Joined:</span>{" "}
-                {new Date(detail.member.joinedAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
-              </div>
-
               <div className="mt-2">
                 <PrivacyNote>
-                  All health metrics are anonymized and shown per DPDP Act 2023 Section 8(1). Full consent log on file.
+                  Seat and profile details only. This member's health data — scores, stress,
+                  sleep, BMI — is never shown to administrators individually; it appears only
+                  inside org-level aggregates, per the DPDP Act 2023.
                 </PrivacyNote>
               </div>
             </div>
@@ -337,12 +293,12 @@ function SearchResultCard({ r, idx, onClick }: { r: MemberSearchResult; idx: num
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="neu-inset-sm rounded-xl px-3 py-2">
-          <div className="text-[10px] text-muted-foreground font-medium uppercase">Blood</div>
-          <div className="text-sm font-bold text-destructive">{r.bloodGroup || "—"}</div>
+          <div className="text-[10px] text-muted-foreground font-medium uppercase">Plan</div>
+          <div className="text-sm font-bold text-foreground capitalize">{r.plan || "free"}</div>
         </div>
         <div className="neu-inset-sm rounded-xl px-3 py-2">
-          <div className="text-[10px] text-muted-foreground font-medium uppercase">BMI / City</div>
-          <div className="text-sm font-medium text-foreground">{r.bmi || "—"} · {r.city || "—"}</div>
+          <div className="text-[10px] text-muted-foreground font-medium uppercase">City</div>
+          <div className="text-sm font-medium text-foreground">{r.city || "—"}</div>
         </div>
       </div>
     </NeuCard>
@@ -459,8 +415,10 @@ export default function Members() {
             <Badge variant="success">Verified</Badge>
           </div>
           <PrivacyNote>
-            All member health metrics shown are anonymized per Section 8(1) of the Digital Personal Data
-            Protection Act. Full consent logs are maintained.
+            This page shows seat administration data only — who holds a seat, their role and
+            plan. No member health metric is shown here for an individual, at any admin
+            permission level. Health data reaches this portal only as org-level aggregates,
+            per the Digital Personal Data Protection Act 2023.
           </PrivacyNote>
         </NeuCard>
 
@@ -586,13 +544,6 @@ export default function Members() {
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           <UserCheck size={11} className="text-primary" />
                           <span className="text-xs text-muted-foreground capitalize">{m.role}</span>
-                          {m.bloodGroup && m.bloodGroup !== "Unknown" && (
-                            <>
-                              <span className="text-muted-foreground/30">•</span>
-                              <Droplet size={11} className="text-destructive" />
-                              <span className="text-xs text-destructive font-medium">{m.bloodGroup}</span>
-                            </>
-                          )}
                         </div>
                         <div className="text-[11px] text-muted-foreground/70 mt-1.5">
                           Joined {new Date(m.joinedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
