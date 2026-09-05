@@ -31,6 +31,9 @@ export default function EnrollmentCodeScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orgName, setOrgName] = useState<string | null>(null);
+  // "grace" or "expired" means the code is valid but the company is not
+  // currently paying, so joining will not grant its plan.
+  const [planState, setPlanState] = useState<"active" | "grace" | "expired">("active");
 
   const trimmed = code.trim().toUpperCase();
 
@@ -42,12 +45,14 @@ export default function EnrollmentCodeScreen() {
       const res = await api.verifyOrgCode(trimmed);
       if (!res?.valid) throw new Error("That code doesn't match any organization.");
       setOrgName(res.org.name);
+      setPlanState(res.planState ?? "active");
       // Park the code for the post-sign-in step. It is redeemed only after a
       // department has been chosen, so nothing is consumed if the user stops
       // here.
       await setPendingEnrollment(trimmed, res.org.name);
     } catch (e) {
       setOrgName(null);
+      setPlanState("active");
       setError((e as Error).message || "Could not verify that code.");
     } finally {
       setLoading(false);
@@ -126,6 +131,22 @@ export default function EnrollmentCodeScreen() {
           </View>
         )}
 
+        {/* Said BEFORE they commit, not discovered afterwards. The code is
+            genuinely valid — the company simply is not paying right now — so
+            this is a warning, not an error, and joining is still allowed. */}
+        {orgName && planState !== "active" && (
+          <View style={styles.warnBox}>
+            <Ionicons name="information-circle" size={18} color="#B45309" style={{ marginTop: 1 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.warnTitle}>{orgName}'s plan is inactive</Text>
+              <Text style={styles.warnHelp}>
+                You can still join. You'll be on the Free plan until your company renews, and
+                you'll be upgraded automatically when they do.
+              </Text>
+            </View>
+          </View>
+        )}
+
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={orgName ? proceed : verify}
@@ -169,6 +190,9 @@ const styles = StyleSheet.create({
   successBox: { flexDirection: "row", gap: 10, alignItems: "center", backgroundColor: "rgba(27,153,139,0.08)", borderRadius: 14, padding: 14, marginTop: 14, borderWidth: 1, borderColor: "rgba(27,153,139,0.2)" },
   successTitle: { color: "#0F766E", fontFamily: "Inter_700Bold", fontSize: 15 },
   successHelp: { color: SUB, fontFamily: "Inter_400Regular", fontSize: 12.5, marginTop: 2 },
+  warnBox: { flexDirection: "row", gap: 9, backgroundColor: "rgba(245,158,11,0.09)", borderRadius: 14, padding: 13, marginTop: 12, borderWidth: 1, borderColor: "rgba(245,158,11,0.22)" },
+  warnTitle: { color: "#92400E", fontFamily: "Inter_600SemiBold", fontSize: 13.5 },
+  warnHelp: { color: SUB, fontFamily: "Inter_400Regular", fontSize: 12.5, lineHeight: 18, marginTop: 4 },
   cta: { padding: 17, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 9 },
   ctaText: { color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 16 },
   altLink: { marginTop: 18, alignItems: "center" },

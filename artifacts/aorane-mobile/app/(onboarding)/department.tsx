@@ -74,6 +74,17 @@ export default function DepartmentScreen() {
       if (res.refreshToken) await storage.setRefreshToken(res.refreshToken);
       await clearPendingEnrollment();
       if (refreshUser) await refreshUser();
+      // The company may have lapsed between the code check and here, or been
+      // lapsed all along — either way the user joined but did not get a plan,
+      // and is told so rather than quietly landing on Free.
+      if (res.notice) {
+        Alert.alert(
+          `You've joined ${res.org?.name ?? orgName}`,
+          res.notice,
+          [{ text: "Continue", onPress: () => router.replace("/(onboarding)/" as never) }],
+        );
+        return;
+      }
       router.replace("/(onboarding)/" as never);
     } catch (e) {
       // A code can stop being redeemable between the pre-sign-in check and
