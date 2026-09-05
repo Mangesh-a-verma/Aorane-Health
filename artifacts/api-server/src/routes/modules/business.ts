@@ -452,7 +452,8 @@ router.get("/business/members", requireBusinessAuth, async (req: BusinessRequest
       role: orgMembersTable.role,
       joinedAt: orgMembersTable.joinedAt,
       fullName: userProfilesTable.fullName,
-      bloodGroup: userProfilesTable.bloodGroup,
+      // No health fields here. These lists exist so an admin can see who holds
+      // a seat; bloodGroup used to ride along and had nothing to do with that.
     }).from(orgMembersTable)
       .leftJoin(userProfilesTable, eq(orgMembersTable.userId, userProfilesTable.userId))
       .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.isActive, true)));
@@ -477,12 +478,14 @@ router.get("/business/members/search", requireBusinessAuth, async (req: Business
       userId: userProfilesTable.userId,
       aoraneId: userProfilesTable.aoraneId,
       name: userProfilesTable.fullName,
-      bloodGroup: userProfilesTable.bloodGroup,
       gender: userProfilesTable.gender,
       dateOfBirth: userProfilesTable.dateOfBirth,
       city: userProfilesTable.city,
-      bmi: userProfilesTable.bmi,
       plan: usersTable.plan,
+      // bmi and bloodGroup were selected here and returned per person to the
+      // employer with no privacy check of any kind. Both are health data;
+      // this endpoint exists to find a member to administer, not to profile
+      // them, so neither is fetched any more.
     })
     .from(userProfilesTable)
     .innerJoin(orgMembersTable, eq(orgMembersTable.userId, userProfilesTable.userId))
@@ -500,11 +503,9 @@ router.get("/business/members/search", requireBusinessAuth, async (req: Business
       userId: p.userId,
       aoraneId: p.aoraneId,
       name: p.name,
-      bloodGroup: p.bloodGroup,
       gender: p.gender,
       age: p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (86400000 * 365.25)) : null,
       city: p.city,
-      bmi: p.bmi,
       plan: p.plan,
     }));
 
@@ -515,78 +516,28 @@ router.get("/business/members/search", requireBusinessAuth, async (req: Business
   }
 });
 
-// ─── Per-employee stress data (business portal) ──────────────────────────────
-router.get("/business/members/:userId/stress", requireBusinessAuth, async (req: BusinessRequest, res) => {
-  try {
-    const userId = req.params["userId"] as string;
-
-    // Verify the member belongs to this org
-    const [member] = await db.select({ id: orgMembersTable.id })
-      .from(orgMembersTable)
-      .where(and(
-        eq(orgMembersTable.orgId, req.orgId!),
-        eq(orgMembersTable.userId, userId),
-        eq(orgMembersTable.isActive, true),
-      ))
-      .limit(1);
-
-    if (!member) { res.status(404).json({ error: "Member not found in organization" }); return; }
-
-    // C4: Check user's privacy setting — if share_stress_level is OFF, deny access
-    const [privacy] = await db.select({ shareStressLevel: userPrivacySettingsTable.shareStressLevel })
-      .from(userPrivacySettingsTable)
-      .where(eq(userPrivacySettingsTable.userId, userId))
-      .limit(1);
-    if (privacy && privacy.shareStressLevel === false) {
-      res.status(403).json({ error: "Member has disabled stress data sharing", privacyBlocked: true });
-      return;
-    }
-
-    // Profile name
-    const [profile] = await db.select({ fullName: userProfilesTable.fullName })
-      .from(userProfilesTable)
-      .where(eq(userProfilesTable.userId, userId))
-      .limit(1);
-
-    // Stress logs — last 30 days, most recent first
-    const logs = await db.select({
-      stressScore: stressLogsTable.stressScore,
-      createdAt: stressLogsTable.createdAt,
-    })
-      .from(stressLogsTable)
-      .where(and(
-        eq(stressLogsTable.userId, userId),
-        gte(stressLogsTable.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)),
-      ))
-      .orderBy(desc(stressLogsTable.createdAt))
-      .limit(30);
-
-    const latestScore = logs.length > 0 ? logs[0].stressScore : null;
-    const avgScore = logs.length > 0
-      ? Math.round(logs.reduce((s: any, l: any) => s + l.stressScore, 0) / logs.length)
-      : null;
-    const burnoutRisk = logs.length >= 3 && logs.slice(0, 3).every((l: any) => l.stressScore >= 70);
-    const level =
-      latestScore == null ? "No Data"
-      : latestScore < 30  ? "Low"
-      : latestScore < 55  ? "Moderate"
-      : latestScore < 75  ? "High"
-      : "Critical";
-
-    // Daily trend — last unique date per day
-    const trendMap = new Map<string, number>();
-    for (const log of [...logs].reverse()) {
-      const date = new Date(log.createdAt).toISOString().slice(0, 10);
-      trendMap.set(date, log.stressScore);
-    }
-    const trend = Array.from(trendMap.entries()).map(([date, score]) => ({ date, score })).slice(-14);
-
-    res.json({ userId, name: profile?.fullName ?? null, latestScore, avgScore, logsCount: logs.length, burnoutRisk, level, trend });
-  } catch (err) {
-    req.log.error({ err }, "Member stress fetch error");
-    res.status(500).json({ error: "Failed to fetch member stress data" });
-  }
-});
+// ─── Per-employee health data is deliberately NOT exposed here ───────────
+// There was a GET /business/members/:userId/stress endpoint at this spot,
+// returning one named employee's stress score, their 14-day trend and a
+// "burnout risk" flag, straight to their employer. It is gone on purpose,
+// and nothing per-person and health-related should take its place.
+//
+// Health data in this CRM is aggregate-only. That is what the product
+// promises publicly (see the business portal's landing copy), it is what
+// the org-level analytics endpoints below already deliver, and it is the
+// only version of this feature that does not depend on employee consent
+// that an employee is not in a position to freely refuse.
+//
+// The split to hold to is by DATA TYPE, not by admin permission level:
+//   - employment/billing data (name, Aorane ID, join date, plan, seat
+//     status) is per-person and fine - an admin has to run their seats;
+//   - health data (scores, stress, sleep, BMI) is aggregate-only, at every
+//     permission level, with no exception for owners or admins.
+//
+// Aggregate stress for the whole org is already served by
+// GET /business/health-analytics (avgStressScore and the high/moderate/low
+// distribution). Department-level breakdowns land in a later phase, behind
+// a minimum-cohort threshold.
 
 // ─── Org payment gate — the single source of truth for "is this org allowed
 // to grant employees a plan right now" ───────────────────────────────────
@@ -602,7 +553,29 @@ router.get("/business/members/:userId/stress", requireBusinessAuth, async (req: 
 async function hasActiveOrgPayment(orgId: string): Promise<boolean> {
   const [activePayment] = await db.select({ id: orgPaymentsTable.id })
     .from(orgPaymentsTable)
-    .where(and(eq(orgPaymentsTable.orgId, orgId), eq(orgPaymentsTable.status, "success")))
+    .where(and(
+      eq(orgPaymentsTable.orgId, orgId),
+      eq(orgPaymentsTable.status, "success"),
+      // A successful payment only grants access until its window closes.
+      // Which column holds that end date depends on how the org paid:
+      //   - one-time / seat purchases  -> expires_at
+      //   - recurring subscriptions    -> next_renewal_at, pushed forward by
+      //     the Razorpay renewal webhook on every successful cycle
+      // COALESCE covers both without the caller having to know which. A row
+      // with NEITHER set records no end date at all, and deliberately fails
+      // closed: a payment gate that cannot say when access ends must not
+      // grant it. (Every write path now sets at least one of the two — see
+      // /business/billing/verify, /business/billing/subscription/create and
+      // webhook.ts's renewal handler.)
+      //
+      // The '-infinity' fallback is what makes that fail-closed behaviour
+      // explicit rather than incidental. Without it the expression is
+      // `NULL > NOW()` => NULL for a windowless row, which a WHERE clause
+      // happens to treat as "not matched" - correct here, but it would
+      // silently invert the moment this predicate is negated or wrapped in
+      // a CASE. '-infinity' keeps it a real boolean in every context.
+      sql`COALESCE(${orgPaymentsTable.expiresAt}, ${orgPaymentsTable.nextRenewalAt}, '-infinity'::timestamptz) > NOW()`,
+    ))
     .limit(1);
   return !!activePayment;
 }
@@ -899,7 +872,11 @@ router.post("/business/billing/verify", requireBusinessAuth, async (req: Busines
     const expiresAt = new Date();
     expiresAt.setFullYear(expiresAt.getFullYear() + 1);
     await db.transaction(async (tx) => {
-      await tx.update(orgPaymentsTable).set({ status: "success", razorpayPaymentId: razorpayPaymentId as string }).where(eq(orgPaymentsTable.id, paymentId as string));
+      // `expiresAt` (computed just above, one year out) was previously used
+      // only for the welcome email and never stored, leaving every one-time
+      // org payment with a NULL expires_at — which is why the access gate
+      // above had nothing to check and treated lapsed orgs as paid forever.
+      await tx.update(orgPaymentsTable).set({ status: "success", razorpayPaymentId: razorpayPaymentId as string, expiresAt }).where(eq(orgPaymentsTable.id, paymentId as string));
       await tx.update(organizationsTable).set({
         totalSeats: planInfo.seats, plan: billingPlanToOrgPlan(plan), isVerified: true,
       }).where(eq(organizationsTable.id, req.orgId!));
@@ -944,7 +921,7 @@ router.post("/business/billing/subscription/create", requireBusinessAuth, async 
       const [payment] = await db.insert(orgPaymentsTable).values({
         orgId: req.orgId!, plan, seats: planInfo.seats, amount: amount.toString(),
         currency: "INR", status: "success", paymentType: "recurring",
-        autoRenew: true, nextRenewalAt: expiresAt,
+        autoRenew: true, nextRenewalAt: expiresAt, expiresAt,
       }).returning();
       await db.update(organizationsTable).set({
         totalSeats: planInfo.seats, plan: billingPlanToOrgPlan(plan), isVerified: true,
@@ -1193,9 +1170,11 @@ router.get("/business/members/:userId/detail", requireBusinessAuth, async (req: 
 
     const [profile] = await db.select().from(userProfilesTable).where(eq(userProfilesTable.userId, userId));
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
-    const recentScores = await db.select().from(dailyHealthScoresTable)
-      .where(eq(dailyHealthScoresTable.userId, userId))
-      .orderBy(desc(dailyHealthScoresTable.scoreDate)).limit(7);
+    // A 7-day window of this employee's daily_health_scores used to be read
+    // here and returned to their employer, gated by nothing at all - the
+    // privacy check below only ever covered the profile fields. Health data
+    // is aggregate-only in this CRM, so the query is gone rather than merely
+    // filtered: the rows are never fetched.
 
     // BUG-8: Respect shareBasicProfile — if false, hide all identity fields
     const shareBasic = privacy?.shareBasicProfile !== false;
@@ -1204,11 +1183,9 @@ router.get("/business/members/:userId/detail", requireBusinessAuth, async (req: 
       gender: shareBasic ? profile.gender : null,
       city: shareBasic ? profile.city : null,
       state: shareBasic ? profile.state : null,
-      bmi: privacy?.shareBmi !== false ? profile.bmi : null,
-      bloodGroup: shareBasic ? profile.bloodGroup : null,
     } : null;
 
-    res.json({ member, profile: safeProfile, user: { plan: user?.plan, aoraneId: profile?.aoraneId }, recentScores });
+    res.json({ member, profile: safeProfile, user: { plan: user?.plan, aoraneId: profile?.aoraneId } });
   } catch { res.status(500).json({ error: "Failed to fetch member detail" }); }
 });
 
@@ -1312,7 +1289,8 @@ router.get("/business/members/suspended", requireBusinessAuth, async (req: Busin
       role: orgMembersTable.role,
       joinedAt: orgMembersTable.joinedAt,
       fullName: userProfilesTable.fullName,
-      bloodGroup: userProfilesTable.bloodGroup,
+      // No health fields here. These lists exist so an admin can see who holds
+      // a seat; bloodGroup used to ride along and had nothing to do with that.
     }).from(orgMembersTable)
       .leftJoin(userProfilesTable, eq(orgMembersTable.userId, userProfilesTable.userId))
       .where(and(eq(orgMembersTable.orgId, req.orgId!), eq(orgMembersTable.isActive, false)));

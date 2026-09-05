@@ -1584,7 +1584,7 @@ export async function runStartupMigrations(): Promise<void> {
       ON CONFLICT (user_id, feature_name, usage_date)
       DO UPDATE SET usage_count = ai_usage_daily.usage_count + 1;
     END;
-    $$ LANGUAGE plpgsql`,
+    $$ LANGUAGE plpgsql SET search_path = public, pg_catalog`,
 
     // ══════════════════════════════════════════════════════════════════════════
     // TRY_INCREMENT_AI_USAGE — atomic CHECK-AND-INCREMENT in one round trip.
@@ -1620,14 +1620,23 @@ export async function runStartupMigrations(): Promise<void> {
         -- Either the row already existed AND was already at/over p_limit
         -- (the WHERE guard skipped the update, so RETURNING produced no
         -- row) — fetch the current count to report back accurately.
-        SELECT usage_count INTO v_count FROM ai_usage_daily
+        -- ai_usage_daily.usage_count must be qualified: this function's
+        -- RETURNS TABLE(...) declares an OUT column also called usage_count,
+        -- so a bare reference is ambiguous and Postgres raises 42702 instead
+        -- of running the query. That made the limit-exceeded branch - the one
+        -- branch this whole function exists to serve - throw every time. The
+        -- caller (lib/aiLimiter.ts tryIncrementUsage) catches and fails
+        -- closed, so the gate still denied correctly, but it reported
+        -- usageCount: 0 rather than the real count, and the error was
+        -- swallowed silently so nothing ever surfaced it.
+        SELECT ai_usage_daily.usage_count INTO v_count FROM ai_usage_daily
           WHERE user_id = p_user_id AND feature_name = p_feature AND usage_date = p_date;
         RETURN QUERY SELECT false, COALESCE(v_count, 0);
       ELSE
         RETURN QUERY SELECT true, v_count;
       END IF;
     END;
-    $$ LANGUAGE plpgsql`,
+    $$ LANGUAGE plpgsql SET search_path = public, pg_catalog`,
 
     // ══════════════════════════════════════════════════════════════════════════
     // ORGANIZATIONS — B2B config columns (admin panel FIX 3)

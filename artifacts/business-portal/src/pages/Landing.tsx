@@ -645,7 +645,7 @@ export default function Landing() {
 
                 <div className="flex flex-col gap-4">
                   {[
-                    { icon: "person_off", title: "Anonymized by Default", desc: "Your org dashboard shows only team-level aggregates. Individual data is never shared without member consent." },
+                    { icon: "person_off", title: "Aggregate Only, by Design", desc: "Your org dashboard shows team-level aggregates. Individual employee health data is never shown to administrators — there is no permission level that unlocks it." },
                     { icon: "manage_accounts", title: "Member-Controlled Sharing", desc: "Each employee decides what to share. HR/admins only access data the member explicitly approves." },
                     { icon: "lock", title: "Role-Based Access Control", desc: "Admins, HR managers, and department heads each see only what they're permitted — no data leakage." },
                   ].map((item, i) => (

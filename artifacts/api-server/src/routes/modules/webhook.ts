@@ -100,7 +100,14 @@ router.post("/webhooks/razorpay", async (req: Request, res: Response) => {
 
       // Extend org subscriptions
       await pool.query(
-        `UPDATE org_payments SET next_renewal_at = $1, status = 'success'
+        // expires_at is pushed forward alongside next_renewal_at so the org
+        // access gate (hasActiveOrgPayment in routes/modules/business.ts)
+        // sees a renewed subscription as still inside its window. The
+        // subscriptions UPDATE just above already does this for user plans;
+        // org_payments was only advancing next_renewal_at, so an auto-
+        // renewing org would have looked expired the moment the gate started
+        // checking dates.
+        `UPDATE org_payments SET next_renewal_at = $1, expires_at = $1, status = 'success'
          WHERE razorpay_subscription_id = $2`,
         [nextRenewalDate, subscriptionId]
       ).catch((e: Error) => logger.warn({ err: e.message }, "org_payment update failed"));

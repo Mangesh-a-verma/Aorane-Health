@@ -59,6 +59,22 @@ export const organizationsTable = pgTable("organizations", {
   customPriceValidUntil: timestamp("custom_price_valid_until", { withTimezone: true }),
   customPriceAppliedBy: text("custom_price_applied_by"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  // ── Columns that existed in production before they existed here ──────────
+  // These three were added by artifacts/api-server/src/lib/migrate.ts (the
+  // legacy hardening script) via ALTER TABLE, so every real database has had
+  // them for months while this schema - the intended source of truth - did
+  // not. Declared here so Drizzle can actually read/write them and so the
+  // next generated migration reflects reality instead of silently proposing
+  // to drop them. Nullable with defaults, matching the live columns exactly.
+  //
+  // b2bPlan / crmEnabled gate the Business CRM: see b2b_plan_config, where
+  // b2b_starter has crm_included = false (CRM is a paid add-on) and
+  // b2b_growth has it bundled. planStatus is the org-level lifecycle flag
+  // (active | ...) that the admin panel already writes - see
+  // routes/modules/admin.ts.
+  b2bPlan: text("b2b_plan").default("starter"),
+  crmEnabled: boolean("crm_enabled").default(false),
+  planStatus: text("plan_status").default("active"),
   // Links back to the enquiry (demo request / "talk to expert") that led to
   // this organization being created, when one exists. Nullable — plenty of
   // orgs self-register directly from the pricing page with no prior enquiry.
@@ -135,17 +151,17 @@ export const orgPaymentsTable = pgTable("org_payments", {
   razorpayPaymentId: text("razorpay_payment_id"),
   razorpaySubscriptionId: text("razorpay_subscription_id"),
   paymentType: text("payment_type").notNull().default("one_time"),
-  billingCycle: text("billing_cycle"),
+  billingCycle: text("billing_cycle").notNull().default("monthly"),
   autoRenew: boolean("auto_renew").notNull().default(false),
   nextRenewalAt: timestamp("next_renewal_at", { withTimezone: true }),
   status: text("status").notNull().default("pending"),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
-  seatPrice: text("seat_price"),
-  baseAmount: text("base_amount"),
-  gstAmount: text("gst_amount"),
-  cgstAmount: text("cgst_amount"),
-  sgstAmount: text("sgst_amount"),
-  igstAmount: text("igst_amount"),
+  seatPrice: integer("seat_price"),
+  baseAmount: integer("base_amount"),
+  gstAmount: integer("gst_amount"),
+  cgstAmount: integer("cgst_amount"),
+  sgstAmount: integer("sgst_amount"),
+  igstAmount: integer("igst_amount"),
   orgGstin: text("org_gstin"),
   orgState: text("org_state"),
   invoiceNumber: text("invoice_number"),

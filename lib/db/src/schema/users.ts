@@ -36,6 +36,19 @@ export const usersTable = pgTable("users", {
   referralCode: text("referral_code").unique(),
   referredBy: uuid("referred_by"),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+  // ── Columns that existed in production before they existed here ──────────
+  // Both were added by artifacts/api-server/src/lib/migrate.ts via ALTER
+  // TABLE and are already written by application code through raw SQL:
+  //   - lastLogoutAt: the token-revocation watermark set on logout
+  //     (routes/modules/auth.ts) - a JWT issued before this instant is
+  //     rejected, which is how "log out everywhere" works.
+  //   - deletedAt: the soft-delete marker for account deletion
+  //     (routes/modules/delete-account.ts). Rows keep existing with PII
+  //     anonymized rather than being hard-deleted, because payment records
+  //     must be retained for Indian tax law.
+  // Declared here so this schema stops drifting from every real database.
+  lastLogoutAt: timestamp("last_logout_at", { withTimezone: true }),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
