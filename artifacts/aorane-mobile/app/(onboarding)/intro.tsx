@@ -68,7 +68,10 @@ export default function IntroScreen() {
         version: CONSENT_BUNDLE_VERSION,
         acceptedAt: new Date().toISOString(),
       });
-      router.replace('/(auth)/login');
+      // The individual/employee fork sits between the intro and sign-in: the
+      // employee path needs its enrolment code verified BEFORE an account
+      // exists. join-type routes on to login itself.
+      router.replace('/(onboarding)/join-type' as never);
     } catch (e) {
       console.error('Failed to save intro state', e);
     }

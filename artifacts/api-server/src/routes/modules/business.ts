@@ -4,6 +4,7 @@ import { db, pool, organizationsTable, orgAdminsTable, orgMembersTable, orgDepar
 import { eq, and, inArray, gte, lte, desc, ilike, sql } from "drizzle-orm";
 import { requireBusinessAuth } from "../../middlewares/business-auth";
 import { requireAuth } from "../../middlewares/user-auth";
+import { cache } from "../../lib/redis";
 import { signBusinessToken, signUserToken, signRefreshToken } from "../../lib/jwt";
 import type { BusinessRequest } from "../../middlewares/business-auth";
 import { invalidateUserPlanCache } from "../../middlewares/user-auth";
@@ -620,7 +621,9 @@ router.post("/business/enroll", requireAuth, async (req, res) => {
     const orgPlan = (org.plan === "pro" ? "pro" : "max") as "pro" | "max";
     const expiresAt = new Date();
     expiresAt.setFullYear(expiresAt.getFullYear() + 1); // 1-year access via org
-    await db.update(usersTable).set({ plan: orgPlan }).where(eq(usersTable.id, userId));
+    // Same reasoning as the enrollment-code path: joining an organization is
+    // what makes someone an employee, whichever code they used to do it.
+    await db.update(usersTable).set({ plan: orgPlan, joinType: "employee" }).where(eq(usersTable.id, userId));
     await db.insert(subscriptionsTable).values({
       userId, plan: orgPlan, status: "active", source: "organization",
       expiresAt, paymentType: "one_time", autoRenew: false, nextRenewalAt: expiresAt,
@@ -667,7 +670,17 @@ router.post("/business/enroll", requireAuth, async (req, res) => {
 // ─── POST: Use enrollment code (from enrollmentCodesTable) → upgrade user plan ─
 router.post("/business/use-enrollment-code", requireAuth, async (req, res) => {
   try {
-    const { code } = req.body as { code: string };
+    // departmentId / departmentStatus / shareOrgAggregate arrive together with
+    // the code from the employee onboarding flow, which asks for all of them
+    // before redeeming. They stay optional so the older "enter a code from your
+    // profile" path keeps working unchanged: it simply lands on the
+    // not_listed default and leaves the aggregate consent untouched.
+    const { code, departmentId, departmentStatus, shareOrgAggregate } = req.body as {
+      code: string;
+      departmentId?: string | null;
+      departmentStatus?: "assigned" | "not_listed" | "declined";
+      shareOrgAggregate?: boolean;
+    };
     const userId = (req as unknown as { userId: string }).userId;
     if (!code) { res.status(400).json({ error: "Enrollment code required" }); return; }
 
@@ -694,8 +707,50 @@ router.post("/business/use-enrollment-code", requireAuth, async (req, res) => {
       .where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, userId)));
     if (existing.length) { res.status(409).json({ error: "Already enrolled in this organization" }); return; }
 
+    // Resolve the declared department against THIS org before writing it, so a
+    // client cannot attach a member to another organization's department by
+    // sending its id. Anything that does not resolve degrades to not_listed
+    // rather than failing the whole enrolment — losing a department is
+    // recoverable by the admin, losing the enrolment is not.
+    let deptId: string | null = null;
+    let deptStatus: "assigned" | "not_listed" | "declined" =
+      departmentStatus === "declined" ? "declined" : "not_listed";
+    if (departmentStatus === "assigned" && departmentId) {
+      const [dept] = await db.select({ id: orgDepartmentsTable.id }).from(orgDepartmentsTable)
+        .where(and(
+          eq(orgDepartmentsTable.id, departmentId),
+          eq(orgDepartmentsTable.orgId, org.id),
+          eq(orgDepartmentsTable.isActive, true),
+        )).limit(1);
+      if (dept) { deptId = dept.id; deptStatus = "assigned"; }
+    }
+
     // Enroll user
-    await db.insert(orgMembersTable).values({ orgId: org.id, userId, enrolledViaCode: code });
+    await db.insert(orgMembersTable).values({
+      orgId: org.id, userId, enrolledViaCode: code,
+      departmentId: deptId, departmentStatus: deptStatus,
+    });
+
+    // Record the declaration in the same trail as admin reassignments, so the
+    // history of a member's department is complete from the moment they join.
+    // changedByAdminId is null: the member declared this themselves.
+    await db.insert(orgDepartmentChangesTable).values({
+      orgId: org.id, userId,
+      fromDepartmentId: null, toDepartmentId: deptId,
+      fromStatus: "not_listed", toStatus: deptStatus,
+      changedByAdminId: null,
+    }).catch(() => {});
+
+    // Consent to being counted in the employer's department averages. Only
+    // written when the client actually asked one way or the other — an older
+    // client that never shows the question must not be read as consent.
+    if (typeof shareOrgAggregate === "boolean") {
+      await pool.query(
+        `INSERT INTO user_privacy_settings (user_id, share_org_aggregate) VALUES ($1, $2)
+         ON CONFLICT (user_id) DO UPDATE SET share_org_aggregate = EXCLUDED.share_org_aggregate`,
+        [userId, shareOrgAggregate],
+      ).catch(() => {});
+    }
     await db.update(enrollmentCodesTable).set({ usedSeats: enrollCode.usedSeats + 1 }).where(eq(enrollmentCodesTable.id, enrollCode.id));
     await db.update(organizationsTable).set({ usedSeats: org.usedSeats + 1 }).where(eq(organizationsTable.id, org.id));
 
@@ -703,7 +758,12 @@ router.post("/business/use-enrollment-code", requireAuth, async (req, res) => {
     const planToGrant = (["pro", "max", "family"].includes(enrollCode.planType) ? enrollCode.planType : "pro") as "pro" | "max" | "family";
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + enrollCode.validityDays);
-    await db.update(usersTable).set({ plan: planToGrant }).where(eq(usersTable.id, userId));
+    // join_type is set here rather than at the app's individual/employee
+    // fork, because that fork happens before an account exists and is only
+    // a statement of intent. Redeeming a code is the point at which the
+    // user actually becomes an employee, so it is the only place the
+    // server can record it as fact.
+    await db.update(usersTable).set({ plan: planToGrant, joinType: "employee" }).where(eq(usersTable.id, userId));
     await db.insert(subscriptionsTable).values({
       userId, plan: planToGrant, status: "active", source: "organization",
       expiresAt, paymentType: "one_time", autoRenew: false, nextRenewalAt: expiresAt,
@@ -997,6 +1057,127 @@ router.post("/business/members/:userId/department", requireBusinessAuth, async (
   } catch (err) {
     req.log.error({ err }, "Department reassign error");
     res.status(500).json({ error: "Failed to update member department" });
+  }
+});
+
+// ─── EMPLOYEE ONBOARDING (pre-enrolment) ─────────────────────────────────────
+// Used by the mobile app's employee path, which asks for an enrolment code
+// BEFORE sign-in so the user is never sent through account creation only to
+// discover their code is wrong.
+
+/** Client IP, honouring the proxy header Render sits behind. */
+function clientIp(req: { headers: Record<string, unknown>; socket: { remoteAddress?: string } }): string {
+  const fwd = req.headers["x-forwarded-for"];
+  const raw = (typeof fwd === "string" ? fwd : "") || req.socket.remoteAddress || "unknown";
+  return raw.split(",")[0].trim();
+}
+
+/**
+ * Resolve an enrolment code to its organization, applying every gate that
+ * redemption itself applies. Returns a reason rather than throwing so callers
+ * can decide what to tell the user.
+ *
+ * Deliberately shares one implementation with the "can this code still grant a
+ * plan" question: a code that verifies here but fails at redemption would send
+ * the user through sign-up and then reject them, which is the exact failure
+ * this pre-check exists to prevent.
+ */
+type CodeCheck =
+  | { ok: true; org: { id: string; name: string } }
+  | { ok: false; reason: "invalid" | "expired" | "full" | "org_inactive" | "org_unpaid" };
+
+async function resolveEnrollmentCode(rawCode: string): Promise<CodeCheck> {
+  const code = rawCode.toUpperCase().trim();
+  const [enrollCode] = await db.select().from(enrollmentCodesTable)
+    .where(and(eq(enrollmentCodesTable.code, code), eq(enrollmentCodesTable.isActive, true))).limit(1);
+  if (!enrollCode) return { ok: false, reason: "invalid" };
+  if (enrollCode.expiresAt && new Date(enrollCode.expiresAt) < new Date()) return { ok: false, reason: "expired" };
+  if (enrollCode.usedSeats >= enrollCode.totalSeats) return { ok: false, reason: "full" };
+
+  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, enrollCode.orgId)).limit(1);
+  if (!org || !org.isActive) return { ok: false, reason: "org_inactive" };
+  if (!(await hasActiveOrgPayment(org.id))) return { ok: false, reason: "org_unpaid" };
+  return { ok: true, org: { id: org.id, name: org.name } };
+}
+
+/** User-facing copy per failure. Every one of these ends with the same advice,
+ *  because in every case the employee cannot fix it themselves. */
+const CODE_ERROR_COPY: Record<Exclude<CodeCheck & { ok: false }, { ok: true }>["reason"], string> = {
+  invalid:      "That code doesn't match any organization.",
+  expired:      "This code has expired.",
+  full:         "All seats for this code have been taken.",
+  org_inactive: "This organization is not active right now.",
+  org_unpaid:   "This organization's subscription is not active right now.",
+};
+
+// UNAUTHENTICATED. It has to be: the whole point is to check the code before
+// the user creates an account. Two consequences are handled deliberately.
+//
+// 1. It is an oracle. A caller can ask "is this code real" and, on success,
+//    learn an organization's name. The org name is required by the product
+//    ("Welcome to {Org}" before sign-in), so the mitigation is not secrecy but
+//    cost: a tight per-IP budget below, far tighter than the global 300/15min
+//    limiter, which would allow ~29k guesses a day.
+// 2. It makes guessing a code worth more than it used to be, since previously
+//    a code could only be tried from inside a signed-in account. Codes are 8
+//    characters over a 36-character alphabet (~2.8e12 combinations), so 20
+//    attempts an hour is not a practical search — but note the generator uses
+//    Math.random(), not a CSPRNG. That predates this endpoint and is worth
+//    revisiting separately; it is not what this rate limit is for.
+router.post("/org/verify-code", async (req, res) => {
+  try {
+    const ip = clientIp(req as never);
+    const attempts = await cache.incrementRateLimitFixed(`org_verify_code:${ip}`, 3600);
+    if (attempts > 20) {
+      res.status(429).json({ error: "Too many attempts. Please try again in an hour." });
+      return;
+    }
+
+    const code = String((req.body as { code?: unknown }).code ?? "").trim();
+    if (!code) { res.status(400).json({ error: "Enrollment code required", contactHr: true }); return; }
+
+    const check = await resolveEnrollmentCode(code);
+    if (!check.ok) {
+      res.status(404).json({ error: CODE_ERROR_COPY[check.reason], reason: check.reason, contactHr: true });
+      return;
+    }
+    // Name only. Nothing about seats, plan, member count or the org's id —
+    // none of it is needed to render the welcome step, and all of it would be
+    // readable by anyone holding a valid code.
+    res.json({ valid: true, org: { name: check.org.name } });
+  } catch (err) {
+    req.log.error({ err }, "Enrollment code verification error");
+    res.status(500).json({ error: "Could not verify that code. Please try again." });
+  }
+});
+
+// Departments for the code's organization, for the dropdown shown immediately
+// after sign-in. requireAuth rather than public: by this point the user has an
+// account, so there is no reason to expose an organization's internal
+// structure to anonymous callers. The code is still required — being signed in
+// does not entitle you to browse other organizations' departments.
+router.get("/org/departments", requireAuth, async (req, res) => {
+  try {
+    const code = String((req.query["code"] as string | undefined) ?? "").trim();
+    if (!code) { res.status(400).json({ error: "Enrollment code required" }); return; }
+
+    const check = await resolveEnrollmentCode(code);
+    if (!check.ok) {
+      res.status(404).json({ error: CODE_ERROR_COPY[check.reason], reason: check.reason, contactHr: true });
+      return;
+    }
+
+    const departments = await db.select({ id: orgDepartmentsTable.id, name: orgDepartmentsTable.name })
+      .from(orgDepartmentsTable)
+      .where(and(eq(orgDepartmentsTable.orgId, check.org.id), eq(orgDepartmentsTable.isActive, true)))
+      .orderBy(orgDepartmentsTable.name);
+
+    // An org with no departments configured is a normal state, not an error:
+    // the client shows only the "not listed" and "prefer not to say" choices.
+    res.json({ org: { name: check.org.name }, departments });
+  } catch (err) {
+    req.log.error({ err }, "Onboarding department list error");
+    res.status(500).json({ error: "Could not load departments. Please try again." });
   }
 });
 

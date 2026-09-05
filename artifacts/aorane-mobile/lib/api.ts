@@ -678,11 +678,34 @@ export const api = {
   logPeriod: (data: { startDate: string; endDate?: string; symptoms?: string[]; flow?: string; notes?: string }) =>
     request<{ success: boolean; log: Record<string, unknown>; prediction: Record<string, unknown> | null }>("POST", "/period/log", data),
 
+  // ── Employee onboarding (pre-enrolment) ────────────────────
+  /** Checks an enrolment code BEFORE sign-in, so a wrong code is caught before
+   *  the user creates an account. `auth = false` — there is no session yet. */
+  verifyOrgCode: (code: string) =>
+    request<{ valid: boolean; org: { name: string } }>("POST", "/org/verify-code", { code }, false),
+
+  /** Departments to choose from, for the step straight after sign-in. Requires
+   *  auth: by then the user has an account, so this is not a public endpoint. */
+  getOnboardingDepartments: (code: string) =>
+    request<{ org: { name: string }; departments: { id: string; name: string }[] }>(
+      "GET", `/org/departments?code=${encodeURIComponent(code)}`),
+
   // ── Org Enrollment ─────────────────────────────────────────
   enrollWithOrgCode: (orgCode: string) =>
     request<{ success: boolean; planUpgraded: string; org: { name: string; type: string }; accessToken?: string; refreshToken?: string }>("POST", "/business/enroll", { orgCode }),
-  useEnrollmentCode: (code: string) =>
-    request<{ success: boolean; planUpgraded: string; expiresAt: string; org: { name: string; type: string }; message: string; accessToken?: string; refreshToken?: string }>("POST", "/business/use-enrollment-code", { code }),
+  /** `opts` is sent by the employee onboarding flow, which collects the
+   *  department and the aggregate-consent answer before redeeming. Omitted by
+   *  the older "enter a code from your profile" path, which the server then
+   *  leaves on its defaults. */
+  useEnrollmentCode: (
+    code: string,
+    opts?: {
+      departmentId?: string | null;
+      departmentStatus?: "assigned" | "not_listed" | "declined";
+      shareOrgAggregate?: boolean;
+    },
+  ) =>
+    request<{ success: boolean; planUpgraded: string; expiresAt: string; org: { name: string; type: string }; message: string; accessToken?: string; refreshToken?: string }>("POST", "/business/use-enrollment-code", { code, ...(opts ?? {}) }),
 
   // ── Plans / Pricing ────────────────────────────────────────
   getPlans: (type?: string) =>
