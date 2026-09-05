@@ -14,5 +14,5 @@
       "claude/*": false
     }
   },
-  "ignoreCommand": "git rev-parse HEAD^ >/dev/null 2>&1 || exit 1; git diff --quiet HEAD^ HEAD -- artifacts/admin-panel pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json"
+  "ignoreCommand": "git rev-parse HEAD^ >/dev/null 2>&1 || exit 1; git diff --quiet HEAD^ HEAD -- :/artifacts/admin-panel :/pnpm-lock.yaml :/pnpm-workspace.yaml :/package.json :/tsconfig.base.json"
 }
