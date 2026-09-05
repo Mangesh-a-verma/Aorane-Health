@@ -48,6 +48,10 @@ export default function Index() {
   const { isLoading, isAuthenticated, isOnboardingDone, isPinSet, needsPinVerification } = useAuth();
   const [hasSeenIntro, setHasSeenIntro] = useState<boolean | null>(null);
   const [hasSelectedLanguage, setHasSelectedLanguage] = useState<boolean | null>(null);
+  // An enrolment code that was verified before sign-in but not yet redeemed.
+  // Its presence is what says "this user came in through the employee path and
+  // still owes us a department".
+  const [hasPendingEnrollment, setHasPendingEnrollment] = useState<boolean | null>(null);
 
   useEffect(() => {
     // ✅ FIX: Read hasSeenIntro immediately without waiting for a re-render.
@@ -60,10 +64,13 @@ export default function Index() {
     AsyncStorage.getItem("hasSelectedLanguage")
       .then((v) => setHasSelectedLanguage(v === "true"))
       .catch(() => setHasSelectedLanguage(false));
+    AsyncStorage.getItem("join_flow_pending_code")
+      .then((v) => setHasPendingEnrollment(!!v))
+      .catch(() => setHasPendingEnrollment(false));
   }, []);
 
   // 1. Wait until authentication state and local storage are both loaded
-  if (isLoading || hasSeenIntro === null || hasSelectedLanguage === null) return <SplashScreen />;
+  if (isLoading || hasSeenIntro === null || hasSelectedLanguage === null || hasPendingEnrollment === null) return <SplashScreen />;
 
   // 2. Language picker used to be the very first thing a fresh install saw.
   // While multi-language is off there is nothing to pick, so the step is
@@ -76,8 +83,18 @@ export default function Index() {
   // 3. First-time user must see the Introduction / Terms screen
   if (!hasSeenIntro) return <Redirect href={"/(onboarding)/intro" as never} />;
 
-  // 4. Intro completed, but user is not authenticated -> Route to Login
+  // 4. Intro completed, but user is not authenticated -> Route to Login.
+  // The individual/employee fork lives between intro and login and routes on
+  // to login itself, so an unauthenticated user who has already chosen (or is
+  // mid-code-entry) is not sent back through it.
   if (!isAuthenticated) return <Redirect href="/(auth)/login" />;
+
+  // 4b. Signed in on the employee path with a verified-but-unredeemed code:
+  // finish enrolling before anything else. This sits ahead of the profile
+  // steps because the code grants the org's plan, and the rest of onboarding
+  // (and the app) should run with the plan the user will actually have. The
+  // department screen clears the pending code, so this is not a loop.
+  if (hasPendingEnrollment) return <Redirect href={"/(onboarding)/department" as never} />;
 
   // 5. Authenticated, but profile setup (Onboarding) is incomplete
   if (!isOnboardingDone) return <Redirect href="/(onboarding)" />;
