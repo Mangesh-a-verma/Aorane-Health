@@ -13,6 +13,7 @@ import Register from "@/pages/Register";
 import AuthRedirect from "@/pages/AuthRedirect";
 import Dashboard from "@/pages/Dashboard";
 import Members from "@/pages/Members";
+import Departments from "@/pages/Departments";
 import EnrollmentCodes from "@/pages/EnrollmentCodes";
 import Settings from "@/pages/Settings";
 import Billing from "@/pages/Billing";
@@ -102,6 +103,7 @@ function Router() {
       <Route path="/members" component={() => <ProtectedRoute component={Members} />} />
       <Route path="/analytics" component={() => <ProtectedRoute component={Analytics} />} />
       <Route path="/communications" component={() => <ProtectedRoute component={Communications} />} />
+      <Route path="/departments" component={() => <ProtectedRoute component={Departments} />} />
       <Route path="/codes" component={() => <ProtectedRoute component={EnrollmentCodes} />} />
       <Route path="/billing" component={() => <ProtectedRoute component={Billing} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />

@@ -40,9 +40,26 @@ export interface Admin {
 // Health data is aggregate-only in this CRM, so none of the per-member shapes
 // below carry a health field. The server stopped sending bloodGroup/bmi/health
 // scores per person (see routes/modules/business.ts); these types match that.
+/** How a member's department was arrived at. "declined" is a privacy choice and
+ *  must not be overridden by an admin; "not_listed" is simply a gap to fill. */
+export type DepartmentStatus = "assigned" | "not_listed" | "declined";
+
+export interface Department {
+  id: string; name: string; isActive: boolean;
+  memberCount: number; createdAt: string;
+}
+
+export interface DepartmentsResponse {
+  departments: Department[];
+  unassigned: { needsDepartment: number; declined: number };
+}
+
 export interface Member {
   memberId: string; userId: string; role: string; joinedAt: string;
   fullName: string | null;
+  departmentId: string | null;
+  departmentName: string | null;
+  departmentStatus: DepartmentStatus;
 }
 
 export interface MemberSearchResult {
@@ -143,7 +160,8 @@ export interface Announcement {
 }
 
 export interface MemberDetail {
-  member: { userId: string; role: string; joinedAt: string; isActive: boolean };
+  member: { userId: string; role: string; joinedAt: string; isActive: boolean;
+            departmentId: string | null; departmentStatus: DepartmentStatus };
   profile: { fullName: string | null; gender: string | null; dateOfBirth: string | null } | null;
   user: { plan: string; aoraneId: string | null };
 }
@@ -215,6 +233,28 @@ export const api = {
 
   cancelMemberSubscription: (userId: string) =>
     request<{ success: boolean; message: string }>(`/business/members/${userId}/cancel-subscription`, { method: "POST" }),
+
+  getDepartments: () => request<DepartmentsResponse>("/business/departments"),
+
+  createDepartment: (name: string) =>
+    request<{ department: Department; reactivated?: boolean }>("/business/departments", {
+      method: "POST", body: JSON.stringify({ name }),
+    }),
+
+  updateDepartment: (id: string, patch: { name?: string; isActive?: boolean }) =>
+    request<{ department: Department }>(`/business/departments/${id}`, {
+      method: "PATCH", body: JSON.stringify(patch),
+    }),
+
+  deleteDepartment: (id: string) =>
+    request<{ success: boolean; movedMembers: number; message: string }>(`/business/departments/${id}`, {
+      method: "DELETE",
+    }),
+
+  /** departmentId null clears the department (back to "needs a department"). */
+  setMemberDepartment: (userId: string, departmentId: string | null) =>
+    request<{ success: boolean; departmentId: string | null; departmentStatus: DepartmentStatus }>(
+      `/business/members/${userId}/department`, { method: "POST", body: JSON.stringify({ departmentId }) }),
 
   getCodes: () => request<{ codes: EnrollmentCode[] }>("/business/enrollment-codes"),
 
