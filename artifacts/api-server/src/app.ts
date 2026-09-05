@@ -10,6 +10,7 @@ import { startSubscriptionExpiryJob } from "./jobs/subscription-expiry";
 import { startExpiryReminderJob } from "./jobs/expiry-reminders";
 import { startMonthlyHealthSummaryJob } from "./jobs/monthly-health-summary";
 import { startWinBackJob } from "./jobs/win-back";
+import { startOrgPlanLifecycleJob } from "./jobs/org-plan-lifecycle";
 
 const app: Express = express();
 
@@ -250,6 +251,10 @@ startMonthlyHealthSummaryJob();
 
 // Start daily win-back / re-engagement email job
 startWinBackJob();
+
+// Org-level plan lifecycle: grace period, expiry and restoration for
+// employees whose ORGANIZATION's payment lapses or resumes.
+startOrgPlanLifecycleJob();
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Route not found" });

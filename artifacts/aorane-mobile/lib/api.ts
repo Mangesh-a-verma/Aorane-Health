@@ -682,7 +682,8 @@ export const api = {
   /** Checks an enrolment code BEFORE sign-in, so a wrong code is caught before
    *  the user creates an account. `auth = false` — there is no session yet. */
   verifyOrgCode: (code: string) =>
-    request<{ valid: boolean; org: { name: string } }>("POST", "/org/verify-code", { code }, false),
+    request<{ valid: boolean; org: { name: string }; planState: "active" | "grace" | "expired" }>(
+      "POST", "/org/verify-code", { code }, false),
 
   /** Departments to choose from, for the step straight after sign-in. Requires
    *  auth: by then the user has an account, so this is not a public endpoint. */
@@ -705,7 +706,7 @@ export const api = {
       shareOrgAggregate?: boolean;
     },
   ) =>
-    request<{ success: boolean; planUpgraded: string; expiresAt: string; org: { name: string; type: string }; message: string; accessToken?: string; refreshToken?: string }>("POST", "/business/use-enrollment-code", { code, ...(opts ?? {}) }),
+    request<{ success: boolean; planUpgraded: string | null; orgPlanState: "active" | "grace" | "expired"; notice: string | null; expiresAt: string | null; org: { name: string; type: string }; message: string; accessToken?: string; refreshToken?: string }>("POST", "/business/use-enrollment-code", { code, ...(opts ?? {}) }),
 
   // ── Plans / Pricing ────────────────────────────────────────
   getPlans: (type?: string) =>

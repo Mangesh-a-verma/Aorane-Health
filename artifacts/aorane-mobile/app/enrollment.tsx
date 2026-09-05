@@ -27,7 +27,15 @@ export default function EnrollmentScreen() {
     setLoading(true);
     try {
       // Try enrollment code first (from enrollmentCodesTable)
-      let result: { planUpgraded: string; org: { name: string }; accessToken?: string; refreshToken?: string } | null = null;
+      // planUpgraded is null when the organization's own plan has lapsed: the
+      // code is valid and the user does join, they just stay on Free until it
+      // is renewed. `notice` carries the explanation in that case.
+      let result: {
+        planUpgraded: string | null;
+        notice?: string | null;
+        org: { name: string };
+        accessToken?: string; refreshToken?: string;
+      } | null = null;
       try {
         const res = await api.useEnrollmentCode(trimmed);
         if (res.success) result = res;
@@ -47,8 +55,11 @@ export default function EnrollmentScreen() {
         if (result.refreshToken) await storage.setRefreshToken(result.refreshToken);
         if (refreshUser) await refreshUser();
         Alert.alert(
-          "Enrollment Successful! 🎉",
-          `You've joined ${result.org.name}!\n\nYour plan has been upgraded to ${result.planUpgraded.toUpperCase()}.`,
+          result.planUpgraded ? "Enrollment Successful! 🎉" : `You've joined ${result.org.name}`,
+          result.planUpgraded
+            ? `You've joined ${result.org.name}!\n\nYour plan has been upgraded to ${result.planUpgraded.toUpperCase()}.`
+            : result.notice
+              ?? "Your company's plan is inactive, so you're on the Free plan for now. Ask your HR team to renew — you'll be upgraded automatically.",
           [{ text: "Go to Dashboard", onPress: () => router.replace("/(tabs)" as never) }]
         );
       }

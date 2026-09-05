@@ -11,6 +11,7 @@
 #
 #   IST     UTC     job
 #   23:55   18:25   subscription-expiry            (00:00 IST)
+#   00:25   18:55   org-plan-lifecycle             (00:30 IST)
 #   01:55   20:25   payment-reconciliation         (02:00 IST)
 #   07:55   02:25   monthly-health-summary         (08:00 IST, 1st of month)
 #   08:55   03:25   expiry-reminders: auto-debit   (09:00 IST)
@@ -24,6 +25,7 @@ name: Keep cron alive
 on:
   schedule:
     - cron: "25 18 * * *"   # 23:55 IST — before subscription-expiry
+    - cron: "55 18 * * *"   # 00:25 IST — before org-plan-lifecycle
     - cron: "25 20 * * *"   # 01:55 IST — before payment-reconciliation
     - cron: "25 2 * * *"    # 07:55 IST — before monthly-health-summary
     - cron: "25 3 * * *"    # 08:55 IST — before auto-debit reminders

@@ -546,45 +546,69 @@ router.get("/business/members/search", requireBusinessAuth, async (req: Business
 // distribution). Department-level breakdowns land in a later phase, behind
 // a minimum-cohort threshold.
 
+/**
+ * How long an organization's employees keep their plan after the org's payment
+ * window closes. Confirmed with Shiva at 7 days.
+ *
+ * The point is that the lapse is the ORGANIZATION's, not the employee's: an
+ * employee who wakes up to find their health tracking downgraded because
+ * someone in finance missed a renewal has been punished for a decision they had
+ * no part in and no way to see coming. Seven days is enough for a renewal to be
+ * chased without leaving an unpaid org running indefinitely.
+ */
+export const ORG_PLAN_GRACE_DAYS = 7;
+
+export type OrgPlanState =
+  /** A successful payment whose window is still open. */
+  | "active"
+  /** Window closed within the last ORG_PLAN_GRACE_DAYS. Existing employees keep
+   *  their plan; new enrolments are not granted one. */
+  | "grace"
+  /** Window closed longer ago than that, or no successful payment at all. */
+  | "expired";
+
+/**
+ * The single computation behind every "is this org paid up" question.
+ *
+ * Derived from org_payments on every call rather than read from
+ * organizations.plan_status. That column is a denormalised label the lifecycle
+ * job refreshes for the admin panel to display — if it ever drifts from the
+ * payments (a manual edit, a missed cron run) the drift shows up as a stale
+ * badge, not as an org that can or cannot grant plans. Access decisions are
+ * never allowed to depend on a cache.
+ */
+export async function orgPlanState(orgId: string): Promise<OrgPlanState> {
+  const { rows } = await pool.query<{ state: OrgPlanState }>(
+    `SELECT CASE
+              WHEN MAX(window_end) > NOW() THEN 'active'
+              WHEN MAX(window_end) > NOW() - ($2 || ' days')::interval THEN 'grace'
+              ELSE 'expired'
+            END AS state
+       FROM (
+         SELECT COALESCE(expires_at, next_renewal_at, '-infinity'::timestamptz) AS window_end
+           FROM org_payments
+          WHERE org_id = $1 AND status = 'success'
+       ) w`,
+    [orgId, ORG_PLAN_GRACE_DAYS],
+  );
+  // No successful payment at all produces MAX(NULL) -> the ELSE branch, and an
+  // org with no payment rows produces one row of NULL, so both land on expired.
+  return rows[0]?.state ?? "expired";
+}
+
 // ─── Org payment gate — the single source of truth for "is this org allowed
 // to grant employees a plan right now" ───────────────────────────────────
-// A successful orgPaymentsTable row is the only thing that answers this —
-// organizations.isActive is a separate, generic admin on/off switch (used
-// for suspending abusive orgs etc.) and must never be treated as "has paid".
+// Strict on purpose: grace covers employees who ALREADY hold a plan, not new
+// ones being handed out. An org that has stopped paying should not keep
+// enrolling people onto a paid tier for another week.
+//
 // Used at every point that grants an employee a plan: creating enrollment
-// codes, AND — this is the part that was missing — redeeming them (both the
-// org-code path and the enrollment-code path). A code that was legitimately
-// created while the org was paid must stop working the moment the org's
-// payment lapses; checking only at creation time let a stale/leftover code
-// keep minting free Pro/Max plans indefinitely.
+// codes, and redeeming them (both the org-code path and the enrollment-code
+// path). A code that was legitimately created while the org was paid must stop
+// working the moment the org's payment lapses; checking only at creation time
+// let a stale/leftover code keep minting free Pro/Max plans indefinitely.
 async function hasActiveOrgPayment(orgId: string): Promise<boolean> {
-  const [activePayment] = await db.select({ id: orgPaymentsTable.id })
-    .from(orgPaymentsTable)
-    .where(and(
-      eq(orgPaymentsTable.orgId, orgId),
-      eq(orgPaymentsTable.status, "success"),
-      // A successful payment only grants access until its window closes.
-      // Which column holds that end date depends on how the org paid:
-      //   - one-time / seat purchases  -> expires_at
-      //   - recurring subscriptions    -> next_renewal_at, pushed forward by
-      //     the Razorpay renewal webhook on every successful cycle
-      // COALESCE covers both without the caller having to know which. A row
-      // with NEITHER set records no end date at all, and deliberately fails
-      // closed: a payment gate that cannot say when access ends must not
-      // grant it. (Every write path now sets at least one of the two — see
-      // /business/billing/verify, /business/billing/subscription/create and
-      // webhook.ts's renewal handler.)
-      //
-      // The '-infinity' fallback is what makes that fail-closed behaviour
-      // explicit rather than incidental. Without it the expression is
-      // `NULL > NOW()` => NULL for a windowless row, which a WHERE clause
-      // happens to treat as "not matched" - correct here, but it would
-      // silently invert the moment this predicate is negated or wrapped in
-      // a CASE. '-infinity' keeps it a real boolean in every context.
-      sql`COALESCE(${orgPaymentsTable.expiresAt}, ${orgPaymentsTable.nextRenewalAt}, '-infinity'::timestamptz) > NOW()`,
-    ))
-    .limit(1);
-  return !!activePayment;
+  return (await orgPlanState(orgId)) === "active";
 }
 
 router.post("/business/enroll", requireAuth, async (req, res) => {
@@ -596,10 +620,13 @@ router.post("/business/enroll", requireAuth, async (req, res) => {
     const [org] = await db.select().from(organizationsTable).where(and(eq(organizationsTable.orgCode, orgCode), eq(organizationsTable.isActive, true)));
     if (!org) { res.status(404).json({ error: "Organization not found or inactive" }); return; }
 
-    if (!(await hasActiveOrgPayment(org.id))) {
-      res.status(403).json({ error: "This organization does not have an active subscription yet. Please contact your company admin." });
-      return;
-    }
+    // An organization that has not paid does not block enrolment; it just does
+    // not grant a plan. The employee becomes a member on Free and is told why,
+    // and the lifecycle job upgrades them the moment the org pays. Refusing
+    // instead would turn a billing lapse into the employee's problem and leave
+    // the org with nobody enrolled to benefit from renewing.
+    const orgState = await orgPlanState(org.id);
+    const grantsPlan = orgState === "active";
 
     const existing = await db.select().from(orgMembersTable).where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, userId)));
     if (existing.length) { res.status(409).json({ error: "Already enrolled in this organization" }); return; }
@@ -623,11 +650,17 @@ router.post("/business/enroll", requireAuth, async (req, res) => {
     expiresAt.setFullYear(expiresAt.getFullYear() + 1); // 1-year access via org
     // Same reasoning as the enrollment-code path: joining an organization is
     // what makes someone an employee, whichever code they used to do it.
-    await db.update(usersTable).set({ plan: orgPlan, joinType: "employee" }).where(eq(usersTable.id, userId));
-    await db.insert(subscriptionsTable).values({
-      userId, plan: orgPlan, status: "active", source: "organization",
-      expiresAt, paymentType: "one_time", autoRenew: false, nextRenewalAt: expiresAt,
-    }).onConflictDoNothing();
+    // joinType is recorded either way — they are an employee regardless of
+    // whether their employer is currently paying. The plan is not.
+    await db.update(usersTable)
+      .set(grantsPlan ? { plan: orgPlan, joinType: "employee" as const } : { joinType: "employee" as const })
+      .where(eq(usersTable.id, userId));
+    if (grantsPlan) {
+      await db.insert(subscriptionsTable).values({
+        userId, plan: orgPlan, status: "active", source: "organization",
+        expiresAt, paymentType: "one_time", autoRenew: false, nextRenewalAt: expiresAt,
+      }).onConflictDoNothing();
+    }
 
     // FIX C3 + B1 — issue fresh JWT so the user's app sees the upgraded plan
     // on the very next request (no 30-day wait for the old token to expire).
@@ -657,7 +690,12 @@ router.post("/business/enroll", requireAuth, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      planUpgraded: orgPlan,
+      planUpgraded: grantsPlan ? orgPlan : null,
+      orgPlanState: orgState,
+      // Said plainly rather than left for the user to notice: a downgrade with
+      // no explanation reads as the app being broken.
+      notice: grantsPlan ? null
+        : "Your company's plan is inactive, so you're on the Free plan for now. Ask your HR team to renew — you'll be upgraded automatically.",
       org: { name: org.name, type: org.orgType },
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
@@ -697,10 +735,10 @@ router.post("/business/use-enrollment-code", requireAuth, async (req, res) => {
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, enrollCode.orgId));
     if (!org || !org.isActive) { res.status(404).json({ error: "Organization not found or inactive" }); return; }
 
-    if (!(await hasActiveOrgPayment(org.id))) {
-      res.status(403).json({ error: "This organization's subscription is not active right now. Please contact your company admin." });
-      return;
-    }
+    // Same as the org-code path: a lapsed organization is joinable, it just
+    // does not grant its tier. See that path for why refusing would be worse.
+    const orgState = await orgPlanState(org.id);
+    const grantsPlan = orgState === "active";
 
     // Check if user already enrolled in this org
     const existing = await db.select().from(orgMembersTable)
@@ -763,11 +801,15 @@ router.post("/business/use-enrollment-code", requireAuth, async (req, res) => {
     // a statement of intent. Redeeming a code is the point at which the
     // user actually becomes an employee, so it is the only place the
     // server can record it as fact.
-    await db.update(usersTable).set({ plan: planToGrant, joinType: "employee" }).where(eq(usersTable.id, userId));
-    await db.insert(subscriptionsTable).values({
-      userId, plan: planToGrant, status: "active", source: "organization",
-      expiresAt, paymentType: "one_time", autoRenew: false, nextRenewalAt: expiresAt,
-    }).onConflictDoNothing();
+    await db.update(usersTable)
+      .set(grantsPlan ? { plan: planToGrant, joinType: "employee" as const } : { joinType: "employee" as const })
+      .where(eq(usersTable.id, userId));
+    if (grantsPlan) {
+      await db.insert(subscriptionsTable).values({
+        userId, plan: planToGrant, status: "active", source: "organization",
+        expiresAt, paymentType: "one_time", autoRenew: false, nextRenewalAt: expiresAt,
+      }).onConflictDoNothing();
+    }
 
     // FIX C3 + B1 — issue fresh JWT so the user's app sees the upgraded plan
     // on the very next request (no 30-day wait for the old token to expire).
@@ -786,10 +828,15 @@ router.post("/business/use-enrollment-code", requireAuth, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      planUpgraded: planToGrant,
-      expiresAt,
+      planUpgraded: grantsPlan ? planToGrant : null,
+      orgPlanState: orgState,
+      notice: grantsPlan ? null
+        : "Your company's plan is inactive, so you're on the Free plan for now. Ask your HR team to renew — you'll be upgraded automatically.",
+      expiresAt: grantsPlan ? expiresAt : null,
       org: { name: org.name, type: org.orgType },
-      message: `${planToGrant.toUpperCase()} plan activated via ${org.name}!`,
+      message: grantsPlan
+        ? `${planToGrant.toUpperCase()} plan activated via ${org.name}!`
+        : `You've joined ${org.name}.`,
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
     });
@@ -1083,8 +1130,12 @@ function clientIp(req: { headers: Record<string, unknown>; socket: { remoteAddre
  * this pre-check exists to prevent.
  */
 type CodeCheck =
-  | { ok: true; org: { id: string; name: string } }
-  | { ok: false; reason: "invalid" | "expired" | "full" | "org_inactive" | "org_unpaid" };
+  // planState is carried rather than gating: an organization whose payment has
+  // lapsed can still be JOINED, the employee just does not get its paid tier.
+  // Refusing outright would punish an employee for their employer's billing,
+  // and would leave the org with nobody enrolled to benefit when it renews.
+  | { ok: true; org: { id: string; name: string }; planState: OrgPlanState }
+  | { ok: false; reason: "invalid" | "expired" | "full" | "org_inactive" };
 
 async function resolveEnrollmentCode(rawCode: string): Promise<CodeCheck> {
   const code = rawCode.toUpperCase().trim();
@@ -1096,8 +1147,7 @@ async function resolveEnrollmentCode(rawCode: string): Promise<CodeCheck> {
 
   const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, enrollCode.orgId)).limit(1);
   if (!org || !org.isActive) return { ok: false, reason: "org_inactive" };
-  if (!(await hasActiveOrgPayment(org.id))) return { ok: false, reason: "org_unpaid" };
-  return { ok: true, org: { id: org.id, name: org.name } };
+  return { ok: true, org: { id: org.id, name: org.name }, planState: await orgPlanState(org.id) };
 }
 
 /** User-facing copy per failure. Every one of these ends with the same advice,
@@ -1107,7 +1157,6 @@ const CODE_ERROR_COPY: Record<Exclude<CodeCheck & { ok: false }, { ok: true }>["
   expired:      "This code has expired.",
   full:         "All seats for this code have been taken.",
   org_inactive: "This organization is not active right now.",
-  org_unpaid:   "This organization's subscription is not active right now.",
 };
 
 // UNAUTHENTICATED. It has to be: the whole point is to check the code before
@@ -1144,7 +1193,10 @@ router.post("/org/verify-code", async (req, res) => {
     // Name only. Nothing about seats, plan, member count or the org's id —
     // none of it is needed to render the welcome step, and all of it would be
     // readable by anyone holding a valid code.
-    res.json({ valid: true, org: { name: check.org.name } });
+    // planState lets the code screen say "you can join, but you'll be on Free
+    // until they renew" before the user commits, instead of discovering it as
+    // a silent downgrade after enrolling.
+    res.json({ valid: true, org: { name: check.org.name }, planState: check.planState });
   } catch (err) {
     req.log.error({ err }, "Enrollment code verification error");
     res.status(500).json({ error: "Could not verify that code. Please try again." });
